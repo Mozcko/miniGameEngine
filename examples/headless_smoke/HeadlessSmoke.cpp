@@ -20,35 +20,44 @@ namespace {
 
     protected:
         void onUpdate(float /*dt*/) override {
-            // Recorre una espiral simple de coordenadas, incluidas negativas
+            // Recorre una espiral simple de columnas, incluidas negativas; una columna = todos sus chunks
             const int frame = static_cast<int>(getFrameCount());
             const int cx = (frame % 21) - 10;
             const int cz = (frame / 21 % 21) - 10;
-            const mge::ChunkCoord coord{cx, 0, cz};
-            const mge::ChunkData& chunk = m_world.loadChunk(coord);
+            constexpr int kChunksY = sandbox::SandboxTerrain::kWorldChunksY;
+            for (int cy = 0; cy < kChunksY; cy++) m_world.loadChunk({cx, cy, cz});
 
+            const mge::ChunkData& bottom = *m_world.chunk({cx, 0, cz});
             for (int x = 0; x < mge::kChunkSize; x++) {
                 for (int z = 0; z < mge::kChunkSize; z++) {
-                    if (!m_registry.isSolid(chunk.get(x, 0, z))) fail("fondo no sólido", cx, cz);
-                    for (int y = 0; y < mge::kChunkSize; y++) {
-                        if (chunk.get(x, y, z) == m_blocks.water && y > kWaterLevel)
-                            fail("agua sobre el nivel del mar", cx, cz);
+                    if (!m_registry.isSolid(bottom.get(x, 0, z))) fail("fondo no sólido", cx, cz);
+                    for (int cy = 0; cy < kChunksY; cy++) {
+                        const mge::ChunkData& chunk = *m_world.chunk({cx, cy, cz});
+                        for (int y = 0; y < mge::kChunkSize; y++) {
+                            if (chunk.get(x, y, z) == m_blocks.water &&
+                                cy * mge::kChunkSize + y > kWaterLevel)
+                                fail("agua sobre el nivel del mar", cx, cz);
+                        }
                     }
                 }
             }
 
-            // Mallado en CPU (sin GPU): la malla es válida y el chunk tiene superficie
-            const mge::ChunkMesh mesh = mge::buildChunkMesh(m_world, coord);
-            if (!mesh.opaque.validate().empty() || !mesh.transparent.validate().empty())
-                fail("malla inválida", cx, cz);
-            if (mesh.opaque.empty()) fail("chunk sin caras opacas", cx, cz);
-            m_world.unloadChunk(coord); // Memoria acotada
+            // Mallado en CPU (sin GPU): mallas válidas y la columna tiene superficie
+            std::size_t opaqueTriangles = 0;
+            for (int cy = 0; cy < kChunksY; cy++) {
+                const mge::ChunkMesh mesh = mge::buildChunkMesh(m_world, {cx, cy, cz});
+                if (!mesh.opaque.validate().empty() || !mesh.transparent.validate().empty())
+                    fail("malla inválida", cx, cz);
+                opaqueTriangles += mesh.opaque.triangleCount();
+            }
+            if (opaqueTriangles == 0) fail("columna sin caras opacas", cx, cz);
+            for (int cy = 0; cy < kChunksY; cy++) m_world.unloadChunk({cx, cy, cz}); // Memoria acotada
             m_chunksChecked++;
         }
 
         void onShutdown() override {
             if (m_failures == 0) {
-                MGE_LOG_INFO("Smoke", "OK: ", m_chunksChecked, " chunks verificados en ", getFrameCount(),
+                MGE_LOG_INFO("Smoke", "OK: ", m_chunksChecked, " columnas verificadas en ", getFrameCount(),
                              " frames sin ventana ni GPU");
             } else {
                 MGE_LOG_ERROR("Smoke", m_failures, " fallos");

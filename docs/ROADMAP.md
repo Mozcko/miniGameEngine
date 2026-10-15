@@ -79,15 +79,15 @@ _Generate geometry and worlds from math, fully testable headless._ CPU-side, hea
 
 | # | Issue | Labels |
 |---|---|---|
-| [#19](https://github.com/Mozcko/miniGameEngine/issues/19) | CPU MeshData independent of the GPU | enhancement, priority:high, size:M |
-| [#20](https://github.com/Mozcko/miniGameEngine/issues/20) | Procedural primitive generators | enhancement, priority:high, size:M |
-| [#21](https://github.com/Mozcko/miniGameEngine/issues/21) | Mesh operations: transform, merge, normals, extrude, lathe, sweep | enhancement, priority:medium, size:M |
-| [#22](https://github.com/Mozcko/miniGameEngine/issues/22) | Noise library | enhancement, priority:high, size:M |
-| [#23](https://github.com/Mozcko/miniGameEngine/issues/23) | SDF library and isosurface extraction | enhancement, priority:medium, size:L |
-| [#24](https://github.com/Mozcko/miniGameEngine/issues/24) | Geometry math: AABB, sphere, plane, frustum, ray tests | enhancement, priority:high, size:M |
-| [#25](https://github.com/Mozcko/miniGameEngine/issues/25) | Move the voxel world into an engine module (mge_voxel) | refactor, priority:high, size:L |
-| [#26](https://github.com/Mozcko/miniGameEngine/issues/26) | Neighbour-aware and greedy voxel meshing | enhancement, priority:high, size:M |
-| [#27](https://github.com/Mozcko/miniGameEngine/issues/27) | Noise-based terrain and biome generator | enhancement, priority:medium, size:M |
+| [#19](https://github.com/Mozcko/miniGameEngine/issues/19) | ✅ CPU MeshData independent of the GPU | enhancement, priority:high, size:M |
+| [#20](https://github.com/Mozcko/miniGameEngine/issues/20) | ✅ Procedural primitive generators | enhancement, priority:high, size:M |
+| [#21](https://github.com/Mozcko/miniGameEngine/issues/21) | ✅ Mesh operations: transform, merge, normals, extrude, lathe, sweep | enhancement, priority:medium, size:M |
+| [#22](https://github.com/Mozcko/miniGameEngine/issues/22) | ✅ Noise library | enhancement, priority:high, size:M |
+| [#23](https://github.com/Mozcko/miniGameEngine/issues/23) | ✅ SDF library and isosurface extraction | enhancement, priority:medium, size:L |
+| [#24](https://github.com/Mozcko/miniGameEngine/issues/24) | ✅ Geometry math: AABB, sphere, plane, frustum, ray tests | enhancement, priority:high, size:M |
+| [#25](https://github.com/Mozcko/miniGameEngine/issues/25) | ✅ Move the voxel world into an engine module (mge_voxel) | refactor, priority:high, size:L |
+| [#26](https://github.com/Mozcko/miniGameEngine/issues/26) | ✅ Neighbour-aware and greedy voxel meshing | enhancement, priority:high, size:M |
+| [#27](https://github.com/Mozcko/miniGameEngine/issues/27) | ✅ Noise-based terrain and biome generator | enhancement, priority:medium, size:M |
 
 ### M3 · GPU Renderer (SDL3 GPU) — [epic #71](https://github.com/Mozcko/miniGameEngine/issues/71)
 
@@ -186,4 +186,4 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18) and ✅ M1.5 (#96–#100) are done. Next: M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100) and ✅ M2 (#19–#27) are done. Next: M3 (#28–#40, SDL3 GPU renderer), starting with #28 (GPU wrappers) and #29 (shader toolchain), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.

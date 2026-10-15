@@ -32,7 +32,7 @@ ctest --preset dev                      # all tests
 | `voxel/test_voxel_world.cpp` | Load/unload, get/set across chunks (negative, vertical), dirty flags + border propagation, generator determinism |
 | `voxel/test_chunk_mesher.cpp` | Face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face; seams vs an independent whole‑world reference, re‑mesh after a neighbour loads, greedy (fewer triangles, same area per direction, textured not merged), AO (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
 | `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, cross shapes, atlas tiles per face, every block has tiles and colour |
-| `game/test_sandbox_terrain.cpp` | `SandboxTerrain`: determinism, stone below / only tree tops above, terrain rules (solid floor, water ≤ level 5), decoration rates 1–3 %, seed, far coordinates, **trees crossing chunk borders**, load‑order independence |
+| `game/test_sandbox_terrain.cpp` | `SandboxTerrain` (noise): determinism and seed, stone below / nothing above the world, height range (seas + mountains), every biome > 2 %, block rules (floor never carved, water ≤ 20 and above the surface), caves rate and off switch, decoration rates 1–3 %, far coordinates, trees crossing chunk borders, load‑order independence |
 
 ## Writing tests
 - Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.

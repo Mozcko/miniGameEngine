@@ -4,6 +4,8 @@
 #include <game/SandboxTerrain.h>
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <map>
 #include <memory>
@@ -21,8 +23,7 @@ class SandboxApp : public mge::Application {
 public:
     SandboxApp()
         : mge::Application(makeConfig()), m_camera(1280, 720),
-          m_blocks(sandbox::registerSandboxBlocks(m_registry)),
-          m_world(m_registry, std::make_unique<sandbox::SandboxTerrain>(m_blocks)) {
+          m_blocks(sandbox::registerSandboxBlocks(m_registry)), m_world(m_registry, makeTerrain()) {
         // Módulos que usa el sandbox (orden de inicialización; se cierran al revés)
         addModule<PlatformModule>();
         addModule<AudioModule>();
@@ -47,7 +48,9 @@ public:
         }
 
         // 2. Cámara
-        m_camera.setPosition(glm::vec3(0.0f, 25.0f, 0.0f));
+        // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
+        const int ground = std::max(m_terrain->surfaceHeight(0, 0), sandbox::SandboxTerrain::kWaterLevel);
+        m_camera.setPosition(glm::vec3(0.5f, static_cast<float>(ground) + 2.5f, 0.5f));
 
         // Configurar Colisiones
         // Colisiones: ¿algún bloque sólido toca la caja? (el bloque (x,y,z) ocupa [x, x+1)³)
@@ -215,10 +218,19 @@ private:
     // así un chunk se malla con sus vecinos reales ya presentes y no hay caras de más en los bordes.
     // La carga es por distancia (no por frustum): girar la cámara no debe dejar huecos.
     void streamChunks() {
+        using Clock = std::chrono::steady_clock;
+        const auto start = Clock::now();
         const ChunkCoord center = chunkOf(blockAt(m_camera.getPosition()));
         const int load = kRenderDistance + 1;
+        const std::size_t before = m_world.chunkCount();
+        // Columnas enteras: todos los chunks verticales del mundo
         for (int cx = center.x - load; cx <= center.x + load; cx++)
-            for (int cz = center.z - load; cz <= center.z + load; cz++) m_world.loadChunk({cx, 0, cz});
+            for (int cz = center.z - load; cz <= center.z + load; cz++)
+                for (int cy = 0; cy < sandbox::SandboxTerrain::kWorldChunksY; cy++)
+                    m_world.loadChunk({cx, cy, cz});
+        const std::size_t loaded = m_world.chunkCount() - before;
+        const auto generated = Clock::now();
+        int meshed = 0;
 
         ChunkMeshOptions options;
         options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
@@ -231,7 +243,30 @@ private:
             gpu.opaque = upload(mesh.opaque);
             gpu.transparent = upload(mesh.transparent);
             m_world.clearDirty(coord);
+            meshed++;
         }
+
+        // Tiempo de carga: la primera vez (arranque) en Info, después en Debug
+        if (loaded > 0) {
+            const auto ms = [](auto from, auto to) {
+                return std::chrono::duration<double, std::milli>(to - from).count();
+            };
+            const auto done = Clock::now();
+            if (m_firstLoad)
+                MGE_LOG_INFO("Sandbox", loaded, " chunks generados en ", ms(start, generated), " ms, ",
+                             meshed, " mallados en ", ms(generated, done), " ms");
+            else
+                MGE_LOG_DEBUG("Sandbox", loaded, " chunks generados en ", ms(start, generated), " ms, ",
+                              meshed, " mallados en ", ms(generated, done), " ms");
+            m_firstLoad = false;
+        }
+    }
+
+    // El mundo es dueño del generador; el sandbox guarda un puntero para consultar alturas (spawn)
+    std::unique_ptr<sandbox::SandboxTerrain> makeTerrain() {
+        auto terrain = std::make_unique<sandbox::SandboxTerrain>(m_blocks);
+        m_terrain = terrain.get();
+        return terrain;
     }
 
     static std::unique_ptr<Mesh> upload(const MeshData& data) {
@@ -256,7 +291,9 @@ private:
     // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
     BlockRegistry m_registry;
     sandbox::SandboxBlocks m_blocks;
+    const sandbox::SandboxTerrain* m_terrain = nullptr; // Lo posee m_world
     VoxelWorld m_world;
+    bool m_firstLoad = true;
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     Texture m_tilesetTexture;
 

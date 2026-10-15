@@ -122,8 +122,6 @@ re‑mesh; the sandbox does this.
 - Diagonal neighbour chunks aren't re‑dirtied, so AO at a chunk corner can be stale until that
   chunk is re‑meshed.
 
-Planned: #27 noise terrain (sandbox).
-
 Tests: `tests/voxel/` → `mge_voxel_tests` (registry, coordinates incl. negatives, world get/set
 across chunks, dirty propagation, generator determinism, mesher face rules, atlas UVs, seam‑free
 meshing against an independent reference, greedy vs naive area and count, AO).
