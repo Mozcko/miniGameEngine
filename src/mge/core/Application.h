@@ -1,6 +1,8 @@
 #pragma once
 
+#include <mge/core/Clock.h>
 #include <mge/core/Module.h>
+#include <mge/core/Time.h>
 
 #include <cstdint>
 #include <memory>
@@ -20,6 +22,13 @@ namespace mge {
         bool headless = false;
         // 0 = sin límite (hasta requestStop). Útil para tests y corridas headless.
         std::uint64_t maxFrames = 0;
+        // Paso fijo: onFixedUpdate corre tickRate veces por segundo (de tiempo escalado)
+        double tickRate = 60.0;
+        // Máximo de pasos fijos por frame: si un frame tarda mucho, el tiempo sobrante se descarta
+        // (evita la "espiral de la muerte", donde cada frame acumula más trabajo que el anterior)
+        int maxFixedStepsPerFrame = 5;
+        // Un frame no cuenta más que esto (pausas del sistema, breakpoints, mover la ventana)
+        double maxFrameTime = 0.25;
     };
 
     // Runner del motor: dueño del loop y de los módulos. Vive en el core (sin SDL ni GPU).
@@ -46,7 +55,15 @@ namespace mge {
         bool isRunning() const { return m_running; }
 
         const ApplicationConfig& getConfig() const { return m_config; }
-        std::uint64_t getFrameCount() const { return m_frameCount; }
+        std::uint64_t getFrameCount() const { return m_time.frameCount(); }
+
+        // Estado de tiempo (delta, paso fijo, alpha, escala). time().setTimeScale(0) = pausa.
+        Time& time() { return m_time; }
+        const Time& time() const { return m_time; }
+
+        // Reemplaza el reloj (antes de run()). Por defecto SteadyClock (tiempo real).
+        // Tests/headless deterministas: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
+        void setClock(std::unique_ptr<Clock> clock) { m_clock = std::move(clock); }
 
         // Agrega un módulo (antes de run()). Devuelve una referencia para configurarlo.
         template <typename T, typename... Args> T& addModule(Args&&... args) {
@@ -69,7 +86,11 @@ namespace mge {
         // Hooks del juego. onInit corre después de inicializar los módulos (ej: con contexto OpenGL).
         // Devolver false aborta el arranque.
         virtual bool onInit() { return true; }
+        // Simulación determinista: 0..N veces por frame, siempre con el mismo fixedDt (1 / tickRate)
+        virtual void onFixedUpdate(float /*fixedDt*/) {}
+        // Una vez por frame con el delta escalado (0 en pausa). Cámara, input, animaciones...
         virtual void onUpdate(float /*dt*/) {}
+        // Una vez por frame. time().alpha() = fracción del siguiente paso fijo (para interpolar)
         virtual void onRender() {}
         // Antes de cerrar los módulos (los recursos de GPU del juego todavía son válidos)
         virtual void onShutdown() {}
@@ -77,13 +98,17 @@ namespace mge {
     private:
         bool initModules();
         void shutdownModules();
+        // Avanza el tiempo con el delta real del frame y corre los pasos fijos que tocan
+        void advanceTime(double rawFrameTime);
 
         ApplicationConfig m_config;
         std::vector<std::unique_ptr<Module>> m_modules;
         std::size_t m_initializedModules = 0; // Los primeros N inicializaron bien
         bool m_running = false;
         int m_exitCode = 0;
-        std::uint64_t m_frameCount = 0;
+        Time m_time;
+        double m_fixedDeltaSeconds = 1.0 / 60.0; // Precisión completa para el acumulador
+        std::unique_ptr<Clock> m_clock;
     };
 
     // Definida por el juego: devuelve su Application. La llama el main() del motor (mge_main).

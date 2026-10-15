@@ -6,7 +6,6 @@
 #include <vector>
 #include <map>
 #include <SDL3/SDL.h>
-#include <mge/core/Time.h>
 #include <mge/render/core/GLSLProgram.h>
 #include <mge/render/core/Texture.h>
 #include <mge/render/3d/Mesh.h>
@@ -75,9 +74,6 @@ public:
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        // Inicializar Tiempo
-        Time::init();
-
         // Configuración inicial del ratón
         mge::InputManager::setCursorMode(true);
 
@@ -121,22 +117,23 @@ public:
             if (event.key.key == SDLK_P) {
                 m_isPaused = !m_isPaused;
                 if (m_isPaused) {
-                    Time::setTimeScale(0.0f);
+                    time().setTimeScale(0.0f);
                     mge::InputManager::setCursorMode(false);
                 } else {
-                    Time::setTimeScale(1.0f);
+                    time().setTimeScale(1.0f);
                     mge::InputManager::setCursorMode(true);
                 }
             }
         }
     }
 
-    void onUpdate(float /*dt*/) override {
-        Time::update(); // Actualizamos el sistema de tiempo global
-        float deltaTime = Time::getDeltaTime();
+    // dt es el tiempo escalado (0 en pausa). El sandbox todavía no tiene simulación de paso fijo:
+    // cámara y streaming de chunks corren una vez por frame.
+    void onUpdate(float dt) override {
+        float deltaTime = dt;
 
         // Animaciones
-        m_animTimer += Time::getUnscaledDeltaTime();
+        m_animTimer += time().unscaledDelta();
         if (m_animTimer >= 0.2f) {
             m_animTimer = 0.0f;
             m_currentAnimFrame++;
@@ -200,7 +197,7 @@ public:
 
         // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
         m_fpsFrames++;
-        m_fpsElapsed += Time::getUnscaledDeltaTime();
+        m_fpsElapsed += time().unscaledDelta();
         if (m_fpsElapsed >= 5.0f) {
             MGE_LOG_DEBUG("Sandbox", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed), " (",
                           m_chunkMap.size(), " chunks)");

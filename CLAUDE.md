@@ -46,7 +46,9 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 3. `run()`: modules `onInit` in order → game `onInit()` (bool) → loop { modules `onFrameBegin` (Platform polls
    SDL, QUIT → stop, event callback), `onUpdate(dt)`, `onRender()`, modules `onFrameEnd` (swap) } → game
    `onShutdown()` → initialised modules `onShutdown` in reverse. Returns 0 / 1 (init failed).
-4. Game stops with `requestStop()`; raw SDL events via `PlatformModule::setEventCallback` (until #15).
+4. Time (#12): `onFixedUpdate(fixedDt)` at `tickRate` (max 5/frame), `onUpdate(scaledDt)`, `app.time()` (alpha,
+   unscaled delta, `setTimeScale`). `setClock(make_unique<ManualClock>(1/60.))` = deterministic. No static `Time`.
+   Game stops with `requestStop()`; raw SDL events via `PlatformModule::setEventCallback` (until #15).
 5. Static singletons: `InputManager`, `Time`, `AudioManager`, `ResourceManager`.
 6. `Mesh` = VAO/VBO/EBO of `Vertex{vec3 pos, vec4 color, vec2 uv}`. **Attrib loc 0 = position, loc 1 = UV; color is NOT sent** (see Mesh.cpp).
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
@@ -80,6 +82,5 @@ success.
 - `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).
 - `Window::init` disables depth test; SandboxApp re‑enables it in `onInit`.
 - `SDL_Quit()` is called by both `~Window` and `~Application`.
-- SandboxApp ignores the `dt` passed to `onUpdate` and uses `Time::` instead.
 - Unused code/assets: ResourceManager, Animation, FirstPersonCamera, AudioManager calls,
   `color.*` shaders, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).

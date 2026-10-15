@@ -43,7 +43,7 @@ Include as `#include <sandbox/Chunk.h>`.
    `isSolid()` (via `getGlobalBlock`).
 2. Load the tileset texture.
 3. GL state: depth test on, back‑face culling on, alpha blending.
-4. `Time::init()`, lock the cursor.
+4. Lock the cursor.
 5. Log the controls (Info).
 
 ### `handleEvent(const SDL_Event&)` (platform event callback)
@@ -53,11 +53,11 @@ Include as `#include <sandbox/Chunk.h>`.
 | Focus gained (not paused) | Re‑lock cursor |
 | Mouse button down (not paused) | Re‑lock cursor |
 | `Esc` | `requestStop()` |
-| `P` | Toggle pause: time scale 0/1, cursor unlock/lock |
+| `P` | Toggle pause: `time().setTimeScale(0 / 1)`, cursor unlock/lock |
 
-### `onUpdate(dt)` (the `dt` argument is ignored)
-1. `Time::update()`; `deltaTime = Time::getDeltaTime()`.
-2. Every 0.2 s of unscaled time: `m_tilesetTexture.updateTile(207, m_waterFrames[i % 5], 32, 32)` and
+### `onUpdate(dt)` (`dt` = scaled frame time, 0 while paused)
+1. Use `dt` for the camera.
+2. Every 0.2 s of unscaled time (`time().unscaledDelta()`): `m_tilesetTexture.updateTile(207, m_waterFrames[i % 5], 32, 32)` and
    the same for lava into 239.
 3. Chunk streaming: camera chunk `(floor(x/16), floor(z/16))`; for every chunk within
    `renderDist = 4` (9×9 = 81 chunks) that passes `isSphereVisible` (always true) and isn't

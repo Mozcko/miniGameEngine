@@ -9,10 +9,10 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Application.h/.cpp` | `mge` | `ApplicationConfig` + the runner: owns the loop and the modules, runs headless when no platform module is added |
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
-| `Time.h/.cpp` | `mge` | Static clock (`std::chrono::steady_clock`) with time scale and hitch clamping |
+| `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
+| `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
 
-Upcoming in M1: fixed‑timestep clock (#12),
-input state (#15), RNG (#14), ECS (#16).
+Upcoming in M1: input state (#15), RNG (#14), ECS (#16).
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
@@ -39,10 +39,11 @@ mge::Application* mge::createApplication() { return new MyGame(); }
 
 | Item | Behaviour |
 |------|-----------|
-| `ApplicationConfig` | `title`, `width`, `height` (used by `PlatformModule`), `headless` (a hint for the game: add no platform module), `maxFrames` (0 = unlimited; tests and headless runs) |
+| `ApplicationConfig` | `title`, `width`, `height` (used by `PlatformModule`), `headless` (a hint for the game: add no platform module), `maxFrames` (0 = unlimited), `tickRate` (60), `maxFixedStepsPerFrame` (5), `maxFrameTime` (0.25 s) |
 | `addModule<T>(args…)` / `getModule<T>()` | Register modules before `run()`. Lookup is by type (`dynamic_cast`); returns `nullptr` if absent |
 | `run()` | Init modules in order (stop at the first failure) → game `onInit` → loop → game `onShutdown` → shut down **only the initialised** modules in **reverse** order. Returns 0, or 1 if any init failed |
-| Loop | `dt` from `steady_clock` · modules' `onFrameBegin` · (break if a module requested stop) · `onUpdate(dt)` · `onRender()` · modules' `onFrameEnd` · `maxFrames` check |
+| Loop | modules' `onFrameBegin` · (break if a module requested stop) · measure the frame with the `Clock`, clamp to `maxFrameTime` · **`onFixedUpdate(fixedDt)` 0..N times** · `onUpdate(scaledDt)` · `onRender()` · modules' `onFrameEnd` · `maxFrames` check |
+| `time()` / `setClock(clock)` | Read the app's `Time` (and `time().setTimeScale(s)`); replace the clock before `run()` |
 | `requestStop()` | Ends the loop after the current frame |
 | `setExitCode(code)` | Value `run()` returns after a normal shutdown (default 0). Headless checks use it to fail the process |
 | `MGE_MAX_FRAMES` env | If `config.maxFrames == 0`, caps the frame count (invalid values are ignored with a warning). Used by CI to run real games for N frames |
@@ -78,16 +79,27 @@ macros and return errors to the caller.
 
 ---
 
-## `mge::Time`
+## Time – fixed timestep (`mge::Time`, `mge::Clock`)
 
-All‑static clock. Must be driven by the game: call `Time::init()` once and `Time::update()`
-once per frame (SandboxApp does this at the start of `onUpdate`).
+Each frame the loop measures the real frame time with the app's `Clock` and clamps it to
+`maxFrameTime` (0.25 s). It multiplies by the time scale and adds the result to an accumulator.
+`onFixedUpdate(fixedDt)` then runs once per whole `1 / tickRate` in the accumulator, up to
+`maxFixedStepsPerFrame` (5) times. Any extra backlog is **dropped**, which prevents the
+"spiral of death".
 
-| Method | Returns / effect |
-|--------|------------------|
-| `init()` | Stores the current `steady_clock` time. |
-| `update()` | Computes raw dt; **clamps to 0.1 s** (protects against window drags / breakpoints); `deltaTime = raw * timeScale`. |
-| `getDeltaTime()` | Scaled dt – use for gameplay (0 when paused). |
-| `getUnscaledDeltaTime()` | Real dt – use for UI, animations that run while paused. |
-| `getTimeScale()` / `setTimeScale(s)` | 1 = normal, 0 = paused, 0.5 = slow motion. |
-| `advance(raw)` | Applies a raw delta: clamps to [0, `kMaxDeltaTime` = 0.1 s], then scales. `update()` calls it with the real clock; tests call it directly. |
+| Use | For |
+|-----|-----|
+| `onFixedUpdate(fixedDt)` | Deterministic simulation (physics, gameplay rules): the same `fixedDt` every call, independent of FPS |
+| `onUpdate(dt)` | Per‑frame logic with the **scaled** delta (camera, input, streaming). 0 while paused |
+| `time().unscaledDelta()` / `unscaledElapsed()` | Real time: UI, animations that keep running while paused, FPS |
+| `time().alpha()` | `[0, 1)` progress towards the next fixed step, to interpolate rendering between simulation states |
+| `time().setTimeScale(s)` | 1 = normal, 0 = pause (no fixed steps, scaled delta 0), 0.5 = slow motion. Negative values clamp to 0 |
+| `time().frameCount()`, `fixedStepCount()`, `elapsed()` | Counters (`elapsed` is scaled time) |
+
+Determinism: `setClock(std::make_unique<ManualClock>(1.0 / 60.0))` makes every frame last exactly
+1/60 s. Same inputs then always give the same number of fixed steps and the same state. The
+accumulator uses `double` with a 1 ns tolerance, so a step isn't lost to rounding when summing,
+say, 4 × 1/240 s.
+
+Tests: `tests/core/test_time.cpp` (frame‑rate independence, accumulation and alpha, the step cap,
+pause, determinism).
