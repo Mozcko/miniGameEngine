@@ -11,4 +11,4 @@ Closes #
 - [ ] Builds warning-free with the `ci` preset (GCC and Clang via CI)
 - [ ] Tests added or updated (bug fixes include a regression test)
 - [ ] Docs updated (folder `README.md`, `docs/KNOWN_ISSUES.md`, `CLAUDE.md` if conventions changed)
-- [ ] Follows the [ADRs](../docs/adr/README.md): no new OpenGL features, no runtime asset files, core stays headless
+- [ ] Follows the [ADRs](../docs/adr/README.md): no new OpenGL features, procedural path available (assets optional), core stays headless

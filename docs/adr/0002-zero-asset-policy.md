@@ -1,6 +1,6 @@
 # 0002. Zero external asset files
 
-- Status: Accepted
+- Status: **Superseded by [0004](0004-procedural-first-assets-optional.md)** (2026-10-15): procedural‑first, assets optional
 - Date: 2026-10-14
 - Issues: #29, #34, #41, #46–#49, #65
 

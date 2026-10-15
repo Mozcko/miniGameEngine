@@ -7,8 +7,9 @@ old one as *Superseded*.
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](0001-sdl3-gpu-api.md) | Use SDL3 and the SDL3 GPU API instead of OpenGL | Accepted |
-| [0002](0002-zero-asset-policy.md) | Zero external asset files | Accepted |
+| [0002](0002-zero-asset-policy.md) | Zero external asset files | Superseded by 0004 |
 | [0003](0003-headless-core.md) | Headless core with optional modules | Accepted |
+| [0004](0004-procedural-first-assets-optional.md) | Procedural‑first, assets optional | Accepted |
 
 ## Template
 
