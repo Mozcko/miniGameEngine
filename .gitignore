@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Build output
+build/
+cmake-build-*/
+out/
+
+# Tooling
+.cache/
+compile_commands.json
