@@ -8,10 +8,10 @@ Window + OpenGL context (GLEW) and input. Depends on `mge_core`, SDL3, GLEW, Ope
 
 | Hook | Does |
 |------|------|
-| `onInit` | Creates the `Window` from `ApplicationConfig` (title, size). Fails, and so stops startup, if the window, GL context or GLEW fails. Then `InputManager::init(window)` |
+| `onInit` | `SDL_InitSubSystem(SDL_INIT_VIDEO)`, then creates the `Window` from `ApplicationConfig` (title, size). Fails, and so stops startup, if the window, GL context or GLEW fails. Then `InputManager::init(window)` |
 | `onFrameBegin` | `InputManager::update()`, then polls every SDL event: `SDL_EVENT_QUIT` → `app.requestStop()`; the event goes to the game's callback (`setEventCallback`), then to `InputManager::processEvent` |
 | `onFrameEnd` | `Window::swapBuffers()` |
-| `onShutdown` | Clears the InputManager window and destroys the window (GL context) |
+| `onShutdown` | Clears the InputManager window, destroys the window (GL context), `SDL_QuitSubSystem(SDL_INIT_VIDEO)`; if no SDL subsystem is left, `SDL_Quit()` |
 
 `getWindow()` is valid between init and shutdown. `setEventCallback(std::function<void(const SDL_Event&)>)`
 is temporary until input actions (#15).
@@ -28,7 +28,7 @@ Owned by `mge::Application` (`std::unique_ptr<Window> m_window`). Created in the
 Application constructor with `("Mini Game Engine - Minecraft Cube", 1280, 720)`.
 
 ### What `init()` does (called from the constructor)
-1. `SDL_Init(SDL_INIT_VIDEO)` – exits the process on failure.
+1. (SDL video is initialised by `PlatformModule` with `SDL_InitSubSystem` – `Window` doesn't init or quit SDL.)
 2. Requests **OpenGL 3.3 Core profile**, double buffering.
 3. `SDL_CreateWindow` – centered, flags `OPENGL | SHOWN | RESIZABLE`.
 4. `SDL_GL_CreateContext`.
@@ -45,7 +45,7 @@ Any failure in steps 1–5 prints an error and calls `exit(1)`.
 | Member | Notes |
 |--------|-------|
 | `Window(title, width, height)` | Calls `init()`. |
-| `~Window()` | Deletes GL context, destroys window, calls `SDL_Quit()`, prints a goodbye message. |
+| `~Window()` | Deletes the GL context and destroys the window (logs it). Does **not** quit SDL. |
 | `swapBuffers()` | `SDL_GL_SwapWindow` – called by `Application::Run` each frame. |
 | `getWidth()/getHeight()` | The **initial** size; not updated on resize. |
 | `getSDLWindow()` | Raw `SDL_Window*` (used by `InputManager::init` for mouse grab). |

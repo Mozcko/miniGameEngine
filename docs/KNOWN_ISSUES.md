@@ -16,7 +16,7 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 | 23 | Low | `platform/Window.cpp` | No `SDL_GL_SetSwapInterval`, so the frame rate is uncapped unless the driver forces vsync (100 % GPU/CPU use). |
 | 24 | ✅ Fixed (#2) | `CMakeLists.txt` | No default `CMAKE_BUILD_TYPE`, so a plain `cmake -S . -B build` compiles **without optimisation** (no `-O2`) and makes chunk generation and meshing slow. Add a Release default or pass `-DCMAKE_BUILD_TYPE=Release`. No warning flags are enabled either. |
 | 25 | ✅ Fixed (#13) | `render/core/GLSLProgram.cpp` `linkShaders` | On link failure the program is deleted but `m_programId` keeps the dead id, so later `use()` calls generate GL errors instead of failing clearly. |
-| 26 | Low | `app/Application.cpp` ctor | If `SDL_Init` fails it returns before creating `m_window`; `run()` then dereferences the null window. Partly fixed in #13: the window is created only if `SDL_Init` succeeds, and `run()` refuses to start (logged) when init failed; full module shutdown order is #17. |
+| 26 | ✅ Fixed (#13, #11, #17) | `app/Application.cpp` ctor | If `SDL_Init` fails it returns before creating `m_window`; `run()` then dereferences the null window. Partly fixed in #13: the window is created only if `SDL_Init` succeeds, and `run()` refuses to start (logged) when init failed; full module shutdown order is #17. |
 | 27 | Low | `games/sandbox/Chunk.cpp` `generate` | `srand(worldX * 8921 + worldZ * 33771)` overflows `int` (undefined behaviour) for coordinates beyond ~±60 000 blocks, and the global `srand` reseeds `rand()` for any other code that uses it. |
 | 1 | 🗑️ Removed (#9): no HUD anymore | `render/camera/Camera2D.cpp` `updateProjection` + `games/sandbox/SandboxApp.cpp` HUD | `Camera2D` builds `ortho(-aspect*zoom, aspect*zoom, -zoom, zoom)` (≈ −1.78..1.78 × −1..1) but `GUILabel`s are positioned and sized in **pixels** (`setPosition(10, 680)`, sprite size = text surface size). Labels land far outside the view. A pixel HUD needs `ortho(0, width, 0, height)`. |
 | 2 | High | `render/2d/Sprite.cpp` `initFromAtlas` | Quad indices `0,1,2 / 2,3,0` over BL, TL, TR, BR are **clockwise**. With `GL_CULL_FACE` enabled by SandboxApp, sprites/labels are culled. Either reverse winding or disable culling for the HUD pass. |
@@ -38,9 +38,9 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 
 ## Lifetime / resource management
 
-- **SDL init/quit order**: `SDL_Quit()` is called by both `~Application` and `~Window`; Window's
-  `init()` also calls `SDL_Init(SDL_INIT_VIDEO)` again. `~Application` runs `SDL_Quit`
-  *before* `m_window` (and the GL context) is destroyed. `AudioManager::init` runs before `SDL_Init`.
+- ~~**SDL init/quit order**~~ – fixed in #17: each module owns its SDL subsystem
+  (`SDL_InitSubSystem`/`SDL_QuitSubSystem`), shutdown is reverse‑ordered, and the last module out
+  calls `SDL_Quit()` once.
 - **Texture** copies share the same GL id and the destructor doesn't free it: textures leak
   unless `destroy()` is called; calling `destroy()`/`load()` on one copy invalidates the others.
 - **Mesh** has a user‑defined destructor but default copy ctor/assignment → copying a Mesh (or

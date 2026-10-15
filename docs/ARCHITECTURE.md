@@ -85,8 +85,11 @@ while the GL context still exists. Then each **initialised** module's `onShutdow
 **reverse order**: Audio closes the device, Platform destroys the window and GL context. Finally
 `main()` destroys the `Application`.
 
-Remaining caveat: `Window` still calls `SDL_Init(SDL_INIT_VIDEO)`/`SDL_Quit()` itself, and audio
-uses `SDL_InitSubSystem`. Per‑module SDL subsystem ownership is #17.
+SDL lifetime (#17): each module owns its SDL subsystem (`PlatformModule` → video,
+`AudioManager` → audio) via `SDL_InitSubSystem`/`SDL_QuitSubSystem`. Whichever module releases the
+last subsystem calls `SDL_Quit()`, exactly once. The game's GL resources are freed in `onShutdown`,
+before the window and context go away. The full lifecycle runs clean under ASan/UBSan
+(`asan` preset).
 
 ## 6. Rendering pipeline
 

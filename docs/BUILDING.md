@@ -23,6 +23,7 @@ Use the CMake presets (CMake ≥ 3.21):
 cmake --preset dev && cmake --build --preset dev        # Debug + warnings      → build/
 cmake --preset release && cmake --build --preset release # Release              → build-release/
 cmake --preset ci && cmake --build --preset ci          # Debug + -Werror (CI)  → build-ci/
+cmake --preset asan && cmake --build --preset asan      # Debug + ASan/UBSan    → build-asan/
 ```
 
 A plain `cmake -S . -B build && cmake --build build` also works and defaults to **Release**.
@@ -33,6 +34,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `MGE_WARNINGS` | `ON` | `-Wall -Wextra -Wshadow` (`/W4` on MSVC), applied to our code only |
 | `MGE_WERROR` | `OFF` | Treat warnings as errors (`ON` in the `ci` preset) |
 | `MGE_BUILD_TESTS` | `ON` | Build the test executables and register them with CTest |
+| `MGE_SANITIZERS` | `OFF` | AddressSanitizer + UndefinedBehaviorSanitizer for the whole build (`asan` preset). UB aborts (`-fno-sanitize-recover`) |
 | `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
@@ -79,6 +81,17 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
     Wayland have no title bar.
 - To force a source build even with SDL3 installed:
   `-DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER`.
+
+## Sanitizers
+
+```bash
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan
+cd build-asan && SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy timeout -s INT 10 ./sandbox
+```
+
+GCC needs its ASan/UBSan runtimes (Fedora: `sudo dnf install libasan libubsan`). Clang ships them:
+`CC=clang CXX=clang++ cmake --preset asan`. The test preset sets `ASAN_OPTIONS=detect_leaks=1` and
+makes UBSan halt on the first error.
 
 ## Headless runs
 

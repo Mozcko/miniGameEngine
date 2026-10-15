@@ -20,7 +20,18 @@ endif()
 option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
 option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
+option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
+
+# --- Sanitizers (todo el build, incluidas dependencias, para que ASan vea todas las asignaciones) ---
+if(MGE_SANITIZERS)
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+    else()
+        add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    endif()
+endif()
 
 # --- Warnings (solo para nuestros targets) ---
 function(mge_set_warnings target)
