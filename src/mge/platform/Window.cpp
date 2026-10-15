@@ -3,9 +3,9 @@
 
 namespace mge {
 
-    Window::Window(const std::string& title, int width, int height)
-        : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_sdlWindow(nullptr),
-          m_glContext(nullptr) {
+    Window::Window(const std::string& title, int width, int height, bool openGl)
+        : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_openGl(openGl),
+          m_sdlWindow(nullptr), m_glContext(nullptr) {
         m_isValid = init();
     }
 
@@ -17,6 +17,16 @@ namespace mge {
 
     bool Window::init() {
         // El subsistema de video lo inicializa el PlatformModule (dueño del ciclo de vida de SDL)
+        if (!m_openGl) {
+            // Sin OpenGL: la ventana la toma la GPU de SDL (Vulkan/Metal/D3D12) en el GpuModule
+            m_sdlWindow = SDL_CreateWindow(m_title.c_str(), m_width, m_height, SDL_WINDOW_RESIZABLE);
+            if (m_sdlWindow == nullptr) {
+                MGE_LOG_FATAL("Window", "No se pudo crear la ventana SDL: ", SDL_GetError());
+                return false;
+            }
+            return true;
+        }
+
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -65,7 +75,7 @@ namespace mge {
     }
 
     void Window::swapBuffers() {
-        SDL_GL_SwapWindow(m_sdlWindow);
+        if (m_glContext) SDL_GL_SwapWindow(m_sdlWindow);
     }
 
     void Window::handleEvents() {

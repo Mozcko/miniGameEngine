@@ -17,8 +17,8 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 - C++17 mini game engine: **SDL3** (window/input/events/audio), OpenGL 3.3 Core via GLEW (legacy
   renderer until #40), GLM math, stb_image (textures). Linux/Fedora dev box, CMake build. SDL3 is
   used from the system (`SDL3-devel`) or built from source via FetchContent (pinned 3.4.18).
-- Demo client: `game/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
-  procedural sine/cosine terrain, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
+- Demo client: `game/SandboxApp.cpp` – Minecraft‑like voxel world on `mge_voxel` (16³ chunks, 4 tall; noise terrain with
+  biomes and caves, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
 - Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
 
 ## Build & run
@@ -34,9 +34,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
-  builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform` (PlatformModule), `mge_render`, `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
+  builds it with `-DMGE_BUILD_MODULES=OFF`, together with the headless `mge_procgen`/`mge_voxel`), `mge_platform` (PlatformModule),
+  `mge_gpu` (GpuModule, SDL3 GPU), `mge_render` (legacy GL), `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
-- Tests: `tests/core/` → `mge_core_tests` (core only), `tests/game/` → `game_tests`.
+- Tests: `tests/<module>/` → `mge_<module>_tests` (core, procgen, voxel, platform, gpu), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
 
 ## Architecture in 10 lines
@@ -59,7 +60,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off.
 
 ## Conventions
-- **One namespace `mge`** (the sandbox's Block/Chunk currently live in it too). Naming, enforced by
+- **One engine namespace `mge`** (game code: `sandbox`). Naming, enforced by
   `.clang-tidy` in the CI `lint` job: types `PascalCase`, functions/methods `camelCase`,
   private/protected members `m_camelCase`, static members `s_camelCase`, static constants
   `kPascalCase`, public data fields `camelCase`, macros `UPPER_CASE`.
@@ -68,7 +69,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
   It needs `cmake --preset ci` first.
 - Include roots `src/` and the repo root (for `game/`); always root‑relative: `#include <mge/core/Time.h>`, `#include <game/SandboxTerrain.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
-- Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
+- Block (x,y,z) occupies [x, x+1)³ → world→block is `mge::blockAt(p)` (= floor).
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
 
 ## ECS
@@ -77,7 +78,7 @@ per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Paren
 The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
 
 ## Umbrella header & guide
-`#include <mge/mge.h>` = core + linked modules (`MGE_HAS_PLATFORM/RENDER/AUDIO` come from the module targets).
+`#include <mge/mge.h>` = core + linked modules (`MGE_HAS_PROCGEN/VOXEL/PLATFORM/GPU/RENDER/AUDIO` come from the module targets).
 Newcomer guide: `docs/FIRST_GAME.md` (keep it in sync with `templates/`).
 
 ## Editor
@@ -100,13 +101,18 @@ dirty flags; loading dirties neighbours), `buildChunkMesh` → `{opaque, transpa
 cubes, optional AO). Generators must be stateless/order‑independent (sandbox trees replay neighbour columns). The game only registers blocks and
 implements a generator.
 
+## GPU (SDL3 GPU, M3 in progress)
+`mge_gpu`: `PlatformModule(PlatformOptions{openGl=false})` + `GpuModule` (added after it) → `frame()` {cmd, swapchain, w, h} each frame;
+`GpuDevice` factories return move‑only handles (`GpuBuffer`, `GpuTexture`, …; release before the device); `uploadMesh(MeshData)` →
+`GpuVertex{pos, normal, color, uv}`; `downloadTexture` for tests. GPU tests run offscreen (lavapipe in CI, `MGE_REQUIRE_GPU=1`).
+
 ## Assets
 Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup
 (override: `MGE_ASSET_DIR`).
 
 ## Randomness
 `<mge/core/Random.h>`: `Pcg32 rng(hash2i(x, z, seed), stream)`; never `rand()`. The sandbox world seed
-defaults to `Chunk::kDefaultWorldSeed` (1337).
+defaults to `SandboxTerrain::kDefaultSeed` (1337).
 
 ## Logging
 `#include <mge/core/Log.h>` → `MGE_LOG_INFO/WARN/ERROR/FATAL("Category", "text ", value)`, `MGE_ASSERT`

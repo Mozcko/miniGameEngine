@@ -68,6 +68,17 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(mge_platform_tests PRIVATE mge_platform doctest_header)
     mge_set_warnings(mge_platform_tests)
     doctest_discover_tests(mge_platform_tests TEST_PREFIX "platform: ")
+
+    # GPU (SDL3 GPU, Vulkan). Sin ventana: dibujan en texturas. Sin GPU se saltean (MGE_REQUIRE_GPU=1 → fallan).
+    # Con sanitizers se apaga LeakSanitizer: los drivers de Mesa pierden memoria que LSan no puede atribuir.
+    add_executable(mge_gpu_tests
+        test_main.cpp
+        gpu/test_gpu_device.cpp
+    )
+    target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
+    mge_set_warnings(mge_gpu_tests)
+    doctest_discover_tests(mge_gpu_tests TEST_PREFIX "gpu: "
+        PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
 endif()
 
 # --- Tests del sandbox (necesitan los módulos del motor) ---

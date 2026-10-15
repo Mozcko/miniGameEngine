@@ -50,13 +50,14 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `mge_procgen` | static lib | `src/mge/procgen/` | Procedural generation, headless (always built) |
   | `mge_voxel` | static lib | `src/mge/voxel/` | Voxel worlds, headless (always built) |
   | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
-  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
+  | `mge_gpu` | static lib | `src/mge/gpu/` | SDL3 GPU (Vulkan): `GpuModule`, RAII handles, mesh upload |
+  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer (legacy, removed in #40) |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
   | `sandbox_world` | static lib | `game/` | Sandbox blocks + terrain generator (headless, on `mge_voxel`) |
   | `sandbox` | executable | `game/` | The game; output in the build dir root |
   | `mge_core_tests`, `mge_procgen_tests`, `mge_voxel_tests` | executables | `tests/` | Headless tests |
-  | `mge_platform_tests`, `game_tests` | executables | `tests/` | Platform and sandbox tests |
+  | `mge_platform_tests`, `mge_gpu_tests`, `game_tests` | executables | `tests/` | Platform, GPU (label `gpu`, offscreen) and sandbox tests |
   | `ecs_bench`, `noise_bench` | executables | `bench/` | ECS and noise benchmarks (run from a Release build) |
 
   Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
