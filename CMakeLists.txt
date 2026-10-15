@@ -85,7 +85,7 @@ endif()
 # --- Motor (src/mge), juegos y ejemplos ---
 add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES)
-    add_subdirectory(games/sandbox)
+    add_subdirectory(game)
     add_subdirectory(examples/headless_smoke)
 endif()
 

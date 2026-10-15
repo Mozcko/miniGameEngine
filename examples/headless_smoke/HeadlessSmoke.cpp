@@ -3,7 +3,7 @@
 // Sale con código != 0 si algo falla. Se ejecuta en CI (también con ASan/UBSan).
 #include <mge/core/Application.h>
 #include <mge/core/Log.h>
-#include <sandbox/Chunk.h>
+#include <game/Chunk.h>
 
 #include <memory>
 

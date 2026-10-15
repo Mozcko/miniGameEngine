@@ -2,7 +2,7 @@
 # CI ejecuta este check en el job "lint"; los warnings son errores.
 Checks: '-*,readability-identifier-naming'
 WarningsAsErrors: '*'
-HeaderFilterRegex: '.*/(src|games|tests|examples|bench)/.*'
+HeaderFilterRegex: '.*/(src|game|tests|examples|bench)/.*'
 CheckOptions:
   # Tipos: PascalCase
   readability-identifier-naming.NamespaceCase: lower_case

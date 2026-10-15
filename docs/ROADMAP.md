@@ -61,6 +61,18 @@ _A core that builds and runs without SDL or a GPU, with SDL3 as the platform lay
 | [#17](https://github.com/Mozcko/miniGameEngine/issues/17) | ✅ Safe platform init/shutdown order | bug, priority:medium, size:S |
 | [#18](https://github.com/Mozcko/miniGameEngine/issues/18) | ✅ Headless smoke test in CI | testing, priority:medium, size:S |
 
+### M1.5 · Game Dev Experience — [epic #101](https://github.com/Mozcko/miniGameEngine/issues/101)
+
+_Make building and iterating on a game easy, before M2 adds lots of new engine features._ One `game/` folder, run from anywhere, one‑call game targets + a template, VS Code build/run/debug, an umbrella header and a first‑game guide.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#96](https://github.com/Mozcko/miniGameEngine/issues/96) | ✅ Rename games/ to game/ (single game folder) | refactor, priority:high, size:S |
+| [#97](https://github.com/Mozcko/miniGameEngine/issues/97) | Run the game from anywhere (assets relative to the executable) + run target | enhancement, priority:high, size:S |
+| [#98](https://github.com/Mozcko/miniGameEngine/issues/98) | mge_add_game() CMake function + new-game template | enhancement, priority:high, size:M |
+| [#99](https://github.com/Mozcko/miniGameEngine/issues/99) | VS Code setup: build, run, debug and test from the editor | chore, priority:medium, size:S |
+| [#100](https://github.com/Mozcko/miniGameEngine/issues/100) | Umbrella header <mge/mge.h> + 'your first game' guide | documentation, priority:medium, size:S |
+
 ### M2 · Procedural Geometry & Generation — [epic #70](https://github.com/Mozcko/miniGameEngine/issues/70)
 
 _Generate geometry and worlds from math, fully testable headless._ CPU-side, headless-testable generation: MeshData, primitives, mesh ops, noise, SDF + isosurfaces, geometry math, engine voxel module.
@@ -161,4 +173,4 @@ _Ship a game that is a single executable with no asset files._ A showcase game b
 
 ## Suggested order
 
-✅ M0 (#1–#7) and ✅ M1 (#8–#18) are done. Next: M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7) and ✅ M1 (#8–#18) are done. Next: **M1.5 (#96–#100, game dev experience)**, then M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.

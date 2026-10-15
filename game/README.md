@@ -1,4 +1,4 @@
-# games/sandbox/
+# game/
 
 The client application: a Minecraft‑style voxel sandbox. Depends on the engine (`src/mge`); nothing
 in the engine depends on it except the `mge::createApplication()` definition.
@@ -11,9 +11,9 @@ in the engine depends on it except the `mge::createApplication()` definition.
 
 Block and Chunk live in namespace `mge` (same as engine classes).
 
-CMake (`games/sandbox/CMakeLists.txt`): `sandbox_world` (static lib: Block, Chunk – tested by
-`tests/sandbox/`) and `sandbox` (executable: SandboxApp + `mge_main`, written to the build dir root).
-Include as `#include <sandbox/Chunk.h>`.
+CMake (`game/CMakeLists.txt`): `sandbox_world` (static lib: Block, Chunk – tested by
+`tests/game/`) and `sandbox` (executable: SandboxApp + `mge_main`, written to the build dir root).
+Include as `#include <game/Chunk.h>`.
 
 ---
 
@@ -124,7 +124,7 @@ is a `Chunk` constructor argument (default `Chunk::kDefaultWorldSeed = 1337`).
   `range(0,100)` roll).
 
 The terrain *height* doesn't use the seed yet (sin/cos; noise terrain is #27). A regression test in
-`tests/sandbox/test_chunk.cpp` checks each decoration lands at 1–3 % of grass columns (measured
+`tests/game/test_chunk.cpp` checks each decoration lands at 1–3 % of grass columns (measured
 ≈ 1.95 %). History: #5 fixed a bug where both passes reused one `srand` seed, so trees and roses
 never spawned.
 

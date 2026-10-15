@@ -9,8 +9,8 @@
 #include <mge/render/core/Texture.h>
 #include <mge/render/3d/Mesh.h>
 #include <mge/render/camera/Camera3D.h>
-#include <sandbox/Block.h>
-#include <sandbox/Chunk.h>
+#include <game/Block.h>
+#include <game/Chunk.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace mge;

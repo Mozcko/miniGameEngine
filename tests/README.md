@@ -10,7 +10,7 @@ Unit tests for the engine and the sandbox world, using **doctest** with **CTest*
 ```bash
 cmake --preset dev && cmake --build --preset dev
 ctest --preset dev                      # all tests
-./build/tests/sandbox_tests -tc="*determin*" # filter by name (doctest CLI)
+./build/tests/game_tests -tc="*determin*" # filter by name (doctest CLI)
 ```
 
 | File | Covers |
@@ -20,13 +20,13 @@ ctest --preset dev                      # all tests
 | `core/test_ecs.cpp` | Entity lifecycle/recycling, components, swap‑and‑pop integrity, views, transform hierarchy (rotation, cycles, destroyed parent), World phases, ECS systems in a headless app |
 | `core/test_input.cpp` | `InputState` edges, mouse delta/wheel, `clear`, `ActionMap` multi‑binding actions and axes |
 | `platform/test_sdl_input.cpp` | `mge_platform_tests`: scancode/button translation and `applySdlEvent` with hand‑built SDL events (no SDL init, no window) |
-| `sandbox/test_block.cpp` | `Block` active/solid/opaque rules, atlas UV lookup per face (`Block::getUVs`) |
-| `sandbox/test_chunk.cpp` | `Chunk` generation: determinism, terrain rules (solid floor, water ≤ level 5), out‑of‑range access |
+| `game/test_block.cpp` | `Block` active/solid/opaque rules, atlas UV lookup per face (`Block::getUVs`) |
+| `game/test_chunk.cpp` | `Chunk` generation: determinism, terrain rules (solid floor, water ≤ level 5), out‑of‑range access |
 
 ## Writing tests
-- Add `core/test_<topic>.cpp` (engine core) or `sandbox/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.
+- Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.
 - Link only what you test. `mge_core_tests` (`tests/core/`) links **only `mge_core`**, so it
-  also builds with `-DMGE_BUILD_MODULES=OFF`. `sandbox_tests` (`tests/sandbox/`) links `sandbox_world`.
+  also builds with `-DMGE_BUILD_MODULES=OFF`. `game_tests` (`tests/game/`) links `sandbox_world`.
   CTest names are prefixed `core: ` / `sandbox: `.
 - **Never** call code that needs a GPU context. For example, `Chunk::buildMesh()` creates OpenGL
   buffers, so construct chunks and test their data without it. (`Chunk(cx, cz)` only generates

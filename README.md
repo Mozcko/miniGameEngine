@@ -7,7 +7,7 @@ Minecraft‑style voxel sandbox as its demo game.
 
 The engine owns `main()` and the game loop. A game plugs in by subclassing
 `mge::Application` and defining `mge::createApplication()` (the "Hazel‑style" entry‑point
-pattern). The current client is `SandboxApp` (`games/sandbox/SandboxApp.cpp`): it streams in procedurally
+pattern). The current client is `SandboxApp` (`game/SandboxApp.cpp`): it streams in procedurally
 generated 16×16×16 block chunks around a free‑flying, collision‑aware camera, animates
 water/lava tiles.
 
@@ -74,11 +74,10 @@ miniGameEngine/
 │       │   └── camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
 │       ├── audio/          mge_audio: WAV SFX on SDL3 audio streams
 │       └── app/            mge_main: main() (core-only)
-├── games/
-│   └── sandbox/            The voxel sandbox game     → games/sandbox/README.md
+├── game/                   The game (voxel sandbox)  → game/README.md
 ├── bench/                  Benchmarks (ecs_bench)
 ├── examples/               Small engine programs (headless_smoke) → examples/README.md
-├── tests/                  doctest unit tests (headless): core/, sandbox/ → tests/README.md
+├── tests/                  doctest unit tests (headless): core/, platform/, game/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── shaders/            GLSL 330 shaders
 │   ├── textures/           512×512 block tileset atlas
@@ -89,7 +88,7 @@ miniGameEngine/
 └── .vscode/                Editor settings + a single‑file gcc task (not the CMake build)
 ```
 
-Every folder under `src/`, `games/` and `assets/` has its own `README.md` describing each file in detail.
+Every folder under `src/`, `game/` and `assets/` has its own `README.md` describing each file in detail.
 
 ## Documentation index
 
@@ -114,7 +113,7 @@ Every folder under `src/`, `games/` and `assets/` has its own `README.md` descri
 | [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation (legacy) |
 | [src/mge/render/camera/README.md](src/mge/render/camera/README.md) | Camera hierarchy |
 | [examples/README.md](examples/README.md) | Example programs (headless smoke test) |
-| [games/sandbox/README.md](games/sandbox/README.md) | SandboxApp, Chunk, Block (voxel world) |
+| [game/README.md](game/README.md) | SandboxApp, Chunk, Block (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |
 
 ## License
