@@ -1,7 +1,7 @@
 #include <mge/render/core/GLSLProgram.h>
 #include <fstream>
 #include <vector>
-#include <iostream>
+#include <mge/core/Log.h>
 
 namespace mge {
 
@@ -12,25 +12,26 @@ namespace mge {
         // Limpiar memoria de video si es necesario
     }
 
-    void GLSLProgram::compileShaders(const std::string& vertexShaderPath,
+    bool GLSLProgram::compileShaders(const std::string& vertexShaderPath,
                                      const std::string& fragmentShaderPath) {
         // 1. Pedir a OpenGL que cree los IDs
         m_programId = glCreateProgram();
         m_vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
         if (m_vertexShaderId == 0) {
-            std::cerr << "Error creando vertex shader!\n";
+            MGE_LOG_ERROR("Shader", "glCreateShader(GL_VERTEX_SHADER) falló");
         }
         m_fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
         if (m_fragmentShaderId == 0) {
-            std::cerr << "Error creando fragment shader!\n";
+            MGE_LOG_ERROR("Shader", "glCreateShader(GL_FRAGMENT_SHADER) falló");
         }
 
         // 2. Compilar cada uno
-        compileShader(vertexShaderPath, m_vertexShaderId);
-        compileShader(fragmentShaderPath, m_fragmentShaderId);
+        bool vertexOk = compileShader(vertexShaderPath, m_vertexShaderId);
+        bool fragmentOk = compileShader(fragmentShaderPath, m_fragmentShaderId);
+        return vertexOk && fragmentOk;
     }
 
-    void GLSLProgram::linkShaders() {
+    bool GLSLProgram::linkShaders() {
         // 1. Adjuntar shaders al programa
         glAttachShader(m_programId, m_vertexShaderId);
         glAttachShader(m_programId, m_fragmentShaderId);
@@ -52,8 +53,10 @@ namespace mge {
             glDeleteShader(m_vertexShaderId);
             glDeleteShader(m_fragmentShaderId);
 
-            std::cerr << "Error al enlazar shaders: " << &(infoLog[0]) << std::endl;
-            return;
+            m_programId = 0; // No dejar un id de programa ya borrado (KI#25)
+
+            MGE_LOG_ERROR("Shader", "Falló el enlazado del programa:\n", &(infoLog[0]));
+            return false;
         }
 
         // 4. Limpiar los shaders individuales, ya están en el programa
@@ -61,6 +64,7 @@ namespace mge {
         glDetachShader(m_programId, m_fragmentShaderId);
         glDeleteShader(m_vertexShaderId);
         glDeleteShader(m_fragmentShaderId);
+        return true;
     }
 
     void GLSLProgram::addAttribute(const std::string& attributeName) {
@@ -83,13 +87,12 @@ namespace mge {
         }
     }
 
-    void GLSLProgram::compileShader(const std::string& filePath, GLuint id) {
+    bool GLSLProgram::compileShader(const std::string& filePath, GLuint id) {
         // A. Leer el archivo
         std::ifstream shaderFile(filePath);
         if (shaderFile.fail()) {
-            perror(filePath.c_str());
-            std::cerr << "No se pudo abrir el archivo: " << filePath << "\n";
-            exit(1);
+            MGE_LOG_ERROR("Shader", "No se pudo abrir el archivo: ", filePath);
+            return false;
         }
 
         std::string fileContents = "";
@@ -115,16 +118,17 @@ namespace mge {
             std::vector<char> errorLog(maxLength);
             glGetShaderInfoLog(id, maxLength, &maxLength, &errorLog[0]);
 
-            std::cerr << "Fallo al compilar shader " << filePath << ":\n" << &(errorLog[0]) << std::endl;
+            MGE_LOG_ERROR("Shader", "Falló la compilación de ", filePath, ":\n", &(errorLog[0]));
             glDeleteShader(id);
-            return;
+            return false;
         }
+        return true;
     }
 
     GLint GLSLProgram::getUniformLocation(const std::string& uniformName) {
         GLint location = glGetUniformLocation(m_programId, uniformName.c_str());
         if (location == -1) {
-            std::cerr << "Uniform " << uniformName << " no encontrado en el shader." << std::endl;
+            MGE_LOG_WARN("Shader", "Uniform '", uniformName, "' no encontrado en el shader");
             return -1;
         }
         return location;

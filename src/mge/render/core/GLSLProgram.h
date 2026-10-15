@@ -10,14 +10,14 @@ namespace mge {
         GLSLProgram();
         ~GLSLProgram();
 
-        // Compila los shaders desde archivos de texto
-        void compileShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+        // Compila los shaders desde archivos de texto (false si falla; el detalle va al log)
+        bool compileShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 
         // Vincula los atributos (ej: "vertexPosition" -> índice 0)
         void addAttribute(const std::string& attributeName);
 
-        // Termina de configurar el shader
-        void linkShaders();
+        // Termina de configurar el shader (false si falla el enlazado; el programa queda en 0)
+        bool linkShaders();
 
         // Activa el shader para usarlo
         void use();
@@ -38,6 +38,6 @@ namespace mge {
         int m_numAttributes;
 
         // Función auxiliar para compilar un shader individual
-        void compileShader(const std::string& filePath, GLuint id);
+        bool compileShader(const std::string& filePath, GLuint id);
     };
 }

@@ -20,6 +20,8 @@ namespace mge {
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
         bool isClosed() const { return m_isClosed; }
+        // false si falló la creación de la ventana, del contexto OpenGL o de GLEW (ver el log)
+        bool isValid() const { return m_isValid; }
         void close() { m_isClosed = true; }
 
         // --- ESTA ES LA LÍNEA QUE FALTABA ---
@@ -31,12 +33,13 @@ namespace mge {
 
     private:
         // Función privada interna para inicializar todo
-        void init();
+        bool init();
 
         std::string m_title;
         int m_width;
         int m_height;
         bool m_isClosed;
+        bool m_isValid = false;
 
         // Punteros crudos de SDL (recursos del sistema operativo)
         SDL_Window* m_sdlWindow;

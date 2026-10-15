@@ -73,10 +73,13 @@ cd build && ./sandbox                       # run from a dir next to assets/
   A third‑party name that must keep its spelling (for example a forward‑declared `SDL_Surface`)
   gets `// NOLINT(readability-identifier-naming)`.
 - **Formatting:** `.clang-format`, checked in CI with clang-format **22.1.8** (`pip install
-  clang-format==22.1.8` if your distro ships another version). Run
-  `git ls-files '*.h' '*.cpp' | xargs clang-format -i` before committing.
+  clang-format==22.1.8` if your distro ships another version).
+- **Lint locally** with the same checks as CI: `cmake --preset ci && scripts/lint.sh`
+  (`scripts/lint.sh --fix` formats first). New, untracked files are included.
 - **Blame:** mass‑formatting commits are listed in `.git-blame-ignore-revs`. Run
   `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
+- **Errors and output:** use the logging macros from `<mge/core/Log.h>` (`MGE_LOG_*`, `MGE_ASSERT`,
+  `MGE_VERIFY`). Never `std::cout`, `printf` or `exit()`: log, then return an error to the caller.
 - **Ownership:** classes that own GPU or OS resources must not be copyable. Prefer RAII and
   `std::unique_ptr` over raw `new`/`delete` in new code.
 - **Determinism:** procedural generation must be deterministic for a given seed. Don't use

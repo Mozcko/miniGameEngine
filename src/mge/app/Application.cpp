@@ -1,8 +1,8 @@
 #include <mge/app/Application.h>
-#include <iostream>
 #include <GL/glew.h>
 #include <SDL2/SDL_ttf.h>
 #include <mge/platform/InputManager.h>
+#include <mge/core/Log.h>
 
 namespace mge {
 
@@ -12,16 +12,19 @@ namespace mge {
 
         // Inicialización de SDL
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-            std::cerr << "Error al inicializar SDL: " << SDL_GetError() << std::endl;
+            MGE_LOG_FATAL("App", "No se pudo inicializar SDL: ", SDL_GetError());
             m_running = false;
             return;
         }
 
         m_window = std::make_unique<mge::Window>("Mini Game Engine - Minecraft Cube", 1280, 720);
-        // Inicializar GLEW (usualmente después de crear el contexto en Window)
+        if (!m_window->isValid()) {
+            m_running = false; // El motivo ya está en el log
+            return;
+        }
 
         if (TTF_Init() == -1) {
-            printf("TTF_Init Error: %s\n", TTF_GetError());
+            MGE_LOG_ERROR("App", "No se pudo inicializar SDL_ttf: ", TTF_GetError());
         }
     }
 
@@ -40,6 +43,12 @@ namespace mge {
     }
 
     void Application::run() {
+        // Si la inicialización falló no hay ventana/contexto: no llamar a onInit (usaría OpenGL)
+        if (!m_running || !m_window || !m_window->isValid()) {
+            MGE_LOG_FATAL("App", "La aplicación no se pudo inicializar; saliendo");
+            return;
+        }
+
         InputManager::init(m_window->getSDLWindow());
         onInit();
 

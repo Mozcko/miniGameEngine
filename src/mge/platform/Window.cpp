@@ -1,25 +1,25 @@
 #include <mge/platform/Window.h>
-#include <iostream>
+#include <mge/core/Log.h>
 
 namespace mge {
 
     Window::Window(const std::string& title, int width, int height)
         : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_sdlWindow(nullptr),
           m_glContext(nullptr) {
-        init();
+        m_isValid = init();
     }
 
     Window::~Window() {
         if (m_glContext) SDL_GL_DeleteContext(m_glContext);
         if (m_sdlWindow) SDL_DestroyWindow(m_sdlWindow);
         SDL_Quit();
-        std::cout << "Ventana cerrada y recursos liberados correctamente.\n";
+        MGE_LOG_INFO("Window", "Ventana cerrada y recursos liberados");
     }
 
-    void Window::init() {
+    bool Window::init() {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-            std::cerr << "Error fatal al inicializar SDL: " << SDL_GetError() << std::endl;
-            exit(1);
+            MGE_LOG_FATAL("Window", "No se pudo inicializar SDL: ", SDL_GetError());
+            return false;
         }
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -32,20 +32,22 @@ namespace mge {
                              m_height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
         if (m_sdlWindow == nullptr) {
-            std::cerr << "Error al crear ventana SDL: " << SDL_GetError() << std::endl;
-            exit(1);
+            MGE_LOG_FATAL("Window", "No se pudo crear la ventana SDL: ", SDL_GetError());
+            return false;
         }
 
         m_glContext = SDL_GL_CreateContext(m_sdlWindow);
         if (m_glContext == nullptr) {
-            std::cerr << "Error al crear contexto OpenGL: " << SDL_GetError() << std::endl;
-            exit(1);
+            MGE_LOG_FATAL("Window", "No se pudo crear el contexto OpenGL: ", SDL_GetError());
+            return false;
         }
 
         glewExperimental = GL_TRUE;
-        if (glewInit() != GLEW_OK) {
-            std::cerr << "Error al inicializar GLEW" << std::endl;
-            exit(1);
+        GLenum glewStatus = glewInit();
+        if (glewStatus != GLEW_OK) {
+            MGE_LOG_FATAL("Window", "No se pudo inicializar GLEW: ",
+                          reinterpret_cast<const char*>(glewGetErrorString(glewStatus)));
+            return false;
         }
 
         // --- CONFIGURACIÓN CRÍTICA ---
@@ -57,7 +59,8 @@ namespace mge {
         glDisable(GL_DEPTH_TEST);
         // >>>>> FIN DE LA CORRECCIÓN <<<<<
 
-        std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+        MGE_LOG_INFO("Window", "OpenGL ", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
+        return true;
     }
 
     void Window::swapBuffers() {

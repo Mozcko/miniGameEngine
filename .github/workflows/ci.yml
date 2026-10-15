@@ -100,11 +100,8 @@ jobs:
             libglew-dev libglm-dev libstb-dev
           pip install --user clang-format==22.1.8 clang-tidy==22.1.8
 
-      - name: clang-format
-        run: git ls-files '*.h' '*.cpp' | xargs clang-format --dry-run --Werror
-
       - name: Configure (compile_commands.json)
         run: cmake --preset ci -G Ninja
 
-      - name: clang-tidy (naming convention)
-        run: git ls-files '*.cpp' | xargs -P 4 -n 1 clang-tidy -p build-ci --quiet
+      - name: clang-format + clang-tidy naming
+        run: scripts/lint.sh
