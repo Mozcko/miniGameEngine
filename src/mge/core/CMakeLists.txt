@@ -1,5 +1,6 @@
 # Core del motor: SOLO la librería estándar (y GLM más adelante). Prohibido incluir SDL o GPU.
 add_library(mge_core STATIC
+    Log.h Log.cpp
     Time.h Time.cpp
 )
 target_include_directories(mge_core PUBLIC ${PROJECT_SOURCE_DIR}/src)

@@ -1,5 +1,5 @@
 #include <mge/render/core/Texture.h>
-#include <iostream>
+#include <mge/core/Log.h>
 #include <cstring> // Para std::memcpy
 #include <SDL2/SDL.h>
 
@@ -41,7 +41,7 @@ namespace mge {
         unsigned char* data = stbi_load(filePath.c_str(), &m_width, &m_height, &m_numChannels, 0);
 
         if (!data) {
-            std::cerr << "Error: No se pudo cargar la textura " << filePath << std::endl;
+            MGE_LOG_ERROR("Texture", "No se pudo cargar la textura ", filePath, ": ", stbi_failure_reason());
             return;
         }
 
@@ -77,9 +77,6 @@ namespace mge {
 
         // Desvincular
         glBindTexture(GL_TEXTURE_2D, 0);
-
-        // Mensaje de debug útil
-        // std::cout << "Textura cargada: " << filePath << " [" << _width << "x" << _height << "]" <<
         // std::endl;
     }
 

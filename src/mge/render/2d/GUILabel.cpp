@@ -1,5 +1,5 @@
 #include <mge/render/2d/GUILabel.h>
-#include <iostream>
+#include <mge/core/Log.h>
 #include <mge/render/core/GLSLProgram.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -16,7 +16,7 @@ namespace mge {
         // Abrir fuente
         m_font = TTF_OpenFont(fontPath.c_str(), size);
         if (!m_font) {
-            std::cerr << "[GUILabel] Error cargando fuente: " << TTF_GetError() << std::endl;
+            MGE_LOG_ERROR("GUI", "No se pudo cargar la fuente ", fontPath, ": ", TTF_GetError());
         }
     }
 

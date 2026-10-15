@@ -1,5 +1,5 @@
 #include <mge/render/core/ResourceManager.h>
-#include <iostream>
+#include <mge/core/Log.h>
 
 namespace mge {
 
@@ -18,7 +18,7 @@ namespace mge {
         }
 
         // 3. Si no la encontró, la cargamos desde cero
-        std::cout << "[ResourceManager] Cargando nueva textura desde disco: " << texturePath << std::endl;
+        MGE_LOG_DEBUG("Resources", "Cargando textura desde disco: ", texturePath);
 
         Texture newTexture;
         // Asumimos que tu clase Texture tiene un método .load() que recibe el path
@@ -38,7 +38,7 @@ namespace mge {
         // podrías tener fugas de memoria aquí.
         // Si tu clase Texture llama a glDeleteTextures en su destructor, esto funcionará bien.
         s_textureCache.clear();
-        std::cout << "[ResourceManager] Caché de texturas limpiado." << std::endl;
+        MGE_LOG_DEBUG("Resources", "Caché de texturas limpiado");
     }
 
 }

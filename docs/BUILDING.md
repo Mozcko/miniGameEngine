@@ -96,21 +96,21 @@ every asset is loaded with a hard‑coded relative path like
 `"../assets/shaders/basic3d.vert"`. Running from the repo root produces
 `No se pudo abrir el archivo: ../assets/shaders/basic3d.vert` and the program exits.
 
-Expected console output at startup:
+Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Category] message`):
 ```
-[AudioManager] Sistema de audio inicializado.
-OpenGL Version: <driver string>
+[    0.000] [INFO ] [Audio] Sistema de audio inicializado
+[    0.061] [INFO ] [Window] OpenGL <driver string>
 ```
 
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| `No se pudo abrir el archivo: ../assets/...` then exit | Wrong working directory – `cd build` first. |
-| `Error: No se pudo cargar la textura ...` | Same as above, or PNG missing. |
-| `[GUILabel] Error cargando fuente` | Font path wrong (cwd). |
-| `Error al crear contexto OpenGL` | GPU/driver doesn't provide GL 3.3 core (e.g. some VMs). Try `LIBGL_ALWAYS_SOFTWARE=1`. |
-| `[AudioManager] Error fatal al iniciar SDL_Mixer` | No audio device; non‑fatal, game continues. |
+| `[Shader] No se pudo abrir el archivo: ../assets/...` then `[Sandbox] No se pudo crear el shader 3D` and a clean exit | Wrong working directory – `cd build` first. |
+| `[Texture] No se pudo cargar la textura ...` | Same as above, or PNG missing. |
+| `[GUI] No se pudo cargar la fuente ...` | Font path wrong (cwd). |
+| `[Window] No se pudo crear el contexto OpenGL` / `No se pudo inicializar GLEW` | GPU/driver doesn't provide GL 3.3 core (e.g. some VMs). Try `LIBGL_ALWAYS_SOFTWARE=1`. |
+| `[Audio] No se pudo iniciar SDL_mixer` | No audio device; non‑fatal, game continues. |
 | `fatal error: stb/stb_image.h` / `glm/glm.hpp` not found | Install the header packages above, or add their include dir to `include_directories()` in CMakeLists. |
 | Mouse can't escape window | Cursor is locked by design. Press `P` to pause (releases it) or `Esc` to quit. |
 

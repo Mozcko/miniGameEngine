@@ -1,6 +1,6 @@
 #include <mge/app/Application.h>
 #include <mge/platform/InputManager.h>
-#include <iostream>
+#include <mge/core/Log.h>
 #include <vector>
 #include <map>
 #include <SDL2/SDL.h>
@@ -34,10 +34,16 @@ public:
 
     void onInit() override {
         // 1. Shaders
-        m_shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
+        bool shaderOk =
+            m_shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
         m_shader3D.addAttribute("vertexPosition");
         m_shader3D.addAttribute("vertexUV");
-        m_shader3D.linkShaders();
+        shaderOk = m_shader3D.linkShaders() && shaderOk;
+        if (!shaderOk) {
+            MGE_LOG_FATAL("Sandbox", "No se pudo crear el shader 3D (¿se ejecutó desde build/?)");
+            m_running = false;
+            return;
+        }
 
         // 2. Cámara
         m_camera.setPosition(glm::vec3(0.0f, 25.0f, 0.0f));

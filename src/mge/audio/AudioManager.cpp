@@ -1,5 +1,5 @@
 #include <mge/audio/AudioManager.h>
-#include <iostream>
+#include <mge/core/Log.h>
 
 namespace mge {
 
@@ -11,9 +11,10 @@ namespace mge {
         // Inicializar SDL_Mixer
         // Frecuencia: 44100Hz, Formato: Default, Canales: 2 (Stereo), ChunkSize: 2048
         if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-            std::cerr << "[AudioManager] Error fatal al iniciar SDL_Mixer: " << Mix_GetError() << std::endl;
+            MGE_LOG_ERROR("Audio",
+                          "No se pudo iniciar SDL_mixer (el juego sigue sin sonido): ", Mix_GetError());
         } else {
-            std::cout << "[AudioManager] Sistema de audio inicializado." << std::endl;
+            MGE_LOG_INFO("Audio", "Sistema de audio inicializado");
         }
     }
 
@@ -31,7 +32,7 @@ namespace mge {
         s_musicCache.clear();
 
         Mix_CloseAudio();
-        std::cout << "[AudioManager] Sistema de audio cerrado." << std::endl;
+        MGE_LOG_INFO("Audio", "Sistema de audio cerrado");
     }
 
     void AudioManager::playSound(const std::string& filePath, int volume) {
@@ -45,8 +46,7 @@ namespace mge {
             // 2. Cargar si no existe
             chunk = Mix_LoadWAV(filePath.c_str());
             if (!chunk) {
-                std::cerr << "[AudioManager] No se pudo cargar SFX: " << filePath
-                          << " Error: " << Mix_GetError() << std::endl;
+                MGE_LOG_ERROR("Audio", "No se pudo cargar el SFX ", filePath, ": ", Mix_GetError());
                 return;
             }
             s_sfxCache[filePath] = chunk;
@@ -57,7 +57,7 @@ namespace mge {
 
         // Canal -1 = Elige el primer canal libre disponible
         if (Mix_PlayChannel(-1, chunk, 0) == -1) {
-            std::cerr << "[AudioManager] No hay canales libres para reproducir sonido." << std::endl;
+            MGE_LOG_WARN("Audio", "No hay canales libres para reproducir el sonido");
         }
     }
 
@@ -72,8 +72,7 @@ namespace mge {
             // 2. Cargar si no existe
             music = Mix_LoadMUS(filePath.c_str());
             if (!music) {
-                std::cerr << "[AudioManager] No se pudo cargar Musica: " << filePath
-                          << " Error: " << Mix_GetError() << std::endl;
+                MGE_LOG_ERROR("Audio", "No se pudo cargar la música ", filePath, ": ", Mix_GetError());
                 return;
             }
             s_musicCache[filePath] = music;
@@ -81,7 +80,7 @@ namespace mge {
 
         // 3. Reproducir
         if (Mix_PlayMusic(music, loops) == -1) {
-            std::cerr << "[AudioManager] Error reproduciendo música: " << Mix_GetError() << std::endl;
+            MGE_LOG_ERROR("Audio", "Error reproduciendo música: ", Mix_GetError());
         }
     }
 

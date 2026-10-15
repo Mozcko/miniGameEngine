@@ -55,12 +55,18 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
   private/protected members `m_camelCase`, static members `s_camelCase`, static constants
   `kPascalCase`, public data fields `camelCase`, macros `UPPER_CASE`.
 - Formatting: `.clang-format`, checked in CI with clang-format **22.1.8**. Before committing, run
-  `git ls-files '*.h' '*.cpp' | xargs clang-format -i`. Local naming check:
-  `git ls-files '*.cpp' | xargs -n1 clang-tidy -p build-ci --quiet`.
+  **`scripts/lint.sh --fix`**: the same format + naming checks as CI, including untracked new files.
+  It needs `cmake --preset ci` first.
 - Include roots `src/` and `games/`; always root‑relative: `#include <mge/core/Time.h>`, `#include <sandbox/Chunk.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
+
+## Logging
+`#include <mge/core/Log.h>` → `MGE_LOG_INFO/WARN/ERROR/FATAL("Category", "text ", value)`, `MGE_ASSERT`
+(Debug), `MGE_VERIFY` (always, returns bool). No `std::cout`/`cerr`/`printf`/`exit()` anywhere: log
+and return an error instead. `Window::isValid()`, `GLSLProgram::compileShaders/linkShaders` return
+success.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
 - `Camera3D::isSphereVisible` always returns true (frustum culling is a stub); chunks are never unloaded.
