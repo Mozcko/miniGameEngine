@@ -107,6 +107,30 @@ SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./build/sandb
 `MGE_MAX_FRAMES=N` makes any engine application exit cleanly after N frames, unless the game set
 `ApplicationConfig::maxFrames` itself.
 
+## Adding a game
+
+```bash
+scripts/new-game.sh space_shooter              # window template  → examples/space_shooter/
+scripts/new-game.sh simulation --headless      # headless template
+cmake --preset dev                             # pick up the new folder
+cmake --build --preset dev --target run-space_shooter
+```
+
+Every program is declared with **`mge_add_game()`** (`cmake/MgeGame.cmake`):
+
+```cmake
+mge_add_game(<name>
+    SOURCES <files...>             # required
+    [LIBRARIES <libs...>]          # extra game libraries
+    [MODULES platform render audio]   # engine modules (default: all three)
+    [HEADLESS]                     # no modules: no window, GPU or SDL
+    [SMOKE_FRAMES <n>])            # CTest smoke test running n frames (windowed → offscreen, label gpu)
+```
+
+It links `mge_main` and the modules, applies the warnings, puts the executable in the build‑dir
+root, and adds a `run-<name>` target. `run` points at `MGE_MAIN_GAME` (default `sandbox`). See
+[`templates/README.md`](../templates/README.md).
+
 ## Tests
 
 Unit tests use [doctest](https://github.com/doctest/doctest) (fetched by CMake, pinned + hash‑checked, never linked into the game) and run through CTest:

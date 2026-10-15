@@ -1,0 +1,73 @@
+// @GAME_TITLE@: juego generado con scripts/new-game.sh (plantilla "window").
+// Una ventana cuyo color de fondo late. Muestra: módulos, acciones de input, una entidad del ECS
+// actualizada en el paso fijo y el log. Esc sale, Espacio (mantener) acelera.
+#include <mge/audio/AudioModule.h>
+#include <mge/core/Application.h>
+#include <mge/core/Log.h>
+#include <mge/core/ecs/World.h>
+#include <mge/platform/PlatformModule.h>
+
+#include <GL/glew.h>
+#include <cmath>
+
+namespace {
+    // Componente del ECS: fase de una oscilación
+    struct Pulse {
+        float phase = 0.0f;
+        float speed = 1.0f; // radianes por segundo
+    };
+
+    class @GAME_CLASS@ : public mge::Application {
+    public:
+        @GAME_CLASS@() : mge::Application(makeConfig()) {
+            addModule<mge::PlatformModule>(); // ventana, OpenGL e input
+            addModule<mge::AudioModule>();
+        }
+
+    protected:
+        bool onInit() override {
+            m_platform = getModule<mge::PlatformModule>();
+            m_platform->actions().bind("Quit", mge::Key::Escape);
+            m_platform->actions().bind("Faster", mge::Key::Space);
+
+            // Una entidad con su componente, y un sistema que la avanza en cada paso fijo
+            mge::Registry& registry = world().registry();
+            m_pulse = registry.create();
+            registry.add<Pulse>(m_pulse);
+            world().addSystem(mge::SystemPhase::Fixed, "pulse", [](mge::World& w, float dt) {
+                w.registry().each<Pulse>(
+                    [dt](mge::Entity, Pulse& pulse) { pulse.phase += pulse.speed * dt; });
+            });
+
+            MGE_LOG_INFO("@GAME_NAME@", "Esc: salir, Espacio (mantener): más rápido");
+            return true;
+        }
+
+        void onUpdate(float /*dt*/) override {
+            if (m_platform->wasActionPressed("Quit")) requestStop();
+            world().registry().get<Pulse>(m_pulse).speed = m_platform->isActionDown("Faster") ? 6.0f : 1.5f;
+        }
+
+        void onRender() override {
+            const float phase = world().registry().get<Pulse>(m_pulse).phase;
+            glClearColor(0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+
+    private:
+        static mge::ApplicationConfig makeConfig() {
+            mge::ApplicationConfig config;
+            config.title = "@GAME_TITLE@";
+            config.width = 1280;
+            config.height = 720;
+            return config;
+        }
+
+        mge::PlatformModule* m_platform = nullptr;
+        mge::Entity m_pulse;
+    };
+}
+
+mge::Application* mge::createApplication() {
+    return new @GAME_CLASS@();
+}

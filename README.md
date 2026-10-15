@@ -78,6 +78,8 @@ miniGameEngine/
 │       └── app/            mge_main: main() (core-only)
 ├── game/                   The game (voxel sandbox)  → game/README.md
 ├── bench/                  Benchmarks (ecs_bench)
+├── cmake/                  CMake helpers: mge_add_game() (MgeGame.cmake)
+├── templates/              Game templates for scripts/new-game.sh → templates/README.md
 ├── examples/               Small engine programs (headless_smoke) → examples/README.md
 ├── tests/                  doctest unit tests (headless): core/, platform/, game/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
