@@ -49,17 +49,17 @@ _A core that builds and runs without SDL or a GPU, with SDL3 as the platform lay
 
 | # | Issue | Labels |
 |---|---|---|
-| [#8](https://github.com/Mozcko/miniGameEngine/issues/8) | Split the engine into library targets (mge_core, mge_platform, mge_render, mge_audio) | refactor, priority:critical, size:L |
-| [#9](https://github.com/Mozcko/miniGameEngine/issues/9) | Migrate the platform layer from SDL2 to SDL3 | refactor, priority:critical, size:M |
-| [#10](https://github.com/Mozcko/miniGameEngine/issues/10) | Unify namespaces and naming conventions | refactor, priority:high, size:L |
-| [#11](https://github.com/Mozcko/miniGameEngine/issues/11) | Headless application runner with ApplicationConfig and optional modules | enhancement, priority:critical, size:L |
-| [#12](https://github.com/Mozcko/miniGameEngine/issues/12) | Single clock and fixed-timestep game loop | enhancement, priority:high, size:M |
-| [#13](https://github.com/Mozcko/miniGameEngine/issues/13) | Logging and assertion system | enhancement, priority:medium, size:S |
-| [#14](https://github.com/Mozcko/miniGameEngine/issues/14) | Deterministic RNG and coordinate hashing | enhancement, priority:high, size:S |
-| [#15](https://github.com/Mozcko/miniGameEngine/issues/15) | Backend-agnostic input with actions and pressed/released state | enhancement, priority:high, size:M |
-| [#16](https://github.com/Mozcko/miniGameEngine/issues/16) | Lightweight ECS / scene system | enhancement, priority:high, size:L |
-| [#17](https://github.com/Mozcko/miniGameEngine/issues/17) | Safe platform init/shutdown order | bug, priority:medium, size:S |
-| [#18](https://github.com/Mozcko/miniGameEngine/issues/18) | Headless smoke test in CI | testing, priority:medium, size:S |
+| [#8](https://github.com/Mozcko/miniGameEngine/issues/8) | ✅ Split the engine into library targets (mge_core, mge_platform, mge_render, mge_audio) | refactor, priority:critical, size:L |
+| [#9](https://github.com/Mozcko/miniGameEngine/issues/9) | ✅ Migrate the platform layer from SDL2 to SDL3 | refactor, priority:critical, size:M |
+| [#10](https://github.com/Mozcko/miniGameEngine/issues/10) | ✅ Unify namespaces and naming conventions | refactor, priority:high, size:L |
+| [#11](https://github.com/Mozcko/miniGameEngine/issues/11) | ✅ Headless application runner with ApplicationConfig and optional modules | enhancement, priority:critical, size:L |
+| [#12](https://github.com/Mozcko/miniGameEngine/issues/12) | ✅ Single clock and fixed-timestep game loop | enhancement, priority:high, size:M |
+| [#13](https://github.com/Mozcko/miniGameEngine/issues/13) | ✅ Logging and assertion system | enhancement, priority:medium, size:S |
+| [#14](https://github.com/Mozcko/miniGameEngine/issues/14) | ✅ Deterministic RNG and coordinate hashing | enhancement, priority:high, size:S |
+| [#15](https://github.com/Mozcko/miniGameEngine/issues/15) | ✅ Backend-agnostic input with actions and pressed/released state | enhancement, priority:high, size:M |
+| [#16](https://github.com/Mozcko/miniGameEngine/issues/16) | ✅ Lightweight ECS / scene system | enhancement, priority:high, size:L |
+| [#17](https://github.com/Mozcko/miniGameEngine/issues/17) | ✅ Safe platform init/shutdown order | bug, priority:medium, size:S |
+| [#18](https://github.com/Mozcko/miniGameEngine/issues/18) | ✅ Headless smoke test in CI | testing, priority:medium, size:S |
 
 ### M2 · Procedural Geometry & Generation — [epic #70](https://github.com/Mozcko/miniGameEngine/issues/70)
 
@@ -161,4 +161,4 @@ _Ship a game that is a single executable with no asset files._ A showcase game b
 
 ## Suggested order
 
-✅ M0 (#1–#7) is done. Next: #8 → #9 → #10 → #11 → #12 … Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7) and ✅ M1 (#8–#18) are done. Next: M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
