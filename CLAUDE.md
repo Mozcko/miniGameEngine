@@ -89,6 +89,10 @@ Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MOD
 (`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `scripts/new-game.sh <name> [--headless]`
 → `examples/<name>/` from `templates/` (`*.in`, CI builds both templates).
 
+## Procgen
+`mge_procgen` (headless, always built): `MeshData` (SoA, all attributes same length, `validate()`, `writeObj`).
+GPU upload: `Mesh::init(const MeshData&)`. Visual checks: `examples/procgen_gallery` → `<build>/gallery/*.obj`.
+
 ## Assets
 Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup
 (override: `MGE_ASSET_DIR`).

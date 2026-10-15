@@ -13,7 +13,7 @@ add_library(mge_render STATIC
     camera/FirstPersonCamera.h camera/FirstPersonCamera.cpp
 )
 # Las cámaras reciben CameraInput (no leen teclas): render no depende de platform
-target_link_libraries(mge_render PUBLIC mge_core OpenGL::GL GLEW::GLEW)
+target_link_libraries(mge_render PUBLIC mge_core mge_procgen OpenGL::GL GLEW::GLEW)
 target_include_directories(mge_render SYSTEM PUBLIC ${GLEW_INCLUDE_DIRS})
 mge_set_warnings(mge_render)
 

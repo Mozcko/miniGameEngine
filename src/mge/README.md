@@ -10,6 +10,7 @@ SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.m
 | Folder | Target | Depends on | Contents | Doc |
 |--------|--------|------------|----------|-----|
 | `core/` | `mge_core` | std only | `Application` runner + `Module`, `Clock`/`Time`, `Input`, `Log` | [core/README.md](core/README.md) |
+| `procgen/` | `mge_procgen` | core (headless) | `MeshData`, OBJ export (M2: primitives, ops, noise, SDF) | [procgen/README.md](procgen/README.md) |
 | `platform/` | `mge_platform` | core, SDL3, GLEW, OpenGL | `PlatformModule` (window, GL 3.3 context, GLEW, SDL→core input), `Window`, `SdlInput` | [platform/README.md](platform/README.md) |
 | `render/` | `mge_render` | core, GL, GLEW | `core/` Vertex, Texture, GLSLProgram, ResourceManager · `3d/` Mesh · `2d/` Sprite, Animation (legacy) · `camera/` Camera, Camera2D, Camera3D, FirstPersonCamera | [render/README.md](render/README.md) |
 | `audio/` | `mge_audio` | core, SDL3 | `AudioModule`, `AudioManager` (WAV SFX) | [audio/README.md](audio/README.md) |

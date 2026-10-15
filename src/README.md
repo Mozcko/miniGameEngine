@@ -7,6 +7,7 @@ Engine source code. The game lives outside, in [`game/`](../game/), and tests in
 src/
 └── mge/                 the engine (one folder per CMake target)  → mge/README.md
     ├── core/            mge_core      – headless: no SDL, no GPU
+    ├── procgen/         mge_procgen   – headless procedural generation (MeshData, …)
     ├── platform/        mge_platform  – SDL window, GL context, input
     ├── render/          mge_render    – OpenGL renderer (legacy until #40)
     ├── audio/           mge_audio     – audio

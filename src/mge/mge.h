@@ -18,6 +18,12 @@
 #include <mge/core/ecs/Registry.h>
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/ecs/World.h>
+#include <mge/core/math/Geometry.h>
+
+// --- Generación procedural (headless) ---
+#ifdef MGE_HAS_PROCGEN
+#include <mge/procgen/MeshData.h>
+#endif
 
 // --- Plataforma: ventana, contexto OpenGL, input de SDL ---
 #ifdef MGE_HAS_PLATFORM

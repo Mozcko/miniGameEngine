@@ -50,7 +50,8 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   |--------|------|------------|----------|
   | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** (std + GLM): Application runner, Module, Clock/Time, Input, Random, ECS, Log |
 | `ecs_bench` | executable | `bench/` | ECS benchmark (core only) |
-  | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
+  | `mge_procgen` | static lib | `src/mge/procgen/` | Procedural generation, headless (always built) |
+| `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
@@ -60,7 +61,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `game_tests` | executable | `tests/` | Sandbox tests |
 
   Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
-- `-DMGE_BUILD_MODULES=OFF` builds only `mge_core` + `mge_core_tests`. No SDL, GLEW or OpenGL is
+- `-DMGE_BUILD_MODULES=OFF` builds only the headless targets (`mge_core`, `mge_procgen`, their tests and `procgen_gallery`). No SDL, GLEW or OpenGL is
   needed; this is how CI proves the core is headless.
 - Include roots are `src/` (`#include <mge/core/Time.h>`) and the repo root, for the game (`#include <game/Chunk.h>`).
 - OpenGL is linked through GLVND (`OpenGL::GL`).

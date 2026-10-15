@@ -62,6 +62,17 @@ namespace mge {
         glBindVertexArray(0);
     }
 
+    void Mesh::init(const MeshData& mesh) {
+        std::vector<Vertex> vertices(mesh.vertexCount());
+        for (std::size_t i = 0; i < vertices.size(); i++) {
+            vertices[i].position = mesh.positions[i];
+            vertices[i].color = mesh.colors[i];
+            vertices[i].uv = mesh.uvs[i];
+        }
+        std::vector<unsigned int> indices(mesh.indices.begin(), mesh.indices.end());
+        init(vertices, indices);
+    }
+
     void Mesh::draw() {
         if (m_vao == 0) return;
         glBindVertexArray(m_vao);

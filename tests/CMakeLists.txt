@@ -34,6 +34,15 @@ target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
 mge_set_warnings(mge_core_tests)
 doctest_discover_tests(mge_core_tests TEST_PREFIX "core: ")
 
+# --- Tests de los módulos headless (sin SDL ni GPU): siempre ---
+add_executable(mge_procgen_tests
+    test_main.cpp
+    procgen/test_meshdata.cpp
+)
+target_link_libraries(mge_procgen_tests PRIVATE mge_procgen doctest_header)
+mge_set_warnings(mge_procgen_tests)
+doctest_discover_tests(mge_procgen_tests TEST_PREFIX "procgen: ")
+
 # --- Tests de los módulos (necesitan SDL; no abren ventana) ---
 if(MGE_BUILD_MODULES)
     add_executable(mge_platform_tests
