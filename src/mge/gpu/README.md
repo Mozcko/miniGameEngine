@@ -139,6 +139,14 @@ SPIR‑V, so a mismatch is reported by the validation layers.
     doesn't allow cancelling, so it's submitted empty.
   - `beginRenderPass(color, depth*)` and `beginCopyPass()` return passes that end at scope exit.
 
+## Coordinate conventions
+SDL GPU uses the same conventions on every backend, converting for Vulkan internally:
+- **NDC:** Y up, Z in [0, 1].
+- **Viewport and texture coordinates:** origin at the top‑left.
+
+So use `glm::perspectiveRH_ZO` and the usual `glm::lookAt`. MeshData's counter‑clockwise winding
+is then front‑facing, matching the pipeline default.
+
 ## Tests and examples
 - **`tests/gpu/` → `mge_gpu_tests`** (label `gpu`): clear and read back, mesh upload, move
   semantics, cancelled command buffers, embedded SPIR‑V (magic number, stage, alignment), a
@@ -148,5 +156,6 @@ SPIR‑V, so a mismatch is reported by the validation layers.
     that into a failure.
   - CI uses Mesa **lavapipe** (software Vulkan). Locally the real GPU is used; to try lavapipe:
     `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`.
+- **`tests/render/` → `render_tests`:** golden‑image scenes (see `tests/README.md`).
 - **`examples/gpu_triangle`:** a rotating triangle (embedded shaders, a vertex uniform) on a
   pulsing background. Its smoke test runs 60 frames offscreen and fails if no frame was presented.

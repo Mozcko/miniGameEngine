@@ -175,8 +175,18 @@ cmake --preset dev && cmake --build --preset dev
 ctest --preset dev            # or: ctest --test-dir build --output-on-failure
 ```
 
-Tests are **headless**: they need no display. Only the `gpu`‑labelled smoke test needs an OpenGL
-driver; skip it with `ctest -LE gpu`. Disable them with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
+Tests are **headless**: they need no display. Tests labelled `gpu` need a GPU driver: Vulkan for
+`mge_gpu_tests`, `render_tests` and the SDL GPU smoke tests, OpenGL for the legacy sandbox smoke test.
+They render offscreen and are **skipped** when no GPU is found, unless `MGE_REQUIRE_GPU=1`, as in
+CI, where Mesa lavapipe provides software Vulkan with validation layers. Skip them all with
+`ctest -LE gpu`. Disable tests with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
+
+**Render tests (golden images):** `render_tests` draws scenes offscreen and compares them with PNGs
+in `tests/render/golden/`. A comparison passes when at most 1 % of pixels differ by more than 8/255
+in any channel; the tolerance covers driver differences at triangle edges.
+- After an intended visual change: `MGE_UPDATE_GOLDEN=1 ./build/tests/render_tests`, then **look
+  at the new PNGs** before committing them.
+- On failure, the rendered image and a red diff image are written to `<build>/tests/render_output/`.
 
 ## Continuous integration
 

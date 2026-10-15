@@ -108,6 +108,8 @@ implements a generator.
 Shaders: GLSL → SPIR‑V at build time, `mge_add_shaders(target SHADERS x.vert y.frag)` → `#include <shaders/x_vert.h>` →
 `device.createShader(mge::shaders::kXVert, ShaderResources{…})`; bindings: vertex set0 tex / set1 UBO, fragment set2 tex / set3 UBO.
 Pipelines: `GraphicsPipelineDesc` → `device.createGraphicsPipeline(desc)`. glslang: system or fetched from source.
+Render tests: `tests/render` golden PNGs (`MGE_UPDATE_GOLDEN=1` to regenerate, then look at them). SDL GPU NDC is Y‑up with Z in [0,1]:
+use `glm::perspectiveRH_ZO`; CCW front faces as in MeshData.
 Vsync: `ApplicationConfig::vsync` (env `MGE_VSYNC`), `GpuModule::setVsync`; depth: `device.depthFormat()` (D32/D24) + `createDepthTarget`.
 
 ## Assets
