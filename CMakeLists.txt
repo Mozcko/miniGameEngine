@@ -77,6 +77,9 @@ if(MGE_BUILD_MODULES)
     endif()
 endif()
 
+# mge_add_game(): una llamada por juego (ver cmake/MgeGame.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/MgeGame.cmake)
+
 # CTest antes de los subdirectorios: juegos y ejemplos también registran tests
 if(MGE_BUILD_TESTS)
     enable_testing()
@@ -86,7 +89,7 @@ endif()
 add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES)
     add_subdirectory(game)
-    add_subdirectory(examples/headless_smoke)
+    add_subdirectory(examples)
 endif()
 
 # --- Benchmarks ---

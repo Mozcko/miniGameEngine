@@ -1,0 +1,11 @@
+# @GAME_TITLE@
+
+Generated with `scripts/new-game.sh @GAME_NAME@ --headless` (template `headless`): no window, no
+GPU and no SDL. It runs 600 deterministic frames (`ManualClock`) and verifies its own result
+(exit code 1 on failure).
+
+```bash
+cmake --preset dev
+cmake --build --preset dev --target run-@GAME_NAME@
+ctest --preset dev -R @GAME_NAME@
+```

@@ -11,7 +11,7 @@ in the engine depends on it except the `mge::createApplication()` definition.
 
 Block and Chunk live in namespace `mge` (same as engine classes).
 
-CMake (`game/CMakeLists.txt`): a `run` target (`cmake --build --preset dev --target run`), `sandbox_world` (static lib: Block, Chunk – tested by
+CMake (`game/CMakeLists.txt`): `mge_add_game(sandbox …)` creates the exe, the `run` / `run-sandbox` targets and the 120‑frame offscreen smoke test; `sandbox_world` (static lib: Block, Chunk – tested by
 `tests/game/`) and `sandbox` (executable: SandboxApp + `mge_main`, written to the build dir root).
 Include as `#include <game/Chunk.h>`.
 

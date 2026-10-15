@@ -76,6 +76,11 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.
 The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
 
+## Games
+Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MODULES …] [HEADLESS] [SMOKE_FRAMES n])`
+(`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `scripts/new-game.sh <name> [--headless]`
+→ `examples/<name>/` from `templates/` (`*.in`, CI builds both templates).
+
 ## Assets
 Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup
 (override: `MGE_ASSET_DIR`).

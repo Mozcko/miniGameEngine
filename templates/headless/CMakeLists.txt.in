@@ -1,0 +1,5 @@
+# @GAME_TITLE@ (plantilla "headless"). Ejecutar: cmake --build --preset dev --target run-@GAME_NAME@
+mge_add_game(@GAME_NAME@
+    HEADLESS
+    SOURCES @GAME_CLASS@.cpp
+    SMOKE_FRAMES 600)

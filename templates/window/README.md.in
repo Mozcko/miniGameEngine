@@ -1,0 +1,12 @@
+# @GAME_TITLE@
+
+Generated with `scripts/new-game.sh @GAME_NAME@` (template `window`).
+
+```bash
+cmake --preset dev                                   # once, or after adding files
+cmake --build --preset dev --target run-@GAME_NAME@  # build + run
+ctest --preset dev -R @GAME_NAME@                    # smoke test (30 frames, offscreen)
+```
+
+`@GAME_CLASS@.cpp` shows the engine basics: modules, input actions, an ECS entity updated in the
+fixed step, and logging. Esc quits; hold Space to speed up. See `docs/FIRST_GAME.md`.

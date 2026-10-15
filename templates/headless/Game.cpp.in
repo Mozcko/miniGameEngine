@@ -1,0 +1,59 @@
+// @GAME_TITLE@: programa headless generado con scripts/new-game.sh (plantilla "headless").
+// Sin módulos: sin ventana, GPU ni SDL. Ideal para simulaciones, servidores y herramientas.
+// Corre 600 frames con un reloj manual (determinista) y verifica el resultado al terminar.
+#include <mge/core/Application.h>
+#include <mge/core/Clock.h>
+#include <mge/core/Log.h>
+#include <mge/core/ecs/World.h>
+
+#include <memory>
+
+namespace {
+    struct Counter {
+        std::uint64_t steps = 0;
+    };
+
+    class @GAME_CLASS@ : public mge::Application {
+    public:
+        @GAME_CLASS@() : mge::Application(makeConfig()) {
+            // Cada frame dura exactamente 1/60 s: mismo resultado en cualquier máquina
+            setClock(std::make_unique<mge::ManualClock>(1.0 / 60.0));
+        }
+
+    protected:
+        bool onInit() override {
+            mge::Registry& registry = world().registry();
+            m_counter = registry.create();
+            registry.add<Counter>(m_counter);
+            world().addSystem(mge::SystemPhase::Fixed, "count", [](mge::World& w, float) {
+                w.registry().each<Counter>([](mge::Entity, Counter& counter) { counter.steps++; });
+            });
+            return true;
+        }
+
+        void onShutdown() override {
+            const std::uint64_t steps = world().registry().get<Counter>(m_counter).steps;
+            if (steps != time().fixedStepCount()) {
+                MGE_LOG_ERROR("@GAME_NAME@", "Esperaba ", time().fixedStepCount(), " pasos, hubo ", steps);
+                setExitCode(1);
+                return;
+            }
+            MGE_LOG_INFO("@GAME_NAME@", "OK: ", steps, " pasos fijos en ", getFrameCount(), " frames");
+        }
+
+    private:
+        static mge::ApplicationConfig makeConfig() {
+            mge::ApplicationConfig config;
+            config.title = "@GAME_TITLE@";
+            config.headless = true;
+            config.maxFrames = 600;
+            return config;
+        }
+
+        mge::Entity m_counter;
+    };
+}
+
+mge::Application* mge::createApplication() {
+    return new @GAME_CLASS@();
+}
