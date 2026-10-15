@@ -96,7 +96,7 @@ public:
         // Configurar Etiquetas
         _fpsLabel.init("../assets/fonts/PixelOperator8-Bold.ttf", 24);
         _fpsLabel.setPosition(10.0f, 680.0f);                            // Esquina superior izquierda
-        _fpsLabel.setText("FPS: 60", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarillo
+        _fpsLabel.setText("FPS: 60", _fpsColor);
 
         _infoLabel.init("../assets/fonts/PixelOperator8.ttf", 16);
         _infoLabel.setPosition(10.0f, 10.0f); // Abajo
@@ -227,7 +227,11 @@ public:
         frameCount++;
         if (frameCount % 60 == 0)
         {
-            _fpsLabel.setText("FPS: " + std::to_string((int)(1.0f / Time::getDeltaTime())));
+            // Tiempo real (sin escalar): en pausa el tiempo escalado es 0 y dividiríamos entre 0
+            float realDelta = Time::getUnscaledDeltaTime();
+            int fps = realDelta > 0.0f ? (int)(1.0f / realDelta) : 0;
+            // Pasamos el color siempre: setText usa blanco por defecto
+            _fpsLabel.setText("FPS: " + std::to_string(fps), _fpsColor);
         }
 
         // Dibujar etiquetas
@@ -266,6 +270,7 @@ private:
     GLSLProgram _guiShader;
     Engine::Camera2D _guiCamera;
     GUILabel _fpsLabel;
+    const glm::vec4 _fpsColor{1.0f, 1.0f, 0.0f, 1.0f}; // Amarillo
     GUILabel _infoLabel;
 
     std::vector<int> waterFrames = {205, 206, 207, 222, 223};
