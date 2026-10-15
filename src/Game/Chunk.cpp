@@ -258,9 +258,9 @@ namespace MiniGameEngine
 
                         UVRect uv = Block::getUVs(type, 0); // Usamos cara frontal para todo
 
-                        auto addCrossVert = [&](float x, float y, float z, float u, float v)
+                        auto addCrossVert = [&](float vx, float vy, float vz, float u, float v)
                         {
-                            Vertex vert = makeVert(x, y, z, u, v);
+                            Vertex vert = makeVert(vx, vy, vz, u, v);
                             vert.position += pos;
                             vertices.push_back(vert);
                         };

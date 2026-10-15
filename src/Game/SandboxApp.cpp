@@ -145,7 +145,7 @@ public:
         }
     }
 
-    void OnUpdate(float dt) override
+    void OnUpdate(float /*dt*/) override
     {
         Time::update(); // Actualizamos el sistema de tiempo global
         float deltaTime = Time::getDeltaTime();

@@ -5,7 +5,7 @@
 
 namespace MiniGameEngine {
 
-    GUILabel::GUILabel() : _font(nullptr), _scale(1.0f), _position(0.0f) {}
+    GUILabel::GUILabel() : _font(nullptr), _position(0.0f), _scale(1.0f), _color(0.0f) {}
 
     GUILabel::~GUILabel() {
         if (_font) TTF_CloseFont(_font);

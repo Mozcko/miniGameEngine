@@ -39,3 +39,4 @@ out/
 # Tooling
 .cache/
 compile_commands.json
+build-*/
