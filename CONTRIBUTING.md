@@ -32,7 +32,7 @@ These come from the [architecture decision records](docs/adr/README.md):
    - fill in the template;
    - add the matching labels and milestone;
    - the PR must say how the change was verified.
-5. **Merge** only when CI (GCC + Clang) is green. Use a merge commit and delete the branch.
+5. **Merge** only when CI is green (GCC, Clang, core-only, lint). Use a merge commit and delete the branch.
 
 ## Build and test
 
@@ -56,15 +56,27 @@ cd build && ./sandbox                       # run from a dir next to assets/
 
 - **Language:** C++17. No compiler extensions, no C++20 features.
 - **Comments are in Spanish**, matching the existing code. Docs, issues and PRs are in English.
-- **Naming:** for now, match the file you're editing. Two styles coexist today:
+- **Namespace:** all engine code lives in `mge`.
+- **Naming:** enforced by `.clang-tidy` (`readability-identifier-naming`) in the CI `lint` job.
 
-  | Namespace | Methods | Members |
+  | Kind | Style | Example |
   |---|---|---|
-  | `Engine::` | `PascalCase` | `m_`/`s_` prefix |
-  | `MiniGameEngine::` | `camelCase` | `_` prefix |
+  | Types, enums, enum values | `PascalCase` | `ChunkWorld`, `BlockType::Grass` |
+  | Functions, methods | `camelCase` | `getBlock()`, `onUpdate()` |
+  | Private/protected members | `m_camelCase` | `m_chunks` |
+  | Static members | `s_camelCase` | `s_instances` |
+  | Static/constexpr constants | `kPascalCase` | `kChunkSize` |
+  | Public data fields, locals, parameters | `camelCase` | `vertex.position`, `tileIndex` |
+  | Namespaces | `lower_case` | `mge` |
+  | Macros | `UPPER_CASE` | `MGE_ASSERT` |
 
-  Unifying both into one namespace and one style is #10. Once that lands, its convention replaces
-  this section.
+  A third‑party name that must keep its spelling (for example a forward‑declared `SDL_Surface`)
+  gets `// NOLINT(readability-identifier-naming)`.
+- **Formatting:** `.clang-format`, checked in CI with clang-format **22.1.8** (`pip install
+  clang-format==22.1.8` if your distro ships another version). Run
+  `git ls-files '*.h' '*.cpp' | xargs clang-format -i` before committing.
+- **Blame:** mass‑formatting commits are listed in `.git-blame-ignore-revs`. Run
+  `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
 - **Ownership:** classes that own GPU or OS resources must not be copyable. Prefer RAII and
   `std::unique_ptr` over raw `new`/`delete` in new code.
 - **Determinism:** procedural generation must be deterministic for a given seed. Don't use

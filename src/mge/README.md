@@ -25,17 +25,17 @@ The engine. Each subfolder is one CMake target with its own `CMakeLists.txt` and
 ```cpp
 #include <mge/app/Application.h>
 
-class MyGame : public Engine::Application {
+class MyGame : public mge::Application {
 public:
-    void OnInit() override { /* load shaders/textures, set GL state */ }
-    void OnEvent(SDL_Event& e) override {
-        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) m_Running = false;
+    void onInit() override { /* load shaders/textures, set GL state */ }
+    void onEvent(SDL_Event& e) override {
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) m_running = false;
     }
-    void OnUpdate(float dt) override { /* logic */ }
-    void OnRender() override { /* glClear + draw; buffers are swapped by the engine */ }
+    void onUpdate(float dt) override { /* logic */ }
+    void onRender() override { /* glClear + draw; buffers are swapped by the engine */ }
 };
 
-Engine::Application* Engine::CreateApplication() { return new MyGame(); }
+mge::Application* mge::createApplication() { return new MyGame(); }
 ```
 
 ```cmake

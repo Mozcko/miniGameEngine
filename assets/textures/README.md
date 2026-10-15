@@ -2,7 +2,7 @@
 
 | File | Format | Used by |
 |------|--------|---------|
-| `Minecraft-like_3d_tileset.png` | 512×512 PNG, 8‑bit RGBA | `SandboxApp::tilesetTexture` (all block faces) |
+| `Minecraft-like_3d_tileset.png` | 512×512 PNG, 8‑bit RGBA | `SandboxApp::m_tilesetTexture` (all block faces) |
 
 ## Atlas layout
 - 32×32 px tiles → **16 columns × 16 rows = 256 tiles**, indices `0..255`.
@@ -41,4 +41,4 @@
 | 255 | Also the "unknown block" fallback in `getUVs` |
 
 If you replace the image, keep it 512×512 with 32 px tiles or update the constants in
-`Block::getUVs` and the `updateTile(..., 32, 32)` calls in `SandboxApp::OnUpdate`.
+`Block::getUVs` and the `updateTile(..., 32, 32)` calls in `SandboxApp::onUpdate`.

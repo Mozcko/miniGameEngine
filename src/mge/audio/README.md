@@ -2,9 +2,9 @@
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `AudioManager.h/.cpp` | `MiniGameEngine` | Static SDL_mixer wrapper: fire‑and‑forget sound effects and streamed background music, each cached by file path |
+| `AudioManager.h/.cpp` | `mge` | Static SDL_mixer wrapper: fire‑and‑forget sound effects and streamed background music, each cached by file path |
 
-## `MiniGameEngine::AudioManager` (all static)
+## `mge::AudioManager` (all static)
 
 | Method | Behaviour |
 |--------|-----------|
@@ -24,6 +24,6 @@
 
 ### Example
 ```cpp
-MiniGameEngine::AudioManager::playMusic("../assets/music/time_for_adventure.mp3");
-MiniGameEngine::AudioManager::playSound("../assets/sounds/jump.wav", 96);
+mge::AudioManager::playMusic("../assets/music/time_for_adventure.mp3");
+mge::AudioManager::playSound("../assets/sounds/jump.wav", 96);
 ```

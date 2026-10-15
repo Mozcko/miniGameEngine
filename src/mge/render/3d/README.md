@@ -2,7 +2,7 @@
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `Mesh.h/.cpp` | `MiniGameEngine` | Owns a VAO + VBO + EBO; uploads `Vertex`/index data; draws indexed triangles |
+| `Mesh.h/.cpp` | `mge` | Owns a VAO + VBO + EBO; uploads `Vertex`/index data; draws indexed triangles |
 
 ## `Mesh`
 
@@ -16,7 +16,7 @@ The single GPU geometry primitive in the engine. Used directly by the game's `Ch
 | `init(vertices, indices)` | Deletes existing buffers (so it's safe to re‑init), creates new ones, uploads with `GL_STATIC_DRAW`, configures attributes, unbinds VAO. Stores the index count. |
 | `virtual draw()` | Binds VAO, `glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, 0)`, unbinds. No‑op if never initialised. Doesn't bind shaders, textures or set uniforms – the caller does. |
 
-Protected members: `_vao`, `_vbo`, `_ebo`, `_indexCount` (accessible to subclasses like `Sprite`).
+Protected members: `m_vao`, `m_vbo`, `m_ebo`, `m_indexCount` (accessible to subclasses like `Sprite`).
 
 ### Vertex attribute layout (important)
 

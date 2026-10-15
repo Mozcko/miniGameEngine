@@ -1,7 +1,7 @@
 # src/mge/render/  →  target `mge_render`
 
 All OpenGL‑facing code. Requires a live GL 3.3 core context (created by `Window`) before any
-of these classes are initialised – in practice, use them from `OnInit()` onward.
+of these classes are initialised – in practice, use them from `onInit()` onward.
 
 | Folder | Contents | Doc |
 |--------|----------|-----|
@@ -17,8 +17,8 @@ Vertex ──used by──► Mesh ◄──is‑a── Sprite ◄──has‑a
                      ▲                                   │
                      └── used by game Chunk              └── uses SDL_ttf, GLSLProgram
 
-Engine::Camera (abstract) ◄── Camera2D
-Engine::Camera3D           ◄── FirstPersonCamera      (Camera3D does NOT derive from Camera)
+mge::Camera (abstract) ◄── Camera2D
+mge::Camera3D           ◄── FirstPersonCamera      (Camera3D does NOT derive from Camera)
 ```
 
 ## Cross‑cutting rendering contract

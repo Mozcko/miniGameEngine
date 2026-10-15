@@ -23,7 +23,7 @@ games/sandbox ──► mge_app ──► mge_platform ──► mge_core
 
 - `mge_core` depends on nothing but the standard library. The CI `core-only` job proves it by
   building with `-DMGE_BUILD_MODULES=OFF` on a machine without SDL.
-- The single "upward" link is `Engine::CreateApplication()`: it is **declared** in
+- The single "upward" link is `mge::createApplication()`: it is **declared** in
   `mge/app/Application.h` and **defined** by the game; `mge/app/Main.cpp` calls it.
 - **Temporary:** `mge_render` links `mge_platform` because the cameras read the static
   `InputManager`. Removed in #15, when input moves into the core.
@@ -39,12 +39,11 @@ games/sandbox ──► mge_app ──► mge_platform ──► mge_core
 - All headers use `#pragma once`.
 - Every target lists its sources explicitly in its own `CMakeLists.txt`. Add new files there.
 
-## Namespaces (until #10 unifies them into `mge`)
+## Namespace & naming
 
-| Namespace | Contains |
-|-----------|----------|
-| `Engine` | `Application`, `CreateApplication`, `InputManager`, `Camera`, `Camera2D`, `Camera3D`, `FirstPersonCamera` |
-| `MiniGameEngine` | `Window`, `Time`, `ResourceManager`, `AudioManager`, `Vertex`, `Texture`, `GLSLProgram`, `Mesh`, `Sprite`, `Animation`, `GUILabel`, and the sandbox's `Block`, `Chunk` |
+Everything is in namespace **`mge`**. Naming and formatting follow
+[CONTRIBUTING.md](../CONTRIBUTING.md#code-conventions) (`camelCase` methods, `m_` members,
+`kPascalCase` constants) and are checked by the CI `lint` job (`.clang-format`, `.clang-tidy`).
 
 ## Style
 Comments are in Spanish. Naming and conventions are in [CONTRIBUTING.md](../CONTRIBUTING.md).

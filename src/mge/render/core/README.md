@@ -1,6 +1,6 @@
 # src/mge/render/core/
 
-Low‑level GPU building blocks. Namespace: `MiniGameEngine`.
+Low‑level GPU building blocks. Namespace: `mge`.
 
 | File | Purpose |
 |------|---------|
@@ -31,7 +31,7 @@ A **lightweight, copyable handle** around a GL texture id plus a CPU copy of the
 
 | Member | Behaviour |
 |--------|-----------|
-| `load(path)` | Deletes any previous id held by *this* object; `stbi_set_flip_vertically_on_load(true)`; loads with native channel count; keeps the pixels in `_originalPixels`; creates `GL_TEXTURE_2D` with **`GL_NEAREST`** min/mag filter, `CLAMP_TO_EDGE`, format `GL_RGB` or `GL_RGBA` (3/4 channels only), generates mipmaps. Logs and returns on failure (id stays 0). |
+| `load(path)` | Deletes any previous id held by *this* object; `stbi_set_flip_vertically_on_load(true)`; loads with native channel count; keeps the pixels in `m_originalPixels`; creates `GL_TEXTURE_2D` with **`GL_NEAREST`** min/mag filter, `CLAMP_TO_EDGE`, format `GL_RGB` or `GL_RGBA` (3/4 channels only), generates mipmaps. Logs and returns on failure (id stays 0). |
 | `loadFromSurface(SDL_Surface*)` | Used for TTF text. `GL_LINEAR` filtering, picks `GL_RGBA` vs `GL_BGRA` from the surface's red mask, internal format `GL_RGBA`. No CPU copy kept. |
 | `bind()` | `glActiveTexture(GL_TEXTURE0)` + bind. Always unit 0. |
 | `unbind()` | Binds 0. |
@@ -39,7 +39,7 @@ A **lightweight, copyable handle** around a GL texture id plus a CPU copy of the
 | `destroy()` | `glDeleteTextures` + id = 0. **Must be called explicitly**; the destructor intentionally does nothing so cached copies (ResourceManager) stay valid. |
 | `getWidth/getHeight/getID` | Accessors. |
 
-Memory note: `_originalPixels` keeps a full RAM copy (1 MB for the 512×512 RGBA tileset).
+Memory note: `m_originalPixels` keeps a full RAM copy (1 MB for the 512×512 RGBA tileset).
 
 `STB_IMAGE_IMPLEMENTATION` is defined at the top of `Texture.cpp` – the only place it may be.
 
@@ -47,7 +47,7 @@ Memory note: `_originalPixels` keeps a full RAM copy (1 MB for the 512×512 RGBA
 
 ## `GLSLProgram`
 
-Typical usage (mirrors `SandboxApp::OnInit`):
+Typical usage (mirrors `SandboxApp::onInit`):
 ```cpp
 GLSLProgram s;
 s.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
@@ -74,7 +74,7 @@ directly with the returned location.
 
 ---
 
-## `MiniGameEngine::ResourceManager`
+## `mge::ResourceManager`
 
 All‑static texture cache: `std::map<std::string, Texture>`.
 
@@ -84,4 +84,4 @@ All‑static texture cache: `std::map<std::string, Texture>`.
 | `clear()` | Clears the map. **Does not free GPU memory** – `Texture`'s destructor intentionally doesn't call `glDeleteTextures`; you'd need to call `destroy()` on each entry first. |
 
 Returned `Texture`s are cheap value copies sharing one GL id (see Graphics/Core/README.md).
-Not used by SandboxApp (it owns its `Texture tilesetTexture` directly).
+Not used by SandboxApp (it owns its `Texture m_tilesetTexture` directly).

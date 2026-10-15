@@ -6,7 +6,7 @@ A small, educational C++17 game engine built on **SDL2 + OpenGL 3.3 Core (via GL
 Minecraft‑style voxel sandbox as its demo game.
 
 The engine owns `main()` and the game loop. A game plugs in by subclassing
-`Engine::Application` and defining `Engine::CreateApplication()` (the "Hazel‑style" entry‑point
+`mge::Application` and defining `mge::createApplication()` (the "Hazel‑style" entry‑point
 pattern). The current client is `SandboxApp` (`games/sandbox/SandboxApp.cpp`): it streams in procedurally
 generated 16×16×16 block chunks around a free‑flying, collision‑aware camera, animates
 water/lava tiles, and draws a 2D text HUD.

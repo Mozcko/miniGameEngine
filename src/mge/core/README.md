@@ -6,7 +6,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `Time.h/.cpp` | `MiniGameEngine` | Static clock (`std::chrono::steady_clock`) with time scale and hitch clamping |
+| `Time.h/.cpp` | `mge` | Static clock (`std::chrono::steady_clock`) with time scale and hitch clamping |
 
 Upcoming in M1: logging (#13), application runner + modules (#11), fixed‑timestep clock (#12),
 input state (#15), RNG (#14), ECS (#16).
@@ -15,10 +15,10 @@ Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
 ---
 
-## `MiniGameEngine::Time`
+## `mge::Time`
 
 All‑static clock. Must be driven by the game: call `Time::init()` once and `Time::update()`
-once per frame (SandboxApp does this at the start of `OnUpdate`).
+once per frame (SandboxApp does this at the start of `onUpdate`).
 
 | Method | Returns / effect |
 |--------|------------------|
