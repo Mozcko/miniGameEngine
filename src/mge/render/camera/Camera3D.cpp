@@ -14,6 +14,8 @@ namespace mge {
 
         updateCameraVectors();
         updateProjection(m_width, m_height);
+        // La vista existe desde el principio (antes solo se calculaba en el primer update)
+        m_viewMatrix = glm::lookAt(m_position, m_position + m_front, m_up);
     }
 
     void Camera3D::update(float deltaTime, const CameraInput& input) {
@@ -91,7 +93,11 @@ namespace mge {
         return m_projectionMatrix;
     }
 
-    bool Camera3D::isSphereVisible(const glm::vec3& /*center*/, float /*radius*/) const {
-        return true; // Placeholder: Implementar extracción de planos del frustum si es necesario
+    bool Camera3D::isSphereVisible(const glm::vec3& center, float radius) const {
+        return getFrustum().intersects(Sphere{center, radius});
+    }
+
+    bool Camera3D::isAabbVisible(const Aabb& box) const {
+        return getFrustum().intersects(box);
     }
 }

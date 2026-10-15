@@ -72,7 +72,7 @@ while the cursor is locked).
 2. Every 0.2 s of unscaled time (`time().unscaledDelta()`): `m_tilesetTexture.updateTile(207, m_waterFrames[i % 5], 32, 32)` and
    the same for lava into 239.
 3. Chunk streaming: camera chunk `(floor(x/16), floor(z/16))`; for every chunk within
-   `renderDist = 4` (9×9 = 81 chunks) that passes `isSphereVisible` (always true) and isn't
+   `renderDist = 4` (9×9 = 81 chunks) that isn't
    loaded → `new Chunk(cx, cz)` (generation) then `chunk->buildMesh()` (GPU upload), both synchronously.
 4. `camera.update(deltaTime)`.
 
@@ -80,7 +80,7 @@ while the cursor is locked).
 Deletes all chunks (and their GL meshes) while the GL context still exists. Modules shut down afterwards.
 
 ### `onRender`
-Sky clear → opaque pass over all chunks → transparent pass with `glDepthMask(GL_FALSE)` →
+Sky clear → opaque pass over the chunks whose bounds pass `camera.isAabbVisible` (frustum culling) → transparent pass with `glDepthMask(GL_FALSE)` →
 FPS log every 5 s. See `docs/ARCHITECTURE.md` §6.
 
 ### `getGlobalBlock(x, y, z)`

@@ -10,6 +10,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
+| `math/Geometry.h/.cpp` | `mge` | `Aabb`, `Sphere`, `Plane`, `Ray`, `Frustum` (from view‑projection), ray tests (`intersectRayAabb/Sphere/Plane/Triangle`) |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
@@ -96,6 +97,22 @@ Tests: `tests/core/test_input.cpp`.
 Pattern: `Pcg32 rng(hash2i(worldX, worldZ, worldSeed), /*stream=*/1);`. Never use `rand()`.
 Tests: `tests/core/test_random.cpp` (reference vectors, streams, bounds, χ² uniformity, hash
 grid with no collisions).
+
+---
+
+## Geometry – `<mge/core/math/Geometry.h>`
+
+| Type / function | Notes |
+|-----------------|-------|
+| `Aabb` | `min`/`max`; **empty by default** (min > max) so `expand`/`merge` build it up. `fromPoints`, `fromCenterExtents`, `center`, `extents` (half size), `size`, `contains` and `intersects` (both inclusive of the boundary) |
+| `Sphere` | `contains`, and intersects a sphere or an `Aabb` (closest point) |
+| `Plane` | `dot(normal, p) + d = 0`, unit normal; `fromPointNormal`, signed `distance` (positive on the normal side) |
+| `Ray` | `origin` + normalized `direction`; `at(t)` |
+| `Frustum::fromViewProjection(P * V)` | Gribb–Hartmann, 6 normalized planes pointing inward (OpenGL clip space). `contains(point)`, plus `intersects(Sphere / Aabb)`, which are conservative (may accept boxes just outside near corners) |
+| `intersectRayAabb / Sphere / Plane / Triangle` | `std::optional<float>` distance `t ≥ 0`. Inside a box or sphere gives `t = 0`. Parallel → `nullopt`. The triangle test (Möller–Trumbore) is double‑sided |
+
+Used by `Camera3D::isSphereVisible` / `isAabbVisible` (frustum culling). Tests:
+`tests/core/test_geometry.cpp`.
 
 ---
 

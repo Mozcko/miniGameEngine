@@ -8,6 +8,7 @@ add_library(mge_core STATIC
     Random.h
     Clock.h Clock.cpp
     Time.h
+    math/Geometry.h math/Geometry.cpp
     ecs/Entity.h
     ecs/Registry.h ecs/Registry.cpp
     ecs/Transform.h ecs/Transform.cpp

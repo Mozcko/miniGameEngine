@@ -22,6 +22,7 @@ add_executable(mge_core_tests
     core/test_application.cpp
     core/test_assets.cpp
     core/test_ecs.cpp
+    core/test_geometry.cpp
     core/test_input.cpp
     core/test_log.cpp
     core/test_random.cpp
@@ -51,6 +52,7 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         game/test_block.cpp
         game/test_chunk.cpp
+        game/test_camera.cpp
     )
     target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
     mge_set_warnings(game_tests)
