@@ -1,0 +1,19 @@
+# Formato del proyecto (issue #10). CI lo verifica con clang-format 22.1.8.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 110
+NamespaceIndentation: All
+AccessModifierOffset: -4
+BreakBeforeBraces: Attach
+PointerAlignment: Left
+ReferenceAlignment: Left
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: false
+FixNamespaceComments: false
+# El orden de includes importa (GL/glew.h antes que cualquier header de OpenGL)
+SortIncludes: Never
+IncludeBlocks: Preserve

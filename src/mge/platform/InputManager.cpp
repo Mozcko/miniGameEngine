@@ -33,7 +33,7 @@ namespace mge {
         if (event.type == SDL_MOUSEMOTION) {
             s_mousePos.x = (float)event.motion.x;
             s_mousePos.y = (float)event.motion.y;
-            
+
             // Acumulamos el movimiento relativo
             s_mouseDelta.x += (float)event.motion.xrel;
             s_mouseDelta.y += (float)event.motion.yrel;

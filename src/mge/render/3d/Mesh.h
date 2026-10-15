@@ -12,7 +12,7 @@ namespace mge {
 
         // Inicializa los buffers con la nueva estructura Vertex
         void init(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
-        
+
         // Método virtual: Las clases hijas podrían querer dibujar diferente (ej: GL_LINES)
         virtual void draw();
 

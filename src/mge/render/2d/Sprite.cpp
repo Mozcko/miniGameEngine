@@ -21,13 +21,16 @@ namespace mge {
         initFromAtlas(x, y, width, height, width, height, width, height, 0);
     }
 
-    void Sprite::initFromAtlas(float x, float y, float width, float height,
-                               float textureW, float textureH,
-                               float tileW, float tileH,
-                               int tileIndex) {
-        m_x = x; m_y = y; m_width = width; m_height = height;
-        m_texW = textureW; m_texH = textureH;
-        m_tileW = tileW; m_tileH = tileH;
+    void Sprite::initFromAtlas(float x, float y, float width, float height, float textureW, float textureH,
+                               float tileW, float tileH, int tileIndex) {
+        m_x = x;
+        m_y = y;
+        m_width = width;
+        m_height = height;
+        m_texW = textureW;
+        m_texH = textureH;
+        m_tileW = tileW;
+        m_tileH = tileH;
         m_tileIndex = tileIndex;
 
         // 1. Cálculos de UV (Igual que antes)
@@ -37,7 +40,7 @@ namespace mge {
 
         float uMin = (col * tileW) / textureW;
         float uMax = ((col + 1) * tileW) / textureW;
-        
+
         // Nota: En 2D a veces V se invierte, depende de tu shader.
         // Mantén la lógica que te funcionaba. Asumiré estándar OpenGL (1.0 - y).
         float vMax = 1.0f - (row * tileH) / textureH;
@@ -79,7 +82,7 @@ namespace mge {
     }
 
     void Sprite::setPosition(float x, float y) {
-        m_x = x; 
+        m_x = x;
         m_y = y;
         // Reconstruimos el mesh con la nueva posición
         // (Nota: Para v1.0 esto está bien. Para v2.0 usaremos matrices de transformación)

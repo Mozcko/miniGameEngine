@@ -5,14 +5,15 @@
 
 namespace mge {
 
-    GLSLProgram::GLSLProgram() : m_programId(0), m_vertexShaderId(0), m_fragmentShaderId(0), m_numAttributes(0) {
-    }
+    GLSLProgram::GLSLProgram()
+        : m_programId(0), m_vertexShaderId(0), m_fragmentShaderId(0), m_numAttributes(0) {}
 
     GLSLProgram::~GLSLProgram() {
         // Limpiar memoria de video si es necesario
     }
 
-    void GLSLProgram::compileShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) {
+    void GLSLProgram::compileShaders(const std::string& vertexShaderPath,
+                                     const std::string& fragmentShaderPath) {
         // 1. Pedir a OpenGL que cree los IDs
         m_programId = glCreateProgram();
         m_vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
@@ -20,7 +21,7 @@ namespace mge {
             std::cerr << "Error creando vertex shader!\n";
         }
         m_fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-         if (m_fragmentShaderId == 0) {
+        if (m_fragmentShaderId == 0) {
             std::cerr << "Error creando fragment shader!\n";
         }
 
@@ -45,7 +46,7 @@ namespace mge {
             glGetProgramiv(m_programId, GL_INFO_LOG_LENGTH, &maxLength);
             std::vector<char> infoLog(maxLength);
             glGetProgramInfoLog(m_programId, maxLength, &maxLength, &infoLog[0]);
-            
+
             // Borramos el programa fallido
             glDeleteProgram(m_programId);
             glDeleteShader(m_vertexShaderId);
@@ -113,13 +114,13 @@ namespace mge {
             glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
             std::vector<char> errorLog(maxLength);
             glGetShaderInfoLog(id, maxLength, &maxLength, &errorLog[0]);
-            
+
             std::cerr << "Fallo al compilar shader " << filePath << ":\n" << &(errorLog[0]) << std::endl;
             glDeleteShader(id);
             return;
         }
     }
-    
+
     GLint GLSLProgram::getUniformLocation(const std::string& uniformName) {
         GLint location = glGetUniformLocation(m_programId, uniformName.c_str());
         if (location == -1) {

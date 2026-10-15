@@ -45,7 +45,8 @@ namespace mge {
             // 2. Cargar si no existe
             chunk = Mix_LoadWAV(filePath.c_str());
             if (!chunk) {
-                std::cerr << "[AudioManager] No se pudo cargar SFX: " << filePath << " Error: " << Mix_GetError() << std::endl;
+                std::cerr << "[AudioManager] No se pudo cargar SFX: " << filePath
+                          << " Error: " << Mix_GetError() << std::endl;
                 return;
             }
             s_sfxCache[filePath] = chunk;
@@ -53,7 +54,7 @@ namespace mge {
 
         // 3. Configurar volumen y reproducir
         Mix_VolumeChunk(chunk, volume); // 0 a 128
-        
+
         // Canal -1 = Elige el primer canal libre disponible
         if (Mix_PlayChannel(-1, chunk, 0) == -1) {
             std::cerr << "[AudioManager] No hay canales libres para reproducir sonido." << std::endl;
@@ -71,7 +72,8 @@ namespace mge {
             // 2. Cargar si no existe
             music = Mix_LoadMUS(filePath.c_str());
             if (!music) {
-                std::cerr << "[AudioManager] No se pudo cargar Musica: " << filePath << " Error: " << Mix_GetError() << std::endl;
+                std::cerr << "[AudioManager] No se pudo cargar Musica: " << filePath
+                          << " Error: " << Mix_GetError() << std::endl;
                 return;
             }
             s_musicCache[filePath] = music;

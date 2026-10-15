@@ -12,15 +12,15 @@ namespace mge {
         RefinedStone, // Piedra refinada
         Brick,        // Ladrillo
         TNT,
-        Cobweb,       // Telaraña
+        Cobweb, // Telaraña
         Rose,
-        Flower,       // Margarita
+        Flower, // Margarita
         Sapling,
-        Cobblestone,  // Guijarro
-        Coal,         // Carbon (bloque)
+        Cobblestone, // Guijarro
+        Coal,        // Carbon (bloque)
         Sand,
         Gravel,
-        Log,          // Tronco de arbol
+        Log, // Tronco de arbol
         Glass,
         Leaves,
         Water,

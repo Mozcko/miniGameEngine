@@ -2,9 +2,8 @@
 
 namespace mge {
 
-    Animation::Animation(float speed, bool loop) 
-        : m_currentFrameIndex(0), m_speed(speed), m_timeElapsed(0.0f), m_loop(loop)
-    {}
+    Animation::Animation(float speed, bool loop)
+        : m_currentFrameIndex(0), m_speed(speed), m_timeElapsed(0.0f), m_loop(loop) {}
 
     void Animation::addFrame(int tileIndex) {
         m_frames.push_back(tileIndex);
@@ -28,8 +27,10 @@ namespace mge {
 
             // Si llegamos al final, volvemos al principio (Loop)
             if (m_currentFrameIndex >= frameCount) {
-                if (m_loop) m_currentFrameIndex = 0;
-                else m_currentFrameIndex = frameCount - 1;
+                if (m_loop)
+                    m_currentFrameIndex = 0;
+                else
+                    m_currentFrameIndex = frameCount - 1;
             }
         }
     }

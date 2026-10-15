@@ -12,14 +12,14 @@ namespace mge {
 
     class Chunk {
     public:
-        Chunk(int x, int z);   // Genera los bloques; llamar buildMesh() antes de dibujar
+        Chunk(int x, int z); // Genera los bloques; llamar buildMesh() antes de dibujar
         ~Chunk();
 
         void generate();
         void buildMesh();
         void drawOpaque(GLSLProgram& shader);
         void drawTransparent(GLSLProgram& shader);
-        
+
         Block getBlock(int x, int y, int z) const;
         glm::vec3 getPosition() const { return glm::vec3(m_x * kChunkSize, 0, m_z * kChunkSize); }
         glm::vec3 getCenter() const;
@@ -33,7 +33,7 @@ namespace mge {
         Block m_blocks[kChunkSize][kChunkHeight][kChunkSize];
         Mesh* m_meshOpaque;
         Mesh* m_meshTransparent;
-        
+
         // Helper para verificar límites internos
         Block getNeighborBlock(int x, int y, int z) const;
     };

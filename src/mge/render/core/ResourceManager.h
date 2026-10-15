@@ -12,7 +12,7 @@ namespace mge {
         static Texture getTexture(const std::string& texturePath);
 
         // (Opcional) Limpia toda la memoria (útil al cambiar de nivel)
-        static void clear(); 
+        static void clear();
 
     private:
         // El caché: Mapa de <Ruta, Textura>

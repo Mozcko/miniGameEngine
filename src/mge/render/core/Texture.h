@@ -13,13 +13,13 @@ namespace mge {
         ~Texture();
 
         void load(const std::string& filePath);
-        
+
         // NUEVO: Método explícito para borrar la textura
-        void destroy(); 
+        void destroy();
 
         void bind();
         void unbind();
-        
+
         void updateTile(int destTileIdx, int srcTileIdx, int tileW, int tileH);
 
         void loadFromSurface(SDL_Surface* surface);
@@ -34,7 +34,7 @@ namespace mge {
         int m_height;
         int m_numChannels;
 
-        std::vector<unsigned char> m_originalPixels; 
+        std::vector<unsigned char> m_originalPixels;
     };
 
 }

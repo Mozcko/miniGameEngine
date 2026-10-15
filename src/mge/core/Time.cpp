@@ -28,8 +28,16 @@ namespace mge {
         s_deltaTime = s_rawDeltaTime * s_timeScale;
     }
 
-    float Time::getDeltaTime() { return s_deltaTime; }
-    float Time::getUnscaledDeltaTime() { return s_rawDeltaTime; }
-    float Time::getTimeScale() { return s_timeScale; }
-    void Time::setTimeScale(float scale) { s_timeScale = scale; }
+    float Time::getDeltaTime() {
+        return s_deltaTime;
+    }
+    float Time::getUnscaledDeltaTime() {
+        return s_rawDeltaTime;
+    }
+    float Time::getTimeScale() {
+        return s_timeScale;
+    }
+    void Time::setTimeScale(float scale) {
+        s_timeScale = scale;
+    }
 }

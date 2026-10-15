@@ -22,14 +22,14 @@ namespace mge {
         glm::mat4 getProjectionMatrix() const;
         glm::vec3 getPosition() const { return m_position; }
         void setPosition(const glm::vec3& pos) { m_position = pos; }
-        
+
         // Frustum Culling (Simplificado o placeholder para mantener compatibilidad)
         bool isSphereVisible(const glm::vec3& center, float radius) const;
 
         // Configuración
         void setSpeed(float speed) { m_movementSpeed = speed; }
         void setSensitivity(float sensitivity) { m_mouseSensitivity = sensitivity; }
-        
+
         void setCollisionCallback(std::function<bool(const glm::vec3& min, const glm::vec3& max)> callback) {
             m_collisionCallback = callback;
         }

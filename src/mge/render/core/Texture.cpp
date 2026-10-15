@@ -7,15 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-namespace mge
-{
+namespace mge {
 
-    Texture::Texture() : m_textureId(0), m_width(0), m_height(0), m_numChannels(0)
-    {
-    }
+    Texture::Texture() : m_textureId(0), m_width(0), m_height(0), m_numChannels(0) {}
 
-    Texture::~Texture()
-    {
+    Texture::~Texture() {
         // --- CAMBIO IMPORTANTE PARA RESOURCE MANAGER ---
         // NO borramos la textura aquí automáticamente.
         // Como el ResourceManager y otras entidades comparten COPIAS de este objeto,
@@ -24,20 +20,16 @@ namespace mge
         // Si necesitas borrarla explícitamente, llama a destroy().
     }
 
-    void Texture::destroy()
-    {
-        if (m_textureId != 0)
-        {
+    void Texture::destroy() {
+        if (m_textureId != 0) {
             glDeleteTextures(1, &m_textureId);
             m_textureId = 0;
         }
     }
 
-    void Texture::load(const std::string &filePath)
-    {
+    void Texture::load(const std::string& filePath) {
         // Si ya había una textura cargada en este objeto, límpiala primero
-        if (m_textureId != 0)
-        {
+        if (m_textureId != 0) {
             // Ojo: solo si estás seguro de que nadie más la usa.
             // Por seguridad en load() solemos asumir que el objeto está vacío o reutilizándose.
             glDeleteTextures(1, &m_textureId);
@@ -46,10 +38,9 @@ namespace mge
         // 1. Cargar los datos de la imagen (CPU)
         stbi_set_flip_vertically_on_load(true);
 
-        unsigned char *data = stbi_load(filePath.c_str(), &m_width, &m_height, &m_numChannels, 0);
+        unsigned char* data = stbi_load(filePath.c_str(), &m_width, &m_height, &m_numChannels, 0);
 
-        if (!data)
-        {
+        if (!data) {
             std::cerr << "Error: No se pudo cargar la textura " << filePath << std::endl;
             return;
         }
@@ -71,8 +62,7 @@ namespace mge
 
         // 4. Formato
         GLenum format = GL_RGB;
-        if (m_numChannels == 4)
-        {
+        if (m_numChannels == 4) {
             format = GL_RGBA;
         }
 
@@ -89,25 +79,22 @@ namespace mge
         glBindTexture(GL_TEXTURE_2D, 0);
 
         // Mensaje de debug útil
-        // std::cout << "Textura cargada: " << filePath << " [" << _width << "x" << _height << "]" << std::endl;
+        // std::cout << "Textura cargada: " << filePath << " [" << _width << "x" << _height << "]" <<
+        // std::endl;
     }
 
-    void Texture::bind()
-    {
+    void Texture::bind() {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_textureId);
     }
 
-    void Texture::unbind()
-    {
+    void Texture::unbind() {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     // Mantenemos tu función de animación 2D
-    void Texture::updateTile(int destTileIdx, int srcTileIdx, int tileW, int tileH)
-    {
-        if (m_originalPixels.empty())
-            return;
+    void Texture::updateTile(int destTileIdx, int srcTileIdx, int tileW, int tileH) {
+        if (m_originalPixels.empty()) return;
 
         int cols = m_width / tileW;
 
@@ -122,8 +109,7 @@ namespace mge
         int srcStartY = m_height - (srcRow + 1) * tileH;
         int srcStartX = srcCol * tileW;
 
-        for (int y = 0; y < tileH; y++)
-        {
+        for (int y = 0; y < tileH; y++) {
             int memoryY = srcStartY + y;
             int memoryX = srcStartX;
 
@@ -139,13 +125,12 @@ namespace mge
         int glDestX = destCol * tileW;
 
         GLenum format = (m_numChannels == 4) ? GL_RGBA : GL_RGB;
-        glTexSubImage2D(GL_TEXTURE_2D, 0, glDestX, glDestY, tileW, tileH, format, GL_UNSIGNED_BYTE, tileData.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, glDestX, glDestY, tileW, tileH, format, GL_UNSIGNED_BYTE,
+                        tileData.data());
     }
 
-    void Texture::loadFromSurface(SDL_Surface *surface)
-    {
-        if (m_textureId != 0)
-            glDeleteTextures(1, &m_textureId);
+    void Texture::loadFromSurface(SDL_Surface* surface) {
+        if (m_textureId != 0) glDeleteTextures(1, &m_textureId);
 
         m_width = surface->w;
         m_height = surface->h;
@@ -162,15 +147,15 @@ namespace mge
 
         // Detectar formato SDL (Suele ser RGBA o BGRA)
         GLenum mode = GL_RGB;
-        if (m_numChannels == 4)
-        {
+        if (m_numChannels == 4) {
             if (surface->format->Rmask == 0x000000ff)
                 mode = GL_RGBA;
             else
                 mode = GL_BGRA; // SDL a veces usa BGRA
         }
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, mode, GL_UNSIGNED_BYTE, surface->pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, mode, GL_UNSIGNED_BYTE,
+                     surface->pixels);
 
         glBindTexture(GL_TEXTURE_2D, 0);
     }

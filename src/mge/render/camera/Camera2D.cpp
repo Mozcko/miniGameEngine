@@ -11,7 +11,8 @@ namespace mge {
         m_height = height;
         float aspectRatio = (float)width / (float)height;
         // Proyección ortográfica centrada
-        m_projectionMatrix = glm::ortho(-aspectRatio * m_zoom, aspectRatio * m_zoom, -m_zoom, m_zoom, -1.0f, 1.0f);
+        m_projectionMatrix =
+            glm::ortho(-aspectRatio * m_zoom, aspectRatio * m_zoom, -m_zoom, m_zoom, -1.0f, 1.0f);
     }
 
     void Camera2D::update() {

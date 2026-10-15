@@ -11,7 +11,7 @@ namespace mge {
         // update() lo usa con el reloj real; los tests lo llaman directamente.
         static void advance(float rawDeltaSeconds);
 
-        static float getDeltaTime();      // Tiempo escalado (afectado por pausa/slowmo)
+        static float getDeltaTime();         // Tiempo escalado (afectado por pausa/slowmo)
         static float getUnscaledDeltaTime(); // Tiempo real (para UI, inputs sistema)
         static float getTimeScale();
         static void setTimeScale(float scale);

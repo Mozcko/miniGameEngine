@@ -3,9 +3,9 @@
 
 namespace mge {
 
-    Window::Window(const std::string& title, int width, int height) 
-        : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_sdlWindow(nullptr), m_glContext(nullptr)
-    {
+    Window::Window(const std::string& title, int width, int height)
+        : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_sdlWindow(nullptr),
+          m_glContext(nullptr) {
         init();
     }
 
@@ -27,12 +27,9 @@ namespace mge {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-        m_sdlWindow = SDL_CreateWindow(
-            m_title.c_str(),
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            m_width, m_height,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE 
-        );
+        m_sdlWindow =
+            SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_width,
+                             m_height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
         if (m_sdlWindow == nullptr) {
             std::cerr << "Error al crear ventana SDL: " << SDL_GetError() << std::endl;
@@ -50,7 +47,7 @@ namespace mge {
             std::cerr << "Error al inicializar GLEW" << std::endl;
             exit(1);
         }
-        
+
         // --- CONFIGURACIÓN CRÍTICA ---
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -66,7 +63,7 @@ namespace mge {
     void Window::swapBuffers() {
         SDL_GL_SwapWindow(m_sdlWindow);
     }
-    
+
     void Window::handleEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {

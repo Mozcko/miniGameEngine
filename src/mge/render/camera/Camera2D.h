@@ -5,7 +5,7 @@ namespace mge {
     class Camera2D : public Camera {
     public:
         Camera2D(int width, int height);
-        
+
         void update() override;
         void updateProjection(int width, int height) override;
 

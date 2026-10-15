@@ -5,7 +5,6 @@
 #include <mge/render/core/Texture.h>
 #include <mge/render/2d/Sprite.h>
 
-
 namespace mge {
 
     class GLSLProgram;
@@ -32,7 +31,7 @@ namespace mge {
         TTF_Font* m_font;
         Texture m_texture;
         Sprite m_sprite; // Usamos un sprite para dibujarlo
-        
+
         std::string m_text;
         glm::vec2 m_position;
         float m_scale;

@@ -7,7 +7,7 @@ namespace mge {
     std::map<std::string, Texture> ResourceManager::s_textureCache;
 
     Texture ResourceManager::getTexture(const std::string& texturePath) {
-        
+
         // 1. Buscar en el caché usando un iterador
         auto it = s_textureCache.find(texturePath);
 
@@ -19,7 +19,7 @@ namespace mge {
 
         // 3. Si no la encontró, la cargamos desde cero
         std::cout << "[ResourceManager] Cargando nueva textura desde disco: " << texturePath << std::endl;
-        
+
         Texture newTexture;
         // Asumimos que tu clase Texture tiene un método .load() que recibe el path
         // Si tu método load devuelve false al fallar, podrías agregar manejo de errores aquí.
@@ -34,7 +34,7 @@ namespace mge {
 
     void ResourceManager::clear() {
         // Esto borra el mapa, pero OJO:
-        // Si tus texturas no borran la memoria de GPU en su destructor, 
+        // Si tus texturas no borran la memoria de GPU en su destructor,
         // podrías tener fugas de memoria aquí.
         // Si tu clase Texture llama a glDeleteTextures en su destructor, esto funcionará bien.
         s_textureCache.clear();

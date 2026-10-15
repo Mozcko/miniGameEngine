@@ -24,7 +24,7 @@ namespace mge {
 
     protected:
         bool m_running;
-        
+
         std::unique_ptr<mge::Window> m_window;
 
     private:

@@ -15,13 +15,13 @@ namespace mge {
 
         // Intercambia los buffers (Muestra lo que se dibujó)
         void swapBuffers();
-        
+
         // Getters simples
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
         bool isClosed() const { return m_isClosed; }
         void close() { m_isClosed = true; }
-        
+
         // --- ESTA ES LA LÍNEA QUE FALTABA ---
         // Permite acceder a la ventana cruda de SDL desde fuera (necesario para el viewport)
         SDL_Window* getSDLWindow() { return m_sdlWindow; }

@@ -14,18 +14,16 @@ namespace mge {
         void init(float x, float y, float width, float height);
 
         // Inicialización avanzada (Texture Atlas / SpriteSheet)
-        void initFromAtlas(float x, float y, float width, float height,
-                           float textureW, float textureH,
-                           float tileW, float tileH,
-                           int tileIndex);
+        void initFromAtlas(float x, float y, float width, float height, float textureW, float textureH,
+                           float tileW, float tileH, int tileIndex);
 
         void setPosition(float x, float y);
-        
+
         // Métodos específicos de Sprite
         void setFlipX(bool flip);
         void setColor(float r, float g, float b, float a); // Nuevo: Teñir sprite
 
-        // draw() ya viene heredado de Mesh, no necesitamos re-declararlo 
+        // draw() ya viene heredado de Mesh, no necesitamos re-declararlo
         // a menos que queramos hacer algo especial.
 
     private:

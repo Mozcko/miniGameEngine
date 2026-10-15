@@ -9,16 +9,10 @@ namespace mge {
         glm::vec2 uv;       // U, V (Coordenadas de textura)
 
         // Método auxiliar para configurar color por defecto (Blanco)
-        void setPosition(float x, float y, float z) {
-            position = glm::vec3(x, y, z);
-        }
-        
-        void setUV(float u, float v) {
-            uv = glm::vec2(u, v);
-        }
+        void setPosition(float x, float y, float z) { position = glm::vec3(x, y, z); }
 
-        void setColor(float r, float g, float b, float a) {
-            color = glm::vec4(r, g, b, a);
-        }
+        void setUV(float u, float v) { uv = glm::vec2(u, v); }
+
+        void setColor(float r, float g, float b, float a) { color = glm::vec4(r, g, b, a); }
     };
 }

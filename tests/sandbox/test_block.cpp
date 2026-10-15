@@ -30,9 +30,8 @@ TEST_CASE("Vidrio y hojas: sólidos pero transparentes") {
 
 TEST_CASE("Bloques normales: sólidos y opacos") {
     for (BlockType t : {BlockType::Grass, BlockType::Dirt, BlockType::Stone, BlockType::Wood,
-                        BlockType::RefinedStone, BlockType::Brick, BlockType::TNT,
-                        BlockType::Cobblestone, BlockType::Coal, BlockType::Sand,
-                        BlockType::Gravel, BlockType::Log}) {
+                        BlockType::RefinedStone, BlockType::Brick, BlockType::TNT, BlockType::Cobblestone,
+                        BlockType::Coal, BlockType::Sand, BlockType::Gravel, BlockType::Log}) {
         CAPTURE(static_cast<int>(t));
         CHECK(Block(t).isSolid());
         CHECK(Block(t).isOpaque());

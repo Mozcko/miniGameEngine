@@ -16,8 +16,7 @@ namespace {
         for (int x = 0; x < kChunkSize; x++)
             for (int y = 0; y < kChunkHeight; y++)
                 for (int z = 0; z < kChunkSize; z++)
-                    if (a.getBlock(x, y, z).getType() != b.getBlock(x, y, z).getType())
-                        return false;
+                    if (a.getBlock(x, y, z).getType() != b.getBlock(x, y, z).getType()) return false;
         return true;
     }
 }
@@ -94,11 +93,11 @@ TEST_CASE("La decoración genera árboles, rosas y flores (regresión #5)") {
                 for (int z = 0; z < kChunkSize; z++) {
                     for (int y = 0; y < kChunkHeight; y++) {
                         switch (c->getBlock(x, y, z).getType()) {
-                            case BlockType::Log:    logs++; break;
-                            case BlockType::Leaves: leaves++; break;
-                            case BlockType::Rose:   roses++; break;
-                            case BlockType::Flower: flowers++; break;
-                            default: break;
+                        case BlockType::Log: logs++; break;
+                        case BlockType::Leaves: leaves++; break;
+                        case BlockType::Rose: roses++; break;
+                        case BlockType::Flower: flowers++; break;
+                        default: break;
                         }
                     }
 

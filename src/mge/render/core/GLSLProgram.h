@@ -21,7 +21,7 @@ namespace mge {
 
         // Activa el shader para usarlo
         void use();
-        
+
         // Desactiva el shader
         void unuse();
 
@@ -33,7 +33,7 @@ namespace mge {
         GLuint m_programId;
         GLuint m_vertexShaderId;
         GLuint m_fragmentShaderId;
-        
+
         // Contador de atributos
         int m_numAttributes;
 
