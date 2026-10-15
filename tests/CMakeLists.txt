@@ -20,6 +20,7 @@ include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 add_executable(mge_core_tests
     test_main.cpp
     core/test_application.cpp
+    core/test_assets.cpp
     core/test_ecs.cpp
     core/test_input.cpp
     core/test_log.cpp

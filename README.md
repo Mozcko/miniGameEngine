@@ -28,9 +28,11 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** and the
 sudo dnf install cmake gcc-c++ SDL3-devel glew-devel glm-devel stb_image-devel
 # (without SDL3-devel, CMake builds SDL3 from source – see docs/BUILDING.md)
 
-cmake --preset release          # or: cmake -S . -B build (defaults to Release)
-cmake --build --preset release
-cd build-release && ./sandbox   # MUST run from a dir next to assets/ ("../assets/...")
+scripts/run.sh                   # configure (first time) + build + run, from any directory
+# or step by step:
+cmake --preset dev && cmake --build --preset dev
+./build/sandbox                  # works from any directory (assets are found automatically)
+cmake --build --preset dev --target run   # build + run in one CMake command
 ```
 
 ### Controls (SandboxApp)

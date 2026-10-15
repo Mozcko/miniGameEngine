@@ -1,4 +1,5 @@
 #include <mge/core/Application.h>
+#include <mge/core/Assets.h>
 #include <mge/audio/AudioModule.h>
 #include <mge/platform/PlatformModule.h>
 #include <mge/core/Log.h>
@@ -35,13 +36,14 @@ public:
         bindControls(m_platform->actions());
 
         // 1. Shaders
-        bool shaderOk =
-            m_shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
+        bool shaderOk = m_shader3D.compileShaders(assetPath("shaders/basic3d.vert").string(),
+                                                  assetPath("shaders/basic3d.frag").string());
         m_shader3D.addAttribute("vertexPosition");
         m_shader3D.addAttribute("vertexUV");
         shaderOk = m_shader3D.linkShaders() && shaderOk;
         if (!shaderOk) {
-            MGE_LOG_FATAL("Sandbox", "No se pudo crear el shader 3D (¿se ejecutó desde build/?)");
+            MGE_LOG_FATAL("Sandbox", "No se pudo crear el shader 3D. Assets en: ", assetRoot().string(),
+                          " (se puede cambiar con MGE_ASSET_DIR)");
             return false;
         }
 
@@ -68,7 +70,7 @@ public:
         });
 
         // 5. Cargar Textura
-        m_tilesetTexture.load("../assets/textures/Minecraft-like_3d_tileset.png");
+        m_tilesetTexture.load(assetPath("textures/Minecraft-like_3d_tileset.png").string());
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);

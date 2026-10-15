@@ -39,7 +39,7 @@ These come from the [architecture decision records](docs/adr/README.md):
 ```bash
 cmake --preset dev && cmake --build --preset dev   # Debug, warnings → build/
 ctest --preset dev                                 # headless unit tests
-cd build && ./sandbox                       # run from a dir next to assets/
+scripts/run.sh                             # build + run (works from any directory)
 ```
 
 - Reproduce CI with `cmake --preset ci -G Ninja && cmake --build --preset ci && ctest --preset ci`

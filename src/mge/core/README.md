@@ -12,6 +12,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
+| `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
 
