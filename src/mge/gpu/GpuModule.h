@@ -39,11 +39,17 @@ namespace mge {
         const GpuFrame* frame() const { return m_frame.swapchain ? &m_frame : nullptr; }
         SDL_GPUTextureFormat swapchainFormat() const;
 
+        // Vsync en caliente (el valor inicial sale de ApplicationConfig::vsync). Sin vsync usa MAILBOX o
+        // IMMEDIATE si la ventana los soporta (choosePresentMode); devuelve el modo que quedó.
+        SDL_GPUPresentMode setVsync(bool vsync);
+        bool vsync() const { return m_vsync; }
+
     private:
         GpuDeviceOptions m_options;
         std::unique_ptr<GpuDevice> m_device;
         PlatformModule* m_platform = nullptr;
         CommandBuffer m_cmd;
         GpuFrame m_frame;
+        bool m_vsync = true;
     };
 }

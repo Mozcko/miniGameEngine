@@ -30,6 +30,9 @@ namespace mge {
         int maxFixedStepsPerFrame = 5;
         // Un frame no cuenta más que esto (pausas del sistema, breakpoints, mover la ventana)
         double maxFrameTime = 0.25;
+        // Sincronizar la presentación con el monitor (sin tearing; limita los FPS a los Hz de la pantalla).
+        // false = lo más rápido posible. La plataforma/GPU lo aplican si existen; el core no lo usa.
+        bool vsync = true;
     };
 
     // Runner del motor: dueño del loop y de los módulos. Vive en el core (sin SDL ni GPU).

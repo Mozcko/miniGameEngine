@@ -28,6 +28,10 @@ namespace mge {
             quitSdlSubsystem(SDL_INIT_VIDEO);
             return false;
         }
+        // Renderer OpenGL legacy: vsync según la config (antes nunca se pedía, KI#23). Con SDL GPU lo aplica
+        // el GpuModule.
+        if (m_window->hasGlContext() && !SDL_GL_SetSwapInterval(config.vsync ? 1 : 0))
+            MGE_LOG_WARN("Platform", "No se pudo configurar el vsync de OpenGL: ", SDL_GetError());
         return true;
     }
 

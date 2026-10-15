@@ -1,6 +1,7 @@
 // Ejemplo mínimo de SDL3 GPU (Vulkan/Metal/D3D12) sin OpenGL: PlatformModule (ventana sin contexto GL)
 // + GpuModule (device y swapchain). Un triángulo que gira, con shaders GLSL compilados a SPIR-V en el
-// build y embebidos (mge_add_shaders): el programa no lee ningún archivo. Esc sale.
+// build y embebidos (mge_add_shaders): el programa no lee ningún archivo. V alterna el vsync (los FPS
+// van al log cada segundo). Esc sale.
 #include <mge/mge.h>
 
 #include <shaders/triangle_frag.h>
@@ -30,6 +31,7 @@ namespace {
             m_platform = getModule<mge::PlatformModule>();
             m_gpu = getModule<mge::GpuModule>();
             m_platform->actions().bind("Quit", mge::Key::Escape);
+            m_platform->actions().bind("ToggleVsync", mge::Key::V);
 
             mge::GpuDevice& device = m_gpu->device();
             mge::ShaderResources vertexResources;
@@ -47,13 +49,24 @@ namespace {
             // Los shaders se pueden liberar: el pipeline ya los tiene
             if (!m_pipeline) return false;
 
-            MGE_LOG_INFO("GpuTriangle", "GPU: ", device.driverName(), ". Esc: salir");
+            MGE_LOG_INFO("GpuTriangle", "GPU: ", device.driverName(), ". V: vsync, Esc: salir");
             return true;
         }
 
         void onUpdate(float dt) override {
             if (m_platform->wasActionPressed("Quit")) requestStop();
+            if (m_platform->wasActionPressed("ToggleVsync")) m_gpu->setVsync(!m_gpu->vsync());
             m_phase += dt;
+
+            // FPS cada segundo (tiempo real)
+            m_fpsFrames++;
+            m_fpsElapsed += time().unscaledDelta();
+            if (m_fpsElapsed >= 1.0f) {
+                MGE_LOG_INFO("GpuTriangle", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed),
+                             m_gpu->vsync() ? " (vsync)" : " (sin vsync)");
+                m_fpsFrames = 0;
+                m_fpsElapsed = 0.0f;
+            }
         }
 
         void onRender() override {
@@ -89,6 +102,8 @@ namespace {
         mge::GpuModule* m_gpu = nullptr;
         mge::GpuGraphicsPipeline m_pipeline;
         float m_phase = 0.0f;
+        int m_fpsFrames = 0;
+        float m_fpsElapsed = 0.0f;
         std::uint64_t m_presented = 0;
     };
 }

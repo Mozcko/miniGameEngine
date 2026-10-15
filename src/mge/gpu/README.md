@@ -22,6 +22,7 @@ OpenGL renderer (`mge_render`) is deleted in #40.
 | `CommandBuffer.h/.cpp` | `CommandBuffer`, `RenderPass`, `CopyPass`, `ColorTarget`, `DepthTarget` |
 | `GpuMesh.h/.cpp` | `GpuVertex` (48 B), `interleave(MeshData)`, vertex layout for pipelines, `GpuMesh` |
 | `GpuModule.h/.cpp` | `GpuModule`, `GpuFrame` |
+| `Swapchain.h/.cpp` | `choosePresentMode`, `chooseDepthFormat`, `presentModeName` (pure selection logic, tested without a GPU) |
 
 ## Using it in a game
 
@@ -56,6 +57,20 @@ void onRender() override {
    reverse order, so this happens before the platform destroys the window.
 
 `frame()->width/height` is the real swapchain size, which follows window resizes.
+
+## Presentation, depth and device info (#37)
+- **Vsync:**
+  - `ApplicationConfig::vsync` (default true, `MGE_VSYNC=0|1` overrides it) picks the present
+    mode at init.
+  - **On:** VSYNC (no tearing, capped at the monitor's Hz).
+  - **Off:** MAILBOX if the window supports it, else IMMEDIATE, else VSYNC with a warning (`choosePresentMode`).
+  - `GpuModule::setVsync(bool)` switches at runtime; `gpu_triangle` toggles it with **V** and logs FPS.
+- **Depth:** `GpuDevice::depthFormat()` is chosen once: D32_FLOAT, else D24_UNORM, else D16
+  (`chooseDepthFormat`). `createDepthTarget(w, h)` creates a depth buffer, passed to
+  `beginRenderPass(color, &depth)`.
+- **Startup log:** the GPU name, driver, version and depth format, e.g.
+  `Device vulkan: Intel(R) Iris(R) Xe Graphics (… Mesa 26.2.3), profundidad D32`.
+- **Validation:** `MGE_GPU_DEBUG=0|1` overrides `GpuDeviceOptions::debug` (on by default in Debug builds).
 
 ## Shaders and pipelines (#29)
 

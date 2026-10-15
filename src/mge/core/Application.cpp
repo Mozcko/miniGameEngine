@@ -21,6 +21,16 @@ namespace mge {
                 }
             }
         }
+        // Vsync desde el entorno (benchmarks: MGE_VSYNC=0 mide los FPS sin el límite del monitor)
+        if (const char* env = std::getenv("MGE_VSYNC")) {
+            const std::string value = env;
+            if (value == "0" || value == "1") {
+                m_config.vsync = value == "1";
+                MGE_LOG_INFO("App", "MGE_VSYNC=", value);
+            } else {
+                MGE_LOG_WARN("App", "MGE_VSYNC inválido ('", env, "'): usar 0 o 1; se ignora");
+            }
+        }
     }
 
     Application::~Application() = default;

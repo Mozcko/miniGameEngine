@@ -8,6 +8,7 @@ add_library(mge_gpu STATIC
     CommandBuffer.h CommandBuffer.cpp
     GpuMesh.h GpuMesh.cpp
     GpuModule.h GpuModule.cpp
+    Swapchain.h Swapchain.cpp
 )
 target_link_libraries(mge_gpu PUBLIC mge_core mge_procgen mge_platform SDL3::SDL3)
 # Validación de la GPU (capas de Vulkan) por defecto en Debug
