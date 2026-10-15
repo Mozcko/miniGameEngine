@@ -81,6 +81,9 @@ namespace mge {
     }
 
     int Application::run() {
+        // "Corriendo" desde el principio: así un requestStop() en onInit (o en un módulo) se respeta
+        // y el loop no llega a ejecutarse (antes se pisaba con m_running = true después de onInit).
+        m_running = true;
         if (!initModules()) {
             shutdownModules();
             return 1;
@@ -95,7 +98,6 @@ namespace mge {
         m_fixedDeltaSeconds = 1.0 / (m_config.tickRate > 0.0 ? m_config.tickRate : 60.0);
         m_time.m_fixedDelta = static_cast<float>(m_fixedDeltaSeconds);
 
-        m_running = true;
         double lastTime = m_clock->now();
 
         while (m_running) {

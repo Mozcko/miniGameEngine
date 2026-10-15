@@ -4,6 +4,7 @@ add_library(mge_procgen STATIC
     Primitives.h Primitives.cpp
     MeshOps.h MeshOps.cpp
     Noise.h Noise.cpp
+    Sdf.h Sdf.cpp
     detail/MeshBuilding.h detail/MeshBuilding.cpp
 )
 target_link_libraries(mge_procgen PUBLIC mge_core)

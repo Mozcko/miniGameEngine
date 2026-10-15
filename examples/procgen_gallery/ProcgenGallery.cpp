@@ -103,6 +103,33 @@ namespace {
         return mesh;
     }
 
+    // SDF + surface nets (#23)
+    void addSdfShapes(std::vector<std::pair<std::string, mge::MeshData>>& meshes) {
+        using namespace mge::sdf;
+        const mge::Aabb bounds({-2.0f, -2.0f, -2.0f}, {2.0f, 2.0f, 2.0f});
+
+        Sdf blob =
+            opSmoothUnion(opSmoothUnion(sphere(0.8f), opTranslate(sphere(0.55f), {0.9f, 0.4f, 0.0f}), 0.35f),
+                          opTranslate(sphere(0.5f), {-0.6f, 0.7f, 0.5f}), 0.35f);
+        meshes.emplace_back("sdf_blob", surfaceNets(blob, bounds, 80, {0.9f, 0.45f, 0.6f, 1.0f}));
+
+        meshes.emplace_back("sdf_twisted_box", surfaceNets(opTwist(box({0.6f, 1.6f, 0.6f}), 1.2f), bounds, 80,
+                                                           {0.4f, 0.8f, 0.9f, 1.0f}));
+
+        Sdf carved = opSubtract(roundBox({1.0f, 1.0f, 1.0f}, 0.15f), sphere(1.25f));
+        meshes.emplace_back("sdf_carved_box", surfaceNets(carved, bounds, 80, {0.85f, 0.75f, 0.55f, 1.0f}));
+
+        Sdf grid = opIntersect(opRepeat(sphere(0.3f), {0.9f, 0.9f, 0.9f}), box({1.6f, 1.6f, 1.6f}));
+        meshes.emplace_back("sdf_repeated_spheres",
+                            surfaceNets(grid, bounds, 96, {0.95f, 0.85f, 0.3f, 1.0f}));
+
+        Sdf table =
+            opUnion(opTranslate(roundBox({1.4f, 0.08f, 0.9f}, 0.05f), {0.0f, 0.8f, 0.0f}),
+                    opRepeat(opTranslate(cylinder(0.08f, 0.8f), {0.0f, 0.0f, 0.0f}), {2.4f, 0.0f, 1.4f}));
+        meshes.emplace_back("sdf_table", surfaceNets(opIntersect(table, box({1.6f, 1.0f, 1.0f})), bounds, 96,
+                                                     {0.6f, 0.4f, 0.25f, 1.0f}));
+    }
+
     class ProcgenGallery : public mge::Application {
     public:
         ProcgenGallery() : mge::Application(makeConfig()) {}
@@ -126,6 +153,7 @@ namespace {
             meshes.emplace_back("torus", prim::torus(1.2f, 0.4f, 48, 24, {0.6f, 0.3f, 0.8f, 1.0f}));
             addMeshOps(meshes);
             meshes.emplace_back("noise_terrain", noiseTerrain());
+            addSdfShapes(meshes);
             meshes.emplace_back("capsule", prim::capsule(0.5f, 1.5f, 32, 8, {0.2f, 0.8f, 0.7f, 1.0f}));
 
             int written = 0;

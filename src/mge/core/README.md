@@ -48,7 +48,7 @@ mge::Application* mge::createApplication() { return new MyGame(); }
 | `run()` | Init modules in order (stop at the first failure) → game `onInit` → loop → game `onShutdown` → shut down **only the initialised** modules in **reverse** order. Returns 0, or 1 if any init failed |
 | Loop | modules' `onFrameBegin` · (break if a module requested stop) · measure the frame with the `Clock`, clamp to `maxFrameTime` · **`onFixedUpdate(fixedDt)` 0..N times** · `onUpdate(scaledDt)` · `onRender()` · modules' `onFrameEnd` · `maxFrames` check |
 | `time()` / `setClock(clock)` | Read the app's `Time` (and `time().setTimeScale(s)`); replace the clock before `run()` |
-| `requestStop()` | Ends the loop after the current frame |
+| `requestStop()` | Ends the loop after the current frame. Called during `onInit` (or by a module's init), the loop never runs and shutdown follows directly |
 | `setExitCode(code)` | Value `run()` returns after a normal shutdown (default 0). Headless checks use it to fail the process |
 | `MGE_MAX_FRAMES` env | If `config.maxFrames == 0`, caps the frame count (invalid values are ignored with a warning). Used by CI to run real games for N frames |
 | `Module` | `name()`, `onInit(app) -> bool`, `onFrameBegin(app)`, `onFrameEnd(app)`, `onShutdown(app)` (only if init succeeded) |
