@@ -44,26 +44,25 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 - The build must stay **warning‑free** on GCC and Clang.
 - Targets:
 
-  | Target | Kind | Contents |
-  |--------|------|----------|
   | Target | Kind | Defined in | Contents |
   |--------|------|------------|----------|
   | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** (std + GLM): Application runner, Module, Clock/Time, Input, Random, ECS, Log |
-| `ecs_bench`, `noise_bench` | executables | `bench/` | ECS and noise benchmarks (run from a Release build) |
   | `mge_procgen` | static lib | `src/mge/procgen/` | Procedural generation, headless (always built) |
-| `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
+  | `mge_voxel` | static lib | `src/mge/voxel/` | Voxel worlds, headless (always built) |
+  | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
-  | `sandbox_world` | static lib | `game/` | `Block`, `Chunk` (testable game logic) |
+  | `sandbox_world` | static lib | `game/` | Sandbox blocks + terrain generator (headless, on `mge_voxel`) |
   | `sandbox` | executable | `game/` | The game; output in the build dir root |
-  | `mge_core_tests` | executable | `tests/` | Core tests – link only `mge_core` |
-  | `game_tests` | executable | `tests/` | Sandbox tests |
+  | `mge_core_tests`, `mge_procgen_tests`, `mge_voxel_tests` | executables | `tests/` | Headless tests |
+  | `mge_platform_tests`, `game_tests` | executables | `tests/` | Platform and sandbox tests |
+  | `ecs_bench`, `noise_bench` | executables | `bench/` | ECS and noise benchmarks (run from a Release build) |
 
   Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
-- `-DMGE_BUILD_MODULES=OFF` builds only the headless targets (`mge_core`, `mge_procgen`, their tests and `procgen_gallery`). No SDL, GLEW or OpenGL is
+- `-DMGE_BUILD_MODULES=OFF` builds only the headless targets (`mge_core`, `mge_procgen`, `mge_voxel`, their tests and `procgen_gallery`). No SDL, GLEW or OpenGL is
   needed; this is how CI proves the core is headless.
-- Include roots are `src/` (`#include <mge/core/Time.h>`) and the repo root, for the game (`#include <game/Chunk.h>`).
+- Include roots are `src/` (`#include <mge/core/Time.h>`) and the repo root, for the game (`#include <game/SandboxTerrain.h>`).
 - OpenGL is linked through GLVND (`OpenGL::GL`).
 
 ## SDL3: system package or built from source

@@ -12,8 +12,9 @@ per‑file reference, see the `README.md` in each folder under `src/`.
    SandboxApp : mge::Application             mge_platform  PlatformModule: Window, GL ctx, GLEW,       │
      addModule<PlatformModule>() ────────►                SDL event pump → InputState/ActionMap ─────┤
      addModule<AudioModule>()   ─────────►  mge_audio     AudioModule: AudioManager (SDL3 audio) ────┤
- sandbox_world (lib)                                                                                  ▼
-   Chunk, Block ─────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
+ sandbox_world (lib, headless)        ─►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher ──┐   ▼
+   SandboxBlocks, SandboxTerrain             mge_procgen   MeshData, primitives, noise, SDF ───────┴► mge_core
+ SandboxApp ─────────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
                                                                                                    Application runner + Module,
                                                                                                    Log, Time  (no SDL, no GPU)
  Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
@@ -21,7 +22,8 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 
 Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
 separate executable plus a `sandbox_world` library so its logic can be tested.
-`-DMGE_BUILD_MODULES=OFF` builds only `mge_core`, which CI checks on a machine without SDL.
+`-DMGE_BUILD_MODULES=OFF` builds only the headless modules (`mge_core`, `mge_procgen`,
+`mge_voxel`), which CI checks on a machine without SDL.
 The game plugs in through the `Application` / `createApplication` contract.
 
 ## 2. The entry‑point contract
@@ -136,24 +138,42 @@ of the pixels so `updateTile()` can copy one atlas tile over another at runtime 
 water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 239 via
 `glTexSubImage2D`).
 
-## 7. Voxel world (game layer)
+## 7. Voxel world (`mge_voxel` + game)
 
-- **Chunk** = 16 (X) × 16 (Y) × 16 (Z) `Block`s, world position `(cx*16, 0, cz*16)`.
-- **Generation** (`Chunk::generate`): height = `(sin(wx*0.2) + cos(wz*0.2)) * 3 + 6`, clamped
-  to [1, 15]. Below the surface: 2 layers dirt, rest stone. Water fills air up to y = 5. Surface is
-  sand near water, else grass with 5 % gravel and 0.5 % lava pools. Decoration pass: 2 % trees,
-  2 % roses, 2 % flowers on grass. Each column uses a `Pcg32` seeded with
-  `hash2i(wx, wz, worldSeed)`, stream 1 for terrain and stream 2 for decoration (#14). That gives a
-  deterministic world with no global RNG state.
-- **Meshing** (`Chunk::buildMesh`): face culling against neighbours (cross‑chunk neighbours are
-  *predicted* procedurally, not read from the real neighbour chunk), cross‑shaped billboards for
-  plants/cobweb, separate opaque / transparent meshes.
-- **Streaming** (`SandboxApp::onUpdate`): every frame, any missing chunk within a 9×9 area
-  (`renderDist = 4`) around the camera is created synchronously. Chunks are stored in
-  `std::map<ChunkKey, Chunk*>` and never unloaded.
-- **Collision**: `Camera3D` moves axis by axis (X, Z, Y) and asks a callback whether its AABB
-  (±0.3 around the eye) overlaps any solid block; SandboxApp implements the callback with
-  `getGlobalBlock()`.
+The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and the meshing; the game supplies content.
+
+- **Blocks:** `BlockRegistry` (id 0 = air). Each `BlockDesc` sets solid, opaque, shape (Cube /
+  Cross / None), a colour (procedural path) and/or atlas tiles per face (asset path). The sandbox
+  registers 20 blocks with both (`game/SandboxBlocks.cpp`).
+- **Chunks:**
+  - 16³ `BlockId`s, stacked in all three axes (`ChunkCoord {x, y, z}`).
+  - Block `(x, y, z)` occupies `[x, x+1)³`.
+  - Coordinates go world → chunk → local with floor division, so negatives work.
+- **World:** `VoxelWorld` maps `ChunkCoord` → chunk.
+  - It generates chunks through a `TerrainGenerator`, which must be deterministic and independent
+    of load order.
+  - It answers `getBlock` / `setBlock` / `isSolid` in world coordinates; unloaded chunks read as air.
+  - It keeps dirty flags: `setBlock` on a border also dirties the neighbour.
+- **Generation (sandbox):** `SandboxTerrain`.
+  - Height = `(sin(wx*0.2) + cos(wz*0.2)) * 3 + 6`, clamped to [1, 15], one chunk tall.
+  - Below the surface: 2 layers of dirt, then stone. Water fills air up to y = 5.
+  - Surface: sand near water, otherwise grass with 5 % gravel and 0.5 % lava pools.
+  - Decoration: 2 % trees, 2 % roses, 2 % flowers on grass.
+  - Each column uses a `Pcg32` seeded with `hash2i(wx, wz, seed)`: stream 1 for terrain, stream 2
+    for decoration. No global RNG state.
+- **Meshing:** `buildChunkMesh(world, coord)` returns opaque and transparent `MeshData` in
+  chunk‑local space.
+  - A face is hidden only by an opaque cube, or by the same transparent block (water against water).
+  - Cross shapes are used for plants.
+  - Neighbours across borders are read from the world.
+- **Streaming** (`SandboxApp::streamChunks`, every frame, synchronous):
+  - Load every chunk column within 5 of the camera.
+  - Mesh the dirty ones within 4 (9×9), then upload with `Mesh::init(MeshData)`.
+  - The extra loaded ring means borders mesh against real data.
+  - Chunks are never unloaded (KI#4).
+- **Collision:** `Camera3D` moves axis by axis (X, Z, Y) and asks a callback whether its AABB
+  (±0.3 around the eye) overlaps any solid block. The sandbox converts the box corners with
+  `blockAt` and asks `VoxelWorld::isSolid`.
 
 ## 8. Static singletons
 
@@ -170,8 +190,8 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 | `Application` | `main()` (`std::unique_ptr`) | RAII after `run()` returns |
 | Modules | `Application::m_modules` | `onShutdown` in reverse order, then destroyed with the app |
 | `Window` | `PlatformModule` (unique_ptr) | reset in `PlatformModule::onShutdown` |
-| `Chunk*` | `SandboxApp::m_chunkMap` | deleted in `SandboxApp::onShutdown` (GL context still alive) |
-| `Mesh*` inside Chunk | Chunk | deleted in `~Chunk` |
+| Chunk data | `VoxelWorld` (`unique_ptr` per chunk) | `unloadChunk` or with the world |
+| Chunk GPU meshes | `SandboxApp::m_gpuChunks` (`unique_ptr<Mesh>`) | cleared in `SandboxApp::onShutdown` (GL context still alive) |
 | GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
 | GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |
 | GL programs | `GLSLProgram` | never deleted (destructor is empty) |

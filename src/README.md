@@ -7,7 +7,8 @@ Engine source code. The game lives outside, in [`game/`](../game/), and tests in
 src/
 └── mge/                 the engine (one folder per CMake target)  → mge/README.md
     ├── core/            mge_core      – headless: no SDL, no GPU
-    ├── procgen/         mge_procgen   – headless procedural generation (MeshData, …)
+    ├── procgen/         mge_procgen   – headless procedural generation (MeshData, noise, SDF, …)
+    ├── voxel/           mge_voxel     – headless voxel worlds (blocks, chunks, meshing)
     ├── platform/        mge_platform  – SDL window, GL context, input
     ├── render/          mge_render    – OpenGL renderer (legacy until #40)
     ├── audio/           mge_audio     – audio
@@ -20,7 +21,8 @@ src/
 game ──► mge_main ──────────────────► mge_core (Application runner, Module)
       ├─────────────────────► mge_platform ──► mge_core   (PlatformModule)
       ├─────────────────────► mge_audio ─────► mge_core   (AudioModule)
-      └─────────────────────► mge_render ────► mge_core
+      ├─────────────────────► mge_render ────► mge_core
+      └─ sandbox_world ─────► mge_voxel ─────► mge_procgen ──► mge_core
 ```
 
 - `mge_core` depends on nothing but the standard library. The CI `core-only` job proves it by
@@ -34,7 +36,7 @@ game ──► mge_main ──────────────────�
   root‑relative:
   - `#include <mge/core/Time.h>`
   - `#include <mge/render/3d/Mesh.h>`
-  - `#include <game/Chunk.h>`
+  - `#include <game/SandboxTerrain.h>`
 - Third‑party headers: `<SDL3/...>`, `<GL/glew.h>`, `<glm/...>`, `<stb/stb_image.h>`.
 - All headers use `#pragma once`.
 - Every target lists its sources explicitly in its own `CMakeLists.txt`. Add new files there.

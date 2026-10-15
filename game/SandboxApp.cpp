@@ -1,22 +1,28 @@
 #include <mge/mge.h>
 
-#include <game/Block.h>
-#include <game/Chunk.h>
+#include <game/SandboxBlocks.h>
+#include <game/SandboxTerrain.h>
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
 #include <map>
+#include <memory>
 #include <vector>
 
 using namespace mge;
 
-struct ChunkKey {
-    int x, z;
-    bool operator<(const ChunkKey& other) const { return std::tie(x, z) < std::tie(other.x, other.z); }
+// Mallas en GPU de un chunk (null si esa parte está vacía)
+struct GpuChunk {
+    std::unique_ptr<Mesh> opaque;
+    std::unique_ptr<Mesh> transparent;
 };
 
 class SandboxApp : public mge::Application {
 public:
-    SandboxApp() : mge::Application(makeConfig()), m_camera(1280, 720) {
+    SandboxApp()
+        : mge::Application(makeConfig()), m_camera(1280, 720),
+          m_blocks(sandbox::registerSandboxBlocks(m_registry)),
+          m_world(m_registry, std::make_unique<sandbox::SandboxTerrain>(m_blocks)) {
         // Módulos que usa el sandbox (orden de inicialización; se cierran al revés)
         addModule<PlatformModule>();
         addModule<AudioModule>();
@@ -44,21 +50,14 @@ public:
         m_camera.setPosition(glm::vec3(0.0f, 25.0f, 0.0f));
 
         // Configurar Colisiones
+        // Colisiones: ¿algún bloque sólido toca la caja? (el bloque (x,y,z) ocupa [x, x+1)³)
         m_camera.setCollisionCallback([this](const glm::vec3& min, const glm::vec3& max) -> bool {
-            int minX = floor(min.x + 0.5f);
-            int maxX = floor(max.x + 0.5f);
-            int minY = floor(min.y + 0.5f);
-            int maxY = floor(max.y + 0.5f);
-            int minZ = floor(min.z + 0.5f);
-            int maxZ = floor(max.z + 0.5f);
-
-            for (int x = minX; x <= maxX; x++) {
-                for (int y = minY; y <= maxY; y++) {
-                    for (int z = minZ; z <= maxZ; z++) {
-                        if (getGlobalBlock(x, y, z).isSolid()) return true;
-                    }
-                }
-            }
+            const glm::ivec3 lo = blockAt(min);
+            const glm::ivec3 hi = blockAt(max);
+            for (int x = lo.x; x <= hi.x; x++)
+                for (int y = lo.y; y <= hi.y; y++)
+                    for (int z = lo.z; z <= hi.z; z++)
+                        if (m_world.isSolid({x, y, z})) return true;
             return false;
         });
 
@@ -81,11 +80,8 @@ public:
     }
 
     void onShutdown() override {
-        // Liberar los chunks aquí (no en el destructor): el contexto OpenGL todavía existe
-        for (auto& pair : m_chunkMap) {
-            delete pair.second;
-        }
-        m_chunkMap.clear();
+        // Liberar las mallas aquí (no en el destructor): el contexto OpenGL todavía existe
+        m_gpuChunks.clear();
         // La textura no se libera sola (Texture es un handle copiable): liberarla con el contexto vivo
         m_tilesetTexture.destroy();
     }
@@ -153,31 +149,13 @@ public:
         if (m_animTimer >= 0.2f) {
             m_animTimer = 0.0f;
             m_currentAnimFrame++;
-            m_tilesetTexture.updateTile(m_waterTarget,
+            m_tilesetTexture.updateTile(sandbox::kWaterTile,
                                         m_waterFrames[m_currentAnimFrame % m_waterFrames.size()], 32, 32);
-            m_tilesetTexture.updateTile(m_lavaTarget, m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()],
-                                        32, 32);
+            m_tilesetTexture.updateTile(sandbox::kLavaTile,
+                                        m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()], 32, 32);
         }
 
-        // Actualizar Chunks
-        int pChunkX = (int)floor(m_camera.getPosition().x / kChunkSize);
-        int pChunkZ = (int)floor(m_camera.getPosition().z / kChunkSize);
-        int renderDist = 4;
-
-        for (int cx = pChunkX - renderDist; cx <= pChunkX + renderDist; cx++) {
-            for (int cz = pChunkZ - renderDist; cz <= pChunkZ + renderDist; cz++) {
-                // La carga es por distancia (no por frustum): girar la cámara no debe dejar huecos
-                {
-                    ChunkKey key{cx, cz};
-                    if (m_chunkMap.find(key) == m_chunkMap.end()) {
-                        Chunk* chunk = new Chunk(cx, cz);
-                        chunk->buildMesh();
-                        m_chunkMap[key] = chunk;
-                    }
-                }
-            }
-        }
-
+        streamChunks();
         m_camera.update(deltaTime, cameraInput());
     }
 
@@ -195,14 +173,19 @@ public:
 
         m_tilesetTexture.bind();
 
-        for (auto& pair : m_chunkMap) {
-            if (m_camera.isAabbVisible(chunkBounds(*pair.second))) pair.second->drawOpaque(m_shader3D);
-        }
-
+        const GLint modelLocation = m_shader3D.getUniformLocation("model");
+        auto drawPass = [&](bool transparent) {
+            for (auto& [coord, gpu] : m_gpuChunks) {
+                Mesh* mesh = transparent ? gpu.transparent.get() : gpu.opaque.get();
+                if (!mesh || !m_camera.isAabbVisible(chunkBounds(coord))) continue;
+                const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
+                glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &model[0][0]);
+                mesh->draw();
+            }
+        };
+        drawPass(false);
         glDepthMask(GL_FALSE);
-        for (auto& pair : m_chunkMap) {
-            if (m_camera.isAabbVisible(chunkBounds(*pair.second))) pair.second->drawTransparent(m_shader3D);
-        }
+        drawPass(true);
         glDepthMask(GL_TRUE);
 
         m_tilesetTexture.unbind();
@@ -213,17 +196,49 @@ public:
         m_fpsElapsed += time().unscaledDelta();
         if (m_fpsElapsed >= 5.0f) {
             MGE_LOG_DEBUG("Sandbox", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed), " (",
-                          m_chunkMap.size(), " chunks)");
+                          m_gpuChunks.size(), " chunks)");
             m_fpsFrames = 0;
             m_fpsElapsed = 0.0f;
         }
     }
 
 private:
-    // Caja del chunk en el mundo (los bloques están centrados en coordenadas enteras: ±0.5)
-    static mge::Aabb chunkBounds(const Chunk& chunk) {
-        glm::vec3 origin = chunk.getPosition() - glm::vec3(0.5f);
-        return mge::Aabb(origin, origin + glm::vec3(kChunkSize, kChunkHeight, kChunkSize));
+    static constexpr int kRenderDistance = 4; // Chunks alrededor de la cámara (9×9)
+
+    // Caja del chunk en el mundo
+    static mge::Aabb chunkBounds(const ChunkCoord& coord) {
+        const glm::vec3 origin(chunkOrigin(coord));
+        return mge::Aabb(origin, origin + glm::vec3(static_cast<float>(kChunkSize)));
+    }
+
+    // Carga los chunks cercanos y (re)malla los sucios. Se carga un anillo más de lo que se dibuja:
+    // así un chunk se malla con sus vecinos reales ya presentes y no hay caras de más en los bordes.
+    // La carga es por distancia (no por frustum): girar la cámara no debe dejar huecos.
+    void streamChunks() {
+        const ChunkCoord center = chunkOf(blockAt(m_camera.getPosition()));
+        const int load = kRenderDistance + 1;
+        for (int cx = center.x - load; cx <= center.x + load; cx++)
+            for (int cz = center.z - load; cz <= center.z + load; cz++) m_world.loadChunk({cx, 0, cz});
+
+        ChunkMeshOptions options;
+        options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+        for (const ChunkCoord& coord : m_world.dirtyChunks()) {
+            if (std::abs(coord.x - center.x) > kRenderDistance ||
+                std::abs(coord.z - center.z) > kRenderDistance)
+                continue; // Anillo exterior: solo datos, se malla cuando entre en rango
+            ChunkMesh mesh = buildChunkMesh(m_world, coord, options);
+            GpuChunk& gpu = m_gpuChunks[coord];
+            gpu.opaque = upload(mesh.opaque);
+            gpu.transparent = upload(mesh.transparent);
+            m_world.clearDirty(coord);
+        }
+    }
+
+    static std::unique_ptr<Mesh> upload(const MeshData& data) {
+        if (data.empty()) return nullptr;
+        auto mesh = std::make_unique<Mesh>();
+        mesh->init(data);
+        return mesh;
     }
 
     PlatformModule* m_platform = nullptr; // Válido entre onInit y el cierre
@@ -236,23 +251,13 @@ private:
         return config;
     }
 
-    Block getGlobalBlock(int x, int y, int z) {
-        int chunkX = (int)floor((float)x / kChunkSize);
-        int chunkZ = (int)floor((float)z / kChunkSize);
-        ChunkKey key{chunkX, chunkZ};
-        if (m_chunkMap.find(key) != m_chunkMap.end()) {
-            int localX = x % kChunkSize;
-            int localZ = z % kChunkSize;
-            if (localX < 0) localX += kChunkSize;
-            if (localZ < 0) localZ += kChunkSize;
-            return m_chunkMap[key]->getBlock(localX, y, localZ);
-        }
-        return Block(BlockType::Air);
-    }
-
     GLSLProgram m_shader3D;
     mge::Camera3D m_camera;
-    std::map<ChunkKey, Chunk*> m_chunkMap;
+    // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
+    BlockRegistry m_registry;
+    sandbox::SandboxBlocks m_blocks;
+    VoxelWorld m_world;
+    std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     Texture m_tilesetTexture;
 
     // Medición de FPS para el log
@@ -261,8 +266,6 @@ private:
 
     std::vector<int> m_waterFrames = {205, 206, 207, 222, 223};
     std::vector<int> m_lavaFrames = {237, 238, 239, 254, 255};
-    int m_waterTarget = 207;
-    int m_lavaTarget = 239;
     float m_animTimer = 0.0f;
     int m_currentAnimFrame = 0;
 

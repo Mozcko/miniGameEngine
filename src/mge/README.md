@@ -4,20 +4,21 @@ The engine. Each subfolder is one CMake target with its own `CMakeLists.txt` and
 
 `#include <mge/mge.h>` (`src/mge/mge.h`) pulls in the common API: the whole core always, plus
 platform, render and audio headers only if the program links that module. Each module target
-exports `MGE_HAS_PLATFORM`, `MGE_HAS_RENDER` or `MGE_HAS_AUDIO`, so a headless program never needs
+exports `MGE_HAS_PROCGEN`, `MGE_HAS_VOXEL`, `MGE_HAS_PLATFORM`, `MGE_HAS_RENDER` or `MGE_HAS_AUDIO`, so a headless program never needs
 SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.md).
 
 | Folder | Target | Depends on | Contents | Doc |
 |--------|--------|------------|----------|-----|
 | `core/` | `mge_core` | std only | `Application` runner + `Module`, `Clock`/`Time`, `Input`, `Log` | [core/README.md](core/README.md) |
-| `procgen/` | `mge_procgen` | core (headless) | `MeshData`, OBJ export (M2: primitives, ops, noise, SDF) | [procgen/README.md](procgen/README.md) |
+| `procgen/` | `mge_procgen` | core (headless) | `MeshData`, OBJ export, primitives, mesh ops, noise, SDF + surface nets | [procgen/README.md](procgen/README.md) |
+| `voxel/` | `mge_voxel` | core, procgen (headless) | `BlockRegistry`, chunks + coordinates, `VoxelWorld`, `TerrainGenerator`, `buildChunkMesh` | [voxel/README.md](voxel/README.md) |
 | `platform/` | `mge_platform` | core, SDL3, GLEW, OpenGL | `PlatformModule` (window, GL 3.3 context, GLEW, SDL→core input), `Window`, `SdlInput` | [platform/README.md](platform/README.md) |
 | `render/` | `mge_render` | core, GL, GLEW | `core/` Vertex, Texture, GLSLProgram, ResourceManager · `3d/` Mesh · `2d/` Sprite, Animation (legacy) · `camera/` Camera, Camera2D, Camera3D, FirstPersonCamera | [render/README.md](render/README.md) |
 | `audio/` | `mge_audio` | core, SDL3 | `AudioModule`, `AudioManager` (WAV SFX) | [audio/README.md](audio/README.md) |
 | `app/` | `mge_main` | core | `Main.cpp` (`main()`) | [app/README.md](app/README.md) |
 
 
-`-DMGE_BUILD_MODULES=OFF` builds only `mge_core` and its tests, with no SDL or GPU needed.
+`-DMGE_BUILD_MODULES=OFF` builds only the headless modules (`mge_core`, `mge_procgen`, `mge_voxel`) and their tests, with no SDL or GPU needed.
 
 ## How M1 reshapes this
 - ~~**#11** moves `Application` into `mge_core` as a module‑based runner~~ (done).

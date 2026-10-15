@@ -70,7 +70,8 @@ miniGameEngine/
 ├── src/                    Engine source             → src/README.md
 │   └── mge/                One folder per CMake target → src/mge/README.md
 │       ├── core/           mge_core: headless, no SDL/GPU (Time)
-│       ├── procgen/        mge_procgen: headless procedural generation (MeshData, OBJ export)
+│       ├── procgen/        mge_procgen: headless procedural generation (meshes, noise, SDF)
+│       ├── voxel/          mge_voxel: headless voxel worlds (blocks, chunks, meshing)
 │       ├── platform/       mge_platform: PlatformModule, SDL window + GL context + GLEW, SDL→input
 │       ├── render/         mge_render: OpenGL renderer (legacy until #40)
 │       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
@@ -112,7 +113,8 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [src/README.md](src/README.md) | Source tree overview, include/namespace conventions |
 | [src/mge/README.md](src/mge/README.md) | Engine module map |
 | [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Application runner + modules, Clock/Time, Input, Random, ECS, Log (headless) |
-| [src/mge/procgen/README.md](src/mge/procgen/README.md) | `mge_procgen`: MeshData, OBJ export (headless) |
+| [src/mge/procgen/README.md](src/mge/procgen/README.md) | `mge_procgen`: MeshData, primitives, mesh ops, noise, SDF (headless) |
+| [src/mge/voxel/README.md](src/mge/voxel/README.md) | `mge_voxel`: blocks, chunks, VoxelWorld, chunk meshing (headless) |
 | [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
 | [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |
