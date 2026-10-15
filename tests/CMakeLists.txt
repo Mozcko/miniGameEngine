@@ -14,15 +14,25 @@ FetchContent_MakeAvailable(doctest)
 add_library(doctest_header INTERFACE)
 target_include_directories(doctest_header SYSTEM INTERFACE ${doctest_SOURCE_DIR})
 
-# --- Ejecutable de tests ---
-add_executable(mge_tests
-    test_main.cpp
-    test_block.cpp
-    test_chunk.cpp
-)
-target_link_libraries(mge_tests PRIVATE sandbox_world doctest_header)
-mge_set_warnings(mge_tests)
-
-# Registra cada TEST_CASE como un test de CTest
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(mge_tests)
+
+# --- Tests del core: solo enlazan mge_core (sin SDL ni GPU) ---
+add_executable(mge_core_tests
+    test_main.cpp
+    core/test_time.cpp
+)
+target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
+mge_set_warnings(mge_core_tests)
+doctest_discover_tests(mge_core_tests TEST_PREFIX "core: ")
+
+# --- Tests del sandbox (necesitan los módulos del motor) ---
+if(MGE_BUILD_MODULES)
+    add_executable(sandbox_tests
+        test_main.cpp
+        sandbox/test_block.cpp
+        sandbox/test_chunk.cpp
+    )
+    target_link_libraries(sandbox_tests PRIVATE sandbox_world doctest_header)
+    mge_set_warnings(sandbox_tests)
+    doctest_discover_tests(sandbox_tests TEST_PREFIX "sandbox: ")
+endif()

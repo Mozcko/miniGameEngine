@@ -15,7 +15,7 @@
 | stb_image | PNG loading (header‑only) | **no** – included as `<stb/stb_image.h>` | `stb_image-devel` (or `stb-devel`) | `libstb-dev` |
 
 `STB_IMAGE_IMPLEMENTATION` is defined in exactly one place:
-`src/Engine/Graphics/Core/Texture.cpp`. Don't define it anywhere else.
+`src/mge/render/core/Texture.cpp`. Don't define it anywhere else.
 
 ## Build
 
@@ -34,7 +34,8 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `CMAKE_BUILD_TYPE` | `Release` | Set automatically for single‑config generators when empty |
 | `MGE_WARNINGS` | `ON` | `-Wall -Wextra -Wshadow` (`/W4` on MSVC), applied to our code only |
 | `MGE_WERROR` | `OFF` | Treat warnings as errors (`ON` in the `ci` preset) |
-| `MGE_BUILD_TESTS` | `ON` | Build `mge_tests` and register it with CTest |
+| `MGE_BUILD_TESTS` | `ON` | Build the test executables and register them with CTest |
+| `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
   from any of them. `build/` and `build-*/` are git‑ignored.
@@ -44,14 +45,22 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 
   | Target | Kind | Contents |
   |--------|------|----------|
-  | `mge_engine` | static lib | `src/Engine/**` except `Main.cpp` (globbed) |
-  | `sandbox_world` | static lib | `src/Game/Block.*`, `src/Game/Chunk.*` (listed explicitly) |
-  | `miniGameEngine` | executable | `src/Engine/Main.cpp` + `src/Game/SandboxApp.cpp` |
-  | `mge_tests` | executable | `tests/*.cpp` |
+  | Target | Kind | Defined in | Contents |
+  |--------|------|------------|----------|
+  | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** |
+  | `mge_platform` | static lib | `src/mge/platform/` | Window, GL context, input |
+  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
+  | `mge_audio` | static lib | `src/mge/audio/` | Audio |
+  | `mge_app` / `mge_main` | static / OBJECT lib | `src/mge/app/` | Application loop / `main()` |
+  | `sandbox_world` | static lib | `games/sandbox/` | `Block`, `Chunk` (testable game logic) |
+  | `sandbox` | executable | `games/sandbox/` | The game; output in the build dir root |
+  | `mge_core_tests` | executable | `tests/` | Core tests – link only `mge_core` |
+  | `sandbox_tests` | executable | `tests/` | Sandbox tests |
 
-  Engine sources are globbed: after **adding or removing** an engine file, re‑run the configure
-  step. New game files must be added to their target in `CMakeLists.txt`. The full module split is #8.
-- Include root is `src/`, so `#include <Engine/Core/Application.h>` works from anywhere.
+  Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
+- `-DMGE_BUILD_MODULES=OFF` builds only `mge_core` + `mge_core_tests`. No SDL, GLEW or OpenGL is
+  needed; this is how CI proves the core is headless.
+- Include roots are `src/` (`#include <mge/core/Time.h>`) and `games/` (`#include <sandbox/Chunk.h>`).
 - OpenGL is linked through GLVND (`OpenGL::GL`).
 
 ## Tests
@@ -79,7 +88,7 @@ A PR may only be merged when both jobs are green. To reproduce CI locally:
 
 ```bash
 cd build
-./miniGameEngine
+./sandbox
 ```
 
 **The working directory must be `build/`** (or any directory that is a sibling of `assets/`):

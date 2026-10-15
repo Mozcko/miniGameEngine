@@ -58,3 +58,28 @@ jobs:
 
       - name: Test (headless)
         run: ctest --preset ci
+
+  # Proves the headless core builds and runs with NO SDL/GPU installed (ADR 0003)
+  core-only:
+    name: core-only (no SDL/GPU)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert SDL/GL dev packages are absent
+        run: |
+          for h in /usr/include/SDL2/SDL.h /usr/include/SDL3/SDL.h /usr/include/GL/glew.h /usr/include/GL/gl.h; do
+            if [ -e "$h" ]; then echo "::error::$h is installed; this job must run without it"; exit 1; fi
+          done
+
+      - name: Install build tools only
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Configure (core only, warnings as errors)
+        run: cmake -S . -B build-core -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMGE_WERROR=ON -DMGE_BUILD_MODULES=OFF
+
+      - name: Build
+        run: cmake --build build-core
+
+      - name: Test
+        run: ctest --test-dir build-core --output-on-failure

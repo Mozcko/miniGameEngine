@@ -20,14 +20,7 @@ endif()
 option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
 option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
-
-# --- Dependencias ---
-set(OpenGL_GL_PREFERENCE GLVND)
-find_package(SDL2 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
-find_package(SDL2_mixer REQUIRED)
-find_package(SDL2_ttf REQUIRED)
+option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 
 # --- Warnings (solo para nuestros targets) ---
 function(mge_set_warnings target)
@@ -41,37 +34,21 @@ function(mge_set_warnings target)
     endif()
 endfunction()
 
-# --- Motor: librería estática con todo src/Engine (menos el main) ---
-file(GLOB_RECURSE ENGINE_SOURCES "src/Engine/*.cpp" "src/Engine/*.h")
-list(REMOVE_ITEM ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/Engine/Main.cpp")
+# --- Dependencias de los módulos (el core no necesita ninguna) ---
+if(MGE_BUILD_MODULES)
+    set(OpenGL_GL_PREFERENCE GLVND)
+    find_package(SDL2 REQUIRED)
+    find_package(GLEW REQUIRED)
+    find_package(OpenGL REQUIRED)
+    find_package(SDL2_mixer REQUIRED)
+    find_package(SDL2_ttf REQUIRED)
+endif()
 
-add_library(mge_engine STATIC ${ENGINE_SOURCES})
-# Permitimos incluir headers como #include "Engine/Graphics/Shader.h"
-target_include_directories(mge_engine PUBLIC src)
-# Headers de terceros como SYSTEM para que sus warnings no nos afecten
-target_include_directories(mge_engine SYSTEM PUBLIC ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS})
-target_link_libraries(mge_engine PUBLIC
-    ${SDL2_LIBRARIES}
-    SDL2_mixer
-    SDL2_ttf
-    OpenGL::GL
-    GLEW::GLEW
-)
-mge_set_warnings(mge_engine)
-
-# --- Mundo del juego (bloques y chunks): librería aparte para poder testearla ---
-add_library(sandbox_world STATIC
-    src/Game/Block.cpp src/Game/Block.h
-    src/Game/Chunk.cpp src/Game/Chunk.h
-)
-target_link_libraries(sandbox_world PUBLIC mge_engine)
-mge_set_warnings(sandbox_world)
-
-# --- Ejecutable del juego ---
-# (La separación completa en módulos del motor se hace en el issue #8)
-add_executable(miniGameEngine src/Engine/Main.cpp src/Game/SandboxApp.cpp)
-target_link_libraries(miniGameEngine PRIVATE sandbox_world)
-mge_set_warnings(miniGameEngine)
+# --- Motor (src/mge) y juegos ---
+add_subdirectory(src/mge)
+if(MGE_BUILD_MODULES)
+    add_subdirectory(games/sandbox)
+endif()
 
 # --- Tests ---
 if(MGE_BUILD_TESTS)

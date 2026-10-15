@@ -6,32 +6,27 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 ## 1. Big picture
 
 ```
-            ┌──────────────────────────── one executable: miniGameEngine ────────────────────────────┐
-            │                                                                                        │
-  main() ──►│  Engine::CreateApplication()  ──►  SandboxApp : Engine::Application                     │
- (Engine/   │                                         │                                              │
-  Main.cpp) │   Engine layer (src/Engine)             │  Game layer (src/Game)                       │
-            │   ─────────────────────────             │  ─────────────────────                       │
-            │   Core/      Application, Time,         │  SandboxApp  – game logic, render order      │
-            │              ResourceManager            │  Chunk       – 16³ voxels, terrain, meshing  │
-            │   Window/    SDL window + GL ctx        │  Block       – block types, UV lookup        │
-            │   Input/     InputManager (static)      │                                              │
-            │   Audio/     AudioManager (static)      │                                              │
-            │   Graphics/  Vertex, Texture, Shader,   │                                              │
-            │              Mesh, Sprite, GUILabel,    │                                              │
-            │              Cameras                    │                                              │
-            └────────────────────────────────────────────────────────────────────────────────────────┘
-                    │ SDL2  │ SDL2_mixer │ SDL2_ttf │ GLEW/OpenGL 3.3 │ GLM │ stb_image
+ games/sandbox/                         src/mge/  (one static library per folder)
+ ───────────────                        ────────────────────────────────────────────
+ sandbox (exe) ─────────────────────►  mge_main  (OBJECT: main() → createApplication)
+   SandboxApp : Engine::Application ─►  mge_app   Application loop ─┬─► mge_platform  Window, GL ctx, GLEW, InputManager ─┐
+ sandbox_world (lib)                                                └─► mge_audio     AudioManager (SDL_mixer)           │
+   Chunk, Block ────────────────────►  mge_render  Mesh, Texture, GLSLProgram, Cameras … ──(temp)──► mge_platform        │
+                                                     │                                                                   ▼
+                                                     └──────────────────────────────────────────────────────────►  mge_core  Time
+                                                                                                                (no SDL, no GPU)
+ Third party: SDL2 · SDL2_mixer · SDL2_ttf · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
 ```
 
-The engine is **not** built as a separate library: `CMakeLists.txt` globs `src/Engine/**` and
-`src/Game/**` into a single executable. The separation is by folder and by the
-`Application` / `CreateApplication` contract.
+Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
+separate executable plus a `sandbox_world` library so its logic can be tested.
+`-DMGE_BUILD_MODULES=OFF` builds only `mge_core`, which CI checks on a machine without SDL.
+The game plugs in through the `Application` / `CreateApplication` contract.
 
 ## 2. The entry‑point contract
 
 ```cpp
-// src/Engine/Main.cpp
+// src/mge/app/Main.cpp
 int main(int, char**) {
     auto app = Engine::CreateApplication();   // implemented by the game
     app->Run();
@@ -47,7 +42,7 @@ A game must:
 
 ## 3. Startup sequence
 
-`Engine::Application::Application()` (`src/Engine/Core/Application.cpp`):
+`Engine::Application::Application()` (`src/mge/app/Application.cpp`):
 
 1. `MiniGameEngine::AudioManager::init()` – `Mix_OpenAudio(44100, default, stereo, 2048)`.
 2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)`.
