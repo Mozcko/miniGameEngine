@@ -1,6 +1,6 @@
 #include <mge/render/camera/Camera3D.h>
 #include <mge/platform/InputManager.h> // Asegúrate de que la ruta sea correcta
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <cmath>
 
 namespace mge {

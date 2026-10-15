@@ -1,14 +1,14 @@
 # src/mge/render/2d/
 
-2D helpers. Namespace: `mge`. These are largely leftovers from an earlier 2D
-platformer stage of the project (see `assets/levels/`); today only `GUILabel` (and the `Sprite`
-it contains) is used, for the HUD in `SandboxApp`.
+2D helpers. Namespace: `mge`. These are leftovers from an earlier 2D platformer
+stage of the project (see `assets/levels/`) and are **not used** by the sandbox. `GUILabel` (SDL_ttf
+text) was removed in #9; text returns as an embedded bitmap font in M4 (#41), and the rest of this
+folder is removed in #45.
 
 | File | Purpose | Used today? |
 |------|---------|-------------|
-| `Sprite.h/.cpp` | Textured quad that **is a** `Mesh`; picks a tile from a texture atlas | Indirectly (via GUILabel) |
+| `Sprite.h/.cpp` | Textured quad that **is a** `Mesh`; picks a tile from a texture atlas | No |
 | `Animation.h/.cpp` | Time‑based sequence of atlas tile indices | No |
-| `GUILabel.h/.cpp` | Renders a string with SDL_ttf into a texture and draws it on a Sprite | Yes (FPS + info labels) |
 
 ---
 
@@ -44,22 +44,3 @@ sprite.initFromAtlas(..., walk.getCurrentTile());
 | `getCurrentTile()` | Current tile index, or 0 if empty. |
 
 Not to be confused with the water/lava animation in SandboxApp, which uses `Texture::updateTile`.
-
----
-
-## `GUILabel`
-
-On‑screen text. Owns a `TTF_Font*`, a `Texture` and a `Sprite`.
-
-| Method | Behaviour |
-|--------|-----------|
-| `init(fontPath, pointSize)` | `TTF_OpenFont`. Requires `TTF_Init()` (done by Application). |
-| `setText(text, color = white)` | No‑op if text and color are unchanged. Otherwise `TTF_RenderText_Blended` → `Texture::loadFromSurface` → `Sprite::init(0, 0, surfaceW, surfaceH)`. Color is `glm::vec4` in 0..1. |
-| `setPosition(x, y)` | Stored; applied at draw time. |
-| `setScale(s)` | Stored but **not applied** (no model matrix in the 2D shader). |
-| `draw(shader, projection)` | `shader.use()`, uploads `projection` to uniform `P`, `m_sprite.setPosition(...)` (rebuilds GPU buffers every frame), binds texture, draws, unbinds. Skips if text is empty. |
-| `~GUILabel()` | `TTF_CloseFont`. The GL texture isn't destroyed. |
-
-Expected shader: `assets/shaders/texture.vert/.frag`. Positions are meant to be screen pixels
-(origin bottom‑left), which requires a pixel‑space ortho projection – the current `Camera2D` isn't
-one (see `docs/KNOWN_ISSUES.md` #1–#2).

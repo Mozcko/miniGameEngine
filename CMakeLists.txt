@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 project(miniGameEngine LANGUAGES C CXX)
 
 # --- Estándar de C++ ---
@@ -37,11 +37,32 @@ endfunction()
 # --- Dependencias de los módulos (el core no necesita ninguna) ---
 if(MGE_BUILD_MODULES)
     set(OpenGL_GL_PREFERENCE GLVND)
-    find_package(SDL2 REQUIRED)
     find_package(GLEW REQUIRED)
     find_package(OpenGL REQUIRED)
-    find_package(SDL2_mixer REQUIRED)
-    find_package(SDL2_ttf REQUIRED)
+
+    # SDL3: usa el del sistema si existe (ej: SDL3-devel en Fedora); si no, lo compila desde
+    # el código fuente (CI en Ubuntu 24.04, que no trae SDL3). Versión fijada + hash.
+    include(FetchContent)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+    # Extensiones opcionales de X11 que el motor no usa (evita exigir sus paquetes -dev)
+    set(SDL_X11_XSCRNSAVER OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(SDL3
+        URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.18.tar.gz
+        URL_HASH SHA256=c4b08b950bd29d83caae0ab8d884298d27046a9d30700fb42841c50992665c90
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        FIND_PACKAGE_ARGS 3.2 CONFIG
+    )
+    FetchContent_MakeAvailable(SDL3)
+    if(SDL3_FOUND)
+        message(STATUS "SDL3: usando la instalación del sistema (${SDL3_VERSION})")
+    else()
+        message(STATUS "SDL3: compilado desde el código fuente (release-3.4.18)")
+    endif()
 endif()
 
 # --- Motor (src/mge) y juegos ---

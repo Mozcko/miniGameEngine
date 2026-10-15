@@ -1,98 +1,103 @@
 #include <mge/audio/AudioManager.h>
 #include <mge/core/Log.h>
 
+#include <algorithm>
+
 namespace mge {
 
-    // Inicializar mapas estáticos
-    std::map<std::string, Mix_Chunk*> AudioManager::s_sfxCache;
-    std::map<std::string, Mix_Music*> AudioManager::s_musicCache;
+    SDL_AudioDeviceID AudioManager::s_device = 0;
+    std::map<std::string, AudioManager::Sound> AudioManager::s_soundCache;
+    std::vector<SDL_AudioStream*> AudioManager::s_activeStreams;
 
     void AudioManager::init() {
-        // Inicializar SDL_Mixer
-        // Frecuencia: 44100Hz, Formato: Default, Canales: 2 (Stereo), ChunkSize: 2048
-        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
             MGE_LOG_ERROR("Audio",
-                          "No se pudo iniciar SDL_mixer (el juego sigue sin sonido): ", Mix_GetError());
-        } else {
-            MGE_LOG_INFO("Audio", "Sistema de audio inicializado");
+                          "No se pudo iniciar el audio de SDL (el juego sigue sin sonido): ", SDL_GetError());
+            return;
         }
+
+        s_device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
+        if (s_device == 0) {
+            MGE_LOG_ERROR("Audio", "No se pudo abrir el dispositivo de audio (el juego sigue sin sonido): ",
+                          SDL_GetError());
+            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+            return;
+        }
+        MGE_LOG_INFO("Audio", "Sistema de audio inicializado");
     }
 
     void AudioManager::shutdown() {
-        // Liberar efectos de sonido
-        for (auto& pair : s_sfxCache) {
-            Mix_FreeChunk(pair.second);
+        for (SDL_AudioStream* stream : s_activeStreams) {
+            SDL_DestroyAudioStream(stream);
         }
-        s_sfxCache.clear();
+        s_activeStreams.clear();
 
-        // Liberar música
-        for (auto& pair : s_musicCache) {
-            Mix_FreeMusic(pair.second);
+        for (auto& pair : s_soundCache) {
+            SDL_free(pair.second.data);
         }
-        s_musicCache.clear();
+        s_soundCache.clear();
 
-        Mix_CloseAudio();
-        MGE_LOG_INFO("Audio", "Sistema de audio cerrado");
+        if (s_device != 0) {
+            SDL_CloseAudioDevice(s_device);
+            s_device = 0;
+            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+            MGE_LOG_INFO("Audio", "Sistema de audio cerrado");
+        }
+    }
+
+    void AudioManager::releaseFinishedStreams() {
+        auto finished = [](SDL_AudioStream* stream) {
+            if (SDL_GetAudioStreamQueued(stream) > 0) return false;
+            SDL_DestroyAudioStream(stream);
+            return true;
+        };
+        s_activeStreams.erase(std::remove_if(s_activeStreams.begin(), s_activeStreams.end(), finished),
+                              s_activeStreams.end());
     }
 
     void AudioManager::playSound(const std::string& filePath, int volume) {
-        Mix_Chunk* chunk = nullptr;
+        if (s_device == 0) return; // Sin dispositivo: silencio
 
-        // 1. Buscar en Caché
-        auto it = s_sfxCache.find(filePath);
-        if (it != s_sfxCache.end()) {
-            chunk = it->second;
-        } else {
-            // 2. Cargar si no existe
-            chunk = Mix_LoadWAV(filePath.c_str());
-            if (!chunk) {
-                MGE_LOG_ERROR("Audio", "No se pudo cargar el SFX ", filePath, ": ", Mix_GetError());
+        releaseFinishedStreams();
+
+        // 1. Buscar en caché o cargar el WAV
+        auto it = s_soundCache.find(filePath);
+        if (it == s_soundCache.end()) {
+            Sound sound;
+            if (!SDL_LoadWAV(filePath.c_str(), &sound.spec, &sound.data, &sound.length)) {
+                MGE_LOG_ERROR("Audio", "No se pudo cargar el SFX ", filePath, ": ", SDL_GetError());
                 return;
             }
-            s_sfxCache[filePath] = chunk;
+            it = s_soundCache.emplace(filePath, sound).first;
+        }
+        const Sound& sound = it->second;
+
+        // 2. Un stream convierte del formato del WAV al del dispositivo
+        SDL_AudioSpec deviceSpec;
+        if (!SDL_GetAudioDeviceFormat(s_device, &deviceSpec, nullptr)) {
+            MGE_LOG_ERROR("Audio", "No se pudo leer el formato del dispositivo: ", SDL_GetError());
+            return;
+        }
+        SDL_AudioStream* stream = SDL_CreateAudioStream(&sound.spec, &deviceSpec);
+        if (!stream || !SDL_BindAudioStream(s_device, stream)) {
+            MGE_LOG_ERROR("Audio", "No se pudo crear el stream de audio: ", SDL_GetError());
+            if (stream) SDL_DestroyAudioStream(stream);
+            return;
         }
 
-        // 3. Configurar volumen y reproducir
-        Mix_VolumeChunk(chunk, volume); // 0 a 128
-
-        // Canal -1 = Elige el primer canal libre disponible
-        if (Mix_PlayChannel(-1, chunk, 0) == -1) {
-            MGE_LOG_WARN("Audio", "No hay canales libres para reproducir el sonido");
-        }
+        // 3. Volumen (0..128 como en SDL_mixer) y reproducir
+        SDL_SetAudioStreamGain(stream, std::clamp(volume, 0, 128) / 128.0f);
+        SDL_PutAudioStreamData(stream, sound.data, static_cast<int>(sound.length));
+        SDL_FlushAudioStream(stream);
+        s_activeStreams.push_back(stream);
     }
 
-    void AudioManager::playMusic(const std::string& filePath, int loops) {
-        Mix_Music* music = nullptr;
-
-        // 1. Buscar en Caché
-        auto it = s_musicCache.find(filePath);
-        if (it != s_musicCache.end()) {
-            music = it->second;
-        } else {
-            // 2. Cargar si no existe
-            music = Mix_LoadMUS(filePath.c_str());
-            if (!music) {
-                MGE_LOG_ERROR("Audio", "No se pudo cargar la música ", filePath, ": ", Mix_GetError());
-                return;
-            }
-            s_musicCache[filePath] = music;
-        }
-
-        // 3. Reproducir
-        if (Mix_PlayMusic(music, loops) == -1) {
-            MGE_LOG_ERROR("Audio", "Error reproduciendo música: ", Mix_GetError());
-        }
+    void AudioManager::playMusic(const std::string& filePath, int /*loops*/) {
+        MGE_LOG_WARN("Audio", "Música no soportada hasta el secuenciador procedural (#49); se ignora ",
+                     filePath);
     }
 
-    void AudioManager::pauseMusic() {
-        if (Mix_PlayingMusic()) Mix_PauseMusic();
-    }
-
-    void AudioManager::resumeMusic() {
-        if (Mix_PausedMusic()) Mix_ResumeMusic();
-    }
-
-    void AudioManager::stopMusic() {
-        Mix_HaltMusic();
-    }
+    void AudioManager::pauseMusic() {}
+    void AudioManager::resumeMusic() {}
+    void AudioManager::stopMusic() {}
 }

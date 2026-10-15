@@ -10,12 +10,12 @@ per‑file reference, see the `README.md` in each folder under `src/`.
  ───────────────                        ────────────────────────────────────────────
  sandbox (exe) ─────────────────────►  mge_main  (OBJECT: main() → createApplication)
    SandboxApp : mge::Application ─►  mge_app   Application loop ─┬─► mge_platform  Window, GL ctx, GLEW, InputManager ─┐
- sandbox_world (lib)                                                └─► mge_audio     AudioManager (SDL_mixer)           │
+ sandbox_world (lib)                                                └─► mge_audio     AudioManager (SDL3 audio)          │
    Chunk, Block ────────────────────►  mge_render  Mesh, Texture, GLSLProgram, Cameras … ──(temp)──► mge_platform        │
                                                      │                                                                   ▼
                                                      └──────────────────────────────────────────────────────────►  mge_core  Time
                                                                                                                 (no SDL, no GPU)
- Third party: SDL2 · SDL2_mixer · SDL2_ttf · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
+ Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
 ```
 
 Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
@@ -44,13 +44,12 @@ A game must:
 
 `mge::Application::Application()` (`src/mge/app/Application.cpp`):
 
-1. `mge::AudioManager::init()` – `Mix_OpenAudio(44100, default, stereo, 2048)`.
+1. `mge::AudioManager::init()` – SDL3 audio subsystem + default playback device (failure → silent).
 2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)`.
 3. `m_window = make_unique<Window>("Mini Game Engine - Minecraft Cube", 1280, 720)`:
    - requests an OpenGL **3.3 Core**, double‑buffered context, resizable window;
    - runs `glewInit()` (with `glewExperimental = GL_TRUE`);
    - enables alpha blending, **disables** depth testing (2D default), prints GL version.
-4. `TTF_Init()`.
 
 Then the derived constructor runs (SandboxApp constructs its `Camera3D` and `Camera2D` with
 1280×720).
@@ -83,13 +82,13 @@ for dt ≈ 0) while tile animations keep running on unscaled time.
 
 ## 5. Shutdown sequence
 
-`delete app` → `~SandboxApp` (deletes chunks) → member destructors (GUILabels close fonts,
-Meshes delete GL buffers, …) → `~Application`: `AudioManager::shutdown()`, `TTF_Quit()`,
+`delete app` → `~SandboxApp` (deletes chunks) → member destructors (Meshes delete GL
+buffers, …) → `~Application`: `AudioManager::shutdown()`,
 `SDL_Quit()` → `m_window` unique_ptr destroyed: deletes GL context, destroys window, `SDL_Quit()`
 again.
 
-Caveat: `~Application` body runs before its own members are destroyed, so `SDL_Quit()` and
-`TTF_Quit()` happen before the GL context is deleted by `~Window`. (Derived‑class GL resources
+Caveat: `~Application` body runs before its own members are destroyed, so `SDL_Quit()` happens
+before the GL context is deleted by `~Window`. (Derived‑class GL resources
 are fine: SandboxApp members are destroyed before `~Application` runs.) It works in practice but
 is fragile – see `KNOWN_ISSUES.md`.
 
@@ -113,7 +112,6 @@ All shaders therefore read `layout(location=0)` position and `layout(location=1)
 | Program | Files | Uniforms | Used by |
 |---------|-------|----------|---------|
 | `m_shader3D` | `basic3d.vert/.frag` | `model`, `view`, `projection`, `myTexture`, `baseColor` | Chunks |
-| `m_guiShader` | `texture.vert/.frag` | `P`, `myTexture` (defaults to unit 0) | GUILabel |
 | – | `color.vert/.frag` | `P` | nothing (legacy) |
 
 ### SandboxApp frame (onRender)
@@ -123,8 +121,7 @@ All shaders therefore read `layout(location=0)` position and `layout(location=1)
 4. **Opaque pass** – for every loaded chunk: set `model = translate(chunkPos)`, draw opaque mesh.
 5. **Transparent pass** – `glDepthMask(GL_FALSE)`, draw each chunk's transparent mesh
    (water, lava, glass, leaves, flowers…), restore depth mask. No back‑to‑front sorting.
-6. **HUD** – disable depth test, draw FPS and info `GUILabel`s with the 2D shader and the
-   `Camera2D` projection, re‑enable depth test.
+6. Every 5 s the average FPS is written to the Debug log (the text HUD was removed in #9).
 
 Global GL state set in `SandboxApp::onInit`: depth test on, back‑face culling on (CCW = front),
 alpha blending `SRC_ALPHA, ONE_MINUS_SRC_ALPHA`.
@@ -160,7 +157,7 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 |-------|-----------|-------|----------|
 | `InputManager` | `mge` | mouse pos/delta, cursor lock, window ptr | `init` in `run()` |
 | `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
-| `AudioManager` | `mge` | `Mix_Chunk*` / `Mix_Music*` caches by path | Application ctor/dtor |
+| `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | Application ctor/dtor |
 | `ResourceManager` | `mge` | `Texture` cache by path | never cleared automatically (unused) |
 
 ## 9. Ownership summary
@@ -173,5 +170,4 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 | `Mesh*` inside Chunk | Chunk | deleted in `~Chunk` |
 | GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
 | GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |
-| `TTF_Font*` | `GUILabel` | `~GUILabel` |
 | GL programs | `GLSLProgram` | never deleted (destructor is empty) |

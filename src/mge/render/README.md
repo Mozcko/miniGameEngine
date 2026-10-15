@@ -7,15 +7,15 @@ of these classes are initialised – in practice, use them from `onInit()` onwar
 |--------|----------|-----|
 | `core/` | `Vertex` (interleaved vertex struct), `Texture` (stb_image → GL texture, runtime tile blitting, SDL_Surface upload), `GLSLProgram` (compile/link shaders, uniforms) | [core/README.md](core/README.md) |
 | `3d/` | `Mesh` – owns VAO/VBO/EBO, uploads `Vertex` + index data, draws indexed triangles | [3d/README.md](3d/README.md) |
-| `2d/` | `Sprite` (a `Mesh` quad from an atlas tile), `Animation` (time‑based tile index sequencer), `GUILabel` (SDL_ttf text → texture → sprite) | [2d/README.md](2d/README.md) |
+| `2d/` | `Sprite` (a `Mesh` quad from an atlas tile), `Animation` (time‑based tile index sequencer) (legacy, unused) | [2d/README.md](2d/README.md) |
 | `camera/` | `Camera` (abstract), `Camera2D` (ortho), `Camera3D` (perspective free‑fly + collision), `FirstPersonCamera` (gravity/jump) | [camera/README.md](camera/README.md) |
 
 ## Class relationships
 
 ```
-Vertex ──used by──► Mesh ◄──is‑a── Sprite ◄──has‑a── GUILabel ──has‑a──► Texture
+Vertex ──used by──► Mesh ◄──is‑a── Sprite (legacy)                Texture (stb_image)
                      ▲                                   │
-                     └── used by game Chunk              └── uses SDL_ttf, GLSLProgram
+                     └── used by game Chunk
 
 mge::Camera (abstract) ◄── Camera2D
 mge::Camera3D           ◄── FirstPersonCamera      (Camera3D does NOT derive from Camera)

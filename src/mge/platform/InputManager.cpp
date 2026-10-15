@@ -20,23 +20,23 @@ namespace mge {
 
         // Asegurar que el cursor esté en el estado correcto (Fuerza bruta)
         if (s_cursorLocked) {
-            if (!SDL_GetRelativeMouseMode()) {
-                SDL_SetRelativeMouseMode(SDL_TRUE);
+            if (s_window && !SDL_GetWindowRelativeMouseMode(s_window)) {
+                SDL_SetWindowRelativeMouseMode(s_window, true);
             }
-            if (s_window && !SDL_GetWindowGrab(s_window)) {
-                SDL_SetWindowGrab(s_window, SDL_TRUE);
+            if (s_window && !SDL_GetWindowMouseGrab(s_window)) {
+                SDL_SetWindowMouseGrab(s_window, true);
             }
         }
     }
 
     void InputManager::processEvent(const SDL_Event& event) {
-        if (event.type == SDL_MOUSEMOTION) {
-            s_mousePos.x = (float)event.motion.x;
-            s_mousePos.y = (float)event.motion.y;
+        if (event.type == SDL_EVENT_MOUSE_MOTION) {
+            s_mousePos.x = event.motion.x;
+            s_mousePos.y = event.motion.y;
 
-            // Acumulamos el movimiento relativo
-            s_mouseDelta.x += (float)event.motion.xrel;
-            s_mouseDelta.y += (float)event.motion.yrel;
+            // Acumulamos el movimiento relativo (SDL3 lo da en float)
+            s_mouseDelta.x += event.motion.xrel;
+            s_mouseDelta.y += event.motion.yrel;
         }
     }
 
@@ -50,9 +50,9 @@ namespace mge {
 
     void InputManager::setCursorMode(bool locked) {
         s_cursorLocked = locked;
-        SDL_SetRelativeMouseMode(locked ? SDL_TRUE : SDL_FALSE);
         if (s_window) {
-            SDL_SetWindowGrab(s_window, locked ? SDL_TRUE : SDL_FALSE);
+            SDL_SetWindowRelativeMouseMode(s_window, locked);
+            SDL_SetWindowMouseGrab(s_window, locked);
         }
     }
 
@@ -61,7 +61,7 @@ namespace mge {
     }
 
     bool InputManager::isKeyPressed(SDL_Scancode key) {
-        const Uint8* state = SDL_GetKeyboardState(NULL);
+        const bool* state = SDL_GetKeyboardState(nullptr);
         return state[key];
     }
 }

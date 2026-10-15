@@ -3,13 +3,11 @@
 #include <mge/core/Log.h>
 #include <vector>
 #include <map>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <mge/core/Time.h>
 #include <mge/render/core/GLSLProgram.h>
 #include <mge/render/core/Texture.h>
 #include <mge/render/3d/Mesh.h>
-#include <mge/render/2d/GUILabel.h>
-#include <mge/render/camera/Camera2D.h>
 #include <mge/render/camera/Camera3D.h>
 #include <sandbox/Block.h>
 #include <sandbox/Chunk.h>
@@ -24,7 +22,7 @@ struct ChunkKey {
 
 class SandboxApp : public mge::Application {
 public:
-    SandboxApp() : m_camera(1280, 720), m_guiCamera(1280, 720) {}
+    SandboxApp() : m_camera(1280, 720) {}
 
     ~SandboxApp() {
         for (auto& pair : m_chunkMap) {
@@ -81,47 +79,33 @@ public:
         // Configuración inicial del ratón
         mge::InputManager::setCursorMode(true);
 
-        // --- GUI SETUP ---
-        // Compilar shader 2D (Usando los que ya tenías para el juego 2D)
-        m_guiShader.compileShaders("../assets/shaders/texture.vert", "../assets/shaders/texture.frag");
-        m_guiShader.addAttribute("vertexPosition");
-        m_guiShader.addAttribute("vertexUV");
-        m_guiShader.linkShaders();
-
-        // Cámara 2D del tamaño de la ventana (para coordenadas de pixel)
-        // _guiCamera ya inicializada en el constructor
-
-        // Configurar Etiquetas
-        m_fpsLabel.init("../assets/fonts/PixelOperator8-Bold.ttf", 24);
-        m_fpsLabel.setPosition(10.0f, 680.0f); // Esquina superior izquierda
-        m_fpsLabel.setText("FPS: 60", m_fpsColor);
-
-        m_infoLabel.init("../assets/fonts/PixelOperator8.ttf", 16);
-        m_infoLabel.setPosition(10.0f, 10.0f); // Abajo
-        m_infoLabel.setText("mge v1.0 - WASD to Move", glm::vec4(1.0f));
+        // El HUD de texto (SDL_ttf) se quitó en #9; vuelve con la fuente embebida en M4 (#41-#43).
+        // Mientras tanto los FPS se escriben en el log (nivel Debug) cada 5 segundos.
+        MGE_LOG_INFO("Sandbox",
+                     "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, P: pausa, Esc: salir");
     }
 
     void onEvent(SDL_Event& event) override {
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+        // Tamaño en píxeles (no en puntos): correcto también en pantallas HiDPI
+        if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
             int newWidth = event.window.data1;
             int newHeight = event.window.data2;
             glViewport(0, 0, newWidth, newHeight);
             m_camera.updateProjection((float)newWidth, (float)newHeight);
         }
 
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED &&
-            m_mouseCaptured && !m_isPaused) {
+        if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && m_mouseCaptured && !m_isPaused) {
             mge::InputManager::setCursorMode(true);
         }
 
-        if (event.type == SDL_MOUSEBUTTONDOWN && !m_isPaused) {
+        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !m_isPaused) {
             mge::InputManager::setCursorMode(true);
         }
 
-        if (event.type == SDL_KEYDOWN) {
-            if (event.key.keysym.sym == SDLK_ESCAPE) m_running = false;
+        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
+            if (event.key.key == SDLK_ESCAPE) m_running = false;
 
-            if (event.key.keysym.sym == SDLK_p) {
+            if (event.key.key == SDLK_P) {
                 m_isPaused = !m_isPaused;
                 if (m_isPaused) {
                     Time::setTimeScale(0.0f);
@@ -201,29 +185,15 @@ public:
         m_tilesetTexture.unbind();
         m_shader3D.unuse();
 
-        // 2. DIBUJAR GUI (ENCIMA DEL 3D)
-        // Desactivar Depth Test para que la GUI siempre se dibuje encima
-        glDisable(GL_DEPTH_TEST);
-
-        m_guiCamera.update();
-
-        // Actualizar FPS dinámicamente (ejemplo)
-        static int frameCount = 0;
-        frameCount++;
-        if (frameCount % 60 == 0) {
-            // Tiempo real (sin escalar): en pausa el tiempo escalado es 0 y dividiríamos entre 0
-            float realDelta = Time::getUnscaledDeltaTime();
-            int fps = realDelta > 0.0f ? (int)(1.0f / realDelta) : 0;
-            // Pasamos el color siempre: setText usa blanco por defecto
-            m_fpsLabel.setText("FPS: " + std::to_string(fps), m_fpsColor);
+        // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
+        m_fpsFrames++;
+        m_fpsElapsed += Time::getUnscaledDeltaTime();
+        if (m_fpsElapsed >= 5.0f) {
+            MGE_LOG_DEBUG("Sandbox", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed), " (",
+                          m_chunkMap.size(), " chunks)");
+            m_fpsFrames = 0;
+            m_fpsElapsed = 0.0f;
         }
-
-        // Dibujar etiquetas
-        m_fpsLabel.draw(m_guiShader, m_guiCamera.getProjectionMatrix());
-        m_infoLabel.draw(m_guiShader, m_guiCamera.getProjectionMatrix());
-
-        // Reactivar Depth Test para el siguiente frame 3D
-        glEnable(GL_DEPTH_TEST);
     }
 
 private:
@@ -246,12 +216,9 @@ private:
     std::map<ChunkKey, Chunk*> m_chunkMap;
     Texture m_tilesetTexture;
 
-    // Variables de GUI movidas dentro de la clase
-    GLSLProgram m_guiShader;
-    mge::Camera2D m_guiCamera;
-    GUILabel m_fpsLabel;
-    const glm::vec4 m_fpsColor{1.0f, 1.0f, 0.0f, 1.0f}; // Amarillo
-    GUILabel m_infoLabel;
+    // Medición de FPS para el log
+    int m_fpsFrames = 0;
+    float m_fpsElapsed = 0.0f;
 
     std::vector<int> m_waterFrames = {205, 206, 207, 222, 223};
     std::vector<int> m_lavaFrames = {237, 238, 239, 254, 255};

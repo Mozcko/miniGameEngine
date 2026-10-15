@@ -3,8 +3,6 @@
 #include <vector>
 #include <GL/glew.h>
 
-struct SDL_Surface; // NOLINT(readability-identifier-naming): tipo de SDL
-
 namespace mge {
 
     class Texture {
@@ -21,8 +19,6 @@ namespace mge {
         void unbind();
 
         void updateTile(int destTileIdx, int srcTileIdx, int tileW, int tileH);
-
-        void loadFromSurface(SDL_Surface* surface);
 
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }

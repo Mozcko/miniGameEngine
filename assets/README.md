@@ -13,7 +13,6 @@ setting.
 |--------|-------|----------------------|-----|
 | `shaders/` | `basic3d.*`, `texture.*`, `color.*` (GLSL 330 core) | basic3d + texture: yes; color: no | [shaders/README.md](shaders/README.md) |
 | `textures/` | `Minecraft-like_3d_tileset.png` (512×512 RGBA atlas) | Yes | [textures/README.md](textures/README.md) |
-| `fonts/` | `PixelOperator8.ttf`, `PixelOperator8-Bold.ttf` | Yes (HUD) | [fonts/README.md](fonts/README.md) |
 | `sounds/` | 6 × WAV (8‑bit mono 44.1 kHz) | No | [sounds/README.md](sounds/README.md) |
 | `music/` | `time_for_adventure.mp3` | No | [music/README.md](music/README.md) |
 | `levels/` | `level1..4.txt` ASCII 2D tile maps | No (no loader exists) | [levels/README.md](levels/README.md) |

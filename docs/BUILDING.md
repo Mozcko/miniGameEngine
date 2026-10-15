@@ -6,9 +6,7 @@
 |------------|----------|-----------------|----------------|-----------------------|
 | CMake ≥ 3.10 | build | – | `cmake` | `cmake` |
 | C++17 compiler | build | – | `gcc-c++` | `g++` |
-| SDL2 | window, events, input, timer | `find_package(SDL2)` | `SDL2-devel` | `libsdl2-dev` |
-| SDL2_mixer | audio | `find_package(SDL2_mixer)` | `SDL2_mixer-devel` | `libsdl2-mixer-dev` |
-| SDL2_ttf | font rendering | `find_package(SDL2_ttf)` | `SDL2_ttf-devel` | `libsdl2-ttf-dev` |
+| SDL3 ≥ 3.2 | window, events, input, audio | `FetchContent` with `FIND_PACKAGE_ARGS`: system package if installed, otherwise **built from source** (pinned 3.4.18, SHA‑256) | `SDL3-devel` | not packaged in 24.04 → built from source |
 | GLEW | OpenGL loader | `find_package(GLEW)` | `glew-devel` | `libglew-dev` |
 | OpenGL 3.3 | rendering | `find_package(OpenGL)` | mesa / GPU driver | `libgl-dev` |
 | GLM | math (header‑only) | **no** – must be on the default include path | `glm-devel` | `libglm-dev` |
@@ -63,6 +61,34 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 - Include roots are `src/` (`#include <mge/core/Time.h>`) and `games/` (`#include <sandbox/Chunk.h>`).
 - OpenGL is linked through GLVND (`OpenGL::GL`).
 
+## SDL3: system package or built from source
+
+`CMakeLists.txt` declares SDL3 with `FetchContent_Declare(... FIND_PACKAGE_ARGS 3.2 CONFIG)`:
+
+- If an SDL3 ≥ 3.2 CMake package is installed (Fedora: `sudo dnf install SDL3-devel`), it is
+  used. This is the fastest option.
+- Otherwise SDL **3.4.18** is downloaded (SHA‑256 pinned) and built as a static library inside the
+  build dir. That is how CI works on Ubuntu 24.04, which doesn't package SDL3. The configure step
+  prints which path was taken (`SDL3: usando la instalación del sistema` / `compilado desde el
+  código fuente`).
+- Building from source needs SDL's Linux development headers (X11, Wayland, EGL/GL, xkbcommon,
+  audio backends). CI installs them in `scripts/ci-install-deps.sh`; the full list is in SDL's
+  [README-linux](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies).
+  - The XScrnSaver extension is disabled (`SDL_X11_XSCRNSAVER=OFF`), so its package isn't needed.
+  - Without libdecor (`libdecor-devel` / `libdecor-0-dev`), SDL still builds, but windows on GNOME
+    Wayland have no title bar.
+- To force a source build even with SDL3 installed:
+  `-DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER`.
+
+## Headless runs
+
+SDL3's offscreen video driver plus GLEW on EGL lets the game run without a display (useful in CI
+and over SSH):
+
+```bash
+cd build && SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy timeout 10 ./sandbox
+```
+
 ## Tests
 
 Unit tests use [doctest](https://github.com/doctest/doctest) (fetched by CMake, pinned + hash‑checked, never linked into the game) and run through CTest:
@@ -109,8 +135,9 @@ Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Ca
 | `[Shader] No se pudo abrir el archivo: ../assets/...` then `[Sandbox] No se pudo crear el shader 3D` and a clean exit | Wrong working directory – `cd build` first. |
 | `[Texture] No se pudo cargar la textura ...` | Same as above, or PNG missing. |
 | `[GUI] No se pudo cargar la fuente ...` | Font path wrong (cwd). |
+| SDL configure error `Couldn't find dependency package for …` | Building SDL3 from source without one of its dev packages: install it (see above) or `sudo dnf install SDL3-devel` to skip the source build. |
 | `[Window] No se pudo crear el contexto OpenGL` / `No se pudo inicializar GLEW` | GPU/driver doesn't provide GL 3.3 core (e.g. some VMs). Try `LIBGL_ALWAYS_SOFTWARE=1`. |
-| `[Audio] No se pudo iniciar SDL_mixer` | No audio device; non‑fatal, game continues. |
+| `[Audio] No se pudo abrir el dispositivo de audio` | No audio device; non‑fatal, game continues silently. |
 | `fatal error: stb/stb_image.h` / `glm/glm.hpp` not found | Install the header packages above, or add their include dir to `include_directories()` in CMakeLists. |
 | Mouse can't escape window | Cursor is locked by design. Press `P` to pause (releases it) or `Esc` to quit. |
 

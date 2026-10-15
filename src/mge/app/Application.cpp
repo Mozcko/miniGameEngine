@@ -1,6 +1,5 @@
 #include <mge/app/Application.h>
 #include <GL/glew.h>
-#include <SDL2/SDL_ttf.h>
 #include <mge/platform/InputManager.h>
 #include <mge/core/Log.h>
 
@@ -11,7 +10,7 @@ namespace mge {
         mge::AudioManager::init();
 
         // Inicialización de SDL
-        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+        if (!SDL_Init(SDL_INIT_VIDEO)) {
             MGE_LOG_FATAL("App", "No se pudo inicializar SDL: ", SDL_GetError());
             m_running = false;
             return;
@@ -22,16 +21,11 @@ namespace mge {
             m_running = false; // El motivo ya está en el log
             return;
         }
-
-        if (TTF_Init() == -1) {
-            MGE_LOG_ERROR("App", "No se pudo inicializar SDL_ttf: ", TTF_GetError());
-        }
     }
 
     Application::~Application() {
         // Limpiar Audio
         mge::AudioManager::shutdown();
-        TTF_Quit();
         // Limpieza
         SDL_Quit();
     }
@@ -60,7 +54,7 @@ namespace mge {
 
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
-                if (event.type == SDL_QUIT) {
+                if (event.type == SDL_EVENT_QUIT) {
                     m_running = false;
                 }
                 onEvent(event);

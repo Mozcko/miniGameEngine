@@ -26,9 +26,7 @@ Include as `#include <sandbox/Chunk.h>`.
 | `camera` | `mge::Camera3D` | Player view, created 1280×720, starts at (0, 25, 0) |
 | `m_chunkMap` | `std::map<ChunkKey, Chunk*>` | All loaded chunks, owned (deleted in destructor) |
 | `m_tilesetTexture` | `Texture` | `Minecraft-like_3d_tileset.png` |
-| `m_guiShader` | `GLSLProgram` | `texture.vert/frag` – HUD |
-| `m_guiCamera` | `mge::Camera2D` | HUD projection |
-| `m_fpsLabel`, `m_infoLabel` | `GUILabel` | Yellow "FPS: N" (PixelOperator8‑Bold 24) and white "MiniGameEngine v1.0 - WASD to Move" (PixelOperator8 16) |
+| `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s (the TTF HUD was removed in #9) |
 | `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
 | `m_waterTarget` / `m_lavaTarget` | `int` | Tiles 207 / 239 – overwritten each animation step |
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
@@ -41,12 +39,12 @@ Include as `#include <sandbox/Chunk.h>`.
 2. Load the tileset texture.
 3. GL state: depth test on, back‑face culling on, alpha blending.
 4. `Time::init()`, lock the cursor.
-5. Compile/link `m_guiShader`, initialise both labels.
+5. Log the controls (Info).
 
 ### `onEvent`
 | Event | Action |
 |-------|--------|
-| Window resized | `glViewport` + `camera.updateProjection` (HUD camera not updated) |
+| Window resized | `glViewport` + `camera.updateProjection` (listens to `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`, so HiDPI is correct) |
 | Focus gained (not paused) | Re‑lock cursor |
 | Mouse button down (not paused) | Re‑lock cursor |
 | `Esc` | `m_running = false` |
@@ -63,7 +61,7 @@ Include as `#include <sandbox/Chunk.h>`.
 
 ### `onRender`
 Sky clear → opaque pass over all chunks → transparent pass with `glDepthMask(GL_FALSE)` →
-HUD with depth test off (FPS text refreshed every 60 frames). See `docs/ARCHITECTURE.md` §6.
+FPS log every 5 s. See `docs/ARCHITECTURE.md` §6.
 
 ### `getGlobalBlock(x, y, z)`
 World block coords → chunk key via `floor(x / 16)`, local coords via `%` with negative fix‑up.

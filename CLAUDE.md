@@ -8,16 +8,17 @@ and a `README.md` inside every folder of `src/` and `assets/`.
   **single executable with zero asset files**. Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M8,
   issues #1–#67, epics #68–#76 on Mozcko/miniGameEngine).
 - **GPU API decision: SDL3 GPU API (Vulkan/Metal/D3D12). Do NOT build new features on OpenGL** – the
-  GL renderer is legacy and gets deleted after parity (#40). Platform moves SDL2 → SDL3 (#9).
+  GL renderer is legacy and gets deleted after parity (#40). Platform is on SDL3 (#9 done).
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
   0002 zero assets, 0003 headless core) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state, pre-migration)
-- C++17 mini game engine: SDL2 (window/input/events), OpenGL 3.3 Core via GLEW, GLM math,
-  stb_image (textures), SDL2_ttf (text), SDL2_mixer (audio). Linux/Fedora dev box, CMake build.
+- C++17 mini game engine: **SDL3** (window/input/events/audio), OpenGL 3.3 Core via GLEW (legacy
+  renderer until #40), GLM math, stb_image (textures). Linux/Fedora dev box, CMake build. SDL3 is
+  used from the system (`SDL3-devel`) or built from source via FetchContent (pinned 3.4.18).
 - Demo client: `games/sandbox/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
-  procedural sine/cosine terrain, trees/flowers, animated water/lava, text HUD).
+  procedural sine/cosine terrain, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
 - Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
 
 ## Build & run
@@ -38,7 +39,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 
 ## Architecture in 10 lines
 1. `src/mge/app/Main.cpp` owns `main()` → `mge::createApplication()` (defined by the game) → `run()`.
-2. `mge::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW) → TTF_Init.
+2. `mge::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW).
 3. `run()`: InputManager::init → `onInit()` → loop { dt, InputManager::update, poll events
    (→ `onEvent` + InputManager::processEvent), `onUpdate(dt)`, `onRender()`, swapBuffers }.
 4. Game stops by setting protected `m_running = false`.
@@ -47,7 +48,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
 8. `Texture` is a copyable handle; destructor does NOT free GPU memory (call `destroy()`).
 9. Cameras: `Camera`(abstract) → `Camera2D`; separate `Camera3D` (free‑fly + AABB collision callback) → `FirstPersonCamera` (gravity/jump; currently unused).
-10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off, then HUD.
+10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off.
 
 ## Conventions
 - **One namespace `mge`** (the sandbox's Block/Chunk currently live in it too). Naming, enforced by
@@ -70,8 +71,8 @@ success.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
 - `Camera3D::isSphereVisible` always returns true (frustum culling is a stub); chunks are never unloaded.
-- `Camera2D` ortho is in aspect units (−1.78..1.78 × −1..1), but HUD labels are placed in pixels
-  (e.g. y=680) and `GL_CULL_FACE` is on while sprite quads wind clockwise → HUD text is probably invisible.
+- SDL3 + GLEW: on Wayland/EGL `glewInit` returns `GLEW_ERROR_NO_GLX_DISPLAY`; `Window` treats it as
+  success (functions are already loaded). Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy`.
 - `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).
 - `Window::init` disables depth test; SandboxApp re‑enables it in `onInit`.
 - `SDL_Quit()` is called by both `~Window` and `~Application`.
