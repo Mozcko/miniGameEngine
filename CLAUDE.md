@@ -52,8 +52,6 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
-- Trees and roses NEVER spawn: `Chunk::generate` pass 2 re‑seeds `srand` with the same seed, so its
-  decoration roll repeats pass 1's gravel roll (always ≥ 5 on grass). Verified headlessly.
 - `Camera3D::isSphereVisible` always returns true (frustum culling is a stub); chunks are never unloaded.
 - `Camera2D` ortho is in aspect units (−1.78..1.78 × −1..1), but HUD labels are placed in pixels
   (e.g. y=680) and `GL_CULL_FACE` is on while sprite quads wind clockwise → HUD text is probably invisible.
