@@ -18,6 +18,7 @@ ctest --preset dev                      # all tests
 | `test_main.cpp` | doctest `main()` – no tests here |
 | `core/test_time.cpp` | `Time`: scaling, pause, hitch clamp, real clock never negative |
 | `core/test_ecs.cpp` | Entity lifecycle/recycling, components, swap‑and‑pop integrity, views, transform hierarchy (rotation, cycles, destroyed parent), World phases, ECS systems in a headless app |
+| `procgen/test_mesh_ops.cpp` | Transform (incl. mirror), merge, weld, flip, normals, triangulation, extrude, lathe, sweep |
 | `procgen/test_primitives.cpp` | Every primitive: counts, validity, unit normals, watertight, winding vs normals, outward normals, bounds (helpers in `procgen/MeshChecks.h`, reused by later procgen tests) |
 | `procgen/test_meshdata.cpp` | `mge_procgen_tests`: MeshData building, validation errors, bounds, OBJ output |
 | `core/test_umbrella.cpp` | `<mge/mge.h>` with only `mge_core`: compiles without SDL and doesn't see module headers (`#error` otherwise) |

@@ -1,4 +1,5 @@
 #include <mge/procgen/Primitives.h>
+#include <mge/procgen/detail/MeshBuilding.h>
 
 #include <glm/gtc/constants.hpp>
 
@@ -10,72 +11,14 @@
 
 namespace mge::primitives {
 
+    using detail::addOrientedQuad;
+    using detail::addOrientedTriangle;
+    using detail::revolve;
+    using detail::Row;
+
     namespace {
         constexpr float kTwoPi = glm::two_pi<float>();
         constexpr float kPi = glm::pi<float>();
-
-        // Agrega el triángulo con el orden que hace que su normal geométrica coincida con las normales
-        // de sus vértices. Así cada primitiva queda en sentido antihorario visto desde afuera sin tener
-        // que razonar el orden a mano en cada caso.
-        void addOrientedTriangle(MeshData& mesh, std::uint32_t a, std::uint32_t b, std::uint32_t c) {
-            const glm::vec3 faceNormal =
-                glm::cross(mesh.positions[b] - mesh.positions[a], mesh.positions[c] - mesh.positions[a]);
-            const glm::vec3 vertexNormals = mesh.normals[a] + mesh.normals[b] + mesh.normals[c];
-            if (glm::dot(faceNormal, vertexNormals) < 0.0f)
-                mesh.addTriangle(a, c, b);
-            else
-                mesh.addTriangle(a, b, c);
-        }
-
-        void addOrientedQuad(MeshData& mesh, std::uint32_t a, std::uint32_t b, std::uint32_t c,
-                             std::uint32_t d) {
-            addOrientedTriangle(mesh, a, b, c);
-            addOrientedTriangle(mesh, a, c, d);
-        }
-
-        // Una fila de una superficie de revolución alrededor del eje Y
-        struct Row {
-            float radius;     // Distancia al eje (0 = polo)
-            float y;          // Altura
-            glm::vec2 normal; // (componente radial, componente Y) de la normal
-            float v;          // Coordenada de textura vertical
-        };
-
-        // Revoluciona filas alrededor del eje Y. Cada fila tiene segments + 1 vértices (el último
-        // duplica el primero para la costura de UV). Entre dos filas: quads, o un solo triángulo si
-        // una de ellas es un polo (radio 0), para no generar triángulos degenerados.
-        void revolve(MeshData& mesh, const std::vector<Row>& rows, int segments, const glm::vec4& color) {
-            const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertexCount());
-            const std::uint32_t stride = static_cast<std::uint32_t>(segments + 1);
-            for (const Row& row : rows) {
-                for (int s = 0; s <= segments; s++) {
-                    const float u = static_cast<float>(s) / static_cast<float>(segments);
-                    const float angle = u * kTwoPi;
-                    const glm::vec3 radial(std::cos(angle), 0.0f, std::sin(angle));
-                    const glm::vec3 position = radial * row.radius + glm::vec3(0.0f, row.y, 0.0f);
-                    const glm::vec3 normal =
-                        glm::normalize(radial * row.normal.x + glm::vec3(0.0f, row.normal.y, 0.0f));
-                    mesh.addVertex(position, normal, color, {u, row.v});
-                }
-            }
-            for (std::size_t r = 0; r + 1 < rows.size(); r++) {
-                const bool topPole = rows[r].radius <= 0.0f;
-                const bool bottomPole = rows[r + 1].radius <= 0.0f;
-                for (std::uint32_t s = 0; s < stride - 1; s++) {
-                    const std::uint32_t a = base + static_cast<std::uint32_t>(r) * stride + s;
-                    const std::uint32_t b = a + 1;
-                    const std::uint32_t c = a + stride + 1;
-                    const std::uint32_t d = a + stride;
-                    if (topPole && bottomPole) continue;
-                    if (topPole)
-                        addOrientedTriangle(mesh, a, c, d);
-                    else if (bottomPole)
-                        addOrientedTriangle(mesh, a, b, d);
-                    else
-                        addOrientedQuad(mesh, a, b, c, d);
-                }
-            }
-        }
 
         // Tapa plana horizontal (disco) a la altura y, mirando hacia normalY (+1 o -1)
         void addCap(MeshData& mesh, float radius, float y, float normalY, int segments,
