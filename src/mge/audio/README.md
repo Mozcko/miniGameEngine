@@ -14,7 +14,7 @@ zero‑asset policy ([ADR 0002](../../../docs/adr/0002-zero-asset-policy.md)).
 | Method | Behaviour |
 |--------|-----------|
 | `init()` | `SDL_InitSubSystem(SDL_INIT_AUDIO)` and opens the default playback device. Called by `AudioModule::onInit`. Failure is logged and the game continues **silently** (every call becomes a no‑op). |
-| `shutdown()` | Destroys active streams, frees cached WAV data (`SDL_free`), closes the device, quits the audio subsystem. Called by `AudioModule::onShutdown`. |
+| `shutdown()` | Destroys active streams, frees cached WAV data (`SDL_free`), closes the device, quits the audio subsystem (and calls `SDL_Quit()` if it was the last SDL subsystem). Called by `AudioModule::onShutdown`. |
 | `playSound(path, volume = 128)` | Loads the WAV with `SDL_LoadWAV` on first use (cached), creates an `SDL_AudioStream` (WAV format → device format), binds it to the device, sets gain `volume/128` (0–128, same scale as before), queues the data. One stream per playing sound; finished streams are released lazily on the next call. |
 | `playMusic(path, loops)` | **Not supported** until #49 – logs a warning and does nothing. |
 | `pauseMusic()` / `resumeMusic()` / `stopMusic()` | No‑ops (see above). |

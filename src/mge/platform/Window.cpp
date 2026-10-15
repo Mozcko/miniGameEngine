@@ -12,16 +12,11 @@ namespace mge {
     Window::~Window() {
         if (m_glContext) SDL_GL_DestroyContext(m_glContext);
         if (m_sdlWindow) SDL_DestroyWindow(m_sdlWindow);
-        SDL_Quit();
         MGE_LOG_INFO("Window", "Ventana cerrada y recursos liberados");
     }
 
     bool Window::init() {
-        if (!SDL_Init(SDL_INIT_VIDEO)) {
-            MGE_LOG_FATAL("Window", "No se pudo inicializar SDL: ", SDL_GetError());
-            return false;
-        }
-
+        // El subsistema de video lo inicializa el PlatformModule (dueño del ciclo de vida de SDL)
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);

@@ -40,6 +40,16 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "MGE_WERROR": "ON"
       }
+    },
+    {
+      "name": "asan",
+      "displayName": "ASan + UBSan (Debug)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "MGE_SANITIZERS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -54,6 +64,10 @@
     {
       "name": "ci",
       "configurePreset": "ci"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan"
     }
   ],
   "testPresets": [
@@ -69,6 +83,17 @@
       "configurePreset": "ci",
       "output": {
         "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+        "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"
       }
     }
   ]

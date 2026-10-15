@@ -5,6 +5,14 @@
 
 namespace mge {
 
+    namespace {
+        // Libera el subsistema de audio; si era el último de SDL, cierra SDL por completo
+        void quitAudioSubsystem() {
+            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+            if (SDL_WasInit(0) == 0) SDL_Quit();
+        }
+    }
+
     SDL_AudioDeviceID AudioManager::s_device = 0;
     std::map<std::string, AudioManager::Sound> AudioManager::s_soundCache;
     std::vector<SDL_AudioStream*> AudioManager::s_activeStreams;
@@ -20,7 +28,7 @@ namespace mge {
         if (s_device == 0) {
             MGE_LOG_ERROR("Audio", "No se pudo abrir el dispositivo de audio (el juego sigue sin sonido): ",
                           SDL_GetError());
-            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+            quitAudioSubsystem();
             return;
         }
         MGE_LOG_INFO("Audio", "Sistema de audio inicializado");
@@ -40,7 +48,7 @@ namespace mge {
         if (s_device != 0) {
             SDL_CloseAudioDevice(s_device);
             s_device = 0;
-            SDL_QuitSubSystem(SDL_INIT_AUDIO);
+            quitAudioSubsystem();
             MGE_LOG_INFO("Audio", "Sistema de audio cerrado");
         }
     }
