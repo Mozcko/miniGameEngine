@@ -79,9 +79,39 @@ if(MGE_BUILD_MODULES)
     )
     target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
     mge_add_shaders(mge_gpu_tests SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
+
+    # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
+    # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.
+    add_executable(gpu_validation_probe gpu/ValidationProbe.cpp)
+    target_link_libraries(gpu_validation_probe PRIVATE mge_gpu)
+    mge_set_warnings(gpu_validation_probe)
+    mge_add_shaders(gpu_validation_probe SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
+    add_test(NAME "gpu: la validación corta ante un uso incorrecto de la API" COMMAND gpu_validation_probe)
+    set_tests_properties("gpu: la validación corta ante un uso incorrecto de la API" PROPERTIES
+        LABELS gpu SKIP_RETURN_CODE 77 ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
+        PASS_REGULAR_EXPRESSION "VUID-VkGraphicsPipelineCreateInfo-layout-07988")
+
+    # Render: escenas comparadas con imágenes de referencia (tests/render/golden). MGE_UPDATE_GOLDEN=1 las reescribe
+    add_executable(render_tests
+        test_main.cpp
+        render/RenderTest.h render/RenderTest.cpp
+        render/test_render_scenes.cpp
+    )
+    target_link_libraries(render_tests PRIVATE mge_gpu doctest_header)
+    target_compile_definitions(render_tests PRIVATE
+        MGE_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/render/golden"
+        MGE_RENDER_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/render_output")
+    mge_set_warnings(render_tests)
+    mge_add_shaders(render_tests SHADERS
+        render/shaders/vertex_colors.vert render/shaders/vertex_colors.frag
+        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag)
+    doctest_discover_tests(render_tests TEST_PREFIX "render: "
+        PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
+                   FAIL_REGULAR_EXPRESSION "Validation Error")
     mge_set_warnings(mge_gpu_tests)
     doctest_discover_tests(mge_gpu_tests TEST_PREFIX "gpu: "
-        PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+        PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
+                   FAIL_REGULAR_EXPRESSION "Validation Error")
 endif()
 
 # --- Tests del sandbox (necesitan los módulos del motor) ---

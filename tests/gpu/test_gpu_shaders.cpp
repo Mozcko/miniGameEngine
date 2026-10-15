@@ -71,5 +71,4 @@ TEST_CASE("GPU: triángulo con un uniform del fragmento, dibujado y leído de vu
         CHECK(pixel(x, y)[1] == 0);
         CHECK(pixel(x, y)[2] == 255);
     }
-    CHECK(GpuTestContext::validationMessages().empty());
 }

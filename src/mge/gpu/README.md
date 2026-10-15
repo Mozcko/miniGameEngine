@@ -139,14 +139,31 @@ SPIR‑V, so a mismatch is reported by the validation layers.
     doesn't allow cancelling, so it's submitted empty.
   - `beginRenderPass(color, depth*)` and `beginCopyPass()` return passes that end at scope exit.
 
+## Coordinate conventions
+SDL GPU uses the same conventions on every backend, converting for Vulkan internally:
+- **NDC:** Y up, Z in [0, 1].
+- **Viewport and texture coordinates:** origin at the top‑left.
+
+So use `glm::perspectiveRH_ZO` and the usual `glm::lookAt`. MeshData's counter‑clockwise winding
+is then front‑facing, matching the pipeline default.
+
 ## Tests and examples
 - **`tests/gpu/` → `mge_gpu_tests`** (label `gpu`): clear and read back, mesh upload, move
-  semantics, cancelled command buffers, embedded SPIR‑V (magic number, stage, alignment), a
-  triangle with a fragment uniform drawn and read back, and no validation messages.
+  semantics, cancelled command buffers, embedded SPIR‑V (magic number, stage, alignment), and a
+  triangle with a fragment uniform drawn and read back.
+- **Validation in CI.** The tests request the Vulkan validation layers, which print errors to the
+  test's output. Every GPU test and GPU smoke test has the CTest property
+  `FAIL_REGULAR_EXPRESSION "Validation Error"`, so API misuse, or a resource still alive when the
+  device is destroyed, fails the test.
+  - `MGE_REQUIRE_VALIDATION=1` (CI) fails if the layers aren't active.
+  - `gpu_validation_probe` triggers a real error on purpose and passes only if its VUID appears in
+    the output, which proves the mechanism works.
+  - Locally, without the layers installed, the probe is skipped.
   - They run **without a window** (SDL `offscreen` video driver, rendering into textures).
   - With no compatible GPU they're skipped with a message. `MGE_REQUIRE_GPU=1`, set in CI, turns
     that into a failure.
   - CI uses Mesa **lavapipe** (software Vulkan). Locally the real GPU is used; to try lavapipe:
     `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`.
+- **`tests/render/` → `render_tests`:** golden‑image scenes (see `tests/README.md`).
 - **`examples/gpu_triangle`:** a rotating triangle (embedded shaders, a vertex uniform) on a
   pulsing background. Its smoke test runs 60 frames offscreen and fails if no frame was presented.

@@ -5,25 +5,32 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <doctest/doctest.h>
 
 // Device de GPU para los tests (sin ventana: se dibuja en texturas y se leen los píxeles).
 // - Usa el driver de video "offscreen" de SDL salvo que SDL_VIDEODRIVER diga otra cosa.
 // - Sin GPU compatible el test se saltea con un aviso; con MGE_REQUIRE_GPU=1 (CI) falla.
-// - Junta los mensajes de validación de la GPU del log de SDL: un test limpio no tiene ninguno.
+// - Pide las capas de validación de Vulkan (modo debug). Los errores los imprime la capa en la salida
+//   (SDL no los recibe) y CTest falla el test si aparece "Validation Error" (FAIL_REGULAR_EXPRESSION):
+//   un uso incorrecto de la API o un recurso sin liberar al destruir el device hace fallar el test.
+//   Con MGE_REQUIRE_VALIDATION=1 (CI) falla si las capas no están activas.
+//   tests/gpu/ValidationProbe.cpp comprueba que los errores llegan a la salida.
 namespace mge_test {
 
     class GpuTestContext {
     public:
         GpuTestContext() {
-            s_validationMessages.clear();
             if (!std::getenv("SDL_VIDEODRIVER")) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
+            s_validationActive = false;
             SDL_GetLogOutputFunction(&s_previousLog, &s_previousUserdata);
             SDL_SetLogOutputFunction(&captureLog, nullptr);
+            m_previousPriority = SDL_GetLogPriority(SDL_LOG_CATEGORY_GPU);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_GPU,
+                               SDL_LOG_PRIORITY_INFO); // Para ver "Validation layers enabled"
             if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) return;
             m_videoInit = true;
             mge::GpuDeviceOptions options;
@@ -34,40 +41,48 @@ namespace mge_test {
         ~GpuTestContext() {
             m_device.reset();
             if (m_videoInit) SDL_QuitSubSystem(SDL_INIT_VIDEO);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_GPU, m_previousPriority);
             SDL_SetLogOutputFunction(s_previousLog, s_previousUserdata);
         }
 
-        // false = no hay GPU: el test debe terminar (ya se reportó como aviso o como falla)
+        // false = no hay GPU (o faltan las capas de validación exigidas): el test debe terminar
         bool available() const {
-            if (m_device) return true;
-            const char* require = std::getenv("MGE_REQUIRE_GPU");
-            if (require && std::string(require) == "1") {
-                FAIL("No hay GPU compatible y MGE_REQUIRE_GPU=1: ", SDL_GetError());
-            } else {
-                MESSAGE("Test salteado: no hay GPU compatible (", SDL_GetError(), ")");
+            if (!m_device) {
+                if (envIs("MGE_REQUIRE_GPU", "1")) {
+                    FAIL("No hay GPU compatible y MGE_REQUIRE_GPU=1: ", SDL_GetError());
+                } else {
+                    MESSAGE("Test salteado: no hay GPU compatible (", SDL_GetError(), ")");
+                }
+                return false;
             }
-            return false;
+            if (!s_validationActive && envIs("MGE_REQUIRE_VALIDATION", "1")) {
+                FAIL("MGE_REQUIRE_VALIDATION=1 pero las capas de validación de Vulkan no están activas");
+                return false;
+            }
+            return true;
         }
 
         mge::GpuDevice& device() { return *m_device; }
+        static bool validationActive() { return s_validationActive; }
 
-        // Mensajes de las capas de validación capturados desde que se creó el contexto
-        static const std::vector<std::string>& validationMessages() { return s_validationMessages; }
+        static bool envIs(const char* name, const char* value) {
+            const char* env = std::getenv(name);
+            return env && std::strcmp(env, value) == 0;
+        }
 
     private:
         static void SDLCALL captureLog(void* /*userdata*/, int category, SDL_LogPriority priority,
                                        const char* message) {
-            const std::string text = message ? message : "";
-            if (text.find("Validation") != std::string::npos || text.find("VUID") != std::string::npos)
-                s_validationMessages.push_back(text);
+            if (message && std::strstr(message, "Validation layers enabled")) s_validationActive = true;
             if (s_previousLog) s_previousLog(s_previousUserdata, category, priority, message);
         }
 
-        inline static std::vector<std::string> s_validationMessages;
+        inline static bool s_validationActive = false;
         inline static SDL_LogOutputFunction s_previousLog = nullptr;
         inline static void* s_previousUserdata = nullptr;
 
         bool m_videoInit = false;
+        SDL_LogPriority m_previousPriority = SDL_LOG_PRIORITY_ERROR;
         std::unique_ptr<mge::GpuDevice> m_device;
     };
 }
