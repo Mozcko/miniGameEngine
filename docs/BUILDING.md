@@ -65,6 +65,16 @@ ctest --preset dev            # or: ctest --test-dir build --output-on-failure
 
 Tests are **headless**: they need no display or GPU. Disable them with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on every pull request:
+- Ubuntu 24.04, **GCC and Clang** matrix, Ninja, ccache.
+- `cmake --preset ci` (Debug, `-Werror`) → build → `ctest --preset ci` (headless).
+- Superseded runs of the same branch are cancelled.
+
+A PR may only be merged when both jobs are green. To reproduce CI locally:
+`cmake --preset ci -G Ninja && cmake --build --preset ci && ctest --preset ci`.
+
 ## Run
 
 ```bash

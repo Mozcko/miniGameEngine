@@ -1,5 +1,7 @@
 # miniGameEngine
 
+[![CI](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml)
+
 A small, educational C++17 game engine built on **SDL2 + OpenGL 3.3 Core (via GLEW)**, with a
 Minecraft‑style voxel sandbox as its demo game.
 
