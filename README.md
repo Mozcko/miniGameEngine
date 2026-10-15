@@ -70,6 +70,7 @@ miniGameEngine/
 │   │       ├── 2D/         Sprite, Animation, GUILabel
 │   │       └── Camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
 │   └── Game/               The voxel sandbox client  → src/Game/README.md
+├── tests/                  doctest unit tests (headless)  → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── shaders/            GLSL 330 shaders
 │   ├── textures/           512×512 block tileset atlas

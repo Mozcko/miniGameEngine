@@ -12,7 +12,7 @@ namespace MiniGameEngine {
 
     class Chunk {
     public:
-        Chunk(int x, int z);
+        Chunk(int x, int z);   // Genera los bloques; llamar buildMesh() antes de dibujar
         ~Chunk();
 
         void generate();

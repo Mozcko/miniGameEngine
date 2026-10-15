@@ -19,6 +19,7 @@ endif()
 # --- Opciones ---
 option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
+option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
 
 # --- Dependencias ---
 set(OpenGL_GL_PREFERENCE GLVND)
@@ -28,38 +29,52 @@ find_package(OpenGL REQUIRED)
 find_package(SDL2_mixer REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 
-# --- Configuración de Sources ---
-# Recolectamos todo el código fuente del MOTOR
-file(GLOB_RECURSE ENGINE_SOURCES "src/Engine/*.cpp" "src/Engine/*.h")
-
-# Recolectamos el código fuente del JUEGO (Sandbox)
-file(GLOB_RECURSE GAME_SOURCES "src/Game/*.cpp" "src/Game/*.h")
-
-# --- Creación del Ejecutable ---
-# Aquí combinamos el motor y el juego en un solo ejecutable por ahora.
-# (La separación en librerías se hace en el issue #8)
-add_executable(miniGameEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
-
-# --- Include Paths ---
-# Permitimos incluir headers como #include "Engine/Graphics/Shader.h"
-target_include_directories(miniGameEngine PRIVATE src)
-# Headers de terceros como SYSTEM para que sus warnings no nos afecten
-target_include_directories(miniGameEngine SYSTEM PRIVATE ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS})
-
-# --- Warnings ---
-if(MGE_WARNINGS)
-    if(MSVC)
-        target_compile_options(miniGameEngine PRIVATE /W4 $<$<BOOL:${MGE_WERROR}>:/WX>)
-    else()
-        target_compile_options(miniGameEngine PRIVATE -Wall -Wextra -Wshadow $<$<BOOL:${MGE_WERROR}>:-Werror>)
+# --- Warnings (solo para nuestros targets) ---
+function(mge_set_warnings target)
+    if(NOT MGE_WARNINGS)
+        return()
     endif()
-endif()
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 $<$<BOOL:${MGE_WERROR}>:/WX>)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wshadow $<$<BOOL:${MGE_WERROR}>:-Werror>)
+    endif()
+endfunction()
 
-# --- Enlazado ---
-target_link_libraries(miniGameEngine PRIVATE
+# --- Motor: librería estática con todo src/Engine (menos el main) ---
+file(GLOB_RECURSE ENGINE_SOURCES "src/Engine/*.cpp" "src/Engine/*.h")
+list(REMOVE_ITEM ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/Engine/Main.cpp")
+
+add_library(mge_engine STATIC ${ENGINE_SOURCES})
+# Permitimos incluir headers como #include "Engine/Graphics/Shader.h"
+target_include_directories(mge_engine PUBLIC src)
+# Headers de terceros como SYSTEM para que sus warnings no nos afecten
+target_include_directories(mge_engine SYSTEM PUBLIC ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS})
+target_link_libraries(mge_engine PUBLIC
     ${SDL2_LIBRARIES}
     SDL2_mixer
     SDL2_ttf
     OpenGL::GL
     GLEW::GLEW
 )
+mge_set_warnings(mge_engine)
+
+# --- Mundo del juego (bloques y chunks): librería aparte para poder testearla ---
+add_library(sandbox_world STATIC
+    src/Game/Block.cpp src/Game/Block.h
+    src/Game/Chunk.cpp src/Game/Chunk.h
+)
+target_link_libraries(sandbox_world PUBLIC mge_engine)
+mge_set_warnings(sandbox_world)
+
+# --- Ejecutable del juego ---
+# (La separación completa en módulos del motor se hace en el issue #8)
+add_executable(miniGameEngine src/Engine/Main.cpp src/Game/SandboxApp.cpp)
+target_link_libraries(miniGameEngine PRIVATE sandbox_world)
+mge_set_warnings(miniGameEngine)
+
+# --- Tests ---
+if(MGE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
