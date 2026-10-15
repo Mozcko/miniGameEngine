@@ -52,7 +52,7 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 ## Structural / debt
 
 - ~~Two namespaces (`Engine` and `MiniGameEngine`) and two naming styles coexist~~ – unified into `mge` with one convention in #10.
-- Two delta‑time sources (`Application::m_deltaTime` and `Time`), and the game ignores the first.
+- ~~Two delta‑time sources (`Application::m_DeltaTime` and `Time`)~~ – single app‑owned clock with a fixed timestep since #12.
 - `Window::handleEvents()` / `isClosed()` / `close()` are unused (Application polls events itself).
 - Unused code: `ResourceManager`, `Animation`, `FirstPersonCamera`, `AudioManager` (initialised
   but nothing is played), `Camera2D::update` view matrix (GUI uses projection only),

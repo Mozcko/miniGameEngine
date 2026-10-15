@@ -60,11 +60,15 @@ A game:
 
 ```
 while running:
-    dt = steady_clock delta (seconds)
     for module in modules:  module.onFrameBegin(app)   ← Platform: InputManager::update, poll SDL events
                                                           (QUIT → requestStop, game event callback, input)
     if a module requested stop: break                  ← no update/render for that frame
-    onUpdate(dt)
+    raw = clock.now() − last  (clamped to maxFrameTime = 0.25 s)
+    accumulator += raw × timeScale
+    while accumulator ≥ 1/tickRate and steps < 5:      ← fixed timestep (extra backlog is dropped)
+        onFixedUpdate(1/tickRate)
+    alpha = accumulator / (1/tickRate)
+    onUpdate(raw × timeScale)
     onRender()
     for module in modules:  module.onFrameEnd(app)     ← Platform: swap buffers
     frameCount++ ; stop when frameCount == config.maxFrames (if > 0)
@@ -73,10 +77,10 @@ while running:
 The game receives raw SDL events through `PlatformModule::setEventCallback` until input actions
 land in #15.
 
-There is still a second timer, `mge::Time`, which adds a **time scale** (pause/slow‑mo) and
-clamps hitches to 0.1 s. SandboxApp calls `Time::update()` at the top of `onUpdate` and ignores
-the `dt` argument. #12 replaces both with a single fixed‑timestep clock. Pausing sets the time
-scale to 0, which freezes the camera while tile animations keep running on unscaled time.
+Time is app‑owned (`app.time()`, see `src/mge/core/README.md`). The sandbox has no fixed‑step
+simulation yet: it moves the camera and streams chunks in `onUpdate(dt)`. Pausing (`P`) sets the
+time scale to 0, which freezes the camera (scaled `dt` = 0) while tile animations and the FPS log
+use `time().unscaledDelta()`.
 
 ## 5. Shutdown sequence
 
