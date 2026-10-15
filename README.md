@@ -25,9 +25,9 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** and the
 # Fedora (adjust package names for your distro – see docs/BUILDING.md)
 sudo dnf install cmake gcc-c++ SDL2-devel SDL2_mixer-devel SDL2_ttf-devel glew-devel glm-devel stb_image-devel
 
-cmake -S . -B build
-cmake --build build -j
-cd build && ./miniGameEngine      # MUST run from build/ – assets are loaded via "../assets/..."
+cmake --preset release          # or: cmake -S . -B build (defaults to Release)
+cmake --build --preset release
+cd build-release && ./miniGameEngine   # MUST run from a dir next to assets/ ("../assets/...")
 ```
 
 ### Controls (SandboxApp)

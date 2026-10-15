@@ -20,10 +20,10 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 
 ## Build & run
 ```bash
-cmake -S . -B build && cmake --build build -j
+cmake --preset dev && cmake --build --preset dev   # Debug + warnings → build/ (also: release, ci)
 cd build && ./miniGameEngine        # cwd MUST be build/: assets use "../assets/..." paths
 ```
-Builds clean (only a CMake CMP0072 OpenGL dev warning). No tests exist. No linter config.
+Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. No tests exist yet (#3).
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 
 ## Architecture in 10 lines

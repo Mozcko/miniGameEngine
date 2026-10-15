@@ -18,7 +18,7 @@ namespace Engine {
         virtual void OnInit() = 0;
         virtual void OnUpdate(float dt) = 0;
         virtual void OnRender() = 0;
-        virtual void OnEvent(SDL_Event& event) {}
+        virtual void OnEvent(SDL_Event& /*event*/) {}
 
         MiniGameEngine::Window& GetWindow() { return *m_Window; }
 

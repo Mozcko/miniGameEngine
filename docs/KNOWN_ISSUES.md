@@ -14,7 +14,7 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 | 21 | Medium (latent) | `Game/SandboxApp.cpp` `OnRender`, `basic3d.frag` | Cut‑out blocks (Leaves, flowers) are drawn in the transparent pass with depth writes off and no sorting, so a farther leaf can be drawn over a nearer one. This is hidden today because no trees spawn (#0). Fix: `if (color.a < 0.5) discard;` in the shader and draw cut‑outs in the opaque pass; keep only water/lava/glass in the blended pass, sorted back to front. |
 | 22 | Low–Medium | `Window/Window.cpp` `init` | No depth buffer size is requested (`SDL_GL_DEPTH_SIZE`). SDL's default is 16 bits, and with near = 0.1 / far = 1000 precision gets coarse at distance, which can cause z‑fighting. Request 24 bits and/or raise the near plane. Many drivers already return 24, so it may not show on this machine. |
 | 23 | Low | `Window/Window.cpp` | No `SDL_GL_SetSwapInterval`, so the frame rate is uncapped unless the driver forces vsync (100 % GPU/CPU use). |
-| 24 | Low | `CMakeLists.txt` | No default `CMAKE_BUILD_TYPE`, so a plain `cmake -S . -B build` compiles **without optimisation** (no `-O2`) and makes chunk generation and meshing slow. Add a Release default or pass `-DCMAKE_BUILD_TYPE=Release`. No warning flags are enabled either. |
+| 24 | ✅ Fixed (#2) | `CMakeLists.txt` | No default `CMAKE_BUILD_TYPE`, so a plain `cmake -S . -B build` compiles **without optimisation** (no `-O2`) and makes chunk generation and meshing slow. Add a Release default or pass `-DCMAKE_BUILD_TYPE=Release`. No warning flags are enabled either. |
 | 25 | Low | `Graphics/Core/GLSLProgram.cpp` `linkShaders` | On link failure the program is deleted but `_programID` keeps the dead id, so later `use()` calls generate GL errors instead of failing clearly. |
 | 26 | Low | `Core/Application.cpp` ctor | If `SDL_Init` fails it returns before creating `m_Window`; `Run()` then dereferences the null window. |
 | 27 | Low | `Game/Chunk.cpp` `generate` | `srand(worldX * 8921 + worldZ * 33771)` overflows `int` (undefined behaviour) for coordinates beyond ~±60 000 blocks, and the global `srand` reseeds `rand()` for any other code that uses it. |
@@ -28,12 +28,12 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 | 8 | Low | `Game/SandboxApp.cpp` `OnRender` | FPS = `1 / Time::getDeltaTime()`; when paused dt = 0 → division by zero, float→int overflow (UB). Use unscaled dt. |
 | 9 | Low | `Graphics/Core/GLSLProgram.cpp` `use/unuse` | Calls `glEnable/DisableVertexAttribArray` with no VAO bound (core profile → `GL_INVALID_OPERATION`), and it would modify whatever VAO is bound. Attribute state already lives in each Mesh's VAO, so this is unnecessary. |
 | 10 | Low | `GLSLProgram::addAttribute` | `glBindAttribLocation` is overridden by `layout(location=…)` in the shaders; harmless but misleading. |
-| 11 | Low | `GLSLProgram::getUniformLocation` | Compares with `GL_INVALID_INDEX` (0xFFFFFFFF) instead of `-1`; works by coincidence of integer conversion. Prints for every lookup of an optimised‑out uniform. Locations are queried every frame (not cached). |
+| 11 | Low | `GLSLProgram::getUniformLocation` | (`GL_INVALID_INDEX` comparison fixed in #2.) Prints for every lookup of an optimised‑out uniform. Locations are queried every frame (not cached). |
 | 12 | Low | `GLSLProgram::compileShader` | Compile failure prints but continues to link (link then also fails). Missing file calls `exit(1)`. |
 | 13 | Low | `Graphics/3D/Mesh.cpp` `init` | Vertex `color` is never sent to the GPU (attrib 1 is set to color and immediately overwritten by UV). `Sprite::setColor` therefore has no visible effect. |
 | 14 | Low | `Graphics/Camera/FirstPersonCamera.h` | Re‑declares `m_Velocity`, `m_IsGrounded`, `m_CollisionCallback`, **shadowing** the same members of `Camera3D`, and `setCollisionCallback` is non‑virtual. Calling it through a `Camera3D&` sets the wrong callback. |
 | 15 | Low | `Game/SandboxApp.cpp` `OnEvent` | On resize, only the 3D camera projection updates; `_guiCamera` is not updated. `Window::_width/_height` are never updated either. |
-| 16 | Low | `Graphics/2D/Animation.cpp` `update` | `_frames.size() - 1` is unsigned → with zero frames it underflows; comparison of `int` with `size_t`. |
+| 16 | ✅ Fixed (#2) | `Graphics/2D/Animation.cpp` `update` | `_frames.size() - 1` is unsigned → with zero frames it underflows; comparison of `int` with `size_t`. |
 | 17 | Low | `Texture::loadFromSurface` | For 3‑channel surfaces passes `GL_RGB` without accounting for SDL row pitch (`GL_UNPACK_ALIGNMENT`). TTF blended surfaces are 4‑channel so fine today. |
 
 ## Lifetime / resource management

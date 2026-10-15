@@ -19,17 +19,30 @@
 
 ## Build
 
+Use the CMake presets (CMake ≥ 3.21):
+
 ```bash
-cmake -S . -B build              # configure (add -DCMAKE_BUILD_TYPE=Debug for symbols)
-cmake --build build -j           # compile
+cmake --preset dev && cmake --build --preset dev        # Debug + warnings      → build/
+cmake --preset release && cmake --build --preset release # Release              → build-release/
+cmake --preset ci && cmake --build --preset ci          # Debug + -Werror (CI)  → build-ci/
 ```
 
+A plain `cmake -S . -B build && cmake --build build` also works and defaults to **Release**.
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `CMAKE_BUILD_TYPE` | `Release` | Set automatically for single‑config generators when empty |
+| `MGE_WARNINGS` | `ON` | `-Wall -Wextra -Wshadow` (`/W4` on MSVC), applied to our code only |
+| `MGE_WERROR` | `OFF` | Treat warnings as errors (`ON` in the `ci` preset) |
+
+- Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
+  from any of them. `build/` and `build-*/` are git‑ignored.
+- `compile_commands.json` is generated in the build dir (for clangd / clang‑tidy).
+- The build must stay **warning‑free** on GCC and Clang.
 - Sources are collected with `file(GLOB_RECURSE …)` over `src/Engine` and `src/Game`. After
   **adding or removing** a `.cpp`/`.h` file, re‑run the configure step.
 - Include root is `src/`, so `#include <Engine/Core/Application.h>` works from anywhere.
-- The only expected output noise is a CMake `CMP0072` developer warning about OpenGL GLVND vs.
-  legacy libGL. Harmless; silence it with `set(OpenGL_GL_PREFERENCE GLVND)` before
-  `find_package(OpenGL)` if wanted.
+- OpenGL is linked through GLVND (`OpenGL::GL`).
 
 ## Run
 

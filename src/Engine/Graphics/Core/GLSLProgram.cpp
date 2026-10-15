@@ -122,7 +122,7 @@ namespace MiniGameEngine {
     
     GLint GLSLProgram::getUniformLocation(const std::string& uniformName) {
         GLint location = glGetUniformLocation(_programID, uniformName.c_str());
-        if (location == GL_INVALID_INDEX) {
+        if (location == -1) {
             std::cerr << "Uniform " << uniformName << " no encontrado en el shader." << std::endl;
             return -1;
         }

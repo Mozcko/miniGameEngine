@@ -106,7 +106,7 @@ namespace Engine {
         return _projectionMatrix;
     }
 
-    bool Camera3D::isSphereVisible(const glm::vec3& center, float radius) const {
+    bool Camera3D::isSphereVisible(const glm::vec3& /*center*/, float /*radius*/) const {
         return true; // Placeholder: Implementar extracción de planos del frustum si es necesario
     }
 }
