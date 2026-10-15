@@ -3,6 +3,9 @@
 // smoke test: sale con código 1 si alguna malla es inválida o no se pudo escribir.
 #include <mge/mge.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <cmath>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -19,6 +22,58 @@ namespace {
         auto d = mesh.addVertex({-1, 0, -1}, up, {1, 1, 0, 1}, {0, 1});
         mesh.addQuad(a, b, c, d);
         return mesh;
+    }
+
+    // Estrella de 5 puntas (polígono cóncavo) para extruir
+    std::vector<glm::vec2> star() {
+        std::vector<glm::vec2> points;
+        for (int i = 0; i < 10; i++) {
+            const float angle = static_cast<float>(i) * 3.14159265f / 5.0f + 1.5707963f;
+            const float radius = i % 2 == 0 ? 1.0f : 0.45f;
+            points.push_back({radius * std::cos(angle), radius * std::sin(angle)});
+        }
+        return points;
+    }
+
+    // Operaciones de malla (#21)
+    void addMeshOps(std::vector<std::pair<std::string, mge::MeshData>>& meshes) {
+        meshes.emplace_back("op_extrude_star", mge::extrude(star(), 0.4f, {0.95f, 0.8f, 0.2f, 1.0f}));
+
+        // Florero por torno: perfil de abajo hacia arriba, cerrado en la base
+        meshes.emplace_back(
+            "op_lathe_vase",
+            mge::lathe({{0.0f, 0.0f}, {0.5f, 0.0f}, {0.7f, 0.4f}, {0.4f, 1.2f}, {0.35f, 1.6f}, {0.5f, 1.9f}},
+                       48, {0.3f, 0.6f, 0.9f, 1.0f}));
+
+        // Resorte: un círculo barrido por una hélice
+        std::vector<glm::vec2> circle;
+        for (int i = 0; i < 12; i++) {
+            const float a = static_cast<float>(i) / 12.0f * 6.2831853f;
+            circle.push_back({0.12f * std::cos(a), 0.12f * std::sin(a)});
+        }
+        std::vector<glm::vec3> helix;
+        for (int i = 0; i <= 200; i++) {
+            const float t = static_cast<float>(i) / 200.0f * 6.2831853f * 4.0f;
+            helix.push_back({std::cos(t), t * 0.08f, std::sin(t)});
+        }
+        meshes.emplace_back("op_sweep_spring",
+                            mge::sweep(circle, helix, false, true, {0.8f, 0.3f, 0.3f, 1.0f}));
+
+        // Icosfera facetada (normales planas)
+        mge::MeshData faceted = mge::primitives::icosphere(1.0f, 1, {0.7f, 0.9f, 0.5f, 1.0f});
+        mge::recomputeNormals(faceted, mge::NormalMode::Flat);
+        meshes.emplace_back("op_flat_icosphere", faceted);
+
+        // Escena combinada: transformar y unir primitivas en una sola malla
+        mge::MeshData scene = mge::primitives::plane(6.0f, 6.0f, 1, 1, {0.4f, 0.4f, 0.45f, 1.0f});
+        mge::MeshData column = mge::primitives::cylinder(0.3f, 2.0f, 24, true, {0.9f, 0.9f, 0.85f, 1.0f});
+        for (int i = 0; i < 4; i++) {
+            mge::MeshData copy = column;
+            mge::transformMesh(
+                copy, glm::translate(glm::mat4(1.0f), {i % 2 ? 2.0f : -2.0f, 1.0f, i < 2 ? 2.0f : -2.0f}));
+            mge::appendMesh(scene, copy);
+        }
+        meshes.emplace_back("op_merged_scene", scene);
     }
 
     class ProcgenGallery : public mge::Application {
@@ -42,6 +97,7 @@ namespace {
             meshes.emplace_back("cylinder", prim::cylinder(0.7f, 2.0f, 32, true, {0.9f, 0.2f, 0.3f, 1.0f}));
             meshes.emplace_back("cone", prim::cone(0.8f, 2.0f, 32, {0.9f, 0.8f, 0.2f, 1.0f}));
             meshes.emplace_back("torus", prim::torus(1.2f, 0.4f, 48, 24, {0.6f, 0.3f, 0.8f, 1.0f}));
+            addMeshOps(meshes);
             meshes.emplace_back("capsule", prim::capsule(0.5f, 1.5f, 32, 8, {0.2f, 0.8f, 0.7f, 1.0f}));
 
             int written = 0;

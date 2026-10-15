@@ -2,6 +2,8 @@
 add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
     Primitives.h Primitives.cpp
+    MeshOps.h MeshOps.cpp
+    detail/MeshBuilding.h detail/MeshBuilding.cpp
 )
 target_link_libraries(mge_procgen PUBLIC mge_core)
 mge_set_warnings(mge_procgen)

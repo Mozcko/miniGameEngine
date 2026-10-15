@@ -7,9 +7,11 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 | File | Contents |
 |------|----------|
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
+| `MeshOps.h/.cpp` | transform, append/merge, weld, flip, recompute normals, polygon triangulation, extrude, lathe, sweep |
+| `detail/MeshBuilding.h/.cpp` | Internal helpers (oriented triangles, `revolve`), not public API |
 | `Primitives.h/.cpp` | `mge::primitives::` plane, box, uvSphere, icosphere, cylinder, cone, torus, capsule |
 
-Planned in M2: mesh operations (#21), noise (#22), SDF + surface nets (#23).
+Planned in M2: noise (#22), SDF + surface nets (#23).
 
 ## `MeshData`
 
@@ -64,6 +66,32 @@ Tests (`tests/procgen/test_primitives.cpp`, with helpers in `tests/procgen/MeshC
 - exact counts, `validate()`, unit normals;
 - **watertight** (each directed edge once, plus its reverse once, after welding);
 - **winding matches normals**, outward normals, and bounds that match the parameters.
+
+## Mesh operations – `<mge/procgen/MeshOps.h>`
+
+| Function | Behaviour |
+|----------|-----------|
+| `transformMesh(mesh, mat4)` | Positions by the matrix, normals by the inverse transpose (renormalised). A **mirror** (det < 0) flips triangle order, so the mesh stays CCW from outside |
+| `appendMesh(dst, src)` / `mergeMeshes(a, b)` | Concatenate, offsetting indices |
+| `weldVertices(mesh, eps)` | Merges vertices with **all** attributes equal (position, normal, colour, UV), so hard edges and UV seams are kept |
+| `flipWinding(mesh)` | Reverses triangles **and** normals |
+| `recomputeNormals(mesh, Smooth / Flat)` | Smooth: area‑weighted face normals summed per **position**, so seams don't show. Flat: unwelds; every triangle gets 3 vertices with the face normal |
+| `triangulatePolygon(poly)` | Ear clipping for simple polygons (concave OK, CW or CCW input), CCW output |
+| `extrude(poly, depth)` | Polygon in XY extruded along Z ∈ [−d/2, d/2]: caps + flat sides; watertight |
+| `lathe(profile, segments)` | Profile (x = radius, y = height) revolved around Y. Order it **bottom → top** for outward normals; x = 0 points are poles that close the shape |
+| `sweep(profile, path, closedPath, caps)` | Closed profile carried along a 3D path with **parallel‑transport frames** (no sudden twists). Open paths get end caps; closed paths wrap around (e.g. a ring) |
+
+Tests: `tests/procgen/test_mesh_ops.cpp` cover:
+- correct ellipsoid normals under non‑uniform scale;
+- mirror winding;
+- merge offsets;
+- weld keeping seams and joining exact duplicates;
+- flip;
+- Smooth and Flat normals;
+- triangulation of a concave L (CW and CCW, area preserved);
+- a watertight extrude;
+- a lathed cylinder with exact radius, and a closed lathe;
+- straight, helix and closed sweeps.
 
 **GPU:** `mge::Mesh::init(const MeshData&)` (`mge_render`) uploads it. The legacy OpenGL renderer
 uses position, colour and UV, and ignores normals until M3.
