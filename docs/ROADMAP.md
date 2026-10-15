@@ -68,10 +68,10 @@ _Make building and iterating on a game easy, before M2 adds lots of new engine f
 | # | Issue | Labels |
 |---|---|---|
 | [#96](https://github.com/Mozcko/miniGameEngine/issues/96) | ✅ Rename games/ to game/ (single game folder) | refactor, priority:high, size:S |
-| [#97](https://github.com/Mozcko/miniGameEngine/issues/97) | Run the game from anywhere (assets relative to the executable) + run target | enhancement, priority:high, size:S |
-| [#98](https://github.com/Mozcko/miniGameEngine/issues/98) | mge_add_game() CMake function + new-game template | enhancement, priority:high, size:M |
-| [#99](https://github.com/Mozcko/miniGameEngine/issues/99) | VS Code setup: build, run, debug and test from the editor | chore, priority:medium, size:S |
-| [#100](https://github.com/Mozcko/miniGameEngine/issues/100) | Umbrella header <mge/mge.h> + 'your first game' guide | documentation, priority:medium, size:S |
+| [#97](https://github.com/Mozcko/miniGameEngine/issues/97) | ✅ Run the game from anywhere (assets relative to the executable) + run target | enhancement, priority:high, size:S |
+| [#98](https://github.com/Mozcko/miniGameEngine/issues/98) | ✅ mge_add_game() CMake function + new-game template | enhancement, priority:high, size:M |
+| [#99](https://github.com/Mozcko/miniGameEngine/issues/99) | ✅ VS Code setup: build, run, debug and test from the editor | chore, priority:medium, size:S |
+| [#100](https://github.com/Mozcko/miniGameEngine/issues/100) | ✅ Umbrella header <mge/mge.h> + 'your first game' guide | documentation, priority:medium, size:S |
 
 ### M2 · Procedural Geometry & Generation — [epic #70](https://github.com/Mozcko/miniGameEngine/issues/70)
 
@@ -184,4 +184,4 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 ## Suggested order
 
-✅ M0 (#1–#7) and ✅ M1 (#8–#18) are done. Next: **M1.5 (#96–#100, game dev experience)**, then M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18) and ✅ M1.5 (#96–#100) are done. Next: M2 (#19–#27, procedural geometry), starting with #19 (CPU `MeshData`) and #22 (noise), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
