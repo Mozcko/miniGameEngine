@@ -11,7 +11,7 @@ in the engine depends on it except the `mge::createApplication()` definition.
 
 Block and Chunk live in namespace `mge` (same as engine classes).
 
-CMake (`game/CMakeLists.txt`): `sandbox_world` (static lib: Block, Chunk – tested by
+CMake (`game/CMakeLists.txt`): a `run` target (`cmake --build --preset dev --target run`), `sandbox_world` (static lib: Block, Chunk – tested by
 `tests/game/`) and `sandbox` (executable: SandboxApp + `mge_main`, written to the build dir root).
 Include as `#include <game/Chunk.h>`.
 
@@ -41,7 +41,7 @@ Include as `#include <game/Chunk.h>`.
 1. Compile/link `m_shader3D`; set the camera position; install the **collision callback**: convert the
    AABB to block coordinates with `floor(v + 0.5)` and return true if any block in range
    `isSolid()` (via `getGlobalBlock`).
-2. Load the tileset texture.
+2. Load the tileset texture (all asset paths go through `mge::assetPath`).
 3. GL state: depth test on, back‑face culling on, alpha blending.
 4. Lock the cursor.
 5. Log the controls (Info).

@@ -101,7 +101,7 @@ SDL3's offscreen video driver plus GLEW on EGL lets the game run without a displ
 and over SSH):
 
 ```bash
-cd build && SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./sandbox
+SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./build/sandbox
 ```
 
 `MGE_MAX_FRAMES=N` makes any engine application exit cleanly after N frames, unless the game set
@@ -139,14 +139,21 @@ A PR may only be merged when both jobs are green. To reproduce CI locally:
 ## Run
 
 ```bash
-cd build
-./sandbox
+scripts/run.sh [preset] [-- game args]   # configure if needed + build + run (default preset: dev)
+cmake --build --preset dev --target run  # same, as a CMake target
+./build/sandbox                          # the binary itself, from any directory
 ```
 
-**The working directory must be `build/`** (or any directory that is a sibling of `assets/`):
-every asset is loaded with a hard‑coded relative path like
-`"../assets/shaders/basic3d.vert"`. Running from the repo root produces
-`No se pudo abrir el archivo: ../assets/shaders/basic3d.vert` and the program exits.
+The game no longer depends on the working directory. `mge::assetPath("shaders/x.vert")`
+(`<mge/core/Assets.h>`) resolves the asset root once, logs it, and searches in this order:
+1. the `MGE_ASSET_DIR` environment variable;
+2. `<exe dir>/assets`;
+3. `<exe dir>/../assets`, the normal case (`build*/sandbox` → `assets/`);
+4. the source tree's `assets/`, whose absolute path is baked in at configure time. This means a
+   build dir placed anywhere still works.
+
+Useful environment variables: `MGE_MAX_FRAMES=N` (exit after N frames), `MGE_ASSET_DIR`,
+`SDL_VIDEODRIVER=offscreen`, `SDL_AUDIODRIVER=dummy`.
 
 Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Category] message`):
 ```
@@ -158,9 +165,8 @@ Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Ca
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| `[Shader] No se pudo abrir el archivo: ../assets/...` then `[Sandbox] No se pudo crear el shader 3D` and a clean exit | Wrong working directory – `cd build` first. |
+| `[Shader] No se pudo abrir el archivo: …` then `[Sandbox] No se pudo crear el shader 3D. Assets en: …` | The asset root the log shows is wrong: set `MGE_ASSET_DIR=/path/to/assets`, or check the `[Assets] Raíz de assets` line |
 | `[Texture] No se pudo cargar la textura ...` | Same as above, or PNG missing. |
-| `[GUI] No se pudo cargar la fuente ...` | Font path wrong (cwd). |
 | SDL configure error `Couldn't find dependency package for …` | Building SDL3 from source without one of its dev packages: install it (see above) or `sudo dnf install SDL3-devel` to skip the source build. |
 | `[Window] No se pudo crear el contexto OpenGL` / `No se pudo inicializar GLEW` | GPU/driver doesn't provide GL 3.3 core (e.g. some VMs). Try `LIBGL_ALWAYS_SOFTWARE=1`. |
 | `[Audio] No se pudo abrir el dispositivo de audio` | No audio device; non‑fatal, game continues silently. |

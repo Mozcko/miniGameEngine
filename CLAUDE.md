@@ -24,7 +24,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 ## Build & run
 ```bash
 cmake --preset dev && cmake --build --preset dev   # Debug + warnings → build/ (also: release, ci)
-cd build && ./sandbox        # cwd MUST be build/: assets use "../assets/..." paths
+scripts/run.sh               # build + run from anywhere (or ./build/sandbox, or --target run)
 ```
 Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. CI: GitHub Actions (`.github/workflows/ci.yml`, GCC + Clang, `ci` preset) must be green before merging.
 Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't installed here).
@@ -75,6 +75,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 `app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.
 The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
+
+## Assets
+Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup
+(override: `MGE_ASSET_DIR`).
 
 ## Randomness
 `<mge/core/Random.h>`: `Pcg32 rng(hash2i(x, z, seed), stream)`; never `rand()`. The sandbox world seed
