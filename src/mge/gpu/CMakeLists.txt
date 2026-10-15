@@ -2,6 +2,8 @@
 # Wrappers RAII, GpuModule (device + swapchain de la ventana) y subida de MeshData.
 add_library(mge_gpu STATIC
     Handles.h
+    Shader.h
+    Pipeline.h
     GpuDevice.h GpuDevice.cpp
     CommandBuffer.h CommandBuffer.cpp
     GpuMesh.h GpuMesh.cpp

@@ -78,6 +78,73 @@ namespace mge {
         return wrap<GpuShader>(m_device, SDL_CreateGPUShader(m_device, &info), "un shader");
     }
 
+    GpuShader GpuDevice::createShader(const ShaderCode& code, const ShaderResources& resources) {
+        if (code.stage == ShaderStage::Compute) {
+            MGE_LOG_ERROR("Gpu", "createShader: los shaders de cómputo van en createComputePipeline");
+            return {};
+        }
+        SDL_GPUShaderCreateInfo info{};
+        info.code = code.code;
+        info.code_size = code.size;
+        info.entrypoint = "main";
+        info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        info.stage =
+            code.stage == ShaderStage::Vertex ? SDL_GPU_SHADERSTAGE_VERTEX : SDL_GPU_SHADERSTAGE_FRAGMENT;
+        info.num_samplers = resources.samplers;
+        info.num_storage_textures = resources.storageTextures;
+        info.num_storage_buffers = resources.storageBuffers;
+        info.num_uniform_buffers = resources.uniformBuffers;
+        return createShader(info);
+    }
+
+    GpuGraphicsPipeline GpuDevice::createGraphicsPipeline(const GraphicsPipelineDesc& desc) {
+        if (!desc.vertexShader || !desc.fragmentShader || !*desc.vertexShader || !*desc.fragmentShader) {
+            MGE_LOG_ERROR("Gpu", "createGraphicsPipeline: faltan los shaders");
+            return {};
+        }
+        SDL_GPUColorTargetDescription color{};
+        color.format = desc.colorFormat;
+        if (desc.blend != BlendMode::None) {
+            SDL_GPUColorTargetBlendState& blend = color.blend_state;
+            blend.enable_blend = true;
+            blend.color_blend_op = SDL_GPU_BLENDOP_ADD;
+            blend.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+            blend.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+            blend.dst_color_blendfactor = desc.blend == BlendMode::Alpha
+                                              ? SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+                                              : SDL_GPU_BLENDFACTOR_ONE;
+            blend.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+            blend.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+        }
+
+        SDL_GPUGraphicsPipelineCreateInfo info{};
+        info.vertex_shader = desc.vertexShader->get();
+        info.fragment_shader = desc.fragmentShader->get();
+        info.primitive_type = desc.primitive;
+        info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+        info.rasterizer_state.cull_mode = desc.cullMode;
+        info.rasterizer_state.front_face = desc.frontFace;
+        info.target_info.color_target_descriptions = &color;
+        info.target_info.num_color_targets = 1;
+
+        const SDL_GPUVertexBufferDescription buffer = gpuVertexBufferDescription();
+        const auto attributes = gpuVertexAttributes();
+        if (desc.gpuVertexInput) {
+            info.vertex_input_state.vertex_buffer_descriptions = &buffer;
+            info.vertex_input_state.num_vertex_buffers = 1;
+            info.vertex_input_state.vertex_attributes = attributes.data();
+            info.vertex_input_state.num_vertex_attributes = static_cast<Uint32>(attributes.size());
+        }
+        if (desc.depthFormat != SDL_GPU_TEXTUREFORMAT_INVALID) {
+            info.target_info.has_depth_stencil_target = true;
+            info.target_info.depth_stencil_format = desc.depthFormat;
+            info.depth_stencil_state.enable_depth_test = desc.depthTest;
+            info.depth_stencil_state.enable_depth_write = desc.depthWrite;
+            info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
+        }
+        return createGraphicsPipeline(info);
+    }
+
     GpuGraphicsPipeline GpuDevice::createGraphicsPipeline(const SDL_GPUGraphicsPipelineCreateInfo& info) {
         return wrap<GpuGraphicsPipeline>(m_device, SDL_CreateGPUGraphicsPipeline(m_device, &info),
                                          "un pipeline gráfico");

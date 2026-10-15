@@ -105,6 +105,9 @@ implements a generator.
 `mge_gpu`: `PlatformModule(PlatformOptions{openGl=false})` + `GpuModule` (added after it) → `frame()` {cmd, swapchain, w, h} each frame;
 `GpuDevice` factories return move‑only handles (`GpuBuffer`, `GpuTexture`, …; release before the device); `uploadMesh(MeshData)` →
 `GpuVertex{pos, normal, color, uv}`; `downloadTexture` for tests. GPU tests run offscreen (lavapipe in CI, `MGE_REQUIRE_GPU=1`).
+Shaders: GLSL → SPIR‑V at build time, `mge_add_shaders(target SHADERS x.vert y.frag)` → `#include <shaders/x_vert.h>` →
+`device.createShader(mge::shaders::kXVert, ShaderResources{…})`; bindings: vertex set0 tex / set1 UBO, fragment set2 tex / set3 UBO.
+Pipelines: `GraphicsPipelineDesc` → `device.createGraphicsPipeline(desc)`. glslang: system or fetched from source.
 
 ## Assets
 Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup

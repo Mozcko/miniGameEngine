@@ -23,5 +23,10 @@ if [[ ! -f "$build_dir/compile_commands.json" ]]; then
     echo "Falta $build_dir/compile_commands.json: ejecuta 'cmake --preset ci' primero" >&2
     exit 1
 fi
+# Los headers de shaders se generan al compilar: clang-tidy los necesita para analizar a quien los incluye
+# (el target solo existe con los módulos de GPU)
+if grep -q "^MGE_BUILD_MODULES:BOOL=ON" "$build_dir/CMakeCache.txt"; then
+    cmake --build "$build_dir" --target mge_generated_shaders >/dev/null
+fi
 printf '%s\n' "${units[@]}" | xargs -P "$(nproc)" -n 1 clang-tidy -p "$build_dir" --quiet
 echo "OK"

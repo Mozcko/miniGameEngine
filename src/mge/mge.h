@@ -50,6 +50,8 @@
 #include <mge/gpu/GpuMesh.h>
 #include <mge/gpu/GpuModule.h>
 #include <mge/gpu/Handles.h>
+#include <mge/gpu/Pipeline.h>
+#include <mge/gpu/Shader.h>
 #endif
 
 // --- Render (OpenGL legacy hasta #40) ---

@@ -7,7 +7,10 @@
 | CMake ≥ 3.10 | build | – | `cmake` | `cmake` |
 | C++17 compiler | build | – | `gcc-c++` | `g++` |
 | SDL3 ≥ 3.2 | window, events, input, audio | `FetchContent` with `FIND_PACKAGE_ARGS`: system package if installed, otherwise **built from source** (pinned 3.4.18, SHA‑256) | `SDL3-devel` | not packaged in 24.04 → built from source |
-| GLEW | OpenGL loader | `find_package(GLEW)` | `glew-devel` | `libglew-dev` |
+| Vulkan loader + driver | SDL3 GPU backend (`mge_gpu`) | loaded at runtime by SDL | `vulkan-loader` + `mesa-vulkan-drivers` | `libvulkan1` + `mesa-vulkan-drivers` |
+| glslang | GLSL → SPIR‑V shader compiler (build time, #29) | `find_program(glslang / glslangValidator)`; if missing, **built from source** (pinned 16.2.0, SHA‑256) | `glslang` | `glslang-tools` |
+| Vulkan validation layers (optional) | GPU API error checking in Debug builds | loaded at runtime | `vulkan-validation-layers` | `vulkan-validationlayers` |
+| GLEW | OpenGL loader (legacy renderer, removed in #40) | `find_package(GLEW)` | `glew-devel` | `libglew-dev` |
 | OpenGL 3.3 | rendering | `find_package(OpenGL)` | mesa / GPU driver | `libgl-dev` |
 | GLM | math (header‑only) | **no** – must be on the default include path | `glm-devel` | `libglm-dev` |
 | stb_image | PNG loading (header‑only) | **no** – included as `<stb/stb_image.h>` | `stb_image-devel` (or `stb-devel`) | `libstb-dev` |
@@ -107,6 +110,37 @@ SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./build/sandb
 
 `MGE_MAX_FRAMES=N` makes any engine application exit cleanly after N frames, unless the game set
 `ApplicationConfig::maxFrames` itself.
+
+## Shaders
+
+Shaders are GLSL (Vulkan dialect), compiled to SPIR‑V **at build time** and embedded in the
+executable, so no shader file is read at runtime:
+
+```cmake
+mge_add_shaders(my_game SHADERS shaders/mesh.vert shaders/mesh.frag)   # cmake/MgeShaders.cmake
+```
+
+```cpp
+#include <shaders/mesh_vert.h>          // generated: mge::shaders::kMeshVert (a mge::ShaderCode)
+mge::ShaderResources resources;
+resources.uniformBuffers = 1;
+mge::GpuShader vs = device.createShader(mge::shaders::kMeshVert, resources);
+```
+
+- **Stage** comes from the extension: `.vert`, `.frag` or `.comp`.
+- **Rebuilds:** editing a shader recompiles only that shader and the files that include its
+  header. `#include` inside GLSL isn't supported yet.
+- **Binding convention** (required by SDL GPU), detailed in `src/mge/gpu/Shader.h`:
+
+  | Stage | Textures and buffers | Uniform buffers |
+  |-------|----------------------|-----------------|
+  | vertex | `set 0` | `set 1` |
+  | fragment | `set 2` | `set 3` |
+
+- **Compiler:** the system `glslang` if installed, otherwise glslang is built from source once
+  (~1–2 min).
+- **Linting:** `scripts/lint.sh` builds the `mge_generated_shaders` target before clang‑tidy,
+  because the analysis needs the generated headers.
 
 ## Adding a game
 
