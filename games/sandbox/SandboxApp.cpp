@@ -94,6 +94,8 @@ public:
             delete pair.second;
         }
         m_chunkMap.clear();
+        // La textura no se libera sola (Texture es un handle copiable): liberarla con el contexto vivo
+        m_tilesetTexture.destroy();
     }
 
     void handleEvent(const SDL_Event& event) {

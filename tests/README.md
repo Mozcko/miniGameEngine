@@ -42,5 +42,8 @@ Besides the unit tests, CTest runs two whole programs:
 | `smoke: headless 1000 frames` | `examples/headless_smoke`: an `Application` with no modules, generating and checking a chunk per frame | nothing (no SDL init, no GPU) |
 | `smoke: sandbox offscreen 120 frames` | The real `sandbox`, with `SDL_VIDEODRIVER=offscreen`, `SDL_AUDIODRIVER=dummy`, `MGE_MAX_FRAMES=120` | an OpenGL driver (Mesa llvmpipe is enough). Label **`gpu`**; skip with `ctest -LE gpu` |
 
-CI runs all of them, and runs them again under ASan/UBSan in the `sanitizers` job.
+CI runs all of them, and runs them again under ASan/UBSan in the `sanitizers` job. For the
+sandbox smoke run only, **leak** detection is off: Ubuntu's Mesa EGL driver leaks inside
+`eglInitialize`, and LeakSanitizer can't attribute the memory because the driver is already
+unloaded. Address and UB checks stay on, and every other test runs with `detect_leaks=1`.
 
