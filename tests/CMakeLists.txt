@@ -96,9 +96,11 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         render/RenderTest.h render/RenderTest.cpp
         render/test_render_scenes.cpp
+        render/test_graphics.cpp
     )
-    target_link_libraries(render_tests PRIVATE mge_gpu doctest_header)
+    target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world doctest_header)
     target_compile_definitions(render_tests PRIVATE
+        MGE_TEST_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets"
         MGE_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/render/golden"
         MGE_RENDER_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/render_output")
     mge_set_warnings(render_tests)

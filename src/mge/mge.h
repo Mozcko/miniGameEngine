@@ -55,6 +55,13 @@
 #include <mge/gpu/Swapchain.h>
 #endif
 
+// --- Graphics: renderer sobre SDL3 GPU ---
+#ifdef MGE_HAS_GRAPHICS
+#include <mge/graphics/MeshRenderer.h>
+#include <mge/graphics/Projection.h>
+#include <mge/graphics/Texture2D.h>
+#endif
+
 // --- Render (OpenGL legacy hasta #40) ---
 #ifdef MGE_HAS_RENDER
 #include <mge/render/3d/Mesh.h>

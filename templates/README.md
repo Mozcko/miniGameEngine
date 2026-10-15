@@ -5,7 +5,7 @@ and wizard (#104–#106) will use them too.
 
 | Template | Command | Result |
 |----------|---------|--------|
-| `window/` | `scripts/new-game.sh <name>` | A window whose clear colour pulses. Shows modules (platform + audio), input actions (Esc quits, hold Space to speed up), an ECS entity updated in the Fixed phase, and logging. Smoke test: 30 frames offscreen |
+| `window/` | `scripts/new-game.sh <name>` | A window whose clear colour pulses. Shows modules (platform + GPU + audio), clearing the window through a GPU render pass, input actions (Esc quits, hold Space to speed up), an ECS entity updated in the Fixed phase, and logging. Smoke test: 30 frames offscreen |
 | `headless/` | `scripts/new-game.sh <name> --headless` | No window, GPU or SDL. A deterministic run (`ManualClock`, 600 frames) with a Fixed‑phase ECS system; it checks its own result and exits 1 on failure. Smoke test: 600 frames |
 
 Files are `*.in` with placeholders, substituted by the script:

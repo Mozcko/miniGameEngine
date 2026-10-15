@@ -11,6 +11,7 @@ src/
     ├── voxel/           mge_voxel     – headless voxel worlds (blocks, chunks, meshing)
     ├── platform/        mge_platform  – SDL window, (legacy) GL context, input
     ├── gpu/             mge_gpu       – SDL3 GPU: device, swapchain, RAII handles
+    ├── graphics/        mge_graphics  – renderer: textures, mesh drawing
     ├── render/          mge_render    – OpenGL renderer (legacy until #40)
     ├── audio/           mge_audio     – audio
     └── app/             mge_main – main() (core only)

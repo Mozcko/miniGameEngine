@@ -10,7 +10,7 @@ namespace mge {
     public:
         // Constructor: Recibe título, ancho y alto. openGl = false crea la ventana sin contexto OpenGL
         // (para que la tome la GPU de SDL, GpuModule).
-        Window(const std::string& title, int width, int height, bool openGl = true);
+        Window(const std::string& title, int width, int height, bool openGl = false);
         // Destructor: Se encarga de limpiar la memoria automáticamente
         ~Window();
 
@@ -42,7 +42,7 @@ namespace mge {
         int m_height;
         bool m_isClosed;
         bool m_isValid = false;
-        bool m_openGl = true;
+        bool m_openGl = false;
 
         // Punteros crudos de SDL (recursos del sistema operativo)
         SDL_Window* m_sdlWindow;

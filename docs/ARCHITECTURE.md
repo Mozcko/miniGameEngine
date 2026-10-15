@@ -98,46 +98,51 @@ last subsystem calls `SDL_Quit()`, exactly once. The game's GL resources are fre
 before the window and context go away. The full lifecycle runs clean under ASan/UBSan
 (`asan` preset).
 
-## 6. Rendering pipeline
+## 6. Rendering pipeline (SDL3 GPU, #28–#30)
 
-### Vertex format and Mesh
-`mge::Vertex { vec3 position; vec4 color; vec2 uv; }` (36 bytes, interleaved).
-`Mesh::init(vertices, indices)` uploads to a VAO + VBO + EBO (`GL_STATIC_DRAW`) and sets:
+The sandbox renders through the **SDL3 GPU API** (Vulkan; Metal/D3D12 later). The legacy OpenGL
+renderer (`mge_render`) is no longer used for drawing; #40 deletes it. Only its `Camera3D` (pure
+math) is still used, until #32.
 
-| location | data            | type  |
-|----------|-----------------|-------|
-| 0        | `position`      | vec3  |
-| 1        | `uv`            | vec2  |
-| (none)   | `color`         | – (attribute 1 is first configured for color, then overwritten by UV) |
+### Frame flow
+1. `PlatformModule::onFrameBegin`: poll SDL events, update the input.
+2. `GpuModule::onFrameBegin`: acquire a command buffer and the swapchain image (`frame()`; null
+   while minimised).
+3. Game `onFixedUpdate` / `onUpdate`. Uploads, such as chunk meshes or atlas tiles, are copy passes
+   on their own command buffers.
+4. Game `onRender`: `MeshRenderer::begin` opens a render pass (clear colour + depth), the game
+   issues `draw` calls, `end` closes it.
+5. `GpuModule::onFrameEnd`: submit; SDL presents.
 
-All shaders therefore read `layout(location=0)` position and `layout(location=1)` UV.
-2D shaders declare position as `vec2`; they just read the first two floats.
+### Vertex format
+`GpuVertex { vec3 position; vec3 normal; vec4 color; vec2 uv; }` (48 bytes, interleaved, from
+`MeshData` via `device.uploadMesh`). Shader locations: 0 position, 1 normal, 2 colour, 3 uv. All
+four are uploaded; the GL path never sent the colour (KI#13).
 
-### Shaders in use
+### Shaders
+GLSL compiled to SPIR‑V at build time and embedded (`mge_add_shaders`, #29). No shader files are
+read at runtime.
 
-| Program | Files | Uniforms | Used by |
-|---------|-------|----------|---------|
-| `m_shader3D` | `basic3d.vert/.frag` | `model`, `view`, `projection`, `myTexture`, `baseColor` | Chunks |
-| – | `color.vert/.frag` | `P` | nothing (legacy) |
+| Shader | Where | Inputs |
+|--------|-------|--------|
+| `mesh.vert/.frag` | `mge_graphics` | vertex UBO `{viewProjection, model}` (set 1); fragment sampler `albedo` (set 2); output `texture × vertexColor` |
+| `triangle.*` | `examples/gpu_triangle` | vertex UBO `{angle, aspect}` |
 
-### SandboxApp frame (onRender)
-1. Clear to sky blue `(0.5, 0.7, 1.0)`, clear color + depth.
-2. Bind `m_shader3D`; upload camera projection & view, `baseColor = white`, sampler unit 0.
-3. Bind the tileset texture.
-4. **Opaque pass** – for every loaded chunk inside the camera frustum (`isAabbVisible`, #24): set `model = translate(chunkPos)`, draw opaque mesh.
-5. **Transparent pass** – `glDepthMask(GL_FALSE)`, draw each chunk's transparent mesh
-   (water, lava, glass, leaves, flowers…), restore depth mask. No back‑to‑front sorting.
-6. Every 5 s the average FPS is written to the Debug log (the text HUD was removed in #9).
-
-Global GL state set in `SandboxApp::onInit`: depth test on, back‑face culling on (CCW = front),
-alpha blending `SRC_ALPHA, ONE_MINUS_SRC_ALPHA`.
+### Sandbox frame (`onRender`)
+1. `MeshRenderer::begin` clears to sky blue `(0.5, 0.7, 1.0)` and clears depth (D32 or D24).
+2. Camera: `depthZeroToOne(Camera3D projection) * view`. SDL GPU's NDC has Y up and Z in [0, 1].
+3. **Opaque pass**: pipeline with depth test and write, back‑face culling (CCW = front), no
+   blending. Every chunk inside the frustum (`isAabbVisible`) is drawn with
+   `model = translate(chunkOrigin)` and the atlas.
+4. **Transparent pass**: alpha blending, depth test without writes. Draws water, lava, glass,
+   leaves and plants, with no sorting; the cutout pass and sorting come in #31.
+5. Every 5 s the average FPS is written to the Debug log.
 
 ### Textures
-`Texture::load` uses stb_image with vertical flip on load, uploads `GL_RGB`/`GL_RGBA` with
-`GL_NEAREST` filtering (pixel‑art look), clamps to edge, generates mipmaps, and **keeps a CPU copy**
-of the pixels so `updateTile()` can copy one atlas tile over another at runtime – that is how the
-water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 239 via
-`glTexSubImage2D`).
+`Texture2D::fromFile` (stb_image → RGBA8) stores the image flipped vertically, so the engine's
+GL‑style UVs (v up) keep working, and keeps a CPU copy. The water and lava animation copies
+32×32 tiles from that original image every 0.2 s (`copyFromOriginal` → a copy‑pass upload) into
+tiles 207 / 239. Sampling is nearest, clamped to the edge.
 
 ## 7. Voxel world (`mge_voxel` + game)
 
@@ -174,7 +179,7 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
   - Greedy meshing merges faces of colour‑only cubes. Optional per‑vertex AO is written into the colour.
 - **Streaming** (`SandboxApp::streamChunks`, every frame, synchronous):
   - Load every chunk column (4 chunks tall) within 5 of the camera.
-  - Mesh the dirty ones within 4 (9×9), then upload with `Mesh::init(MeshData)`.
+  - Mesh the dirty ones within 4 (9×9), then upload with `device.uploadMesh`.
   - The extra loaded ring means borders mesh against real data.
   - Chunks are never unloaded (KI#4).
 - **Collision:** `Camera3D` moves axis by axis (X, Z, Y) and asks a callback whether its AABB
@@ -197,7 +202,8 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
 | Modules | `Application::m_modules` | `onShutdown` in reverse order, then destroyed with the app |
 | `Window` | `PlatformModule` (unique_ptr) | reset in `PlatformModule::onShutdown` |
 | Chunk data | `VoxelWorld` (`unique_ptr` per chunk) | `unloadChunk` or with the world |
-| Chunk GPU meshes | `SandboxApp::m_gpuChunks` (`unique_ptr<Mesh>`) | cleared in `SandboxApp::onShutdown` (GL context still alive) |
+| Chunk GPU meshes | `SandboxApp::m_gpuChunks` (`GpuMesh`: move‑only GPU buffers) | cleared in `SandboxApp::onShutdown`, before the `GpuModule` destroys the device |
+| GPU device | `GpuModule` (`unique_ptr<GpuDevice>`) | `onShutdown`: wait idle, release the window, destroy |
 | GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
 | GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |
 | GL programs | `GLSLProgram` | never deleted (destructor is empty) |

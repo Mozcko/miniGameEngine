@@ -11,9 +11,9 @@
 namespace mge {
 
     struct PlatformOptions {
-        // true: contexto OpenGL en la ventana (renderer legacy, hasta #40).
-        // false: ventana sola, para el GpuModule (SDL3 GPU).
-        bool openGl = true;
+        // false (por defecto): ventana sola, para el GpuModule (SDL3 GPU).
+        // true: contexto OpenGL en la ventana (renderer legacy, se borra en #40).
+        bool openGl = false;
     };
 
     // Módulo de plataforma: crea la ventana (con el título/tamaño del ApplicationConfig) y, si se pide,

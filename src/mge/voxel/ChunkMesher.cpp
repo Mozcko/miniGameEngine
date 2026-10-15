@@ -80,6 +80,11 @@ namespace mge {
                 return ao;
             }
 
+            // Color de vértice base del bloque (ver ChunkMeshOptions::tintTextured)
+            glm::vec4 baseColor(const BlockDesc& desc) const {
+                return desc.textured() && !m_options.tintTextured ? glm::vec4(1.0f) : desc.color;
+            }
+
             // Quad de la cara `face` del bloque en `pos`, estirado `size` bloques en los ejes de la cara
             void emitQuad(const BlockDesc& desc, const FaceDef& face, int faceIndex, const glm::ivec3& pos,
                           const glm::vec3& size, const AoValues& ao) {
@@ -92,7 +97,8 @@ namespace mge {
                 std::uint32_t idx[4];
                 for (int i = 0; i < 4; i++) {
                     const float shade = 1.0f - m_options.aoStrength * (3 - ao[i]) / 3.0f;
-                    const glm::vec4 color(glm::vec3(desc.color) * shade, desc.color.a);
+                    const glm::vec4 base = baseColor(desc);
+                    const glm::vec4 color(glm::vec3(base) * shade, base.a);
                     idx[i] =
                         mesh.addVertex(glm::vec3(pos) + face.corners[i] * size, face.normal, color, uvs[i]);
                 }
@@ -196,8 +202,8 @@ namespace mge {
                 for (int p = 0; p < 4; p++) {
                     std::uint32_t idx[4];
                     for (int i = 0; i < 4; i++)
-                        idx[i] =
-                            mesh.addVertex(glm::vec3(pos) + planes[p][i], normals[p], desc.color, uvs[i]);
+                        idx[i] = mesh.addVertex(glm::vec3(pos) + planes[p][i], normals[p], baseColor(desc),
+                                                uvs[i]);
                     mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
                 }
             }

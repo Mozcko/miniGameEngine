@@ -13,10 +13,10 @@
 
 using namespace mge;
 
-// Mallas en GPU de un chunk (null si esa parte está vacía)
+// Mallas en la GPU de un chunk (vacías si esa parte no tiene caras)
 struct GpuChunk {
-    std::unique_ptr<Mesh> opaque;
-    std::unique_ptr<Mesh> transparent;
+    GpuMesh opaque;
+    GpuMesh transparent;
 };
 
 class SandboxApp : public mge::Application {
@@ -24,8 +24,10 @@ public:
     SandboxApp()
         : mge::Application(makeConfig()), m_camera(1280, 720),
           m_blocks(sandbox::registerSandboxBlocks(m_registry)), m_world(m_registry, makeTerrain()) {
-        // Módulos que usa el sandbox (orden de inicialización; se cierran al revés)
+        // Módulos que usa el sandbox (orden de inicialización; se cierran al revés).
+        // Ventana sin OpenGL: la toma la GPU de SDL (Vulkan) en el GpuModule
         addModule<PlatformModule>();
+        addModule<GpuModule>();
         addModule<AudioModule>();
     }
 
@@ -35,17 +37,10 @@ public:
         m_platform->setEventCallback([this](const SDL_Event& event) { handleWindowEvent(event); });
         bindControls(m_platform->actions());
 
-        // 1. Shaders
-        bool shaderOk = m_shader3D.compileShaders(assetPath("shaders/basic3d.vert").string(),
-                                                  assetPath("shaders/basic3d.frag").string());
-        m_shader3D.addAttribute("vertexPosition");
-        m_shader3D.addAttribute("vertexUV");
-        shaderOk = m_shader3D.linkShaders() && shaderOk;
-        if (!shaderOk) {
-            MGE_LOG_FATAL("Sandbox", "No se pudo crear el shader 3D. Assets en: ", assetRoot().string(),
-                          " (se puede cambiar con MGE_ASSET_DIR)");
-            return false;
-        }
+        // 1. Renderer (SDL3 GPU; los shaders vienen embebidos en el motor)
+        m_gpu = getModule<GpuModule>();
+        m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
+        if (!m_renderer->valid()) return false;
 
         // 2. Cámara
         // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
@@ -64,13 +59,15 @@ public:
             return false;
         });
 
-        // 5. Cargar Textura
-        m_tilesetTexture.load(assetPath("textures/Minecraft-like_3d_tileset.png").string());
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        // 3. Atlas de texturas (el camino de los assets). Se guarda una copia en la CPU para animar el agua
+        // y la lava copiando tiles.
+        m_atlas =
+            Texture2D::fromFile(m_gpu->device(), assetPath("textures/Minecraft-like_3d_tileset.png"), true);
+        if (!m_atlas) {
+            MGE_LOG_FATAL("Sandbox", "No se pudo cargar el atlas. Assets en: ", assetRoot().string(),
+                          " (se puede cambiar con MGE_ASSET_DIR)");
+            return false;
+        }
 
         // Configuración inicial del ratón
         m_platform->setCursorLocked(true);
@@ -83,10 +80,10 @@ public:
     }
 
     void onShutdown() override {
-        // Liberar las mallas aquí (no en el destructor): el contexto OpenGL todavía existe
+        // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
         m_gpuChunks.clear();
-        // La textura no se libera sola (Texture es un handle copiable): liberarla con el contexto vivo
-        m_tilesetTexture.destroy();
+        m_atlas = {};
+        m_renderer.reset();
     }
 
     // Controles del sandbox (mismas teclas que antes): cambiar un control = cambiar un binding
@@ -105,8 +102,7 @@ public:
         if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
             int newWidth = event.window.data1;
             int newHeight = event.window.data2;
-            glViewport(0, 0, newWidth, newHeight);
-            m_camera.updateProjection((float)newWidth, (float)newHeight);
+            m_camera.updateProjection((float)newWidth, (float)newHeight); // El swapchain sigue solo
         }
 
         if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && m_mouseCaptured && !m_isPaused) {
@@ -152,10 +148,8 @@ public:
         if (m_animTimer >= 0.2f) {
             m_animTimer = 0.0f;
             m_currentAnimFrame++;
-            m_tilesetTexture.updateTile(sandbox::kWaterTile,
-                                        m_waterFrames[m_currentAnimFrame % m_waterFrames.size()], 32, 32);
-            m_tilesetTexture.updateTile(sandbox::kLavaTile,
-                                        m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()], 32, 32);
+            copyTile(m_waterFrames[m_currentAnimFrame % m_waterFrames.size()], sandbox::kWaterTile);
+            copyTile(m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()], sandbox::kLavaTile);
         }
 
         streamChunks();
@@ -163,36 +157,25 @@ public:
     }
 
     void onRender() override {
-        glClearColor(0.5f, 0.7f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        const GpuFrame* frame = m_gpu->frame();
+        if (!frame) return; // Ventana minimizada
+        if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
+                               {0.5f, 0.7f, 1.0f, 1.0f}))
+            return;
+        // La cámara todavía es la del renderer OpenGL (Z de -1 a 1): se adapta a SDL GPU (#32 la reemplaza)
+        m_renderer->setCamera(depthZeroToOne(m_camera.getProjectionMatrix()) * m_camera.getViewMatrix());
 
-        m_shader3D.use();
-        glUniformMatrix4fv(m_shader3D.getUniformLocation("projection"), 1, GL_FALSE,
-                           &(m_camera.getProjectionMatrix()[0][0]));
-        glUniformMatrix4fv(m_shader3D.getUniformLocation("view"), 1, GL_FALSE,
-                           &(m_camera.getViewMatrix()[0][0]));
-        glUniform4f(m_shader3D.getUniformLocation("baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
-        glUniform1i(m_shader3D.getUniformLocation("myTexture"), 0);
-
-        m_tilesetTexture.bind();
-
-        const GLint modelLocation = m_shader3D.getUniformLocation("model");
-        auto drawPass = [&](bool transparent) {
+        // Primero lo opaco, después lo transparente (mezcla, sin escribir profundidad)
+        for (bool transparent : {false, true}) {
             for (auto& [coord, gpu] : m_gpuChunks) {
-                Mesh* mesh = transparent ? gpu.transparent.get() : gpu.opaque.get();
-                if (!mesh || !m_camera.isAabbVisible(chunkBounds(coord))) continue;
+                const GpuMesh& mesh = transparent ? gpu.transparent : gpu.opaque;
+                if (mesh.empty() || !m_camera.isAabbVisible(chunkBounds(coord))) continue;
                 const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
-                glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &model[0][0]);
-                mesh->draw();
+                m_renderer->draw(mesh, model, &m_atlas,
+                                 transparent ? MeshPass::Transparent : MeshPass::Opaque);
             }
-        };
-        drawPass(false);
-        glDepthMask(GL_FALSE);
-        drawPass(true);
-        glDepthMask(GL_TRUE);
-
-        m_tilesetTexture.unbind();
-        m_shader3D.unuse();
+        }
+        m_renderer->end();
 
         // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
         m_fpsFrames++;
@@ -240,8 +223,8 @@ private:
                 continue; // Anillo exterior: solo datos, se malla cuando entre en rango
             ChunkMesh mesh = buildChunkMesh(m_world, coord, options);
             GpuChunk& gpu = m_gpuChunks[coord];
-            gpu.opaque = upload(mesh.opaque);
-            gpu.transparent = upload(mesh.transparent);
+            gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
+            gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
             m_world.clearDirty(coord);
             meshed++;
         }
@@ -269,14 +252,18 @@ private:
         return terrain;
     }
 
-    static std::unique_ptr<Mesh> upload(const MeshData& data) {
-        if (data.empty()) return nullptr;
-        auto mesh = std::make_unique<Mesh>();
-        mesh->init(data);
-        return mesh;
+    // Copia un tile del atlas original sobre otro (animación de agua y lava). Tiles de 32 px, fila 0 arriba
+    void copyTile(int source, int destination) {
+        constexpr int kTile = 32;
+        const int columns = static_cast<int>(m_atlas.width()) / kTile;
+        auto x = [&](int tile) { return static_cast<std::uint32_t>((tile % columns) * kTile); };
+        auto y = [&](int tile) { return static_cast<std::uint32_t>((tile / columns) * kTile); };
+        m_atlas.copyFromOriginal(m_gpu->device(), x(source), y(source), kTile, kTile, x(destination),
+                                 y(destination));
     }
 
-    PlatformModule* m_platform = nullptr; // Válido entre onInit y el cierre
+    PlatformModule* m_platform = nullptr; // Válidos entre onInit y el cierre
+    GpuModule* m_gpu = nullptr;
 
     static mge::ApplicationConfig makeConfig() {
         mge::ApplicationConfig config;
@@ -286,7 +273,7 @@ private:
         return config;
     }
 
-    GLSLProgram m_shader3D;
+    std::unique_ptr<MeshRenderer> m_renderer;
     mge::Camera3D m_camera;
     // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
     BlockRegistry m_registry;
@@ -295,7 +282,7 @@ private:
     VoxelWorld m_world;
     bool m_firstLoad = true;
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
-    Texture m_tilesetTexture;
+    Texture2D m_atlas;
 
     // Medición de FPS para el log
     int m_fpsFrames = 0;

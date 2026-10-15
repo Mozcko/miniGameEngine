@@ -215,6 +215,38 @@ namespace mge {
         return cmd.submit();
     }
 
+    bool GpuDevice::uploadToTexture(const GpuTexture& texture, std::uint32_t x, std::uint32_t y,
+                                    std::uint32_t width, std::uint32_t height, const void* rgba) {
+        if (!texture || width == 0 || height == 0) return false;
+        const std::uint32_t size = width * height * 4;
+        GpuTransferBuffer staging = createTransferBuffer(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, size);
+        if (!staging) return false;
+        void* mapped = SDL_MapGPUTransferBuffer(m_device, staging.get(), false);
+        if (!mapped) {
+            MGE_LOG_ERROR("Gpu", "No se pudo mapear el transfer buffer: ", SDL_GetError());
+            return false;
+        }
+        std::memcpy(mapped, rgba, size);
+        SDL_UnmapGPUTransferBuffer(m_device, staging.get());
+
+        CommandBuffer cmd = acquireCommandBuffer();
+        if (!cmd) return false;
+        {
+            CopyPass copy = cmd.beginCopyPass();
+            SDL_GPUTextureTransferInfo source{};
+            source.transfer_buffer = staging.get();
+            SDL_GPUTextureRegion destination{};
+            destination.texture = texture.get();
+            destination.x = x;
+            destination.y = y;
+            destination.w = width;
+            destination.h = height;
+            destination.d = 1;
+            SDL_UploadToGPUTexture(copy.get(), &source, &destination, false);
+        }
+        return cmd.submit();
+    }
+
     GpuMesh GpuDevice::uploadMesh(const MeshData& mesh) {
         GpuMesh result;
         if (mesh.indices.empty()) return result;

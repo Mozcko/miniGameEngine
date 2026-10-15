@@ -1,5 +1,5 @@
 # @GAME_TITLE@ (plantilla "window"). Ejecutar: cmake --build --preset dev --target run-@GAME_NAME@
 mge_add_game(@GAME_NAME@
     SOURCES @GAME_CLASS@.cpp
-    MODULES platform audio
+    MODULES platform gpu audio
     SMOKE_FRAMES 30)
