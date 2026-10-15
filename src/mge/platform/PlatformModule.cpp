@@ -2,7 +2,7 @@
 
 #include <mge/core/Application.h>
 #include <mge/core/Log.h>
-#include <mge/platform/InputManager.h>
+#include <mge/platform/SdlInput.h>
 
 namespace mge {
 
@@ -28,19 +28,32 @@ namespace mge {
             quitSdlSubsystem(SDL_INIT_VIDEO);
             return false;
         }
-        InputManager::init(m_window->getSDLWindow());
         return true;
     }
 
     void PlatformModule::onFrameBegin(Application& app) {
-        InputManager::update();
+        m_input.beginFrame();
+
+        // El sistema puede soltar la captura (ej: alt-tab); se vuelve a aplicar mientras esté pedida
+        if (m_cursorLocked) {
+            SDL_Window* window = m_window->getSDLWindow();
+            if (!SDL_GetWindowRelativeMouseMode(window)) SDL_SetWindowRelativeMouseMode(window, true);
+            if (!SDL_GetWindowMouseGrab(window)) SDL_SetWindowMouseGrab(window, true);
+        }
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) app.requestStop();
             if (m_eventCallback) m_eventCallback(event);
-            InputManager::processEvent(event);
+            applySdlEvent(m_input, event);
         }
+    }
+
+    void PlatformModule::setCursorLocked(bool locked) {
+        m_cursorLocked = locked;
+        if (!m_window) return;
+        SDL_SetWindowRelativeMouseMode(m_window->getSDLWindow(), locked);
+        SDL_SetWindowMouseGrab(m_window->getSDLWindow(), locked);
     }
 
     void PlatformModule::onFrameEnd(Application& /*app*/) {
@@ -48,7 +61,7 @@ namespace mge {
     }
 
     void PlatformModule::onShutdown(Application& /*app*/) {
-        InputManager::init(nullptr);
+        m_input.clear();
         // Primero la ventana y el contexto OpenGL, después el subsistema de video
         m_window.reset();
         quitSdlSubsystem(SDL_INIT_VIDEO);

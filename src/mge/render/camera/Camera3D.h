@@ -6,13 +6,25 @@
 
 namespace mge {
 
+    // Intención de movimiento para las cámaras, ya traducida desde el input del juego
+    // (acciones/ejes). Las cámaras no leen teclas: así no dependen de la plataforma.
+    struct CameraInput {
+        float moveForward = 0.0f; // -1..1 (adelante +)
+        float moveRight = 0.0f;   // -1..1 (derecha +)
+        float moveUp = 0.0f;      // -1..1 (arriba +). Solo en vuelo libre (Camera3D)
+        bool sprint = false;
+        bool jump = false;  // Solo FirstPersonCamera
+        float lookX = 0.0f; // Movimiento del ratón en píxeles (derecha +)
+        float lookY = 0.0f; // Movimiento del ratón en píxeles (abajo +, como en pantalla)
+    };
+
     class Camera3D {
     public:
         // Constructor
         Camera3D(int width, int height, glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f));
 
         // Procesa input (teclado/ratón) y actualiza la posición/vista
-        virtual void update(float deltaTime);
+        virtual void update(float deltaTime, const CameraInput& input);
 
         // Actualiza la matriz de proyección (al redimensionar ventana)
         void updateProjection(float width, float height);

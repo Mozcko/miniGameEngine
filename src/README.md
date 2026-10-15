@@ -19,15 +19,13 @@ src/
 games/sandbox ──► mge_main ──────────────────► mge_core (Application runner, Module)
       ├─────────────────────► mge_platform ──► mge_core   (PlatformModule)
       ├─────────────────────► mge_audio ─────► mge_core   (AudioModule)
-      └─────────────────────► mge_render ────► mge_core (+ mge_platform, temporary)
+      └─────────────────────► mge_render ────► mge_core
 ```
 
 - `mge_core` depends on nothing but the standard library. The CI `core-only` job proves it by
   building with `-DMGE_BUILD_MODULES=OFF` on a machine without SDL.
 - The single "upward" link is `mge::createApplication()`: it is **declared** in
   `mge/core/Application.h` and **defined** by the game; `mge/app/Main.cpp` calls it.
-- **Temporary:** `mge_render` links `mge_platform` because the cameras read the static
-  `InputManager`. Removed in #15, when input moves into the core.
 
 ## Include conventions
 

@@ -66,7 +66,7 @@ miniGameEngine/
 ├── src/                    Engine source             → src/README.md
 │   └── mge/                One folder per CMake target → src/mge/README.md
 │       ├── core/           mge_core: headless, no SDL/GPU (Time)
-│       ├── platform/       mge_platform: SDL window + GL context + GLEW, InputManager
+│       ├── platform/       mge_platform: PlatformModule, SDL window + GL context + GLEW, SDL→input
 │       ├── render/         mge_render: OpenGL renderer (legacy until #40)
 │       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
 │       │   ├── 3d/         Mesh (VAO/VBO/EBO)
@@ -103,8 +103,8 @@ Every folder under `src/`, `games/` and `assets/` has its own `README.md` descri
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Bugs and debt, with file references |
 | [src/README.md](src/README.md) | Source tree overview, include/namespace conventions |
 | [src/mge/README.md](src/mge/README.md) | Engine module map |
-| [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Application runner + modules, Log, Time (headless) |
-| [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: Window, InputManager |
+| [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Application runner + modules, Clock/Time, Input, Log (headless) |
+| [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
 | [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |
 | [src/mge/render/README.md](src/mge/render/README.md) | `mge_render` overview |
