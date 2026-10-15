@@ -14,11 +14,11 @@
 // Device de GPU para los tests (sin ventana: se dibuja en texturas y se leen los píxeles).
 // - Usa el driver de video "offscreen" de SDL salvo que SDL_VIDEODRIVER diga otra cosa.
 // - Sin GPU compatible el test se saltea con un aviso; con MGE_REQUIRE_GPU=1 (CI) falla.
-// - Pide las capas de validación de Vulkan (modo debug). Los errores los imprime la capa (SDL no los
-//   recibe); en CI la capa está configurada para cortar el proceso ante un error
-//   (VK_KHRONOS_VALIDATION_DEBUG_ACTION=...BREAK), así que un uso incorrecto de la API o un recurso sin
-//   liberar al destruir el device hace fallar el test. Con MGE_REQUIRE_VALIDATION=1 (CI) falla si las
-//   capas no están activas. tests/gpu/ValidationProbe.cpp comprueba que ese corte funciona.
+// - Pide las capas de validación de Vulkan (modo debug). Los errores los imprime la capa en la salida
+//   (SDL no los recibe) y CTest falla el test si aparece "Validation Error" (FAIL_REGULAR_EXPRESSION):
+//   un uso incorrecto de la API o un recurso sin liberar al destruir el device hace fallar el test.
+//   Con MGE_REQUIRE_VALIDATION=1 (CI) falla si las capas no están activas.
+//   tests/gpu/ValidationProbe.cpp comprueba que los errores llegan a la salida.
 namespace mge_test {
 
     class GpuTestContext {

@@ -178,9 +178,9 @@ ctest --preset dev            # or: ctest --test-dir build --output-on-failure
 Tests are **headless**: they need no display. Tests labelled `gpu` need a GPU driver: Vulkan for
 `mge_gpu_tests`, `render_tests` and the SDL GPU smoke tests, OpenGL for the legacy sandbox smoke test.
 They render offscreen and are **skipped** when no GPU is found, unless `MGE_REQUIRE_GPU=1`, as in
-CI, where Mesa lavapipe provides software Vulkan. The validation layers are set there to abort on any
-error, so API misuse or leaked GPU objects fail the test (`MGE_REQUIRE_VALIDATION=1`;
-`gpu_validation_probe` proves that the abort works). Skip them all with
+CI, where Mesa lavapipe provides software Vulkan. With the validation layers installed, any `Validation Error`
+in a GPU test's output fails it (CTest `FAIL_REGULAR_EXPRESSION`). That catches API misuse and leaked GPU
+objects. CI also sets `MGE_REQUIRE_VALIDATION=1`, and `gpu_validation_probe` proves the mechanism works. Skip them all with
 `ctest -LE gpu`. Disable tests with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
 
 **Render tests (golden images):** `render_tests` draws scenes offscreen and compares them with PNGs

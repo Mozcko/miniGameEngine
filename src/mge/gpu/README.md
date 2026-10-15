@@ -151,12 +151,13 @@ is then front‑facing, matching the pipeline default.
 - **`tests/gpu/` → `mge_gpu_tests`** (label `gpu`): clear and read back, mesh upload, move
   semantics, cancelled command buffers, embedded SPIR‑V (magic number, stage, alignment), and a
   triangle with a fragment uniform drawn and read back.
-- **Validation in CI.** The tests request the Vulkan validation layers, and CI configures them to
-  abort on any error (`VK_KHRONOS_VALIDATION_DEBUG_ACTION=…BREAK`). API misuse, or a resource
-  still alive when the device is destroyed, therefore fails the test.
-  - `MGE_REQUIRE_VALIDATION=1` fails if the layers aren't active.
-  - `gpu_validation_probe` triggers a real error on purpose and passes only if the layer aborted,
-    which proves the mechanism works.
+- **Validation in CI.** The tests request the Vulkan validation layers, which print errors to the
+  test's output. Every GPU test and GPU smoke test has the CTest property
+  `FAIL_REGULAR_EXPRESSION "Validation Error"`, so API misuse, or a resource still alive when the
+  device is destroyed, fails the test.
+  - `MGE_REQUIRE_VALIDATION=1` (CI) fails if the layers aren't active.
+  - `gpu_validation_probe` triggers a real error on purpose and passes only if its VUID appears in
+    the output, which proves the mechanism works.
   - Locally, without the layers installed, the probe is skipped.
   - They run **without a window** (SDL `offscreen` video driver, rendering into textures).
   - With no compatible GPU they're skipped with a message. `MGE_REQUIRE_GPU=1`, set in CI, turns

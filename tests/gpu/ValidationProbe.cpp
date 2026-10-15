@@ -1,8 +1,9 @@
-// Prueba que las capas de validación de Vulkan cortan el proceso ante un error (lo que hace que los
-// tests de GPU fallen si usan mal la API o dejan recursos sin liberar).
+// Prueba que los errores de validación de Vulkan llegan a la salida del test, que es lo que CTest revisa
+// (FAIL_REGULAR_EXPRESSION "Validation Error" en todos los tests de GPU): sin esto, un uso incorrecto de
+// la API o un recurso sin liberar pasarían sin que nadie lo note.
 // Provoca un error real: un shader de fragmentos que usa un uniform buffer, declarado con 0 uniform
-// buffers (SDL no lee el SPIR-V; la capa sí lo detecta al crear el pipeline).
-// Salida: 0 = la capa cortó (SIGTRAP), 1 = no cortó (o faltan requisitos exigidos), 77 = se saltea.
+// buffers (SDL no lee el SPIR-V; la capa sí lo detecta al crear el pipeline). El test de CTest pasa solo
+// si en la salida aparece ese VUID (PASS_REGULAR_EXPRESSION). 77 = se saltea (sin GPU o sin capas).
 #include <mge/gpu/GpuDevice.h>
 
 #include <shaders/test_triangle_frag.h>
@@ -10,11 +11,9 @@
 
 #include <SDL3/SDL.h>
 
-#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <unistd.h>
 
 namespace {
     bool validationActive = false; // Lo marca el log de SDL al crear el device
@@ -25,12 +24,6 @@ namespace {
         std::fprintf(stderr, "%s\n", message ? message : "");
     }
 
-    void onTrap(int /*signal*/) {
-        const char text[] = "Validación: la capa cortó el proceso ante el error, como se espera\n";
-        (void)!write(STDOUT_FILENO, text, sizeof(text) - 1);
-        _exit(0);
-    }
-
     bool required(const char* name) {
         const char* env = std::getenv(name);
         return env && std::strcmp(env, "1") == 0;
@@ -38,11 +31,6 @@ namespace {
 }
 
 int main() {
-    // Los errores de validación: imprimir y cortar (SIGTRAP)
-    setenv("VK_KHRONOS_VALIDATION_REPORT_FLAGS", "error", 1);
-    setenv("VK_KHRONOS_VALIDATION_DEBUG_ACTION", "VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK", 1);
-    std::signal(SIGTRAP, onTrap);
-
     if (!std::getenv("SDL_VIDEODRIVER")) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
     SDL_SetLogOutputFunction(&captureLog, nullptr);
     SDL_SetLogPriority(SDL_LOG_CATEGORY_GPU, SDL_LOG_PRIORITY_INFO);
@@ -65,7 +53,6 @@ int main() {
     desc.fragmentShader = &fragment;
     desc.gpuVertexInput = false;
     const mge::GpuGraphicsPipeline pipeline = device->createGraphicsPipeline(desc);
-
-    std::printf("La capa de validación NO cortó el proceso ante un error\n");
-    return 1;
+    std::fflush(stdout); // La capa escribe en stdout: que CTest lo vea antes de salir
+    return 0;
 }
