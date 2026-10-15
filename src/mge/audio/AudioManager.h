@@ -4,7 +4,7 @@
 #include <map>
 #include <SDL2/SDL_mixer.h>
 
-namespace MiniGameEngine {
+namespace mge {
 
     class AudioManager {
     public:
@@ -28,8 +28,8 @@ namespace MiniGameEngine {
 
     private:
         // Cachés para no cargar el mismo archivo dos veces
-        static std::map<std::string, Mix_Chunk*> _sfxCache;
-        static std::map<std::string, Mix_Music*> _musicCache;
+        static std::map<std::string, Mix_Chunk*> s_sfxCache;
+        static std::map<std::string, Mix_Music*> s_musicCache;
     };
 
 }

@@ -1,11 +1,11 @@
 #include <mge/audio/AudioManager.h>
 #include <iostream>
 
-namespace MiniGameEngine {
+namespace mge {
 
     // Inicializar mapas estáticos
-    std::map<std::string, Mix_Chunk*> AudioManager::_sfxCache;
-    std::map<std::string, Mix_Music*> AudioManager::_musicCache;
+    std::map<std::string, Mix_Chunk*> AudioManager::s_sfxCache;
+    std::map<std::string, Mix_Music*> AudioManager::s_musicCache;
 
     void AudioManager::init() {
         // Inicializar SDL_Mixer
@@ -19,16 +19,16 @@ namespace MiniGameEngine {
 
     void AudioManager::shutdown() {
         // Liberar efectos de sonido
-        for (auto& pair : _sfxCache) {
+        for (auto& pair : s_sfxCache) {
             Mix_FreeChunk(pair.second);
         }
-        _sfxCache.clear();
+        s_sfxCache.clear();
 
         // Liberar música
-        for (auto& pair : _musicCache) {
+        for (auto& pair : s_musicCache) {
             Mix_FreeMusic(pair.second);
         }
-        _musicCache.clear();
+        s_musicCache.clear();
 
         Mix_CloseAudio();
         std::cout << "[AudioManager] Sistema de audio cerrado." << std::endl;
@@ -38,8 +38,8 @@ namespace MiniGameEngine {
         Mix_Chunk* chunk = nullptr;
 
         // 1. Buscar en Caché
-        auto it = _sfxCache.find(filePath);
-        if (it != _sfxCache.end()) {
+        auto it = s_sfxCache.find(filePath);
+        if (it != s_sfxCache.end()) {
             chunk = it->second;
         } else {
             // 2. Cargar si no existe
@@ -48,7 +48,7 @@ namespace MiniGameEngine {
                 std::cerr << "[AudioManager] No se pudo cargar SFX: " << filePath << " Error: " << Mix_GetError() << std::endl;
                 return;
             }
-            _sfxCache[filePath] = chunk;
+            s_sfxCache[filePath] = chunk;
         }
 
         // 3. Configurar volumen y reproducir
@@ -64,8 +64,8 @@ namespace MiniGameEngine {
         Mix_Music* music = nullptr;
 
         // 1. Buscar en Caché
-        auto it = _musicCache.find(filePath);
-        if (it != _musicCache.end()) {
+        auto it = s_musicCache.find(filePath);
+        if (it != s_musicCache.end()) {
             music = it->second;
         } else {
             // 2. Cargar si no existe
@@ -74,7 +74,7 @@ namespace MiniGameEngine {
                 std::cerr << "[AudioManager] No se pudo cargar Musica: " << filePath << " Error: " << Mix_GetError() << std::endl;
                 return;
             }
-            _musicCache[filePath] = music;
+            s_musicCache[filePath] = music;
         }
 
         // 3. Reproducir

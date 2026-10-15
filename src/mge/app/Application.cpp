@@ -4,23 +4,23 @@
 #include <SDL2/SDL_ttf.h>
 #include <mge/platform/InputManager.h>
 
-namespace Engine
+namespace mge
 {
 
-    Application::Application() : m_Running(true), m_DeltaTime(0.0f), m_LastFrameTime(0)
+    Application::Application() : m_running(true), m_deltaTime(0.0f), m_lastFrameTime(0)
     {
         // Inicializar Audio
-        MiniGameEngine::AudioManager::init();
+        mge::AudioManager::init();
 
         // Inicialización de SDL
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
         {
             std::cerr << "Error al inicializar SDL: " << SDL_GetError() << std::endl;
-            m_Running = false;
+            m_running = false;
             return;
         }
 
-        m_Window = std::make_unique<MiniGameEngine::Window>("Mini Game Engine - Minecraft Cube", 1280, 720);
+        m_window = std::make_unique<mge::Window>("Mini Game Engine - Minecraft Cube", 1280, 720);
         // Inicializar GLEW (usualmente después de crear el contexto en Window)
 
         if (TTF_Init() == -1)
@@ -32,46 +32,46 @@ namespace Engine
     Application::~Application()
     {
         // Limpiar Audio
-        MiniGameEngine::AudioManager::shutdown();
+        mge::AudioManager::shutdown();
         TTF_Quit();
         // Limpieza
         SDL_Quit();
     }
 
-    void Application::CalculateDeltaTime()
+    void Application::calculateDeltaTime()
     {
         Uint64 currentFrameTime = SDL_GetPerformanceCounter();
-        m_DeltaTime = (float)(currentFrameTime - m_LastFrameTime) / (float)SDL_GetPerformanceFrequency();
-        m_LastFrameTime = currentFrameTime;
+        m_deltaTime = (float)(currentFrameTime - m_lastFrameTime) / (float)SDL_GetPerformanceFrequency();
+        m_lastFrameTime = currentFrameTime;
     }
 
-    void Application::Run()
+    void Application::run()
     {
-        InputManager::Init(m_Window->getSDLWindow());
-        OnInit();
+        InputManager::init(m_window->getSDLWindow());
+        onInit();
 
-        m_LastFrameTime = SDL_GetPerformanceCounter();
+        m_lastFrameTime = SDL_GetPerformanceCounter();
 
-        while (m_Running)
+        while (m_running)
         {
-            CalculateDeltaTime();
-            InputManager::Update();
+            calculateDeltaTime();
+            InputManager::update();
 
             SDL_Event event;
             while (SDL_PollEvent(&event))
             {
                 if (event.type == SDL_QUIT)
                 {
-                    m_Running = false;
+                    m_running = false;
                 }
-                OnEvent(event);
-                InputManager::ProcessEvent(event);
+                onEvent(event);
+                InputManager::processEvent(event);
             }
 
-            OnUpdate(m_DeltaTime);
-            OnRender();
+            onUpdate(m_deltaTime);
+            onRender();
 
-            m_Window->swapBuffers();
+            m_window->swapBuffers();
         }
     }
 }

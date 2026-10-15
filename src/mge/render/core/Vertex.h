@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace MiniGameEngine {
+namespace mge {
 
     struct Vertex {
         glm::vec3 position; // X, Y, Z (En 2D, Z será 0)

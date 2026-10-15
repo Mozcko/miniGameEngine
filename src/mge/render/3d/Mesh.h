@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <mge/render/core/Vertex.h> // Incluimos la nueva estructura
 
-namespace MiniGameEngine {
+namespace mge {
 
     class Mesh {
     public:
@@ -17,9 +17,9 @@ namespace MiniGameEngine {
         virtual void draw();
 
     protected:
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _ebo;
-        int _indexCount;
+        GLuint m_vao;
+        GLuint m_vbo;
+        GLuint m_ebo;
+        int m_indexCount;
     };
 }

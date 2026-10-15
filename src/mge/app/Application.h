@@ -5,35 +5,35 @@
 #include <mge/platform/Window.h>
 #include <mge/audio/AudioManager.h>
 
-namespace Engine {
+namespace mge {
 
     class Application {
     public:
         Application();
         virtual ~Application();
 
-        void Run();
+        void run();
 
         // Métodos que deben ser implementados por el juego (Sandbox)
-        virtual void OnInit() = 0;
-        virtual void OnUpdate(float dt) = 0;
-        virtual void OnRender() = 0;
-        virtual void OnEvent(SDL_Event& /*event*/) {}
+        virtual void onInit() = 0;
+        virtual void onUpdate(float dt) = 0;
+        virtual void onRender() = 0;
+        virtual void onEvent(SDL_Event& /*event*/) {}
 
-        MiniGameEngine::Window& GetWindow() { return *m_Window; }
+        mge::Window& getWindow() { return *m_window; }
 
     protected:
-        bool m_Running;
+        bool m_running;
         
-        std::unique_ptr<MiniGameEngine::Window> m_Window;
+        std::unique_ptr<mge::Window> m_window;
 
     private:
-        void CalculateDeltaTime();
+        void calculateDeltaTime();
 
-        float m_DeltaTime;
-        Uint64 m_LastFrameTime;
+        float m_deltaTime;
+        Uint64 m_lastFrameTime;
     };
 
     // Esta función debe ser definida por el cliente (tu juego) para devolver su propia aplicación
-    Application* CreateApplication();
+    Application* createApplication();
 }

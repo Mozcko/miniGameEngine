@@ -1,15 +1,15 @@
 #include <sandbox/Block.h>
 
-namespace MiniGameEngine {
+namespace mge {
 
-    Block::Block(BlockType type) : _type(type) {}
+    Block::Block(BlockType type) : m_type(type) {}
 
     bool Block::isActive() const {
-        return _type != BlockType::Air;
+        return m_type != BlockType::Air;
     }
 
     bool Block::isSolid() const {
-        switch (_type) {
+        switch (m_type) {
             case BlockType::Air:
             case BlockType::Rose:
             case BlockType::Flower:
@@ -24,7 +24,7 @@ namespace MiniGameEngine {
     }
 
     bool Block::isOpaque() const {
-        switch (_type) {
+        switch (m_type) {
             case BlockType::Air:
             case BlockType::Rose:
             case BlockType::Flower:
@@ -126,13 +126,13 @@ namespace MiniGameEngine {
         int col = tileIndex % cols;
         int row = tileIndex / cols;
 
-        float u_min = (float)(col * tileS) / texW;
-        float u_max = (float)((col + 1) * tileS) / texW;
+        float uMin = (float)(col * tileS) / texW;
+        float uMax = (float)((col + 1) * tileS) / texW;
         
         // Invertimos Y
-        float v_max = 1.0f - (float)(row * tileS) / texH;
-        float v_min = 1.0f - (float)((row + 1) * tileS) / texH;
+        float vMax = 1.0f - (float)(row * tileS) / texH;
+        float vMin = 1.0f - (float)((row + 1) * tileS) / texH;
 
-        return {u_min, v_min, u_max, v_max};
+        return {uMin, vMin, uMax, vMax};
     }
 }

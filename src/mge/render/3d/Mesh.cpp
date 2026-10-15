@@ -1,36 +1,36 @@
 #include <mge/render/3d/Mesh.h>
 #include <cstddef> // Para offsetof
 
-namespace MiniGameEngine {
+namespace mge {
 
-    Mesh::Mesh() : _vao(0), _vbo(0), _ebo(0), _indexCount(0) {}
+    Mesh::Mesh() : m_vao(0), m_vbo(0), m_ebo(0), m_indexCount(0) {}
 
     Mesh::~Mesh() {
-        if (_vao) glDeleteVertexArrays(1, &_vao);
-        if (_vbo) glDeleteBuffers(1, &_vbo);
-        if (_ebo) glDeleteBuffers(1, &_ebo);
+        if (m_vao) glDeleteVertexArrays(1, &m_vao);
+        if (m_vbo) glDeleteBuffers(1, &m_vbo);
+        if (m_ebo) glDeleteBuffers(1, &m_ebo);
     }
 
     void Mesh::init(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices) {
-        _indexCount = indices.size();
+        m_indexCount = indices.size();
 
         // Si ya existían, límpialos para re-usar el Mesh
-        if (_vao) glDeleteVertexArrays(1, &_vao);
-        if (_vbo) glDeleteBuffers(1, &_vbo);
-        if (_ebo) glDeleteBuffers(1, &_ebo);
+        if (m_vao) glDeleteVertexArrays(1, &m_vao);
+        if (m_vbo) glDeleteBuffers(1, &m_vbo);
+        if (m_ebo) glDeleteBuffers(1, &m_ebo);
 
-        glGenVertexArrays(1, &_vao);
-        glGenBuffers(1, &_vbo);
-        glGenBuffers(1, &_ebo);
+        glGenVertexArrays(1, &m_vao);
+        glGenBuffers(1, &m_vbo);
+        glGenBuffers(1, &m_ebo);
 
-        glBindVertexArray(_vao);
+        glBindVertexArray(m_vao);
 
         // VBO (Datos)
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
         // EBO (Índices)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
         // --- ATRIBUTOS (IMPORTANTE) ---
@@ -63,9 +63,9 @@ namespace MiniGameEngine {
     }
 
     void Mesh::draw() {
-        if (_vao == 0) return;
-        glBindVertexArray(_vao);
-        glDrawElements(GL_TRIANGLES, _indexCount, GL_UNSIGNED_INT, 0);
+        if (m_vao == 0) return;
+        glBindVertexArray(m_vao);
+        glDrawElements(GL_TRIANGLES, m_indexCount, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
 }

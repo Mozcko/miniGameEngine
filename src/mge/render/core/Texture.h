@@ -3,9 +3,9 @@
 #include <vector>
 #include <GL/glew.h>
 
-struct SDL_Surface;
+struct SDL_Surface; // NOLINT(readability-identifier-naming): tipo de SDL
 
-namespace MiniGameEngine {
+namespace mge {
 
     class Texture {
     public:
@@ -24,17 +24,17 @@ namespace MiniGameEngine {
 
         void loadFromSurface(SDL_Surface* surface);
 
-        int getWidth() const { return _width; }
-        int getHeight() const { return _height; }
-        GLuint getID() const { return _textureID; }
+        int getWidth() const { return m_width; }
+        int getHeight() const { return m_height; }
+        GLuint getID() const { return m_textureId; }
 
     private:
-        GLuint _textureID;
-        int _width;
-        int _height;
-        int _numChannels;
+        GLuint m_textureId;
+        int m_width;
+        int m_height;
+        int m_numChannels;
 
-        std::vector<unsigned char> _originalPixels; 
+        std::vector<unsigned char> m_originalPixels; 
     };
 
 }

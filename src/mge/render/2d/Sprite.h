@@ -2,7 +2,7 @@
 #include <mge/render/3d/Mesh.h> // Heredamos de Mesh
 #include <string>
 
-namespace MiniGameEngine {
+namespace mge {
 
     // Sprite ES UN Mesh
     class Sprite : public Mesh {
@@ -30,10 +30,10 @@ namespace MiniGameEngine {
 
     private:
         // Guardamos el estado para poder reconstruir el mesh si algo cambia (flip, posición)
-        float _x, _y, _width, _height;
-        float _texW, _texH, _tileW, _tileH;
-        int _tileIndex;
-        bool _flipX;
-        glm::vec4 _color; // Color actual
+        float m_x, m_y, m_width, m_height;
+        float m_texW, m_texH, m_tileW, m_tileH;
+        int m_tileIndex;
+        bool m_flipX;
+        glm::vec4 m_color; // Color actual
     };
 }

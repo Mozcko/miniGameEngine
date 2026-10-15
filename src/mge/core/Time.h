@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
 
-namespace MiniGameEngine {
+namespace mge {
     class Time {
     public:
         static void init();
@@ -20,9 +20,9 @@ namespace MiniGameEngine {
         static constexpr float kMaxDeltaTime = 0.1f;
 
     private:
-        static std::chrono::steady_clock::time_point _lastTime;
-        static float _deltaTime;
-        static float _rawDeltaTime;
-        static float _timeScale;
+        static std::chrono::steady_clock::time_point s_lastTime;
+        static float s_deltaTime;
+        static float s_rawDeltaTime;
+        static float s_timeScale;
     };
 }

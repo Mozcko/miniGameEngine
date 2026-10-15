@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <functional>
 
-namespace Engine {
+namespace mge {
 
     class Camera3D {
     public:
@@ -20,47 +20,47 @@ namespace Engine {
         // Getters
         glm::mat4 getViewMatrix() const;
         glm::mat4 getProjectionMatrix() const;
-        glm::vec3 getPosition() const { return Position; }
-        void setPosition(const glm::vec3& pos) { Position = pos; }
+        glm::vec3 getPosition() const { return m_position; }
+        void setPosition(const glm::vec3& pos) { m_position = pos; }
         
         // Frustum Culling (Simplificado o placeholder para mantener compatibilidad)
         bool isSphereVisible(const glm::vec3& center, float radius) const;
 
         // Configuración
-        void setSpeed(float speed) { MovementSpeed = speed; }
-        void setSensitivity(float sensitivity) { MouseSensitivity = sensitivity; }
+        void setSpeed(float speed) { m_movementSpeed = speed; }
+        void setSensitivity(float sensitivity) { m_mouseSensitivity = sensitivity; }
         
         void setCollisionCallback(std::function<bool(const glm::vec3& min, const glm::vec3& max)> callback) {
-            m_CollisionCallback = callback;
+            m_collisionCallback = callback;
         }
 
     protected:
         void updateCameraVectors();
 
         // Atributos de la cámara
-        glm::vec3 Position;
-        glm::vec3 Front;
-        glm::vec3 Up;
-        glm::vec3 Right;
-        glm::vec3 WorldUp;
+        glm::vec3 m_position;
+        glm::vec3 m_front;
+        glm::vec3 m_up;
+        glm::vec3 m_right;
+        glm::vec3 m_worldUp;
 
         // Ángulos de Euler
-        float Yaw;
-        float Pitch;
+        float m_yaw;
+        float m_pitch;
 
         // Opciones de movimiento
-        float MovementSpeed;
-        float MouseSensitivity;
+        float m_movementSpeed;
+        float m_mouseSensitivity;
 
         // Proyección
-        float _width, _height;
-        float _fov;
-        glm::mat4 _projectionMatrix;
-        glm::mat4 _viewMatrix;
+        float m_width, m_height;
+        float m_fov;
+        glm::mat4 m_projectionMatrix;
+        glm::mat4 m_viewMatrix;
 
         // Physics
-        glm::vec3 m_Velocity;
-        bool m_IsGrounded;
-        std::function<bool(const glm::vec3&, const glm::vec3&)> m_CollisionCallback;
+        glm::vec3 m_velocity;
+        bool m_isGrounded;
+        std::function<bool(const glm::vec3&, const glm::vec3&)> m_collisionCallback;
     };
 }

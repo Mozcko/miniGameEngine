@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-namespace MiniGameEngine {
+namespace mge {
 
     class Animation {
     public:
@@ -14,10 +14,10 @@ namespace MiniGameEngine {
         int getCurrentTile() const;
 
     private:
-        std::vector<int> _frames;
-        int _currentFrameIndex;
-        float _speed;
-        float _timeElapsed;
-        bool _loop;
+        std::vector<int> m_frames;
+        int m_currentFrameIndex;
+        float m_speed;
+        float m_timeElapsed;
+        bool m_loop;
     };
 }

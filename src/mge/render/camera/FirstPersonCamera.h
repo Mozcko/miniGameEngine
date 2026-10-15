@@ -2,7 +2,7 @@
 #include <mge/render/camera/Camera3D.h>
 #include <functional>
 
-namespace Engine {
+namespace mge {
 
     class FirstPersonCamera : public Camera3D {
     public:
@@ -13,12 +13,12 @@ namespace Engine {
         
         // Configurar callback de colisiones
         void setCollisionCallback(std::function<bool(const glm::vec3& min, const glm::vec3& max)> callback) {
-            m_CollisionCallback = callback;
+            m_collisionCallback = callback;
         }
 
     private:
-        glm::vec3 m_Velocity;
-        bool m_IsGrounded;
-        std::function<bool(const glm::vec3&, const glm::vec3&)> m_CollisionCallback;
+        glm::vec3 m_velocity;
+        bool m_isGrounded;
+        std::function<bool(const glm::vec3&, const glm::vec3&)> m_collisionCallback;
     };
 }

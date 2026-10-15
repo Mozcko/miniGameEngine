@@ -3,7 +3,7 @@
 #include <string>
 #include <mge/render/core/Texture.h>
 
-namespace MiniGameEngine {
+namespace mge {
 
     // Clase estática para gestionar recursos (Texturas, y a futuro Sonidos, Shaders, etc.)
     class ResourceManager {
@@ -16,7 +16,7 @@ namespace MiniGameEngine {
 
     private:
         // El caché: Mapa de <Ruta, Textura>
-        static std::map<std::string, Texture> _textureCache;
+        static std::map<std::string, Texture> s_textureCache;
     };
 
 }

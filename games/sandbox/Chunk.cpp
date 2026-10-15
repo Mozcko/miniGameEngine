@@ -3,10 +3,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cstdlib> // Para rand() y srand()
 
-namespace MiniGameEngine
+namespace mge
 {
 
-    Chunk::Chunk(int x, int z) : _x(x), _z(z), _meshOpaque(nullptr), _meshTransparent(nullptr)
+    Chunk::Chunk(int x, int z) : m_x(x), m_z(z), m_meshOpaque(nullptr), m_meshTransparent(nullptr)
     {
         // Solo datos (CPU). La malla (GPU) se construye aparte con buildMesh(),
         // así la generación se puede probar sin contexto OpenGL.
@@ -15,10 +15,10 @@ namespace MiniGameEngine
 
     Chunk::~Chunk()
     {
-        if (_meshOpaque)
-            delete _meshOpaque;
-        if (_meshTransparent)
-            delete _meshTransparent;
+        if (m_meshOpaque)
+            delete m_meshOpaque;
+        if (m_meshTransparent)
+            delete m_meshTransparent;
     }
 
     int Chunk::getTerrainHeight(int worldX, int worldZ)
@@ -28,23 +28,23 @@ namespace MiniGameEngine
         int height = (int)heightVal;
         if (height < 1)
             height = 1;
-        if (height >= CHUNK_HEIGHT)
-            height = CHUNK_HEIGHT - 1;
+        if (height >= kChunkHeight)
+            height = kChunkHeight - 1;
         return height;
     }
 
     void Chunk::generate()
     {
-        const int WATER_LEVEL = 5;
+        const int waterLevel = 5;
 
         // PASADA 1: Terreno Base
-        for (int x = 0; x < CHUNK_SIZE; x++)
+        for (int x = 0; x < kChunkSize; x++)
         {
-            for (int z = 0; z < CHUNK_SIZE; z++)
+            for (int z = 0; z < kChunkSize; z++)
             {
                 // Coordenadas globales para que el ruido coincida entre chunks
-                int worldX = _x * CHUNK_SIZE + x;
-                int worldZ = _z * CHUNK_SIZE + z;
+                int worldX = m_x * kChunkSize + x;
+                int worldZ = m_z * kChunkSize + z;
 
                 // Semilla determinista por columna
                 srand(worldX * 8921 + worldZ * 33771);
@@ -53,7 +53,7 @@ namespace MiniGameEngine
 
                 // Determinar tipo de superficie
                 BlockType surface = BlockType::Grass;
-                if (height <= WATER_LEVEL + 1)
+                if (height <= waterLevel + 1)
                 {
                     surface = BlockType::Sand; // Playas
                 }
@@ -63,35 +63,35 @@ namespace MiniGameEngine
                 }
 
                 // Probabilidad de piscina de lava (rara)
-                bool lavaPool = (rand() % 200 == 0) && height > WATER_LEVEL;
+                bool lavaPool = (rand() % 200 == 0) && height > waterLevel;
 
-                for (int y = 0; y < CHUNK_HEIGHT; y++)
+                for (int y = 0; y < kChunkHeight; y++)
                 {
                     if (y > height)
                     {
-                        if (y <= WATER_LEVEL)
+                        if (y <= waterLevel)
                         {
-                            _blocks[x][y][z] = Block(BlockType::Water);
+                            m_blocks[x][y][z] = Block(BlockType::Water);
                         }
                         else
                         {
-                            _blocks[x][y][z] = Block(BlockType::Air);
+                            m_blocks[x][y][z] = Block(BlockType::Air);
                         }
                     }
                     else if (y == height)
                     {
                         if (lavaPool)
-                            _blocks[x][y][z] = Block(BlockType::Lava);
+                            m_blocks[x][y][z] = Block(BlockType::Lava);
                         else
-                            _blocks[x][y][z] = Block(surface);
+                            m_blocks[x][y][z] = Block(surface);
                     }
                     else if (y > height - 3)
                     {
-                        _blocks[x][y][z] = Block(BlockType::Dirt);
+                        m_blocks[x][y][z] = Block(BlockType::Dirt);
                     }
                     else
                     {
-                        _blocks[x][y][z] = Block(BlockType::Stone);
+                        m_blocks[x][y][z] = Block(BlockType::Stone);
                     }
                 }
             }
@@ -99,27 +99,27 @@ namespace MiniGameEngine
 
         // PASADA 2: Decoración (Árboles y Flores)
         // Lo hacemos en otro bucle para no sobrescribir árboles con el terreno de la siguiente iteración
-        for (int x = 0; x < CHUNK_SIZE; x++)
+        for (int x = 0; x < kChunkSize; x++)
         {
-            for (int z = 0; z < CHUNK_SIZE; z++)
+            for (int z = 0; z < kChunkSize; z++)
             {
-                int worldX = _x * CHUNK_SIZE + x;
-                int worldZ = _z * CHUNK_SIZE + z;
+                int worldX = m_x * kChunkSize + x;
+                int worldZ = m_z * kChunkSize + z;
                 // Semilla distinta a la de la pasada 1: con la misma semilla, la primera tirada
                 // repetía la de la grava (siempre >= 5 en el pasto) y nunca salían árboles ni rosas.
                 // Sigue siendo determinista por columna. (#5; el RNG definitivo llega en #14)
                 srand((worldX * 8921 + worldZ * 33771) ^ 0x5bd1e995);
 
                 int height = getTerrainHeight(worldX, worldZ);
-                BlockType surface = _blocks[x][height][z].getType();
+                BlockType surface = m_blocks[x][height][z].getType();
 
                 // Solo decorar sobre Pasto y encima del nivel del agua
-                if (surface == BlockType::Grass && height > WATER_LEVEL)
+                if (surface == BlockType::Grass && height > waterLevel)
                 {
                     int r = rand() % 100;
                     int y = height + 1;
 
-                    if (y >= CHUNK_HEIGHT)
+                    if (y >= kChunkHeight)
                         continue;
 
                     if (r < 2)
@@ -128,11 +128,11 @@ namespace MiniGameEngine
                     }
                     else if (r < 4)
                     { // 2% Rosa
-                        _blocks[x][y][z] = Block(BlockType::Rose);
+                        m_blocks[x][y][z] = Block(BlockType::Rose);
                     }
                     else if (r < 6)
                     { // 2% Margarita
-                        _blocks[x][y][z] = Block(BlockType::Flower);
+                        m_blocks[x][y][z] = Block(BlockType::Flower);
                     }
                 }
             }
@@ -151,16 +151,16 @@ namespace MiniGameEngine
                 for (int lz = z - 2; lz <= z + 2; lz++)
                 {
                     // Verificar límites del Chunk (simplificación: no dibujamos árboles que se salen del chunk)
-                    if (lx >= 0 && lx < CHUNK_SIZE && lz >= 0 && lz < CHUNK_SIZE && ly >= 0 && ly < CHUNK_HEIGHT)
+                    if (lx >= 0 && lx < kChunkSize && lz >= 0 && lz < kChunkSize && ly >= 0 && ly < kChunkHeight)
                     {
                         // Forma simple: quitar esquinas para hacerlo más redondo
                         int dX = abs(lx - x);
                         int dZ = abs(lz - z);
                         if ((dX + dZ) < 4)
                         { // Evitar esquinas lejanas
-                            if (!_blocks[lx][ly][lz].isActive())
+                            if (!m_blocks[lx][ly][lz].isActive())
                             { // No sobrescribir tronco u otros bloques
-                                _blocks[lx][ly][lz] = Block(BlockType::Leaves);
+                                m_blocks[lx][ly][lz] = Block(BlockType::Leaves);
                             }
                         }
                     }
@@ -171,35 +171,35 @@ namespace MiniGameEngine
         // Tronco
         for (int i = 0; i < treeHeight; i++)
         {
-            if (y + i < CHUNK_HEIGHT)
+            if (y + i < kChunkHeight)
             {
-                _blocks[x][y + i][z] = Block(BlockType::Log);
+                m_blocks[x][y + i][z] = Block(BlockType::Log);
             }
         }
     }
 
     Block Chunk::getBlock(int x, int y, int z) const
     {
-        if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE)
+        if (x < 0 || x >= kChunkSize || y < 0 || y >= kChunkHeight || z < 0 || z >= kChunkSize)
             return Block(BlockType::Air);
-        return _blocks[x][y][z];
+        return m_blocks[x][y][z];
     }
 
     Block Chunk::getNeighborBlock(int x, int y, int z) const
     {
         // Verificación rápida de altura global
-        if (y < 0 || y >= CHUNK_HEIGHT)
+        if (y < 0 || y >= kChunkHeight)
             return Block(BlockType::Air);
 
         // Si estamos dentro del chunk, usamos los datos reales
-        if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE)
+        if (x >= 0 && x < kChunkSize && z >= 0 && z < kChunkSize)
         {
-            return _blocks[x][y][z];
+            return m_blocks[x][y][z];
         }
 
         // Si es un vecino (fuera del array), usamos la matemática procedural para predecir si hay bloque
-        int worldX = _x * CHUNK_SIZE + x;
-        int worldZ = _z * CHUNK_SIZE + z;
+        int worldX = m_x * kChunkSize + x;
+        int worldZ = m_z * kChunkSize + z;
         int height = getTerrainHeight(worldX, worldZ);
 
         if (y > height)
@@ -236,13 +236,13 @@ namespace MiniGameEngine
         std::vector<unsigned int> stdIndices = {0, 1, 2, 2, 3, 0};
         std::vector<unsigned int> invIndices = {1, 0, 3, 3, 2, 1};
 
-        for (int x = 0; x < CHUNK_SIZE; x++)
+        for (int x = 0; x < kChunkSize; x++)
         {
-            for (int y = 0; y < CHUNK_HEIGHT; y++)
+            for (int y = 0; y < kChunkHeight; y++)
             {
-                for (int z = 0; z < CHUNK_SIZE; z++)
+                for (int z = 0; z < kChunkSize; z++)
                 {
-                    Block currentBlock = _blocks[x][y][z];
+                    Block currentBlock = m_blocks[x][y][z];
                     if (!currentBlock.isActive())
                         continue;
 
@@ -270,26 +270,26 @@ namespace MiniGameEngine
                         };
 
                         // Diagonal 1
-                        addCrossVert(-0.5f, -0.5f, -0.5f, uv.u_min, uv.v_min);
-                        addCrossVert(0.5f, -0.5f, 0.5f, uv.u_max, uv.v_min);
-                        addCrossVert(0.5f, 0.5f, 0.5f, uv.u_max, uv.v_max);
-                        addCrossVert(-0.5f, 0.5f, -0.5f, uv.u_min, uv.v_max);
+                        addCrossVert(-0.5f, -0.5f, -0.5f, uv.uMin, uv.vMin);
+                        addCrossVert(0.5f, -0.5f, 0.5f, uv.uMax, uv.vMin);
+                        addCrossVert(0.5f, 0.5f, 0.5f, uv.uMax, uv.vMax);
+                        addCrossVert(-0.5f, 0.5f, -0.5f, uv.uMin, uv.vMax);
                         // Cara trasera (para que se vea por ambos lados)
-                        addCrossVert(-0.5f, -0.5f, -0.5f, uv.u_min, uv.v_min);
-                        addCrossVert(-0.5f, 0.5f, -0.5f, uv.u_min, uv.v_max);
-                        addCrossVert(0.5f, 0.5f, 0.5f, uv.u_max, uv.v_max);
-                        addCrossVert(0.5f, -0.5f, 0.5f, uv.u_max, uv.v_min);
+                        addCrossVert(-0.5f, -0.5f, -0.5f, uv.uMin, uv.vMin);
+                        addCrossVert(-0.5f, 0.5f, -0.5f, uv.uMin, uv.vMax);
+                        addCrossVert(0.5f, 0.5f, 0.5f, uv.uMax, uv.vMax);
+                        addCrossVert(0.5f, -0.5f, 0.5f, uv.uMax, uv.vMin);
 
                         // Diagonal 2
-                        addCrossVert(-0.5f, -0.5f, 0.5f, uv.u_min, uv.v_min);
-                        addCrossVert(0.5f, -0.5f, -0.5f, uv.u_max, uv.v_min);
-                        addCrossVert(0.5f, 0.5f, -0.5f, uv.u_max, uv.v_max);
-                        addCrossVert(-0.5f, 0.5f, 0.5f, uv.u_min, uv.v_max);
+                        addCrossVert(-0.5f, -0.5f, 0.5f, uv.uMin, uv.vMin);
+                        addCrossVert(0.5f, -0.5f, -0.5f, uv.uMax, uv.vMin);
+                        addCrossVert(0.5f, 0.5f, -0.5f, uv.uMax, uv.vMax);
+                        addCrossVert(-0.5f, 0.5f, 0.5f, uv.uMin, uv.vMax);
                         // Cara trasera
-                        addCrossVert(-0.5f, -0.5f, 0.5f, uv.u_min, uv.v_min);
-                        addCrossVert(-0.5f, 0.5f, 0.5f, uv.u_min, uv.v_max);
-                        addCrossVert(0.5f, 0.5f, -0.5f, uv.u_max, uv.v_max);
-                        addCrossVert(0.5f, -0.5f, -0.5f, uv.u_max, uv.v_min);
+                        addCrossVert(-0.5f, -0.5f, 0.5f, uv.uMin, uv.vMin);
+                        addCrossVert(-0.5f, 0.5f, 0.5f, uv.uMin, uv.vMax);
+                        addCrossVert(0.5f, 0.5f, -0.5f, uv.uMax, uv.vMax);
+                        addCrossVert(0.5f, -0.5f, -0.5f, uv.uMax, uv.vMin);
 
                         for (int q = 0; q < 4; q++)
                         {
@@ -312,17 +312,17 @@ namespace MiniGameEngine
 
                         // Definición de vértices locales (reutilizada de tu código anterior)
                         if (faceIdx == 0)
-                            faceVerts = {makeVert(-0.5f, -0.5f, 0.5f, uv.u_min, uv.v_min), makeVert(0.5f, -0.5f, 0.5f, uv.u_max, uv.v_min), makeVert(0.5f, 0.5f, 0.5f, uv.u_max, uv.v_max), makeVert(-0.5f, 0.5f, 0.5f, uv.u_min, uv.v_max)};
+                            faceVerts = {makeVert(-0.5f, -0.5f, 0.5f, uv.uMin, uv.vMin), makeVert(0.5f, -0.5f, 0.5f, uv.uMax, uv.vMin), makeVert(0.5f, 0.5f, 0.5f, uv.uMax, uv.vMax), makeVert(-0.5f, 0.5f, 0.5f, uv.uMin, uv.vMax)};
                         else if (faceIdx == 1)
-                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.u_max, uv.v_min), makeVert(0.5f, -0.5f, -0.5f, uv.u_min, uv.v_min), makeVert(0.5f, 0.5f, -0.5f, uv.u_min, uv.v_max), makeVert(-0.5f, 0.5f, -0.5f, uv.u_max, uv.v_max)};
+                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.uMax, uv.vMin), makeVert(0.5f, -0.5f, -0.5f, uv.uMin, uv.vMin), makeVert(0.5f, 0.5f, -0.5f, uv.uMin, uv.vMax), makeVert(-0.5f, 0.5f, -0.5f, uv.uMax, uv.vMax)};
                         else if (faceIdx == 2)
-                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.u_min, uv.v_min), makeVert(-0.5f, -0.5f, 0.5f, uv.u_max, uv.v_min), makeVert(-0.5f, 0.5f, 0.5f, uv.u_max, uv.v_max), makeVert(-0.5f, 0.5f, -0.5f, uv.u_min, uv.v_max)};
+                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.uMin, uv.vMin), makeVert(-0.5f, -0.5f, 0.5f, uv.uMax, uv.vMin), makeVert(-0.5f, 0.5f, 0.5f, uv.uMax, uv.vMax), makeVert(-0.5f, 0.5f, -0.5f, uv.uMin, uv.vMax)};
                         else if (faceIdx == 3)
-                            faceVerts = {makeVert(0.5f, -0.5f, 0.5f, uv.u_min, uv.v_min), makeVert(0.5f, -0.5f, -0.5f, uv.u_max, uv.v_min), makeVert(0.5f, 0.5f, -0.5f, uv.u_max, uv.v_max), makeVert(0.5f, 0.5f, 0.5f, uv.u_min, uv.v_max)};
+                            faceVerts = {makeVert(0.5f, -0.5f, 0.5f, uv.uMin, uv.vMin), makeVert(0.5f, -0.5f, -0.5f, uv.uMax, uv.vMin), makeVert(0.5f, 0.5f, -0.5f, uv.uMax, uv.vMax), makeVert(0.5f, 0.5f, 0.5f, uv.uMin, uv.vMax)};
                         else if (faceIdx == 4)
-                            faceVerts = {makeVert(-0.5f, 0.5f, 0.5f, uv.u_min, uv.v_min), makeVert(0.5f, 0.5f, 0.5f, uv.u_max, uv.v_min), makeVert(0.5f, 0.5f, -0.5f, uv.u_max, uv.v_max), makeVert(-0.5f, 0.5f, -0.5f, uv.u_min, uv.v_max)};
+                            faceVerts = {makeVert(-0.5f, 0.5f, 0.5f, uv.uMin, uv.vMin), makeVert(0.5f, 0.5f, 0.5f, uv.uMax, uv.vMin), makeVert(0.5f, 0.5f, -0.5f, uv.uMax, uv.vMax), makeVert(-0.5f, 0.5f, -0.5f, uv.uMin, uv.vMax)};
                         else if (faceIdx == 5)
-                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.u_min, uv.v_min), makeVert(0.5f, -0.5f, -0.5f, uv.u_max, uv.v_min), makeVert(0.5f, -0.5f, 0.5f, uv.u_max, uv.v_max), makeVert(-0.5f, -0.5f, 0.5f, uv.u_min, uv.v_max)};
+                            faceVerts = {makeVert(-0.5f, -0.5f, -0.5f, uv.uMin, uv.vMin), makeVert(0.5f, -0.5f, -0.5f, uv.uMax, uv.vMin), makeVert(0.5f, -0.5f, 0.5f, uv.uMax, uv.vMax), makeVert(-0.5f, -0.5f, 0.5f, uv.uMin, uv.vMax)};
 
                         for (const auto &v : faceVerts)
                         {
@@ -366,33 +366,33 @@ namespace MiniGameEngine
             }
         }
 
-        _meshOpaque = new Mesh();
-        _meshOpaque->init(verticesOpaque, indicesOpaque);
+        m_meshOpaque = new Mesh();
+        m_meshOpaque->init(verticesOpaque, indicesOpaque);
 
-        _meshTransparent = new Mesh();
-        _meshTransparent->init(verticesTransparent, indicesTransparent);
+        m_meshTransparent = new Mesh();
+        m_meshTransparent->init(verticesTransparent, indicesTransparent);
     }
 
     void Chunk::drawOpaque(GLSLProgram &shader)
     {
-        if (!_meshOpaque)
+        if (!m_meshOpaque)
             return;
         glm::mat4 model = glm::translate(glm::mat4(1.0f), getPosition());
         glUniformMatrix4fv(shader.getUniformLocation("model"), 1, GL_FALSE, &model[0][0]);
-        _meshOpaque->draw();
+        m_meshOpaque->draw();
     }
 
     void Chunk::drawTransparent(GLSLProgram &shader)
     {
-        if (!_meshTransparent)
+        if (!m_meshTransparent)
             return;
         glm::mat4 model = glm::translate(glm::mat4(1.0f), getPosition());
         glUniformMatrix4fv(shader.getUniformLocation("model"), 1, GL_FALSE, &model[0][0]);
-        _meshTransparent->draw();
+        m_meshTransparent->draw();
     }
 
     glm::vec3 Chunk::getCenter() const
     {
-        return getPosition() + glm::vec3(CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, CHUNK_SIZE / 2.0f);
+        return getPosition() + glm::vec3(kChunkSize / 2.0f, kChunkHeight / 2.0f, kChunkSize / 2.0f);
     }
 }

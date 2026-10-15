@@ -15,7 +15,7 @@
 #include <sandbox/Chunk.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-using namespace MiniGameEngine;
+using namespace mge;
 
 struct ChunkKey
 {
@@ -26,35 +26,35 @@ struct ChunkKey
     }
 };
 
-class SandboxApp : public Engine::Application
+class SandboxApp : public mge::Application
 {
 public:
     SandboxApp()
-        : camera(1280, 720), _guiCamera(1280, 720)
+        : m_camera(1280, 720), m_guiCamera(1280, 720)
     {
     }
 
     ~SandboxApp()
     {
-        for (auto &pair : chunkMap)
+        for (auto &pair : m_chunkMap)
         {
             delete pair.second;
         }
     }
 
-    void OnInit() override
+    void onInit() override
     {
         // 1. Shaders
-        shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
-        shader3D.addAttribute("vertexPosition");
-        shader3D.addAttribute("vertexUV");
-        shader3D.linkShaders();
+        m_shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
+        m_shader3D.addAttribute("vertexPosition");
+        m_shader3D.addAttribute("vertexUV");
+        m_shader3D.linkShaders();
 
         // 2. Cámara
-        camera.setPosition(glm::vec3(0.0f, 25.0f, 0.0f));
+        m_camera.setPosition(glm::vec3(0.0f, 25.0f, 0.0f));
 
         // Configurar Colisiones
-        camera.setCollisionCallback([this](const glm::vec3 &min, const glm::vec3 &max) -> bool
+        m_camera.setCollisionCallback([this](const glm::vec3 &min, const glm::vec3 &max) -> bool
                                     {
             int minX = floor(min.x + 0.5f); int maxX = floor(max.x + 0.5f);
             int minY = floor(min.y + 0.5f); int maxY = floor(max.y + 0.5f);
@@ -70,7 +70,7 @@ public:
             return false; });
 
         // 5. Cargar Textura
-        tilesetTexture.load("../assets/textures/Minecraft-like_3d_tileset.png");
+        m_tilesetTexture.load("../assets/textures/Minecraft-like_3d_tileset.png");
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -81,146 +81,146 @@ public:
         Time::init();
 
         // Configuración inicial del ratón
-        Engine::InputManager::SetCursorMode(true);
+        mge::InputManager::setCursorMode(true);
 
         // --- GUI SETUP ---
         // Compilar shader 2D (Usando los que ya tenías para el juego 2D)
-        _guiShader.compileShaders("../assets/shaders/texture.vert", "../assets/shaders/texture.frag");
-        _guiShader.addAttribute("vertexPosition");
-        _guiShader.addAttribute("vertexUV");
-        _guiShader.linkShaders();
+        m_guiShader.compileShaders("../assets/shaders/texture.vert", "../assets/shaders/texture.frag");
+        m_guiShader.addAttribute("vertexPosition");
+        m_guiShader.addAttribute("vertexUV");
+        m_guiShader.linkShaders();
 
         // Cámara 2D del tamaño de la ventana (para coordenadas de pixel)
         // _guiCamera ya inicializada en el constructor
 
         // Configurar Etiquetas
-        _fpsLabel.init("../assets/fonts/PixelOperator8-Bold.ttf", 24);
-        _fpsLabel.setPosition(10.0f, 680.0f);                            // Esquina superior izquierda
-        _fpsLabel.setText("FPS: 60", _fpsColor);
+        m_fpsLabel.init("../assets/fonts/PixelOperator8-Bold.ttf", 24);
+        m_fpsLabel.setPosition(10.0f, 680.0f);                            // Esquina superior izquierda
+        m_fpsLabel.setText("FPS: 60", m_fpsColor);
 
-        _infoLabel.init("../assets/fonts/PixelOperator8.ttf", 16);
-        _infoLabel.setPosition(10.0f, 10.0f); // Abajo
-        _infoLabel.setText("MiniGameEngine v1.0 - WASD to Move", glm::vec4(1.0f));
+        m_infoLabel.init("../assets/fonts/PixelOperator8.ttf", 16);
+        m_infoLabel.setPosition(10.0f, 10.0f); // Abajo
+        m_infoLabel.setText("mge v1.0 - WASD to Move", glm::vec4(1.0f));
     }
 
-    void OnEvent(SDL_Event &event) override
+    void onEvent(SDL_Event &event) override
     {
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED)
         {
             int newWidth = event.window.data1;
             int newHeight = event.window.data2;
             glViewport(0, 0, newWidth, newHeight);
-            camera.updateProjection((float)newWidth, (float)newHeight);
+            m_camera.updateProjection((float)newWidth, (float)newHeight);
         }
 
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED && mouseCaptured && !isPaused)
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED && m_mouseCaptured && !m_isPaused)
         {
-            Engine::InputManager::SetCursorMode(true);
+            mge::InputManager::setCursorMode(true);
         }
 
-        if (event.type == SDL_MOUSEBUTTONDOWN && !isPaused)
+        if (event.type == SDL_MOUSEBUTTONDOWN && !m_isPaused)
         {
-            Engine::InputManager::SetCursorMode(true);
+            mge::InputManager::setCursorMode(true);
         }
 
         if (event.type == SDL_KEYDOWN)
         {
             if (event.key.keysym.sym == SDLK_ESCAPE)
-                m_Running = false;
+                m_running = false;
 
             if (event.key.keysym.sym == SDLK_p)
             {
-                isPaused = !isPaused;
-                if (isPaused)
+                m_isPaused = !m_isPaused;
+                if (m_isPaused)
                 {
                     Time::setTimeScale(0.0f);
-                    Engine::InputManager::SetCursorMode(false);
+                    mge::InputManager::setCursorMode(false);
                 }
                 else
                 {
                     Time::setTimeScale(1.0f);
-                    Engine::InputManager::SetCursorMode(true);
+                    mge::InputManager::setCursorMode(true);
                 }
             }
         }
     }
 
-    void OnUpdate(float /*dt*/) override
+    void onUpdate(float /*dt*/) override
     {
         Time::update(); // Actualizamos el sistema de tiempo global
         float deltaTime = Time::getDeltaTime();
 
         // Animaciones
-        animTimer += Time::getUnscaledDeltaTime();
-        if (animTimer >= 0.2f)
+        m_animTimer += Time::getUnscaledDeltaTime();
+        if (m_animTimer >= 0.2f)
         {
-            animTimer = 0.0f;
-            currentAnimFrame++;
-            tilesetTexture.updateTile(waterTarget, waterFrames[currentAnimFrame % waterFrames.size()], 32, 32);
-            tilesetTexture.updateTile(lavaTarget, lavaFrames[currentAnimFrame % lavaFrames.size()], 32, 32);
+            m_animTimer = 0.0f;
+            m_currentAnimFrame++;
+            m_tilesetTexture.updateTile(m_waterTarget, m_waterFrames[m_currentAnimFrame % m_waterFrames.size()], 32, 32);
+            m_tilesetTexture.updateTile(m_lavaTarget, m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()], 32, 32);
         }
 
         // Actualizar Chunks
-        int pChunkX = (int)floor(camera.getPosition().x / CHUNK_SIZE);
-        int pChunkZ = (int)floor(camera.getPosition().z / CHUNK_SIZE);
+        int pChunkX = (int)floor(m_camera.getPosition().x / kChunkSize);
+        int pChunkZ = (int)floor(m_camera.getPosition().z / kChunkSize);
         int renderDist = 4;
 
         for (int cx = pChunkX - renderDist; cx <= pChunkX + renderDist; cx++)
         {
             for (int cz = pChunkZ - renderDist; cz <= pChunkZ + renderDist; cz++)
             {
-                glm::vec3 chunkCenter((cx * CHUNK_SIZE) + CHUNK_SIZE / 2.0f, CHUNK_HEIGHT / 2.0f, (cz * CHUNK_SIZE) + CHUNK_SIZE / 2.0f);
-                if (camera.isSphereVisible(chunkCenter, 14.0f))
+                glm::vec3 chunkCenter((cx * kChunkSize) + kChunkSize / 2.0f, kChunkHeight / 2.0f, (cz * kChunkSize) + kChunkSize / 2.0f);
+                if (m_camera.isSphereVisible(chunkCenter, 14.0f))
                 {
                     ChunkKey key{cx, cz};
-                    if (chunkMap.find(key) == chunkMap.end())
+                    if (m_chunkMap.find(key) == m_chunkMap.end())
                     {
                         Chunk *chunk = new Chunk(cx, cz);
                         chunk->buildMesh();
-                        chunkMap[key] = chunk;
+                        m_chunkMap[key] = chunk;
                     }
                 }
             }
         }
 
-        camera.update(deltaTime);
+        m_camera.update(deltaTime);
     }
 
-    void OnRender() override
+    void onRender() override
     {
         glClearColor(0.5f, 0.7f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader3D.use();
-        glUniformMatrix4fv(shader3D.getUniformLocation("projection"), 1, GL_FALSE, &(camera.getProjectionMatrix()[0][0]));
-        glUniformMatrix4fv(shader3D.getUniformLocation("view"), 1, GL_FALSE, &(camera.getViewMatrix()[0][0]));
-        glUniform4f(shader3D.getUniformLocation("baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
-        glUniform1i(shader3D.getUniformLocation("myTexture"), 0);
+        m_shader3D.use();
+        glUniformMatrix4fv(m_shader3D.getUniformLocation("projection"), 1, GL_FALSE, &(m_camera.getProjectionMatrix()[0][0]));
+        glUniformMatrix4fv(m_shader3D.getUniformLocation("view"), 1, GL_FALSE, &(m_camera.getViewMatrix()[0][0]));
+        glUniform4f(m_shader3D.getUniformLocation("baseColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+        glUniform1i(m_shader3D.getUniformLocation("myTexture"), 0);
 
-        tilesetTexture.bind();
+        m_tilesetTexture.bind();
 
-        for (auto &pair : chunkMap)
+        for (auto &pair : m_chunkMap)
         {
-            if (camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
-                pair.second->drawOpaque(shader3D);
+            if (m_camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
+                pair.second->drawOpaque(m_shader3D);
         }
 
         glDepthMask(GL_FALSE);
-        for (auto &pair : chunkMap)
+        for (auto &pair : m_chunkMap)
         {
-            if (camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
-                pair.second->drawTransparent(shader3D);
+            if (m_camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
+                pair.second->drawTransparent(m_shader3D);
         }
         glDepthMask(GL_TRUE);
 
-        tilesetTexture.unbind();
-        shader3D.unuse();
+        m_tilesetTexture.unbind();
+        m_shader3D.unuse();
 
         // 2. DIBUJAR GUI (ENCIMA DEL 3D)
         // Desactivar Depth Test para que la GUI siempre se dibuje encima
         glDisable(GL_DEPTH_TEST);
 
-        _guiCamera.update();
+        m_guiCamera.update();
 
         // Actualizar FPS dinámicamente (ejemplo)
         static int frameCount = 0;
@@ -231,12 +231,12 @@ public:
             float realDelta = Time::getUnscaledDeltaTime();
             int fps = realDelta > 0.0f ? (int)(1.0f / realDelta) : 0;
             // Pasamos el color siempre: setText usa blanco por defecto
-            _fpsLabel.setText("FPS: " + std::to_string(fps), _fpsColor);
+            m_fpsLabel.setText("FPS: " + std::to_string(fps), m_fpsColor);
         }
 
         // Dibujar etiquetas
-        _fpsLabel.draw(_guiShader, _guiCamera.getProjectionMatrix());
-        _infoLabel.draw(_guiShader, _guiCamera.getProjectionMatrix());
+        m_fpsLabel.draw(m_guiShader, m_guiCamera.getProjectionMatrix());
+        m_infoLabel.draw(m_guiShader, m_guiCamera.getProjectionMatrix());
 
         // Reactivar Depth Test para el siguiente frame 3D
         glEnable(GL_DEPTH_TEST);
@@ -245,47 +245,47 @@ public:
 private:
     Block getGlobalBlock(int x, int y, int z)
     {
-        int chunkX = (int)floor((float)x / CHUNK_SIZE);
-        int chunkZ = (int)floor((float)z / CHUNK_SIZE);
+        int chunkX = (int)floor((float)x / kChunkSize);
+        int chunkZ = (int)floor((float)z / kChunkSize);
         ChunkKey key{chunkX, chunkZ};
-        if (chunkMap.find(key) != chunkMap.end())
+        if (m_chunkMap.find(key) != m_chunkMap.end())
         {
-            int localX = x % CHUNK_SIZE;
-            int localZ = z % CHUNK_SIZE;
+            int localX = x % kChunkSize;
+            int localZ = z % kChunkSize;
             if (localX < 0)
-                localX += CHUNK_SIZE;
+                localX += kChunkSize;
             if (localZ < 0)
-                localZ += CHUNK_SIZE;
-            return chunkMap[key]->getBlock(localX, y, localZ);
+                localZ += kChunkSize;
+            return m_chunkMap[key]->getBlock(localX, y, localZ);
         }
         return Block(BlockType::Air);
     }
 
-    GLSLProgram shader3D;
-    Engine::Camera3D camera;
-    std::map<ChunkKey, Chunk *> chunkMap;
-    Texture tilesetTexture;
+    GLSLProgram m_shader3D;
+    mge::Camera3D m_camera;
+    std::map<ChunkKey, Chunk *> m_chunkMap;
+    Texture m_tilesetTexture;
 
     // Variables de GUI movidas dentro de la clase
-    GLSLProgram _guiShader;
-    Engine::Camera2D _guiCamera;
-    GUILabel _fpsLabel;
-    const glm::vec4 _fpsColor{1.0f, 1.0f, 0.0f, 1.0f}; // Amarillo
-    GUILabel _infoLabel;
+    GLSLProgram m_guiShader;
+    mge::Camera2D m_guiCamera;
+    GUILabel m_fpsLabel;
+    const glm::vec4 m_fpsColor{1.0f, 1.0f, 0.0f, 1.0f}; // Amarillo
+    GUILabel m_infoLabel;
 
-    std::vector<int> waterFrames = {205, 206, 207, 222, 223};
-    std::vector<int> lavaFrames = {237, 238, 239, 254, 255};
-    int waterTarget = 207;
-    int lavaTarget = 239;
-    float animTimer = 0.0f;
-    int currentAnimFrame = 0;
+    std::vector<int> m_waterFrames = {205, 206, 207, 222, 223};
+    std::vector<int> m_lavaFrames = {237, 238, 239, 254, 255};
+    int m_waterTarget = 207;
+    int m_lavaTarget = 239;
+    float m_animTimer = 0.0f;
+    int m_currentAnimFrame = 0;
 
-    bool mouseCaptured = true;
-    bool isPaused = false;
+    bool m_mouseCaptured = true;
+    bool m_isPaused = false;
 };
 
 // Definición de la función de entrada del motor
-Engine::Application *Engine::CreateApplication()
+mge::Application *mge::createApplication()
 {
     return new SandboxApp();
 }

@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace Engine {
+namespace mge {
     class Camera {
     public:
         Camera(int width, int height);
@@ -11,16 +11,16 @@ namespace Engine {
         virtual void update() = 0;
         virtual void updateProjection(int width, int height) = 0;
 
-        const glm::vec3& getPosition() const { return m_Position; }
-        void setPosition(const glm::vec3& position) { m_Position = position; }
+        const glm::vec3& getPosition() const { return m_position; }
+        void setPosition(const glm::vec3& position) { m_position = position; }
 
-        const glm::mat4& getProjectionMatrix() const { return m_ProjectionMatrix; }
-        const glm::mat4& getViewMatrix() const { return m_ViewMatrix; }
+        const glm::mat4& getProjectionMatrix() const { return m_projectionMatrix; }
+        const glm::mat4& getViewMatrix() const { return m_viewMatrix; }
 
     protected:
-        glm::vec3 m_Position;
-        glm::mat4 m_ProjectionMatrix;
-        glm::mat4 m_ViewMatrix;
-        int m_Width, m_Height;
+        glm::vec3 m_position;
+        glm::mat4 m_projectionMatrix;
+        glm::mat4 m_viewMatrix;
+        int m_width, m_height;
     };
 }

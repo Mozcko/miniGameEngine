@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace MiniGameEngine {
+namespace mge {
 
     enum class BlockType {
         Air = 0,
@@ -28,7 +28,7 @@ namespace MiniGameEngine {
     };
 
     struct UVRect {
-        float u_min, v_min, u_max, v_max;
+        float uMin, vMin, uMax, vMax;
     };
 
     class Block {
@@ -38,12 +38,12 @@ namespace MiniGameEngine {
         bool isActive() const;
         bool isSolid() const;  // Define si el jugador choca con el bloque
         bool isOpaque() const; // Define si el bloque bloquea la visión (culling)
-        BlockType getType() const { return _type; }
+        BlockType getType() const { return m_type; }
 
         // Obtiene las UVs para una cara específica (0:Front, 1:Back, 2:Left, 3:Right, 4:Top, 5:Bottom)
         static UVRect getUVs(BlockType type, int faceIndex);
 
     private:
-        BlockType _type;
+        BlockType m_type;
     };
 }

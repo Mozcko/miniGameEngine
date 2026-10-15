@@ -4,7 +4,7 @@
 #include <GL/glew.h>
 #include <string>
 
-namespace MiniGameEngine {
+namespace mge {
 
     class Window {
     public:
@@ -17,14 +17,14 @@ namespace MiniGameEngine {
         void swapBuffers();
         
         // Getters simples
-        int getWidth() const { return _width; }
-        int getHeight() const { return _height; }
-        bool isClosed() const { return _isClosed; }
-        void close() { _isClosed = true; }
+        int getWidth() const { return m_width; }
+        int getHeight() const { return m_height; }
+        bool isClosed() const { return m_isClosed; }
+        void close() { m_isClosed = true; }
         
         // --- ESTA ES LA LÍNEA QUE FALTABA ---
         // Permite acceder a la ventana cruda de SDL desde fuera (necesario para el viewport)
-        SDL_Window* getSDLWindow() { return _sdlWindow; }
+        SDL_Window* getSDLWindow() { return m_sdlWindow; }
 
         // Maneja eventos de ventana (como cerrar)
         void handleEvents();
@@ -33,14 +33,14 @@ namespace MiniGameEngine {
         // Función privada interna para inicializar todo
         void init();
 
-        std::string _title;
-        int _width;
-        int _height;
-        bool _isClosed;
+        std::string m_title;
+        int m_width;
+        int m_height;
+        bool m_isClosed;
 
         // Punteros crudos de SDL (recursos del sistema operativo)
-        SDL_Window* _sdlWindow;
-        SDL_GLContext _glContext;
+        SDL_Window* m_sdlWindow;
+        SDL_GLContext m_glContext;
     };
 
 }
