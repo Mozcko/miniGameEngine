@@ -32,7 +32,12 @@ Include as `#include <sandbox/Chunk.h>`.
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
 | `m_isPaused`, `m_mouseCaptured` | `bool` | Pause state; `m_mouseCaptured` is always true |
 
-### `onInit`
+### Construction
+`SandboxApp()` passes an `ApplicationConfig` (title "miniGameEngine - Sandbox", 1280×720) and adds
+`PlatformModule` then `AudioModule`.
+
+### `onInit` (returns false → clean exit with code 1)
+0. Register `handleEvent` as the `PlatformModule` event callback.
 1. Compile/link `m_shader3D`; set the camera position; install the **collision callback**: convert the
    AABB to block coordinates with `floor(v + 0.5)` and return true if any block in range
    `isSolid()` (via `getGlobalBlock`).
@@ -41,13 +46,13 @@ Include as `#include <sandbox/Chunk.h>`.
 4. `Time::init()`, lock the cursor.
 5. Log the controls (Info).
 
-### `onEvent`
+### `handleEvent(const SDL_Event&)` (platform event callback)
 | Event | Action |
 |-------|--------|
 | Window resized | `glViewport` + `camera.updateProjection` (listens to `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`, so HiDPI is correct) |
 | Focus gained (not paused) | Re‑lock cursor |
 | Mouse button down (not paused) | Re‑lock cursor |
-| `Esc` | `m_running = false` |
+| `Esc` | `requestStop()` |
 | `P` | Toggle pause: time scale 0/1, cursor unlock/lock |
 
 ### `onUpdate(dt)` (the `dt` argument is ignored)
@@ -58,6 +63,9 @@ Include as `#include <sandbox/Chunk.h>`.
    `renderDist = 4` (9×9 = 81 chunks) that passes `isSphereVisible` (always true) and isn't
    loaded → `new Chunk(cx, cz)` (generation) then `chunk->buildMesh()` (GPU upload), both synchronously.
 4. `camera.update(deltaTime)`.
+
+### `onShutdown`
+Deletes all chunks (and their GL meshes) while the GL context still exists. Modules shut down afterwards.
 
 ### `onRender`
 Sky clear → opaque pass over all chunks → transparent pass with `glDepthMask(GL_FALSE)` →

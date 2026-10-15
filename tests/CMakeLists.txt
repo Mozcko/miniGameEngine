@@ -19,6 +19,7 @@ include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 # --- Tests del core: solo enlazan mge_core (sin SDL ni GPU) ---
 add_executable(mge_core_tests
     test_main.cpp
+    core/test_application.cpp
     core/test_log.cpp
     core/test_log_stripped.cpp
     core/test_time.cpp

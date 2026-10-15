@@ -1,4 +1,6 @@
-#include <mge/app/Application.h>
+#include <mge/core/Application.h>
+#include <mge/audio/AudioModule.h>
+#include <mge/platform/PlatformModule.h>
 #include <mge/platform/InputManager.h>
 #include <mge/core/Log.h>
 #include <vector>
@@ -22,15 +24,16 @@ struct ChunkKey {
 
 class SandboxApp : public mge::Application {
 public:
-    SandboxApp() : m_camera(1280, 720) {}
-
-    ~SandboxApp() {
-        for (auto& pair : m_chunkMap) {
-            delete pair.second;
-        }
+    SandboxApp() : mge::Application(makeConfig()), m_camera(1280, 720) {
+        // Módulos que usa el sandbox (orden de inicialización; se cierran al revés)
+        addModule<PlatformModule>();
+        addModule<AudioModule>();
     }
 
-    void onInit() override {
+    bool onInit() override {
+        // Los eventos crudos de SDL llegan por el módulo de plataforma (acciones de input en #15)
+        getModule<PlatformModule>()->setEventCallback([this](const SDL_Event& event) { handleEvent(event); });
+
         // 1. Shaders
         bool shaderOk =
             m_shader3D.compileShaders("../assets/shaders/basic3d.vert", "../assets/shaders/basic3d.frag");
@@ -39,8 +42,7 @@ public:
         shaderOk = m_shader3D.linkShaders() && shaderOk;
         if (!shaderOk) {
             MGE_LOG_FATAL("Sandbox", "No se pudo crear el shader 3D (¿se ejecutó desde build/?)");
-            m_running = false;
-            return;
+            return false;
         }
 
         // 2. Cámara
@@ -83,9 +85,18 @@ public:
         // Mientras tanto los FPS se escriben en el log (nivel Debug) cada 5 segundos.
         MGE_LOG_INFO("Sandbox",
                      "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, P: pausa, Esc: salir");
+        return true;
     }
 
-    void onEvent(SDL_Event& event) override {
+    void onShutdown() override {
+        // Liberar los chunks aquí (no en el destructor): el contexto OpenGL todavía existe
+        for (auto& pair : m_chunkMap) {
+            delete pair.second;
+        }
+        m_chunkMap.clear();
+    }
+
+    void handleEvent(const SDL_Event& event) {
         // Tamaño en píxeles (no en puntos): correcto también en pantallas HiDPI
         if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
             int newWidth = event.window.data1;
@@ -103,7 +114,7 @@ public:
         }
 
         if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
-            if (event.key.key == SDLK_ESCAPE) m_running = false;
+            if (event.key.key == SDLK_ESCAPE) requestStop();
 
             if (event.key.key == SDLK_P) {
                 m_isPaused = !m_isPaused;
@@ -197,6 +208,14 @@ public:
     }
 
 private:
+    static mge::ApplicationConfig makeConfig() {
+        mge::ApplicationConfig config;
+        config.title = "miniGameEngine - Sandbox";
+        config.width = 1280;
+        config.height = 720;
+        return config;
+    }
+
     Block getGlobalBlock(int x, int y, int z) {
         int chunkX = (int)floor((float)x / kChunkSize);
         int chunkZ = (int)floor((float)z / kChunkSize);

@@ -1,56 +1,18 @@
-# src/mge/app/  →  targets `mge_app`, `mge_main`
+# src/mge/app/  →  target `mge_main`
 
-Ties the modules together: creates the window, initialises audio, and runs the game
-loop. **Temporary home**: in #11 `Application` moves into `mge_core` as a module‑based, headless‑capable
-runner, and platform/audio become optional modules.
+The engine's `main()`. It is an **OBJECT library** linked into each game executable, and it depends
+only on `mge_core`, so headless programs use it too.
 
-| File | Target | Purpose |
-|------|--------|---------|
-| `Application.h/.cpp` | `mge_app` | Base class for games (namespace `mge`) |
-| `Main.cpp` | `mge_main` (OBJECT library) | `main()`: `createApplication()` → `run()` → `delete`. Linked into each game executable |
-
-Depends on: `mge_platform`, `mge_audio` (SDL3).
-
-## `mge::Application`
-
-### Interface
 ```cpp
-class Application {
-public:
-    Application();
-    virtual ~Application();
-    void Run();                                  // blocks until m_running == false
-
-    virtual void onInit() = 0;                   // once, after window + input exist
-    virtual void onUpdate(float dt) = 0;         // every frame, dt in seconds
-    virtual void onRender() = 0;                 // every frame, after onUpdate
-    virtual void onEvent(SDL_Event& event) {}    // every SDL event, before InputManager sees it
-
-    mge::Window& getWindow();
-protected:
-    bool m_running;                              // set false to exit
-    std::unique_ptr<mge::Window> m_window;
-private:
-    void calculateDeltaTime();                   // SDL performance counter based
-    float m_deltaTime; Uint64 m_lastFrameTime;
-};
-Application* createApplication();                // defined by the game
+int main(int, char**) {
+    std::unique_ptr<mge::Application> app(mge::createApplication());   // defined by the game
+    if (!app) return 1;
+    return app->run();                                                  // 0 = ok, 1 = init failed
+}
 ```
 
-### Constructor (in order)
-1. `AudioManager::init()`
-2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)` – on failure sets `m_running = false` and returns
-   (the window is then never created → `run()` would dereference null).
-3. Creates `Window("Mini Game Engine - Minecraft Cube", 1280, 720)` – title and size are hard‑coded here.
+`Application` itself lives in the core (`src/mge/core/Application.h`) since #11. See
+[core/README.md](../core/README.md).
 
-### Destructor
-`AudioManager::shutdown()` → `SDL_Quit()`; then `m_window` is destroyed.
-
-### `run()`
-```
-InputManager::init(window) → onInit() → loop:
-    calculateDeltaTime → InputManager::update → poll events (SDL_QUIT ends loop; onEvent; InputManager::processEvent)
-    → onUpdate(m_deltaTime) → onRender() → m_window->swapBuffers()
-```
-No frame cap; vsync depends on driver defaults (no `SDL_GL_SetSwapInterval` call). `m_deltaTime`
-is **not clamped** (unlike `Time`).
+`SDL_main.h` isn't needed with SDL3 on Linux/Windows. If a platform ever requires it, the game can
+include it in its own source file, keeping `mge_main` free of SDL.

@@ -12,7 +12,7 @@ mge_set_warnings(sandbox_world)
 
 # Ejecutable del juego
 add_executable(sandbox SandboxApp.cpp)
-target_link_libraries(sandbox PRIVATE sandbox_world mge_app mge_main)
+target_link_libraries(sandbox PRIVATE sandbox_world mge_platform mge_audio mge_main)
 # Se genera en la raíz del build dir (hermano de assets/) para que "../assets/..." funcione
 set_target_properties(sandbox PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 mge_set_warnings(sandbox)

@@ -45,11 +45,11 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   |--------|------|----------|
   | Target | Kind | Defined in | Contents |
   |--------|------|------------|----------|
-  | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** |
-  | `mge_platform` | static lib | `src/mge/platform/` | Window, GL context, input |
+  | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU**: Application runner, Module, Log, Time |
+  | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
-  | `mge_audio` | static lib | `src/mge/audio/` | Audio |
-  | `mge_app` / `mge_main` | static / OBJECT lib | `src/mge/app/` | Application loop / `main()` |
+  | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
+  | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
   | `sandbox_world` | static lib | `games/sandbox/` | `Block`, `Chunk` (testable game logic) |
   | `sandbox` | executable | `games/sandbox/` | The game; output in the build dir root |
   | `mge_core_tests` | executable | `tests/` | Core tests – link only `mge_core` |
