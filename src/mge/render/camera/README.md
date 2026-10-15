@@ -53,7 +53,7 @@ Camera3D (concrete, not derived from Camera)
 
 Other API: `updateProjection(float w, float h)`, `getViewMatrix()`, `getProjectionMatrix()`,
 `get/setPosition`, `setCollisionCallback(std::function<bool(const vec3& min, const vec3& max)>)`,
-`isSphereVisible(center, radius)` – **stub, always true**.
+`isSphereVisible(center, radius)` / `isAabbVisible(box)` / `getFrustum()`: real frustum culling with planes extracted from projection × view (`mge::Frustum`, #24).
 
 Members are `protected`: `m_position`, `m_front`, `m_up`, `m_right`, `m_worldUp`,
 `m_yaw`, `m_pitch`, `m_movementSpeed`, `m_mouseSensitivity`, plus `m_width/m_height/m_fov/m_projectionMatrix/m_viewMatrix` and

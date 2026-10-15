@@ -166,9 +166,8 @@ public:
 
         for (int cx = pChunkX - renderDist; cx <= pChunkX + renderDist; cx++) {
             for (int cz = pChunkZ - renderDist; cz <= pChunkZ + renderDist; cz++) {
-                glm::vec3 chunkCenter((cx * kChunkSize) + kChunkSize / 2.0f, kChunkHeight / 2.0f,
-                                      (cz * kChunkSize) + kChunkSize / 2.0f);
-                if (m_camera.isSphereVisible(chunkCenter, 14.0f)) {
+                // La carga es por distancia (no por frustum): girar la cámara no debe dejar huecos
+                {
                     ChunkKey key{cx, cz};
                     if (m_chunkMap.find(key) == m_chunkMap.end()) {
                         Chunk* chunk = new Chunk(cx, cz);
@@ -197,14 +196,12 @@ public:
         m_tilesetTexture.bind();
 
         for (auto& pair : m_chunkMap) {
-            if (m_camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
-                pair.second->drawOpaque(m_shader3D);
+            if (m_camera.isAabbVisible(chunkBounds(*pair.second))) pair.second->drawOpaque(m_shader3D);
         }
 
         glDepthMask(GL_FALSE);
         for (auto& pair : m_chunkMap) {
-            if (m_camera.isSphereVisible(pair.second->getCenter(), pair.second->getRadius()))
-                pair.second->drawTransparent(m_shader3D);
+            if (m_camera.isAabbVisible(chunkBounds(*pair.second))) pair.second->drawTransparent(m_shader3D);
         }
         glDepthMask(GL_TRUE);
 
@@ -223,6 +220,12 @@ public:
     }
 
 private:
+    // Caja del chunk en el mundo (los bloques están centrados en coordenadas enteras: ±0.5)
+    static mge::Aabb chunkBounds(const Chunk& chunk) {
+        glm::vec3 origin = chunk.getPosition() - glm::vec3(0.5f);
+        return mge::Aabb(origin, origin + glm::vec3(kChunkSize, kChunkHeight, kChunkSize));
+    }
+
     PlatformModule* m_platform = nullptr; // Válido entre onInit y el cierre
 
     static mge::ApplicationConfig makeConfig() {

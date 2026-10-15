@@ -104,7 +104,7 @@ and return an error instead. `Window::isValid()`, `GLSLProgram::compileShaders/l
 success.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
-- `Camera3D::isSphereVisible` always returns true (frustum culling is a stub); chunks are never unloaded.
+- Chunks are never unloaded (#57). Frustum culling is real since #24 (`Camera3D::isAabbVisible`), used for drawing only.
 - SDL3 + GLEW: on Wayland/EGL `glewInit` returns `GLEW_ERROR_NO_GLX_DISPLAY`; `Window` treats it as
   success (functions are already loaded). Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy`.
 - `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).

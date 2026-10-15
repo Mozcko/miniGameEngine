@@ -121,7 +121,7 @@ All shaders therefore read `layout(location=0)` position and `layout(location=1)
 1. Clear to sky blue `(0.5, 0.7, 1.0)`, clear color + depth.
 2. Bind `m_shader3D`; upload camera projection & view, `baseColor = white`, sampler unit 0.
 3. Bind the tileset texture.
-4. **Opaque pass** – for every loaded chunk: set `model = translate(chunkPos)`, draw opaque mesh.
+4. **Opaque pass** – for every loaded chunk inside the camera frustum (`isAabbVisible`, #24): set `model = translate(chunkPos)`, draw opaque mesh.
 5. **Transparent pass** – `glDepthMask(GL_FALSE)`, draw each chunk's transparent mesh
    (water, lava, glass, leaves, flowers…), restore depth mask. No back‑to‑front sorting.
 6. Every 5 s the average FPS is written to the Debug log (the text HUD was removed in #9).

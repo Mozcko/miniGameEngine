@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mge/core/math/Geometry.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <functional>
@@ -35,8 +37,10 @@ namespace mge {
         glm::vec3 getPosition() const { return m_position; }
         void setPosition(const glm::vec3& pos) { m_position = pos; }
 
-        // Frustum Culling (Simplificado o placeholder para mantener compatibilidad)
+        // Frustum culling con los planos de projection * view (actualizados en update/updateProjection)
+        Frustum getFrustum() const { return Frustum::fromViewProjection(m_projectionMatrix * m_viewMatrix); }
         bool isSphereVisible(const glm::vec3& center, float radius) const;
+        bool isAabbVisible(const Aabb& box) const;
 
         // Configuración
         void setSpeed(float speed) { m_movementSpeed = speed; }
