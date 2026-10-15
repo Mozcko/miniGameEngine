@@ -76,14 +76,19 @@ if(MGE_BUILD_MODULES)
     endif()
 endif()
 
-# --- Motor (src/mge) y juegos ---
+# CTest antes de los subdirectorios: juegos y ejemplos también registran tests
+if(MGE_BUILD_TESTS)
+    enable_testing()
+endif()
+
+# --- Motor (src/mge), juegos y ejemplos ---
 add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES)
     add_subdirectory(games/sandbox)
+    add_subdirectory(examples/headless_smoke)
 endif()
 
-# --- Tests ---
+# --- Tests unitarios ---
 if(MGE_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()

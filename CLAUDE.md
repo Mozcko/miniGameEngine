@@ -28,6 +28,7 @@ cd build && ./sandbox        # cwd MUST be build/: assets use "../assets/..." pa
 ```
 Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. CI: GitHub Actions (`.github/workflows/ci.yml`, GCC + Clang, `ci` preset) must be green before merging.
 Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't installed here).
+Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames) and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`). CI jobs: gcc, clang, sanitizers, core-only, lint.
 Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 

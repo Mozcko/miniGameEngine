@@ -54,6 +54,36 @@ jobs:
       - name: Test (headless)
         run: ctest --preset ci
 
+  # AddressSanitizer + UndefinedBehaviorSanitizer: unit tests, headless smoke (1000 frames, sin
+  # módulos) y el sandbox real 120 frames offscreen (Mesa llvmpipe). Sin servidor gráfico.
+  sanitizers:
+    name: sanitizers (ASan + UBSan, headless)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/ci-install-deps.sh
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: asan
+
+      - name: Configure (asan preset)
+        run: >
+          cmake --preset asan -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build --preset asan
+
+      - name: Test (no display server)
+        run: |
+          unset DISPLAY WAYLAND_DISPLAY
+          ctest --preset asan
+
   # Proves the headless core builds and runs with NO SDL/GPU installed (ADR 0003)
   core-only:
     name: core-only (no SDL/GPU)

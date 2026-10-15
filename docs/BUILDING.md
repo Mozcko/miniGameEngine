@@ -99,8 +99,11 @@ SDL3's offscreen video driver plus GLEW on EGL lets the game run without a displ
 and over SSH):
 
 ```bash
-cd build && SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy timeout 10 ./sandbox
+cd build && SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./sandbox
 ```
+
+`MGE_MAX_FRAMES=N` makes any engine application exit cleanly after N frames, unless the game set
+`ApplicationConfig::maxFrames` itself.
 
 ## Tests
 
@@ -111,14 +114,22 @@ cmake --preset dev && cmake --build --preset dev
 ctest --preset dev            # or: ctest --test-dir build --output-on-failure
 ```
 
-Tests are **headless**: they need no display or GPU. Disable them with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
+Tests are **headless**: they need no display. Only the `gpu`‑labelled smoke test needs an OpenGL
+driver; skip it with `ctest -LE gpu`. Disable them with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push to `main` and on every pull request:
-- Ubuntu 24.04, **GCC and Clang** matrix, Ninja, ccache.
-- `cmake --preset ci` (Debug, `-Werror`) → build → `ctest --preset ci` (headless).
-- Superseded runs of the same branch are cancelled.
+`.github/workflows/ci.yml` runs on every push to `main` and on every pull request (Ubuntu 24.04;
+superseded runs are cancelled):
+
+| Job | What it proves |
+|-----|----------------|
+| `gcc`, `clang` | `ci` preset (Debug, `-Werror`) builds; all tests pass headless, including both smoke tests (the sandbox runs 120 frames offscreen on Mesa llvmpipe) |
+| `sanitizers` | `asan` preset: the same tests and smoke runs under ASan + UBSan, with no display server |
+| `core-only` | `mge_core` builds and its tests pass on a machine **without** SDL/GL headers |
+| `lint` | `scripts/lint.sh`: clang-format and naming (22.1.8) |
+
+Dependencies come from `scripts/ci-install-deps.sh` (SDL3 build deps plus Mesa software drivers).
 
 A PR may only be merged when both jobs are green. To reproduce CI locally:
 `cmake --preset ci -G Ninja && cmake --build --preset ci && ctest --preset ci`.

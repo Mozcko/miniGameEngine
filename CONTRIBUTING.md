@@ -32,7 +32,7 @@ These come from the [architecture decision records](docs/adr/README.md):
    - fill in the template;
    - add the matching labels and milestone;
    - the PR must say how the change was verified.
-5. **Merge** only when CI is green (GCC, Clang, core-only, lint). Use a merge commit and delete the branch.
+5. **Merge** only when CI is green (gcc, clang, sanitizers, core-only, lint). Use a merge commit and delete the branch.
 
 ## Build and test
 

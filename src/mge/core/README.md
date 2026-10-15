@@ -44,6 +44,8 @@ mge::Application* mge::createApplication() { return new MyGame(); }
 | `run()` | Init modules in order (stop at the first failure) → game `onInit` → loop → game `onShutdown` → shut down **only the initialised** modules in **reverse** order. Returns 0, or 1 if any init failed |
 | Loop | `dt` from `steady_clock` · modules' `onFrameBegin` · (break if a module requested stop) · `onUpdate(dt)` · `onRender()` · modules' `onFrameEnd` · `maxFrames` check |
 | `requestStop()` | Ends the loop after the current frame |
+| `setExitCode(code)` | Value `run()` returns after a normal shutdown (default 0). Headless checks use it to fail the process |
+| `MGE_MAX_FRAMES` env | If `config.maxFrames == 0`, caps the frame count (invalid values are ignored with a warning). Used by CI to run real games for N frames |
 | `Module` | `name()`, `onInit(app) -> bool`, `onFrameBegin(app)`, `onFrameEnd(app)`, `onShutdown(app)` (only if init succeeded) |
 
 The core knows no concrete module. Platform and audio live in their own targets
