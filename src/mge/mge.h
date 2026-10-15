@@ -26,6 +26,7 @@
 #include <mge/procgen/MeshOps.h>
 #include <mge/procgen/Noise.h>
 #include <mge/procgen/Primitives.h>
+#include <mge/procgen/Sdf.h>
 #endif
 
 // --- Plataforma: ventana, contexto OpenGL, input de SDL ---

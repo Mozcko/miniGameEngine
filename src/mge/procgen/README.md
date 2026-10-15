@@ -9,10 +9,10 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
 | `MeshOps.h/.cpp` | transform, append/merge, weld, flip, recompute normals, polygon triangulation, extrude, lathe, sweep |
 | `Noise.h/.cpp` | `mge::Noise`: value, Perlin, simplex, Worley (2D/3D), fbm, ridged, billow, domain warp, batch sampling |
+| `Sdf.h/.cpp` | `mge::sdf::`: signed distance primitives and operators, gradient normals, `surfaceNets` (SDF → MeshData) |
 | `detail/MeshBuilding.h/.cpp` | Internal helpers (oriented triangles, `revolve`), not public API |
 | `Primitives.h/.cpp` | `mge::primitives::` plane, box, uvSphere, icosphere, cylinder, cone, torus, capsule |
 
-Planned in M2: SDF + surface nets (#23).
 
 ## `MeshData`
 
@@ -133,6 +133,45 @@ Tests (`tests/procgen/test_noise.cpp`):
 - fractal ranges, and that more octaves add fine detail relative to coarse;
 - domain warp;
 - batch equals single samples.
+
+## SDF + surface nets – `<mge/procgen/Sdf.h>`
+
+A signed distance function returns how far a point is from a surface: negative inside, positive
+outside. Combine them to describe shapes with pure math, then mesh them:
+
+```cpp
+using namespace mge::sdf;
+Sdf blob = opSmoothUnion(sphere(0.8f), opTranslate(box({0.5f, 0.5f, 0.5f}), {0.9f, 0.3f, 0}), /*k*/ 0.3f);
+mge::MeshData mesh = surfaceNets(blob, mge::Aabb({-2, -2, -2}, {2, 2, 2}), /*resolution*/ 64);
+```
+
+| Group | Functions |
+|-------|-----------|
+| Primitives | `sphere(r)`, `box(halfExtents)`, `roundBox(half, r)`, `torus(R, r)` (XZ), `capsule(a, b, r)`, `cylinder(r, halfHeight)` (Y), `plane(normal, offset)` |
+| Booleans | `opUnion`, `opSubtract` (a minus b), `opIntersect`, and smooth variants `opSmoothUnion/Subtract/Intersect(a, b, k)` (k = blend radius; k = 0 → hard) |
+| Transforms | `opTranslate`, `opRotate(quat)`, `opScale(s)` (uniform, keeps exact distances), `opRepeat(period)` (per axis, 0 = no repeat), `opTwist(radiansPerUnit)` (around Y, distance approximate), `opRound(r)` |
+| Meshing | `normal(sdf, p)` (central‑difference gradient); `surfaceNets(sdf, bounds, resolution, color)` |
+
+`Sdf` is a `std::function<float(vec3)>`: easy to compose, at the cost of a call per node.
+
+**Surface nets:**
+1. Sample the SDF on a grid; `resolution` is the number of cells along the longest axis of
+   `bounds`.
+2. Place one vertex in every cell the surface crosses, at the average of the edge crossings.
+3. Emit one quad per sign‑changing grid edge, joining the 4 cells around it.
+
+Normals come from the SDF gradient and winding uses the oriented‑quad helper. The result is
+**watertight** when the shape lies fully inside `bounds`. The algorithm needs no lookup tables,
+unlike marching cubes. Sharing SDF definitions with shaders (raymarching, #36) is future work.
+
+Tests (`tests/procgen/test_sdf.cpp`):
+- exact primitive distances;
+- booleans, including that smooth union never exceeds the hard union;
+- every transform (repeat periodicity, exact scaled distances);
+- sphere meshes within one cell of the radius;
+- watertight, correctly wound sphere, **torus** (genus 1) and smooth blob;
+- vertex count grows with resolution;
+- empty results when no surface is inside the bounds.
 
 **GPU:** `mge::Mesh::init(const MeshData&)` (`mge_render`) uploads it. The legacy OpenGL renderer
 uses position, colour and UV, and ignores normals until M3.

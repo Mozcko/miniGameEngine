@@ -206,3 +206,26 @@ TEST_CASE("Un MGE_MAX_FRAMES inválido se ignora") {
     CHECK(app.run() == 0);
     CHECK(app.updates == 4);
 }
+
+TEST_CASE("requestStop dentro de onInit evita el loop (regresión: antes se ignoraba)") {
+    class StopInInit : public Application {
+    public:
+        StopInInit() : Application(ApplicationConfig{}) {} // Sin maxFrames: si se ignorara, no terminaría
+        int updates = 0;
+        bool shutdownCalled = false;
+
+    protected:
+        bool onInit() override {
+            requestStop();
+            return true;
+        }
+        void onUpdate(float) override {
+            if (++updates > 3) requestStop(); // Red de seguridad para que el test no se cuelgue
+        }
+        void onShutdown() override { shutdownCalled = true; }
+    };
+    StopInInit app;
+    CHECK(app.run() == 0);
+    CHECK(app.updates == 0);
+    CHECK(app.shutdownCalled);
+}
