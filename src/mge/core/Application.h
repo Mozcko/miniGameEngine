@@ -33,8 +33,13 @@ namespace mge {
         Application& operator=(const Application&) = delete;
 
         // Inicializa módulos y juego, corre el loop y cierra todo. Devuelve el código de salida:
-        // 0 = OK, 1 = falló la inicialización (el motivo está en el log).
+        // 1 si falló la inicialización (el motivo está en el log); si no, el de setExitCode (por defecto 0).
+        // La variable de entorno MGE_MAX_FRAMES (si config.maxFrames es 0) limita los frames: útil
+        // para correr cualquier juego unos frames en CI.
         int run();
+
+        // Código que devolverá run() al terminar normalmente (ej: un test headless que falla)
+        void setExitCode(int code) { m_exitCode = code; }
 
         // Termina el loop al final del frame actual
         void requestStop() { m_running = false; }
@@ -77,6 +82,7 @@ namespace mge {
         std::vector<std::unique_ptr<Module>> m_modules;
         std::size_t m_initializedModules = 0; // Los primeros N inicializaron bien
         bool m_running = false;
+        int m_exitCode = 0;
         std::uint64_t m_frameCount = 0;
     };
 

@@ -2,6 +2,7 @@
 #include <mge/core/Application.h>
 #include <mge/core/Log.h>
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -162,4 +163,46 @@ TEST_CASE("getModule encuentra módulos por tipo") {
     auto& recording = app.addModule<RecordingModule>("A", log);
     CHECK(app.getModule<RecordingModule>() == &recording);
     CHECK(app.getModule<QuitModule>() == nullptr);
+}
+
+TEST_CASE("setExitCode define lo que devuelve run()") {
+    CallLog log;
+    TestApp app(headlessConfig(1), log);
+    app.setExitCode(3);
+    CHECK(app.run() == 3);
+}
+
+namespace {
+    // Fija/borra una variable de entorno durante un test (POSIX)
+    struct ScopedEnv {
+        std::string name;
+        ScopedEnv(const char* n, const char* value) : name(n) { setenv(n, value, 1); }
+        ~ScopedEnv() { unsetenv(name.c_str()); }
+    };
+}
+
+TEST_CASE("MGE_MAX_FRAMES limita los frames si el config no fija maxFrames") {
+    CallLog log;
+    ScopedEnv env("MGE_MAX_FRAMES", "7");
+    TestApp app(headlessConfig(0), log);
+    CHECK(app.run() == 0);
+    CHECK(app.updates == 7);
+}
+
+TEST_CASE("maxFrames del config tiene prioridad sobre MGE_MAX_FRAMES") {
+    CallLog log;
+    ScopedEnv env("MGE_MAX_FRAMES", "7");
+    TestApp app(headlessConfig(2), log);
+    CHECK(app.run() == 0);
+    CHECK(app.updates == 2);
+}
+
+TEST_CASE("Un MGE_MAX_FRAMES inválido se ignora") {
+    QuietLog quiet;
+    CallLog log;
+    ScopedEnv env("MGE_MAX_FRAMES", "abc");
+    TestApp app(headlessConfig(0), log);
+    app.stopAfterUpdates = 4;
+    CHECK(app.run() == 0);
+    CHECK(app.updates == 4);
 }

@@ -16,3 +16,13 @@ target_link_libraries(sandbox PRIVATE sandbox_world mge_platform mge_audio mge_m
 # Se genera en la raíz del build dir (hermano de assets/) para que "../assets/..." funcione
 set_target_properties(sandbox PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 mge_set_warnings(sandbox)
+
+# Smoke test del juego real: 120 frames sin pantalla (driver offscreen de SDL3 + OpenGL por EGL).
+# Etiqueta "gpu": necesita un driver OpenGL (en CI, Mesa llvmpipe). Excluir con `ctest -LE gpu`.
+if(MGE_BUILD_TESTS)
+    add_test(NAME "smoke: sandbox offscreen 120 frames" COMMAND sandbox WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties("smoke: sandbox offscreen 120 frames" PROPERTIES
+        LABELS gpu
+        TIMEOUT 120
+        ENVIRONMENT "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;MGE_MAX_FRAMES=120")
+endif()

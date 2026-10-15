@@ -32,3 +32,15 @@ ctest --preset dev                      # all tests
 - Code must build warning‑free under the `ci` preset (`-Werror`) with GCC and Clang. That means
   C++17 only: no C++20 features such as lambda‑captured structured bindings.
 - Test names and comments follow the code's convention (Spanish).
+
+## Smoke tests (whole programs)
+
+Besides the unit tests, CTest runs two whole programs:
+
+| CTest name | Program | Needs |
+|------------|---------|-------|
+| `smoke: headless 1000 frames` | `examples/headless_smoke`: an `Application` with no modules, generating and checking a chunk per frame | nothing (no SDL init, no GPU) |
+| `smoke: sandbox offscreen 120 frames` | The real `sandbox`, with `SDL_VIDEODRIVER=offscreen`, `SDL_AUDIODRIVER=dummy`, `MGE_MAX_FRAMES=120` | an OpenGL driver (Mesa llvmpipe is enough). Label **`gpu`**; skip with `ctest -LE gpu` |
+
+CI runs all of them, and runs them again under ASan/UBSan in the `sanitizers` job.
+

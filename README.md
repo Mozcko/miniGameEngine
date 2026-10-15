@@ -76,6 +76,7 @@ miniGameEngine/
 │       └── app/            mge_main: main() (core-only)
 ├── games/
 │   └── sandbox/            The voxel sandbox game     → games/sandbox/README.md
+├── examples/               Small engine programs (headless_smoke) → examples/README.md
 ├── tests/                  doctest unit tests (headless): core/, sandbox/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── shaders/            GLSL 330 shaders
@@ -111,6 +112,7 @@ Every folder under `src/`, `games/` and `assets/` has its own `README.md` descri
 | [src/mge/render/3d/README.md](src/mge/render/3d/README.md) | Mesh |
 | [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation (legacy) |
 | [src/mge/render/camera/README.md](src/mge/render/camera/README.md) | Camera hierarchy |
+| [examples/README.md](examples/README.md) | Example programs (headless smoke test) |
 | [games/sandbox/README.md](games/sandbox/README.md) | SandboxApp, Chunk, Block (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |
 

@@ -2,10 +2,27 @@
 #include <mge/core/Log.h>
 
 #include <chrono>
+#include <cstdlib>
+#include <string>
 
 namespace mge {
 
-    Application::Application(ApplicationConfig config) : m_config(std::move(config)) {}
+    Application::Application(ApplicationConfig config) : m_config(std::move(config)) {
+        // Límite de frames desde el entorno (CI / smoke tests), solo si el juego no fijó uno
+        if (m_config.maxFrames == 0) {
+            if (const char* env = std::getenv("MGE_MAX_FRAMES")) {
+                char* end = nullptr;
+                unsigned long long value = std::strtoull(env, &end, 10);
+                if (end != env && *end == '\0') {
+                    m_config.maxFrames = value;
+                    MGE_LOG_INFO("App", "MGE_MAX_FRAMES=", value, ": la aplicación saldrá tras ", value,
+                                 " frames");
+                } else {
+                    MGE_LOG_WARN("App", "MGE_MAX_FRAMES inválido ('", env, "'); se ignora");
+                }
+            }
+        }
+    }
 
     Application::~Application() = default;
 
@@ -66,6 +83,6 @@ namespace mge {
 
         onShutdown();
         shutdownModules();
-        return 0;
+        return m_exitCode;
     }
 }
