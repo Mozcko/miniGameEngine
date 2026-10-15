@@ -40,6 +40,7 @@ add_executable(mge_procgen_tests
     procgen/test_meshdata.cpp
     procgen/test_primitives.cpp
     procgen/test_mesh_ops.cpp
+    procgen/test_noise.cpp
 )
 target_link_libraries(mge_procgen_tests PRIVATE mge_procgen doctest_header)
 mge_set_warnings(mge_procgen_tests)

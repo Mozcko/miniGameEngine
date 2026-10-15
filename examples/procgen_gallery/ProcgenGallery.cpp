@@ -76,6 +76,33 @@ namespace {
         meshes.emplace_back("op_merged_scene", scene);
     }
 
+    // Ruido (#22): terreno = plano subdividido desplazado por fbm, coloreado por altura
+    mge::MeshData noiseTerrain() {
+        const mge::Noise noise(2024);
+        mge::FractalSettings settings;
+        settings.octaves = 6;
+        settings.frequency = 0.35f;
+        mge::MeshData mesh = mge::primitives::plane(12.0f, 12.0f, 160, 160);
+        for (std::size_t i = 0; i < mesh.vertexCount(); i++) {
+            glm::vec3& p = mesh.positions[i];
+            const float h = noise.fbm(mge::NoiseType::Simplex, p.x, p.z, settings);
+            p.y = h * 2.0f;
+            // Agua, arena, pasto, roca, nieve
+            if (h < -0.2f)
+                mesh.colors[i] = {0.15f, 0.35f, 0.75f, 1.0f};
+            else if (h < -0.1f)
+                mesh.colors[i] = {0.85f, 0.8f, 0.55f, 1.0f};
+            else if (h < 0.35f)
+                mesh.colors[i] = {0.25f, 0.6f, 0.25f, 1.0f};
+            else if (h < 0.6f)
+                mesh.colors[i] = {0.5f, 0.45f, 0.4f, 1.0f};
+            else
+                mesh.colors[i] = {0.95f, 0.95f, 0.97f, 1.0f};
+        }
+        mge::recomputeNormals(mesh, mge::NormalMode::Smooth);
+        return mesh;
+    }
+
     class ProcgenGallery : public mge::Application {
     public:
         ProcgenGallery() : mge::Application(makeConfig()) {}
@@ -98,6 +125,7 @@ namespace {
             meshes.emplace_back("cone", prim::cone(0.8f, 2.0f, 32, {0.9f, 0.8f, 0.2f, 1.0f}));
             meshes.emplace_back("torus", prim::torus(1.2f, 0.4f, 48, 24, {0.6f, 0.3f, 0.8f, 1.0f}));
             addMeshOps(meshes);
+            meshes.emplace_back("noise_terrain", noiseTerrain());
             meshes.emplace_back("capsule", prim::capsule(0.5f, 1.5f, 32, 8, {0.2f, 0.8f, 0.7f, 1.0f}));
 
             int written = 0;
