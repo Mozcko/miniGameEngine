@@ -1,5 +1,7 @@
 #include <mge/voxel/ChunkMesher.h>
 
+#include <array>
+
 namespace mge {
 
     namespace {
@@ -7,93 +9,212 @@ namespace mge {
             glm::ivec3 offset; // Dirección al vecino
             glm::vec3 normal;
             glm::vec3 corners[4]; // Cubo unitario, antihorario visto desde afuera
+            int axis;             // Eje de la normal (0 x, 1 y, 2 z)
         };
 
         // Mismo orden que BlockFace. Esquinas: (uMin,vMin), (uMax,vMin), (uMax,vMax), (uMin,vMax)
         const FaceDef kFaces[kBlockFaceCount] = {
-            {{0, 0, 1}, {0, 0, 1}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}},   // Front +Z
-            {{0, 0, -1}, {0, 0, -1}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}}, // Back -Z
-            {{-1, 0, 0}, {-1, 0, 0}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}}, // Left -X
-            {{1, 0, 0}, {1, 0, 0}, {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}},   // Right +X
-            {{0, 1, 0}, {0, 1, 0}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}}},   // Top +Y
-            {{0, -1, 0}, {0, -1, 0}, {{0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {0, 0, 1}}}, // Bottom -Y
+            {{0, 0, 1}, {0, 0, 1}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, 2},   // Front +Z
+            {{0, 0, -1}, {0, 0, -1}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 2}, // Back -Z
+            {{-1, 0, 0}, {-1, 0, 0}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}, 0}, // Left -X
+            {{1, 0, 0}, {1, 0, 0}, {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, 0},   // Right +X
+            {{0, 1, 0}, {0, 1, 0}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}}, 1},   // Top +Y
+            {{0, -1, 0}, {0, -1, 0}, {{0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {0, 0, 1}}, 1}, // Bottom -Y
         };
 
-        UvRect uvFor(const BlockDesc& desc, BlockFace face, const TextureAtlas& atlas) {
-            const int tile = desc.tile(face);
-            if (tile < 0) return {glm::vec2(0.0f), glm::vec2(0.0f)};
-            return atlas.tileUv(tile);
-        }
+        using AoValues = std::array<int, 4>; // 0 (rincón cerrado) .. 3 (libre), por esquina
 
-        void addQuad(MeshData& mesh, const glm::vec3 (&corners)[4], const glm::vec3& base,
-                     const glm::vec3& normal, const glm::vec4& color, const UvRect& uv) {
-            const glm::vec2 uvs[4] = {uv.min, {uv.max.x, uv.min.y}, uv.max, {uv.min.x, uv.max.y}};
-            std::uint32_t idx[4];
-            for (int i = 0; i < 4; i++) idx[i] = mesh.addVertex(base + corners[i], normal, color, uvs[i]);
-            mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
-        }
+        class Mesher {
+        public:
+            Mesher(const VoxelWorld& world, const ChunkData& data, const ChunkCoord& coord,
+                   const ChunkMeshOptions& options)
+                : m_world(world), m_registry(world.registry()), m_data(data), m_origin(chunkOrigin(coord)),
+                  m_options(options) {}
 
-        // Dos planos diagonales, cada uno con sus dos caras (se ven desde ambos lados)
-        void addCross(MeshData& mesh, const glm::vec3& base, const glm::vec4& color, const UvRect& uv) {
-            const float s = 0.70710678f;
-            const glm::vec3 diag1[4] = {{0, 0, 0}, {1, 0, 1}, {1, 1, 1}, {0, 1, 0}};
-            const glm::vec3 diag1Back[4] = {{1, 0, 1}, {0, 0, 0}, {0, 1, 0}, {1, 1, 1}};
-            const glm::vec3 diag2[4] = {{0, 0, 1}, {1, 0, 0}, {1, 1, 0}, {0, 1, 1}};
-            const glm::vec3 diag2Back[4] = {{1, 0, 0}, {0, 0, 1}, {0, 1, 1}, {1, 1, 0}};
-            addQuad(mesh, diag1, base, {-s, 0, s}, color, uv);
-            addQuad(mesh, diag1Back, base, {s, 0, -s}, color, uv);
-            addQuad(mesh, diag2, base, {s, 0, s}, color, uv);
-            addQuad(mesh, diag2Back, base, {-s, 0, -s}, color, uv);
-        }
+            ChunkMesh build() {
+                for (int f = 0; f < kBlockFaceCount; f++) buildFace(f);
+                return std::move(m_result);
+            }
 
-        // ¿Se ve la cara de `self` que mira a `neighbor`?
-        bool faceVisible(const BlockRegistry& registry, BlockId self, BlockId neighbor) {
-            const BlockDesc& n = registry.get(neighbor);
-            if (n.opaque && n.shape == BlockShape::Cube) return false; // Tapada
-            return registry.get(self).opaque || self != neighbor;      // Agua contra agua: oculta
-        }
+        private:
+            // Celda pendiente de unir (greedy): bloque + oclusión uniforme (o -1 si no se puede unir)
+            struct MaskCell {
+                BlockId id = kAir;
+                int ao = 0;
+                bool operator==(const MaskCell& o) const { return id == o.id && ao == o.ao; }
+            };
+
+            BlockId blockAt(const glm::ivec3& local) const {
+                return ChunkData::inside(local.x, local.y, local.z) ? m_data.get(local)
+                                                                    : m_world.getBlock(m_origin + local);
+            }
+
+            bool occludes(const glm::ivec3& local) const {
+                const BlockDesc& d = m_registry.get(blockAt(local));
+                return d.opaque && d.shape == BlockShape::Cube;
+            }
+
+            // ¿Se ve la cara de `self` que mira a `neighbor`?
+            bool faceVisible(BlockId self, BlockId neighbor) const {
+                const BlockDesc& n = m_registry.get(neighbor);
+                if (n.opaque && n.shape == BlockShape::Cube) return false; // Tapada
+                return m_registry.get(self).opaque || self != neighbor;    // Agua contra agua: oculta
+            }
+
+            // Oclusión de cada esquina: mira los 3 bloques que rodean la esquina en la capa de enfrente
+            AoValues ambientOcclusion(const glm::ivec3& pos, const FaceDef& face) const {
+                AoValues ao = {3, 3, 3, 3};
+                if (!m_options.ambientOcclusion) return ao;
+                const glm::ivec3 front = pos + face.offset;
+                const int u = (face.axis + 1) % 3;
+                const int v = (face.axis + 2) % 3;
+                for (int i = 0; i < 4; i++) {
+                    glm::ivec3 du(0), dv(0);
+                    du[u] = face.corners[i][u] > 0.5f ? 1 : -1;
+                    dv[v] = face.corners[i][v] > 0.5f ? 1 : -1;
+                    const int side1 = occludes(front + du);
+                    const int side2 = occludes(front + dv);
+                    const int corner = occludes(front + du + dv);
+                    ao[i] = (side1 && side2) ? 0 : 3 - (side1 + side2 + corner);
+                }
+                return ao;
+            }
+
+            // Quad de la cara `face` del bloque en `pos`, estirado `size` bloques en los ejes de la cara
+            void emitQuad(const BlockDesc& desc, const FaceDef& face, int faceIndex, const glm::ivec3& pos,
+                          const glm::vec3& size, const AoValues& ao) {
+                MeshData& mesh = desc.opaque ? m_result.opaque : m_result.transparent;
+                UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
+                const int tile = desc.tiles[faceIndex];
+                if (tile >= 0) uv = m_options.atlas.tileUv(tile);
+                const glm::vec2 uvs[4] = {uv.min, {uv.max.x, uv.min.y}, uv.max, {uv.min.x, uv.max.y}};
+
+                std::uint32_t idx[4];
+                for (int i = 0; i < 4; i++) {
+                    const float shade = 1.0f - m_options.aoStrength * (3 - ao[i]) / 3.0f;
+                    const glm::vec4 color(glm::vec3(desc.color) * shade, desc.color.a);
+                    idx[i] =
+                        mesh.addVertex(glm::vec3(pos) + face.corners[i] * size, face.normal, color, uvs[i]);
+                }
+                // Diagonal hacia las esquinas más parecidas: evita que el AO se interpole en "X"
+                // (anisotropía)
+                if (ao[0] + ao[2] < ao[1] + ao[3])
+                    mesh.addQuad(idx[1], idx[2], idx[3], idx[0]);
+                else
+                    mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
+            }
+
+            static bool uniform(const AoValues& ao) {
+                return ao[0] == ao[1] && ao[1] == ao[2] && ao[2] == ao[3];
+            }
+
+            void buildFace(int faceIndex) {
+                const FaceDef& face = kFaces[faceIndex];
+                const int u = (face.axis + 1) % 3;
+                const int v = (face.axis + 2) % 3;
+                std::array<MaskCell, kChunkSize * kChunkSize> mask;
+
+                for (int slice = 0; slice < kChunkSize; slice++) {
+                    mask.fill(MaskCell{});
+                    // 1. Caras visibles de esta capa: las que se pueden unir van a la máscara, el resto sale
+                    // ya
+                    for (int j = 0; j < kChunkSize; j++) {
+                        for (int i = 0; i < kChunkSize; i++) {
+                            glm::ivec3 pos(0);
+                            pos[face.axis] = slice;
+                            pos[u] = i;
+                            pos[v] = j;
+                            const BlockId id = m_data.get(pos);
+                            if (id == kAir) continue;
+                            const BlockDesc& desc = m_registry.get(id);
+                            if (desc.shape == BlockShape::Cross) {
+                                if (faceIndex == 0) emitCross(desc, pos);
+                                continue;
+                            }
+                            if (desc.shape != BlockShape::Cube) continue;
+                            if (!faceVisible(id, blockAt(pos + face.offset))) continue;
+
+                            const AoValues ao = ambientOcclusion(pos, face);
+                            if (m_options.greedy && !desc.textured() && uniform(ao))
+                                mask[j * kChunkSize + i] = {id, ao[0]};
+                            else
+                                emitQuad(desc, face, faceIndex, pos, glm::vec3(1.0f), ao);
+                        }
+                    }
+                    // 2. Greedy: rectángulos máximos de celdas iguales (ancho en u, luego alto en v)
+                    for (int j = 0; j < kChunkSize; j++) {
+                        for (int i = 0; i < kChunkSize;) {
+                            const MaskCell cell = mask[j * kChunkSize + i];
+                            if (cell.id == kAir) {
+                                i++;
+                                continue;
+                            }
+                            int width = 1;
+                            while (i + width < kChunkSize && mask[j * kChunkSize + i + width] == cell)
+                                width++;
+                            int height = 1;
+                            for (; j + height < kChunkSize; height++) {
+                                bool rowMatches = true;
+                                for (int k = 0; k < width && rowMatches; k++)
+                                    rowMatches = mask[(j + height) * kChunkSize + i + k] == cell;
+                                if (!rowMatches) break;
+                            }
+                            for (int dj = 0; dj < height; dj++)
+                                for (int di = 0; di < width; di++)
+                                    mask[(j + dj) * kChunkSize + i + di] = MaskCell{};
+
+                            glm::ivec3 pos(0);
+                            pos[face.axis] = slice;
+                            pos[u] = i;
+                            pos[v] = j;
+                            glm::vec3 size(1.0f);
+                            size[u] = static_cast<float>(width);
+                            size[v] = static_cast<float>(height);
+                            emitQuad(m_registry.get(cell.id), face, faceIndex, pos, size,
+                                     {cell.ao, cell.ao, cell.ao, cell.ao});
+                            i += width;
+                        }
+                    }
+                }
+            }
+
+            // Dos planos diagonales, cada uno con sus dos caras (se ven desde ambos lados)
+            void emitCross(const BlockDesc& desc, const glm::ivec3& pos) {
+                MeshData& mesh = desc.opaque ? m_result.opaque : m_result.transparent;
+                UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
+                if (desc.tile(BlockFace::Front) >= 0)
+                    uv = m_options.atlas.tileUv(desc.tile(BlockFace::Front));
+                const glm::vec2 uvs[4] = {uv.min, {uv.max.x, uv.min.y}, uv.max, {uv.min.x, uv.max.y}};
+                const float s = 0.70710678f;
+                const glm::vec3 planes[4][4] = {
+                    {{0, 0, 0}, {1, 0, 1}, {1, 1, 1}, {0, 1, 0}},
+                    {{1, 0, 1}, {0, 0, 0}, {0, 1, 0}, {1, 1, 1}},
+                    {{0, 0, 1}, {1, 0, 0}, {1, 1, 0}, {0, 1, 1}},
+                    {{1, 0, 0}, {0, 0, 1}, {0, 1, 1}, {1, 1, 0}},
+                };
+                const glm::vec3 normals[4] = {{-s, 0, s}, {s, 0, -s}, {s, 0, s}, {-s, 0, -s}};
+                for (int p = 0; p < 4; p++) {
+                    std::uint32_t idx[4];
+                    for (int i = 0; i < 4; i++)
+                        idx[i] =
+                            mesh.addVertex(glm::vec3(pos) + planes[p][i], normals[p], desc.color, uvs[i]);
+                    mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
+                }
+            }
+
+            const VoxelWorld& m_world;
+            const BlockRegistry& m_registry;
+            const ChunkData& m_data;
+            glm::ivec3 m_origin;
+            const ChunkMeshOptions& m_options;
+            ChunkMesh m_result;
+        };
     }
 
     ChunkMesh buildChunkMesh(const VoxelWorld& world, const ChunkCoord& coord,
                              const ChunkMeshOptions& options) {
-        ChunkMesh result;
         const ChunkData* data = world.chunk(coord);
-        if (!data) return result;
-
-        const BlockRegistry& registry = world.registry();
-        const glm::ivec3 origin = chunkOrigin(coord);
-
-        // Bloque vecino: dentro del chunk se lee directo, afuera se pregunta al mundo
-        auto blockAtLocal = [&](const glm::ivec3& p) {
-            return ChunkData::inside(p.x, p.y, p.z) ? data->get(p) : world.getBlock(origin + p);
-        };
-
-        for (int y = 0; y < kChunkSize; y++) {
-            for (int z = 0; z < kChunkSize; z++) {
-                for (int x = 0; x < kChunkSize; x++) {
-                    const BlockId id = data->get(x, y, z);
-                    if (id == kAir) continue;
-                    const BlockDesc& desc = registry.get(id);
-                    if (desc.shape == BlockShape::None) continue;
-
-                    MeshData& mesh = desc.opaque ? result.opaque : result.transparent;
-                    const glm::ivec3 pos(x, y, z);
-                    const glm::vec3 base(pos);
-
-                    if (desc.shape == BlockShape::Cross) {
-                        addCross(mesh, base, desc.color, uvFor(desc, BlockFace::Front, options.atlas));
-                        continue;
-                    }
-
-                    for (int f = 0; f < kBlockFaceCount; f++) {
-                        const FaceDef& face = kFaces[f];
-                        if (!faceVisible(registry, id, blockAtLocal(pos + face.offset))) continue;
-                        addQuad(mesh, face.corners, base, face.normal, desc.color,
-                                uvFor(desc, static_cast<BlockFace>(f), options.atlas));
-                    }
-                }
-            }
-        }
-        return result;
+        if (!data) return {};
+        return Mesher(world, *data, coord, options).build();
     }
 }

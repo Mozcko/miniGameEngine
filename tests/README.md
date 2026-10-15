@@ -30,9 +30,9 @@ ctest --preset dev                      # all tests
 | `voxel/test_block_registry.cpp` | `mge_voxel_tests`: air is id 0, ids/lookup by name, per‑face tiles, atlas UVs |
 | `voxel/test_chunk_coords.cpp` | floorDiv/floorMod, world → chunk → local incl. negatives and vertical, `blockAt`, `ChunkData`, hash |
 | `voxel/test_voxel_world.cpp` | Load/unload, get/set across chunks (negative, vertical), dirty flags + border propagation, generator determinism |
-| `voxel/test_chunk_mesher.cpp` | Face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
+| `voxel/test_chunk_mesher.cpp` | Face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face; seams vs an independent whole‑world reference, re‑mesh after a neighbour loads, greedy (fewer triangles, same area per direction, textured not merged), AO (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
 | `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, cross shapes, atlas tiles per face, every block has tiles and colour |
-| `game/test_sandbox_terrain.cpp` | `SandboxTerrain`: determinism, one chunk tall, terrain rules (solid floor, water ≤ level 5), decoration rates 1–3 %, seed, far coordinates |
+| `game/test_sandbox_terrain.cpp` | `SandboxTerrain`: determinism, stone below / only tree tops above, terrain rules (solid floor, water ≤ level 5), decoration rates 1–3 %, seed, far coordinates, **trees crossing chunk borders**, load‑order independence |
 
 ## Writing tests
 - Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.

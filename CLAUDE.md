@@ -96,7 +96,8 @@ GPU upload: `Mesh::init(const MeshData&)`. Visual checks: `examples/procgen_gall
 ## Voxel
 `mge_voxel` (headless, always built): `BlockRegistry` (id 0 = air; `BlockDesc` colour and/or atlas tiles), 16³ chunks stacked in
 all axes (`ChunkCoord`, `chunkOf`/`localOf`/`blockAt`; block (x,y,z) occupies [x,x+1)), `VoxelWorld` (+ `TerrainGenerator`,
-dirty flags), `buildChunkMesh` → `{opaque, transparent}` MeshData in chunk‑local space. The game only registers blocks and
+dirty flags; loading dirties neighbours), `buildChunkMesh` → `{opaque, transparent}` MeshData in chunk‑local space (greedy for colour‑only
+cubes, optional AO). Generators must be stateless/order‑independent (sandbox trees replay neighbour columns). The game only registers blocks and
 implements a generator.
 
 ## Assets
