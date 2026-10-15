@@ -52,6 +52,9 @@ jobs:
         run: cmake --build --preset ci
 
       - name: Test (headless)
+        # MGE_REQUIRE_GPU: sin GPU (lavapipe) los tests de GPU fallan en vez de saltearse
+        env:
+          MGE_REQUIRE_GPU: "1"
         run: ctest --preset ci
 
       # Las plantillas de scripts/new-game.sh no pueden quedar rotas: generar, compilar y correr
@@ -90,6 +93,8 @@ jobs:
         run: cmake --build --preset asan
 
       - name: Test (no display server)
+        env:
+          MGE_REQUIRE_GPU: "1"
         run: |
           unset DISPLAY WAYLAND_DISPLAY
           ctest --preset asan

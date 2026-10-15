@@ -22,7 +22,7 @@ namespace mge {
         }
 
         const ApplicationConfig& config = app.getConfig();
-        m_window = std::make_unique<Window>(config.title, config.width, config.height);
+        m_window = std::make_unique<Window>(config.title, config.width, config.height, m_options.openGl);
         if (!m_window->isValid()) {
             m_window.reset(); // El motivo ya está en el log
             quitSdlSubsystem(SDL_INIT_VIDEO);

@@ -9,7 +9,8 @@ src/
     ├── core/            mge_core      – headless: no SDL, no GPU
     ├── procgen/         mge_procgen   – headless procedural generation (MeshData, noise, SDF, …)
     ├── voxel/           mge_voxel     – headless voxel worlds (blocks, chunks, meshing)
-    ├── platform/        mge_platform  – SDL window, GL context, input
+    ├── platform/        mge_platform  – SDL window, (legacy) GL context, input
+    ├── gpu/             mge_gpu       – SDL3 GPU: device, swapchain, RAII handles
     ├── render/          mge_render    – OpenGL renderer (legacy until #40)
     ├── audio/           mge_audio     – audio
     └── app/             mge_main – main() (core only)

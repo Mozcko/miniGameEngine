@@ -43,6 +43,15 @@
 #include <mge/platform/Window.h>
 #endif
 
+// --- GPU (SDL3 GPU: Vulkan/Metal/D3D12) ---
+#ifdef MGE_HAS_GPU
+#include <mge/gpu/CommandBuffer.h>
+#include <mge/gpu/GpuDevice.h>
+#include <mge/gpu/GpuMesh.h>
+#include <mge/gpu/GpuModule.h>
+#include <mge/gpu/Handles.h>
+#endif
+
 // --- Render (OpenGL legacy hasta #40) ---
 #ifdef MGE_HAS_RENDER
 #include <mge/render/3d/Mesh.h>

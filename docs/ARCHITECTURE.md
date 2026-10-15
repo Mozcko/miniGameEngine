@@ -15,6 +15,7 @@ per‑file reference, see the `README.md` in each folder under `src/`.
  sandbox_world (lib, headless)        ─►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher ──┐   ▼
    SandboxBlocks, SandboxTerrain             mge_procgen   MeshData, primitives, noise, SDF ───────┴► mge_core
  SandboxApp ─────────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
+ (new games, M3) ────────────────────────►  mge_gpu       GpuModule: SDL3 GPU device + swapchain ──►  mge_platform
                                                                                                    Application runner + Module,
                                                                                                    Log, Time  (no SDL, no GPU)
  Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)

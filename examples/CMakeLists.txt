@@ -8,4 +8,5 @@ if(NOT MGE_BUILD_MODULES)
     return()
 endif()
 add_subdirectory(headless_smoke)
+add_subdirectory(gpu_clear)
 # scripts/new-game.sh agrega líneas debajo
