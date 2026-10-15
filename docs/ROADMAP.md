@@ -23,7 +23,7 @@ Recorded as ADRs in [docs/adr/](adr/README.md). Contribution rules are in [CONTR
 ## Labels
 
 - **Type:** `bug`, `enhancement`, `refactor`, `chore`, `performance`, `testing`, `documentation`, `epic`
-- **Area:** `area:build|core|platform|procgen|voxel|render|ui|audio|physics|game`
+- **Area:** `area:build|core|platform|procgen|voxel|render|ui|audio|physics|game|tooling`
 - **Priority:** `priority:critical|high|medium|low`
 - **Size:** `size:S` (≤1 day), `size:M` (a few days), `size:L` (a week or more)
 
@@ -170,6 +170,17 @@ _Ship a game that is a single executable with no asset files._ A showcase game b
 | [#65](https://github.com/Mozcko/miniGameEngine/issues/65) | Remove assets/ and all file loaders | chore, priority:high, size:S |
 | [#66](https://github.com/Mozcko/miniGameEngine/issues/66) | Second demo: tiny SDF-based game | enhancement, priority:low, size:M |
 | [#67](https://github.com/Mozcko/miniGameEngine/issues/67) | Engine user guide: build a game with code only | documentation, priority:medium, size:M |
+
+### M9 · mge CLI & Project Wizard — [epic #107](https://github.com/Mozcko/miniGameEngine/issues/107)
+
+_A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine consumed as a normal dependency._ #103 and #104 only need M1.5 and can start early. The 2D/3D templates need M3 (renderer) and M4 (2D batch + font); the headless template can come first.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#103](https://github.com/Mozcko/miniGameEngine/issues/103) | Engine as a reusable dependency (installable CMake package + FetchContent) | enhancement, priority:high, size:M |
+| [#104](https://github.com/Mozcko/miniGameEngine/issues/104) | mge CLI: cargo-like new/build/run/test/check/doctor | enhancement, priority:high, size:L |
+| [#105](https://github.com/Mozcko/miniGameEngine/issues/105) | Interactive project wizard (TUI) for mge new | enhancement, priority:medium, size:M |
+| [#106](https://github.com/Mozcko/miniGameEngine/issues/106) | Project templates: 2D, 3D and headless | enhancement, priority:medium, size:L |
 
 ## Suggested order
 
