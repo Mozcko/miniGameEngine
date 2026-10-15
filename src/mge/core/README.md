@@ -6,14 +6,49 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
+| `Application.h/.cpp` | `mge` | `ApplicationConfig` + the runner: owns the loop and the modules, runs headless when no platform module is added |
+| `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Time.h/.cpp` | `mge` | Static clock (`std::chrono::steady_clock`) with time scale and hitch clamping |
 
-Upcoming in M1: application runner + modules (#11), fixed‑timestep clock (#12),
+Upcoming in M1: fixed‑timestep clock (#12),
 input state (#15), RNG (#14), ECS (#16).
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
+
+---
+
+## Application runner – `mge::Application` + `mge::Module`
+
+```cpp
+#include <mge/core/Application.h>
+#include <mge/platform/PlatformModule.h>   // only for windowed games
+
+class MyGame : public mge::Application {
+public:
+    MyGame() : Application(makeConfig()) { addModule<mge::PlatformModule>(); }
+protected:
+    bool onInit() override { /* modules are ready (GL context exists) */ return true; }
+    void onUpdate(float dt) override { /* ... */ if (done) requestStop(); }
+    void onRender() override { /* draw; the platform module swaps buffers */ }
+    void onShutdown() override { /* free GPU resources while the context exists */ }
+};
+mge::Application* mge::createApplication() { return new MyGame(); }
+```
+
+| Item | Behaviour |
+|------|-----------|
+| `ApplicationConfig` | `title`, `width`, `height` (used by `PlatformModule`), `headless` (a hint for the game: add no platform module), `maxFrames` (0 = unlimited; tests and headless runs) |
+| `addModule<T>(args…)` / `getModule<T>()` | Register modules before `run()`. Lookup is by type (`dynamic_cast`); returns `nullptr` if absent |
+| `run()` | Init modules in order (stop at the first failure) → game `onInit` → loop → game `onShutdown` → shut down **only the initialised** modules in **reverse** order. Returns 0, or 1 if any init failed |
+| Loop | `dt` from `steady_clock` · modules' `onFrameBegin` · (break if a module requested stop) · `onUpdate(dt)` · `onRender()` · modules' `onFrameEnd` · `maxFrames` check |
+| `requestStop()` | Ends the loop after the current frame |
+| `Module` | `name()`, `onInit(app) -> bool`, `onFrameBegin(app)`, `onFrameEnd(app)`, `onShutdown(app)` (only if init succeeded) |
+
+The core knows no concrete module. Platform and audio live in their own targets
+(`PlatformModule`, `AudioModule`), so a program that adds none runs with no window, GPU or SDL.
+Tests: `tests/core/test_application.cpp`.
 
 ---
 

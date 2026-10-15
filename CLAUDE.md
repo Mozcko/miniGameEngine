@@ -32,17 +32,19 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
-  builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform`, `mge_render`, `mge_audio`, `mge_app` + `mge_main`.
+  builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform` (PlatformModule), `mge_render`, `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
 - `games/sandbox/` = `sandbox_world` lib (Block/Chunk) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/core/` → `mge_core_tests` (core only), `tests/sandbox/` → `sandbox_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
 
 ## Architecture in 10 lines
-1. `src/mge/app/Main.cpp` owns `main()` → `mge::createApplication()` (defined by the game) → `run()`.
-2. `mge::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW).
-3. `run()`: InputManager::init → `onInit()` → loop { dt, InputManager::update, poll events
-   (→ `onEvent` + InputManager::processEvent), `onUpdate(dt)`, `onRender()`, swapBuffers }.
-4. Game stops by setting protected `m_running = false`.
+1. `src/mge/app/Main.cpp` (`mge_main`) owns `main()` → `mge::createApplication()` (game) → `return app->run()`.
+2. `mge::Application` (core, `<mge/core/Application.h>`) = runner + `Module`s. The game adds modules in its
+   ctor (`addModule<PlatformModule>()`, `addModule<AudioModule>()`); none = headless. Config: `ApplicationConfig`.
+3. `run()`: modules `onInit` in order → game `onInit()` (bool) → loop { modules `onFrameBegin` (Platform polls
+   SDL, QUIT → stop, event callback), `onUpdate(dt)`, `onRender()`, modules `onFrameEnd` (swap) } → game
+   `onShutdown()` → initialised modules `onShutdown` in reverse. Returns 0 / 1 (init failed).
+4. Game stops with `requestStop()`; raw SDL events via `PlatformModule::setEventCallback` (until #15).
 5. Static singletons: `InputManager`, `Time`, `AudioManager`, `ResourceManager`.
 6. `Mesh` = VAO/VBO/EBO of `Vertex{vec3 pos, vec4 color, vec2 uv}`. **Attrib loc 0 = position, loc 1 = UV; color is NOT sent** (see Mesh.cpp).
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).

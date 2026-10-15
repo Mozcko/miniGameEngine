@@ -32,7 +32,7 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 | 12 | ✅ Fixed (#13) | `GLSLProgram::compileShader` | Compile failure prints but continues to link (link then also fails). Missing file calls `exit(1)`. |
 | 13 | Low | `render/3d/Mesh.cpp` `init` | Vertex `color` is never sent to the GPU (attrib 1 is set to color and immediately overwritten by UV). `Sprite::setColor` therefore has no visible effect. |
 | 14 | Low | `render/camera/FirstPersonCamera.h` | Re‑declares `m_velocity`, `m_isGrounded`, `m_collisionCallback`, **shadowing** the same members of `Camera3D`, and `setCollisionCallback` is non‑virtual. Calling it through a `Camera3D&` sets the wrong callback. |
-| 15 | Low | `games/sandbox/SandboxApp.cpp` `onEvent` | On resize, only the 3D camera projection updates; (the HUD camera is gone since #9.) `Window::m_width/m_height` are never updated either. |
+| 15 | Low | `games/sandbox/SandboxApp.cpp` `handleEvent` | On resize, only the 3D camera projection updates; (the HUD camera is gone since #9.) `Window::m_width/m_height` are never updated either. |
 | 16 | ✅ Fixed (#2) | `render/2d/Animation.cpp` `update` | `_frames.size() - 1` is unsigned → with zero frames it underflows; comparison of `int` with `size_t`. |
 | 17 | 🗑️ Removed (#9) | `Texture::loadFromSurface` | For 3‑channel surfaces passes `GL_RGB` without accounting for SDL row pitch (`GL_UNPACK_ALIGNMENT`). TTF blended surfaces are 4‑channel so fine today. |
 

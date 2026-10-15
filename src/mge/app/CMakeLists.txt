@@ -1,11 +1,6 @@
-# Application: crea la ventana, inicializa el audio y corre el loop
-add_library(mge_app STATIC
-    Application.h Application.cpp
-)
-target_link_libraries(mge_app PUBLIC mge_platform mge_audio)
-mge_set_warnings(mge_app)
-
-# main() del motor. OBJECT para que el main() se enlace siempre en el ejecutable del juego.
+# main() del motor: llama a mge::createApplication() del juego y devuelve el código de salida de run().
+# OBJECT para que el main() se enlace siempre en el ejecutable. Solo depende del core (sin SDL),
+# así que sirve también para programas headless.
 add_library(mge_main OBJECT Main.cpp)
-target_link_libraries(mge_main PUBLIC mge_app)
+target_link_libraries(mge_main PUBLIC mge_core)
 mge_set_warnings(mge_main)

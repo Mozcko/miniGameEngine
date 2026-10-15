@@ -6,15 +6,16 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 ## 1. Big picture
 
 ```
- games/sandbox/                         src/mge/  (one static library per folder)
- ───────────────                        ────────────────────────────────────────────
- sandbox (exe) ─────────────────────►  mge_main  (OBJECT: main() → createApplication)
-   SandboxApp : mge::Application ─►  mge_app   Application loop ─┬─► mge_platform  Window, GL ctx, GLEW, InputManager ─┐
- sandbox_world (lib)                                                └─► mge_audio     AudioManager (SDL3 audio)          │
-   Chunk, Block ────────────────────►  mge_render  Mesh, Texture, GLSLProgram, Cameras … ──(temp)──► mge_platform        │
-                                                     │                                                                   ▼
-                                                     └──────────────────────────────────────────────────────────►  mge_core  Time
-                                                                                                                (no SDL, no GPU)
+ games/sandbox/                              src/mge/  (one static library per folder)
+ ───────────────                             ─────────────────────────────────────────────────────────
+ sandbox (exe) ──────────────────────────►  mge_main      main() → createApplication() → run()      ─┐
+   SandboxApp : mge::Application             mge_platform  PlatformModule: Window, GL ctx, GLEW,       │
+     addModule<PlatformModule>() ────────►                InputManager, SDL event pump ──────────────┤
+     addModule<AudioModule>()   ─────────►  mge_audio     AudioModule: AudioManager (SDL3 audio) ────┤
+ sandbox_world (lib)                                                                                  ▼
+   Chunk, Block ─────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
+                                                          (→ mge_platform, temporary until #15)    Application runner + Module,
+                                                                                                   Log, Time  (no SDL, no GPU)
  Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
 ```
 
@@ -26,71 +27,66 @@ The game plugs in through the `Application` / `createApplication` contract.
 ## 2. The entry‑point contract
 
 ```cpp
-// src/mge/app/Main.cpp
+// src/mge/app/Main.cpp  (target mge_main – core only, no SDL)
 int main(int, char**) {
-    auto app = mge::createApplication();   // implemented by the game
-    app->run();
-    delete app;
+    std::unique_ptr<mge::Application> app(mge::createApplication());   // implemented by the game
+    return app->run();                                                  // 0 = ok, 1 = init failed
 }
 ```
 
-A game must:
-1. Subclass `mge::Application` and implement `onInit()`, `onUpdate(float dt)`,
-   `onRender()` (pure virtual) and optionally `onEvent(SDL_Event&)`.
-2. Define `mge::Application* mge::createApplication()` returning a heap instance.
-3. Stop the loop by setting the protected member `m_running = false`.
+A game:
+1. Subclasses `mge::Application` (`<mge/core/Application.h>`), passing an `ApplicationConfig`
+   (title, size, `headless`, `maxFrames`).
+2. Adds the **modules** it needs in its constructor, for example `addModule<PlatformModule>()`
+   (window, GL, events) and `addModule<AudioModule>()`. A headless program adds none.
+3. Overrides the hooks it needs: `bool onInit()`, `onUpdate(float dt)`, `onRender()`,
+   `onShutdown()`. None are mandatory.
+4. Defines `mge::Application* mge::createApplication()`.
+5. Stops the loop with `requestStop()`.
 
-## 3. Startup sequence
+## 3. Startup sequence – `Application::run()` (`src/mge/core/Application.cpp`)
 
-`mge::Application::Application()` (`src/mge/app/Application.cpp`):
-
-1. `mge::AudioManager::init()` – SDL3 audio subsystem + default playback device (failure → silent).
-2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)`.
-3. `m_window = make_unique<Window>("Mini Game Engine - Minecraft Cube", 1280, 720)`:
-   - requests an OpenGL **3.3 Core**, double‑buffered context, resizable window;
-   - runs `glewInit()` (with `glewExperimental = GL_TRUE`);
-   - enables alpha blending, **disables** depth testing (2D default), prints GL version.
-
-Then the derived constructor runs (SandboxApp constructs its `Camera3D` and `Camera2D` with
-1280×720).
+1. Each module's `onInit(app)` runs **in the order the modules were added**. If one returns false,
+   the modules already initialised are shut down in reverse and `run()` returns 1.
+   - `PlatformModule` creates the `Window` from the config: SDL video, OpenGL **3.3 Core**
+     double‑buffered resizable window, `glewInit()` (EGL‑tolerant), blending on, depth test off,
+     and `InputManager::init`.
+   - `AudioModule` calls `AudioManager::init()` (SDL3 audio, default device; failure → silent, not
+     fatal).
+2. The game's `onInit()` runs, with modules ready (for example a GL context exists). If it returns
+   false, all modules are shut down and `run()` returns 1.
 
 ## 4. Frame loop
 
-`Application::Run()`:
-
 ```
-InputManager::init(sdlWindow)
-onInit()                                   ← game loads shaders, textures, fonts, GL state
-lastFrameTime = SDL_GetPerformanceCounter()
-while (m_running):
-    calculateDeltaTime()                   ← m_deltaTime (seconds, unclamped)
-    InputManager::update()                 ← reset mouse delta, re‑assert cursor lock
-    for each SDL_Event:
-        SDL_QUIT → m_running = false
-        onEvent(event)                     ← game first
-        InputManager::processEvent(event)  ← then input accumulates mouse motion
-    onUpdate(m_deltaTime)
+while running:
+    dt = steady_clock delta (seconds)
+    for module in modules:  module.onFrameBegin(app)   ← Platform: InputManager::update, poll SDL events
+                                                          (QUIT → requestStop, game event callback, input)
+    if a module requested stop: break                  ← no update/render for that frame
+    onUpdate(dt)
     onRender()
-    window.swapBuffers()
+    for module in modules:  module.onFrameEnd(app)     ← Platform: swap buffers
+    frameCount++ ; stop when frameCount == config.maxFrames (if > 0)
 ```
 
-Note: there is a second, independent timer – `mge::Time` – which supports a
-**time scale** (pause/slow‑mo) and clamps big hitches to 0.1 s. SandboxApp calls
-`Time::update()` at the top of `onUpdate` and uses `Time::getDeltaTime()` instead of the `dt`
-argument. Pausing sets the time scale to 0, which freezes the camera (camera `update` returns early
-for dt ≈ 0) while tile animations keep running on unscaled time.
+The game receives raw SDL events through `PlatformModule::setEventCallback` until input actions
+land in #15.
+
+There is still a second timer, `mge::Time`, which adds a **time scale** (pause/slow‑mo) and
+clamps hitches to 0.1 s. SandboxApp calls `Time::update()` at the top of `onUpdate` and ignores
+the `dt` argument. #12 replaces both with a single fixed‑timestep clock. Pausing sets the time
+scale to 0, which freezes the camera while tile animations keep running on unscaled time.
 
 ## 5. Shutdown sequence
 
-`delete app` → `~SandboxApp` (deletes chunks) → member destructors (Meshes delete GL
-buffers, …) → `~Application`: `AudioManager::shutdown()`,
-`SDL_Quit()` → `m_window` unique_ptr destroyed: deletes GL context, destroys window, `SDL_Quit()`
-again.
+After the loop: the game's `onShutdown()` runs first. SandboxApp frees its chunk meshes there,
+while the GL context still exists. Then each **initialised** module's `onShutdown(app)` runs in
+**reverse order**: Audio closes the device, Platform destroys the window and GL context. Finally
+`main()` destroys the `Application`.
 
-Caveat: `~Application` body runs before its own members are destroyed, so `SDL_Quit()` happens
-before the GL context is deleted by `~Window`. (Derived‑class GL resources
-are fine: SandboxApp members are destroyed before `~Application` runs.) It works in practice but
-is fragile – see `KNOWN_ISSUES.md`.
+Remaining caveat: `Window` still calls `SDL_Init(SDL_INIT_VIDEO)`/`SDL_Quit()` itself, and audio
+uses `SDL_InitSubSystem`. Per‑module SDL subsystem ownership is #17.
 
 ## 6. Rendering pipeline
 
@@ -155,18 +151,19 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 
 | Class | Namespace | State | Lifetime |
 |-------|-----------|-------|----------|
-| `InputManager` | `mge` | mouse pos/delta, cursor lock, window ptr | `init` in `run()` |
+| `InputManager` | `mge` | mouse pos/delta, cursor lock, window ptr | `PlatformModule` init/shutdown |
 | `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
-| `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | Application ctor/dtor |
+| `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | `AudioModule` init/shutdown |
 | `ResourceManager` | `mge` | `Texture` cache by path | never cleared automatically (unused) |
 
 ## 9. Ownership summary
 
 | Object | Owner | How freed |
 |--------|-------|-----------|
-| `Application` | `main()` | `delete app` |
-| `Window` | `Application::m_window` (unique_ptr) | RAII |
-| `Chunk*` | `SandboxApp::m_chunkMap` | deleted in `~SandboxApp` |
+| `Application` | `main()` (`std::unique_ptr`) | RAII after `run()` returns |
+| Modules | `Application::m_modules` | `onShutdown` in reverse order, then destroyed with the app |
+| `Window` | `PlatformModule` (unique_ptr) | reset in `PlatformModule::onShutdown` |
+| `Chunk*` | `SandboxApp::m_chunkMap` | deleted in `SandboxApp::onShutdown` (GL context still alive) |
 | `Mesh*` inside Chunk | Chunk | deleted in `~Chunk` |
 | GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
 | GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |

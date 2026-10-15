@@ -1,12 +1,13 @@
-#include <mge/app/Application.h>
-// SDL3: en las plataformas que lo necesitan, SDL_main.h provee el punto de entrada real
-#include <SDL3/SDL_main.h>
+#include <mge/core/Application.h>
 
-// Punto de entrada del Motor
-// El motor toma el control del main y llama a la aplicación definida por el cliente
+#include <memory>
+
+// Punto de entrada del motor: crea la aplicación definida por el juego y la corre.
+// No depende de SDL, así que sirve también para programas headless.
+// (Con SDL3 en Linux/Windows no hace falta SDL_main.h; si algún día se porta a una
+// plataforma que lo exija, el juego puede incluirlo en su propio archivo.)
 int main(int /*argc*/, char** /*argv*/) {
-    auto app = mge::createApplication();
-    app->run();
-    delete app;
-    return 0;
+    std::unique_ptr<mge::Application> app(mge::createApplication());
+    if (!app) return 1;
+    return app->run();
 }

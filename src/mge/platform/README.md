@@ -2,6 +2,20 @@
 
 Window + OpenGL context (GLEW) and input. Depends on `mge_core`, SDL3, GLEW, OpenGL.
 
+## `PlatformModule`
+
+`#include <mge/platform/PlatformModule.h>` → `app.addModule<mge::PlatformModule>()`.
+
+| Hook | Does |
+|------|------|
+| `onInit` | Creates the `Window` from `ApplicationConfig` (title, size). Fails, and so stops startup, if the window, GL context or GLEW fails. Then `InputManager::init(window)` |
+| `onFrameBegin` | `InputManager::update()`, then polls every SDL event: `SDL_EVENT_QUIT` → `app.requestStop()`; the event goes to the game's callback (`setEventCallback`), then to `InputManager::processEvent` |
+| `onFrameEnd` | `Window::swapBuffers()` |
+| `onShutdown` | Clears the InputManager window and destroys the window (GL context) |
+
+`getWindow()` is valid between init and shutdown. `setEventCallback(std::function<void(const SDL_Event&)>)`
+is temporary until input actions (#15).
+
 ## Window
 
 | File | Namespace | Purpose |
@@ -55,7 +69,7 @@ The window is resizable, but `Window` does nothing on resize. The game must hand
 |------|------|--------|
 | `init(SDL_Window*)` | once, before `onInit` | Stores window, resets state, cursor unlocked |
 | `update()` | start of every frame, before event polling | Resets `MouseDelta` to 0; if locked, re‑asserts relative mouse mode + window grab (needed after focus changes) |
-| `processEvent(e)` | for every SDL event, *after* the game's `onEvent` | On `SDL_MOUSEMOTION`: stores absolute position, **accumulates** `xrel/yrel` into the delta |
+| `processEvent(e)` | for every SDL event, *after* the game's event callback | On `SDL_EVENT_MOUSE_MOTION`: stores absolute position, **accumulates** `xrel/yrel` into the delta |
 
 ### Query API
 | Method | Returns |
@@ -68,7 +82,7 @@ The window is resizable, but `Window` does nothing on resize. The game must hand
 
 ### Notes
 - There is **no** "pressed this frame" / "released" API and no mouse‑button query. For
-  one‑shot actions handle `SDL_KEYDOWN` / `SDL_MOUSEBUTTONDOWN` in `onEvent` (SandboxApp does this
+  one‑shot actions handle `SDL_EVENT_KEY_DOWN` / `SDL_EVENT_MOUSE_BUTTON_DOWN` in the `PlatformModule` event callback (SandboxApp does this
   for `Esc`, `P` and click‑to‑capture).
 - Keys use **scancodes** (physical layout: `SDL_SCANCODE_W`), events use keycodes (`SDLK_p`).
 - `Camera3D` only applies mouse look when `isCursorLocked()`; `FirstPersonCamera` always does.
