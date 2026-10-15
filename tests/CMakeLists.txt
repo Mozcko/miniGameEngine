@@ -80,6 +80,15 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
     mge_add_shaders(mge_gpu_tests SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
 
+    # Las capas de validación cortan ante un error: si no, los tests de GPU no detectarían usos incorrectos
+    add_executable(gpu_validation_probe gpu/ValidationProbe.cpp)
+    target_link_libraries(gpu_validation_probe PRIVATE mge_gpu)
+    mge_set_warnings(gpu_validation_probe)
+    mge_add_shaders(gpu_validation_probe SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
+    add_test(NAME "gpu: la validación corta ante un uso incorrecto de la API" COMMAND gpu_validation_probe)
+    set_tests_properties("gpu: la validación corta ante un uso incorrecto de la API" PROPERTIES
+        LABELS gpu SKIP_RETURN_CODE 77 ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+
     # Render: escenas comparadas con imágenes de referencia (tests/render/golden). MGE_UPDATE_GOLDEN=1 las reescribe
     add_executable(render_tests
         test_main.cpp

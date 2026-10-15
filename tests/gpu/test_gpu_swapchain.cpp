@@ -57,5 +57,4 @@ TEST_CASE("GPU: el device elige un depth de 24 o 32 bits y se puede usar en un r
         CHECK(pass);
     }
     CHECK(cmd.submitAndWait());
-    CHECK(GpuTestContext::validationMessages().empty());
 }

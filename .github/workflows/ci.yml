@@ -52,9 +52,14 @@ jobs:
         run: cmake --build --preset ci
 
       - name: Test (headless)
-        # MGE_REQUIRE_GPU: sin GPU (lavapipe) los tests de GPU fallan en vez de saltearse
+        # MGE_REQUIRE_GPU / MGE_REQUIRE_VALIDATION: sin GPU (lavapipe) o sin capas de validación los tests de
+        # GPU fallan en vez de saltearse. La capa de validación corta el proceso ante cualquier error de uso
+        # de la API (o recurso sin liberar): ver tests/gpu/ValidationProbe.cpp
         env:
           MGE_REQUIRE_GPU: "1"
+          MGE_REQUIRE_VALIDATION: "1"
+          VK_KHRONOS_VALIDATION_REPORT_FLAGS: error
+          VK_KHRONOS_VALIDATION_DEBUG_ACTION: VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
         run: ctest --preset ci
 
       # Las plantillas de scripts/new-game.sh no pueden quedar rotas: generar, compilar y correr
@@ -95,6 +100,9 @@ jobs:
       - name: Test (no display server)
         env:
           MGE_REQUIRE_GPU: "1"
+          MGE_REQUIRE_VALIDATION: "1"
+          VK_KHRONOS_VALIDATION_REPORT_FLAGS: error
+          VK_KHRONOS_VALIDATION_DEBUG_ACTION: VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
         run: |
           unset DISPLAY WAYLAND_DISPLAY
           ctest --preset asan

@@ -25,7 +25,6 @@ namespace {
         const mge_test::GoldenResult result = mge_test::compareWithGolden(name, image);
         if (!result.message.empty()) MESSAGE(result.message);
         CHECK(result.passed);
-        CHECK(GpuTestContext::validationMessages().empty());
     }
 }
 
