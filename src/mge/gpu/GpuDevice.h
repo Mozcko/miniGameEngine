@@ -3,6 +3,8 @@
 #include <mge/gpu/CommandBuffer.h>
 #include <mge/gpu/GpuMesh.h>
 #include <mge/gpu/Handles.h>
+#include <mge/gpu/Pipeline.h>
+#include <mge/gpu/Shader.h>
 #include <mge/procgen/MeshData.h>
 
 #include <cstdint>
@@ -42,7 +44,10 @@ namespace mge {
                                       SDL_GPUTextureFormat format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
         GpuSampler createSampler(const SDL_GPUSamplerCreateInfo& info);
         GpuShader createShader(const SDL_GPUShaderCreateInfo& info);
+        // Shader embebido (mge_add_shaders) de vértices o fragmentos, con los recursos que usa
+        GpuShader createShader(const ShaderCode& code, const ShaderResources& resources = {});
         GpuGraphicsPipeline createGraphicsPipeline(const SDL_GPUGraphicsPipelineCreateInfo& info);
+        GpuGraphicsPipeline createGraphicsPipeline(const GraphicsPipelineDesc& desc);
         GpuComputePipeline createComputePipeline(const SDL_GPUComputePipelineCreateInfo& info);
 
         // --- Trabajo ---

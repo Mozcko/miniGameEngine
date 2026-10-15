@@ -79,6 +79,10 @@ endif()
 
 # mge_add_game(): una llamada por juego (ver cmake/MgeGame.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/MgeGame.cmake)
+# mge_add_shaders(): GLSL → SPIR-V embebido (ver cmake/MgeShaders.cmake). Solo con módulos (GPU)
+if(MGE_BUILD_MODULES)
+    include(${PROJECT_SOURCE_DIR}/cmake/MgeShaders.cmake)
+endif()
 
 # CTest antes de los subdirectorios: juegos y ejemplos también registran tests
 if(MGE_BUILD_TESTS)

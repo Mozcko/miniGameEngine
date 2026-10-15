@@ -11,10 +11,12 @@ It depends on `mge_core`, `mge_procgen` (for `MeshData`), `mge_platform` (the wi
 Programs that link it see `MGE_HAS_GPU`, and `<mge/mge.h>` then includes it.
 
 The high‑level renderer (pipelines, cameras, materials) arrives in `mge_graphics` (#30). The legacy
-OpenGL renderer (`mge_render`) is deleted in #40. Shaders are compiled at build time and embedded (#29).
+OpenGL renderer (`mge_render`) is deleted in #40.
 
 | File | Contents |
 |------|----------|
+| `Shader.h` | `ShaderCode` (embedded SPIR‑V + stage), `ShaderResources` (resource counts) and the binding convention |
+| `Pipeline.h` | `GraphicsPipelineDesc` (shaders, colour/depth formats, `GpuVertex` input or none, cull, blend) |
 | `Handles.h` | `GpuHandle<T, Release>` and the aliases `GpuBuffer`, `GpuTransferBuffer`, `GpuTexture`, `GpuSampler`, `GpuShader`, `GpuGraphicsPipeline`, `GpuComputePipeline` |
 | `GpuDevice.h/.cpp` | `GpuDeviceOptions`, `GpuDevice` |
 | `CommandBuffer.h/.cpp` | `CommandBuffer`, `RenderPass`, `CopyPass`, `ColorTarget`, `DepthTarget` |
@@ -38,7 +40,8 @@ void onRender() override {
     target.texture = frame->swapchain;
     target.clearColor = {0.1f, 0.2f, 0.3f, 1.0f};
     mge::RenderPass pass = frame->cmd->beginRenderPass(target);   // ends at scope exit
-    // ... draw calls (pipelines come with #29/#30)
+    SDL_BindGPUGraphicsPipeline(pass.get(), m_pipeline.get());
+    SDL_DrawGPUPrimitives(pass.get(), 3, 1, 0, 0);
 }
 ```
 
@@ -53,6 +56,45 @@ void onRender() override {
    reverse order, so this happens before the platform destroys the window.
 
 `frame()->width/height` is the real swapchain size, which follows window resizes.
+
+## Shaders and pipelines (#29)
+
+GLSL is compiled to SPIR‑V at build time and embedded with `mge_add_shaders(target SHADERS a.vert
+b.frag)` (see `docs/BUILDING.md` → Shaders). Each shader becomes `mge::shaders::k<Name><Stage>`, so
+no files are read at runtime.
+
+```cpp
+#include <shaders/triangle_vert.h>
+#include <shaders/triangle_frag.h>
+
+mge::ShaderResources vsResources;
+vsResources.uniformBuffers = 1;                      // uniform block at set 1, binding 0
+mge::GpuShader vs = device.createShader(mge::shaders::kTriangleVert, vsResources);
+mge::GpuShader fs = device.createShader(mge::shaders::kTriangleFrag);
+
+mge::GraphicsPipelineDesc desc;
+desc.vertexShader = &vs;
+desc.fragmentShader = &fs;
+desc.colorFormat = gpuModule->swapchainFormat();
+desc.gpuVertexInput = false;                          // true (default): GpuVertex buffers in slot 0
+m_pipeline = device.createGraphicsPipeline(desc);     // the shaders can be released afterwards
+```
+
+**`GraphicsPipelineDesc` fields:**
+- `depthFormat`: `INVALID` means no depth buffer. Also `depthTest` and `depthWrite`.
+- `primitive`, `cullMode` (back by default) and `frontFace` (counter‑clockwise).
+- `blend`: `None`, `Alpha` or `Additive`.
+
+Uniforms are pushed per draw with `SDL_PushGPUVertexUniformData` / `SDL_PushGPUFragmentUniformData`
+(slot = binding). The **binding convention** is in `Shader.h`:
+
+| Stage | Textures and buffers | Uniform buffers |
+|-------|----------------------|-----------------|
+| vertex | set 0 | set 1 |
+| fragment | set 2 | set 3 |
+
+`ShaderResources` must declare how many of each a shader uses. SDL doesn't read them from the
+SPIR‑V, so a mismatch is reported by the validation layers.
 
 ## Resources and ownership
 - **Handles are move‑only.** Copying a `GpuBuffer` doesn't compile, and moving it transfers
@@ -84,11 +126,12 @@ void onRender() override {
 
 ## Tests and examples
 - **`tests/gpu/` → `mge_gpu_tests`** (label `gpu`): clear and read back, mesh upload, move
-  semantics, cancelled command buffers, and no validation messages.
+  semantics, cancelled command buffers, embedded SPIR‑V (magic number, stage, alignment), a
+  triangle with a fragment uniform drawn and read back, and no validation messages.
   - They run **without a window** (SDL `offscreen` video driver, rendering into textures).
   - With no compatible GPU they're skipped with a message. `MGE_REQUIRE_GPU=1`, set in CI, turns
     that into a failure.
   - CI uses Mesa **lavapipe** (software Vulkan). Locally the real GPU is used; to try lavapipe:
     `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`.
-- **`examples/gpu_clear`:** a window whose clear colour pulses. Its smoke test runs 60 frames
-  offscreen and fails if no frame was presented.
+- **`examples/gpu_triangle`:** a rotating triangle (embedded shaders, a vertex uniform) on a
+  pulsing background. Its smoke test runs 60 frames offscreen and fails if no frame was presented.

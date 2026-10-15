@@ -74,8 +74,10 @@ if(MGE_BUILD_MODULES)
     add_executable(mge_gpu_tests
         test_main.cpp
         gpu/test_gpu_device.cpp
+        gpu/test_gpu_shaders.cpp
     )
     target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
+    mge_add_shaders(mge_gpu_tests SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
     mge_set_warnings(mge_gpu_tests)
     doctest_discover_tests(mge_gpu_tests TEST_PREFIX "gpu: "
         PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
