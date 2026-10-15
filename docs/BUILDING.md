@@ -34,15 +34,36 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `CMAKE_BUILD_TYPE` | `Release` | Set automatically for single‑config generators when empty |
 | `MGE_WARNINGS` | `ON` | `-Wall -Wextra -Wshadow` (`/W4` on MSVC), applied to our code only |
 | `MGE_WERROR` | `OFF` | Treat warnings as errors (`ON` in the `ci` preset) |
+| `MGE_BUILD_TESTS` | `ON` | Build `mge_tests` and register it with CTest |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
   from any of them. `build/` and `build-*/` are git‑ignored.
 - `compile_commands.json` is generated in the build dir (for clangd / clang‑tidy).
 - The build must stay **warning‑free** on GCC and Clang.
-- Sources are collected with `file(GLOB_RECURSE …)` over `src/Engine` and `src/Game`. After
-  **adding or removing** a `.cpp`/`.h` file, re‑run the configure step.
+- Targets:
+
+  | Target | Kind | Contents |
+  |--------|------|----------|
+  | `mge_engine` | static lib | `src/Engine/**` except `Main.cpp` (globbed) |
+  | `sandbox_world` | static lib | `src/Game/Block.*`, `src/Game/Chunk.*` (listed explicitly) |
+  | `miniGameEngine` | executable | `src/Engine/Main.cpp` + `src/Game/SandboxApp.cpp` |
+  | `mge_tests` | executable | `tests/*.cpp` |
+
+  Engine sources are globbed: after **adding or removing** an engine file, re‑run the configure
+  step. New game files must be added to their target in `CMakeLists.txt`. The full module split is #8.
 - Include root is `src/`, so `#include <Engine/Core/Application.h>` works from anywhere.
 - OpenGL is linked through GLVND (`OpenGL::GL`).
+
+## Tests
+
+Unit tests use [doctest](https://github.com/doctest/doctest) (fetched by CMake, pinned + hash‑checked, never linked into the game) and run through CTest:
+
+```bash
+cmake --preset dev && cmake --build --preset dev
+ctest --preset dev            # or: ctest --test-dir build --output-on-failure
+```
+
+Tests are **headless**: they need no display or GPU. Disable them with `-DMGE_BUILD_TESTS=OFF`. See `tests/README.md`.
 
 ## Run
 

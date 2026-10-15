@@ -23,7 +23,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 cmake --preset dev && cmake --build --preset dev   # Debug + warnings → build/ (also: release, ci)
 cd build && ./miniGameEngine        # cwd MUST be build/: assets use "../assets/..." paths
 ```
-Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. No tests exist yet (#3).
+Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 
 ## Architecture in 10 lines

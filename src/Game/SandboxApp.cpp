@@ -175,7 +175,9 @@ public:
                     ChunkKey key{cx, cz};
                     if (chunkMap.find(key) == chunkMap.end())
                     {
-                        chunkMap[key] = new Chunk(cx, cz);
+                        Chunk *chunk = new Chunk(cx, cz);
+                        chunk->buildMesh();
+                        chunkMap[key] = chunk;
                     }
                 }
             }

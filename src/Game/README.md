@@ -54,7 +54,7 @@ Block and Chunk live in namespace `MiniGameEngine` (same as engine classes).
    the same for lava into 239.
 3. Chunk streaming: camera chunk `(floor(x/16), floor(z/16))`; for every chunk within
    `renderDist = 4` (9×9 = 81 chunks) that passes `isSphereVisible` (always true) and isn't
-   loaded → `new Chunk(cx, cz)` (generation + meshing happen synchronously in the constructor).
+   loaded → `new Chunk(cx, cz)` (generation) then `chunk->buildMesh()` (GPU upload), both synchronously.
 4. `camera.update(deltaTime)`.
 
 ### `OnRender`
@@ -78,7 +78,7 @@ World‑space origin `(cx*16, 0, cz*16)`; block `(x,y,z)` is a unit cube centred
 
 | Method | Behaviour |
 |--------|-----------|
-| `Chunk(cx, cz)` | `generate()` then `buildMesh()` – heavy, synchronous. |
+| `Chunk(cx, cz)` | `generate()` only (CPU data, no GPU) – testable headless. Call `buildMesh()` before drawing. |
 | `~Chunk()` | Deletes both meshes. |
 | `generate()` | Pass 1 terrain, pass 2 decoration (below). |
 | `buildMesh()` | Builds `_meshOpaque` and `_meshTransparent` (below). Calling it twice leaks the old meshes. |

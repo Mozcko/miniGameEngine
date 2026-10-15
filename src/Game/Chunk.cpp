@@ -8,8 +8,9 @@ namespace MiniGameEngine
 
     Chunk::Chunk(int x, int z) : _x(x), _z(z), _meshOpaque(nullptr), _meshTransparent(nullptr)
     {
+        // Solo datos (CPU). La malla (GPU) se construye aparte con buildMesh(),
+        // así la generación se puede probar sin contexto OpenGL.
         generate();
-        buildMesh();
     }
 
     Chunk::~Chunk()
