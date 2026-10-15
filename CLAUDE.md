@@ -5,13 +5,13 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games made from **pure math/code**, shipped as a
-  **single executable with zero asset files**. Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M8,
+  games built from **pure math/code** *or* with regular asset files (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M8,
   issues #1–#67, epics #68–#76 on Mozcko/miniGameEngine).
 - **GPU API decision: SDL3 GPU API (Vulkan/Metal/D3D12). Do NOT build new features on OpenGL** – the
   GL renderer is legacy and gets deleted after parity (#40). Platform is on SDL3 (#9 done).
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
-  0002 zero assets, 0003 headless core) – supersede with a new ADR, never edit accepted ones.
+  0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state, pre-migration)
 - C++17 mini game engine: **SDL3** (window/input/events/audio), OpenGL 3.3 Core via GLEW (legacy

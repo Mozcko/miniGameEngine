@@ -161,8 +161,9 @@ mge::Pcg32 rng(mge::hash2i(x, y, worldSeed), 1);        // deterministic; never 
 auto shader = mge::assetPath("shaders/basic3d.vert");    // works from any working directory
 ```
 
-The engine is heading towards **zero asset files** ([ADR 0002](adr/0002-zero-asset-policy.md)):
-prefer generating content in code.
+The engine is **procedural‑first, assets optional** ([ADR 0004](adr/0004-procedural-first-assets-optional.md)):
+generate content in code where you can, and load files where they make sense. Both work, and you
+can mix them.
 
 ## 8. Run, debug, test
 

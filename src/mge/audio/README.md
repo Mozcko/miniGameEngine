@@ -7,7 +7,8 @@
 
 Depends on: `mge_core` (logging), SDL3. This is a stop‑gap: M5 replaces it with procedural
 synthesis (#46 SDL3 audio streams + synth, #48 SFX generator, #49 music sequencer), following the
-zero‑asset policy ([ADR 0002](../../../docs/adr/0002-zero-asset-policy.md)).
+procedural‑first policy ([ADR 0004](../../../docs/adr/0004-procedural-first-assets-optional.md)): synthesis
+*plus* sample playback, both supported.
 
 ## `mge::AudioManager` (all static)
 

@@ -14,8 +14,9 @@ water/lava tiles.
 > Source code comments are written in **Spanish**. The documentation is in English.
 
 **Where it's heading:** the engine becomes a headless C++ core with optional modules, built on
-SDL3 and the SDL3 GPU API (Vulkan/Metal/D3D12). Games will be made purely from code: procedural
-geometry, shaders and audio, shipped as a single executable with no asset files.
+SDL3 and the SDL3 GPU API (Vulkan/Metal/D3D12). Games can be made purely from code (procedural
+geometry, shaders, audio, even as a single executable with no files), **or** use regular assets.
+Both paths are supported and can be mixed.
 See **[docs/ROADMAP.md](docs/ROADMAP.md)** and the
 [milestones](https://github.com/Mozcko/miniGameEngine/milestones).
 
@@ -102,7 +103,7 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [docs/FIRST_GAME.md](docs/FIRST_GAME.md) | **Start here to make a game**: scaffold, lifecycle, input, ECS, run/debug/test |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Goals, key decisions, milestones and GitHub issues |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, branch/commit/PR rules, conventions, labels |
-| [docs/adr/](docs/adr/README.md) | Architecture decision records (SDL3 GPU, zero assets, headless core) |
+| [docs/adr/](docs/adr/README.md) | Architecture decision records (SDL3 GPU, headless core, procedural‑first/assets optional) |
 | [CLAUDE.md](CLAUDE.md) | Short "everything you need to know" summary and conventions |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together at runtime |
 | [docs/BUILDING.md](docs/BUILDING.md) | Toolchain, dependencies, running, troubleshooting |

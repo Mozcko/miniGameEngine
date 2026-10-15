@@ -11,8 +11,10 @@ These come from the [architecture decision records](docs/adr/README.md):
 1. **No new features on OpenGL.** Rendering moves to the SDL3 GPU API
    ([ADR 0001](docs/adr/0001-sdl3-gpu-api.md)). The OpenGL code is legacy: fix it only when a bug
    blocks you, and it will be deleted after parity (#40).
-2. **Zero external asset files** in the shipped game: no images, models, fonts, audio or shader
-   files at runtime. Generate content in code ([ADR 0002](docs/adr/0002-zero-asset-policy.md)).
+2. **Procedural‑first, assets optional.** Every system must offer a code/math path, and loading
+   asset files (textures, fonts, sounds…) is a supported option. Never *require* a file, keep
+   loaders out of `mge_core`, and keep a zero‑asset build possible
+   ([ADR 0004](docs/adr/0004-procedural-first-assets-optional.md)).
 3. **The core stays headless.** Core code must not include SDL or GPU headers and must be
    testable without a display ([ADR 0003](docs/adr/0003-headless-core.md)). Until the split in #8
    lands, keep new logic separable from rendering, like `Chunk` generation vs `buildMesh()`.
