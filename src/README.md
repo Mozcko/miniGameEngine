@@ -35,7 +35,7 @@ games/sandbox ──► mge_app ──► mge_platform ──► mge_core
   - `#include <mge/core/Time.h>`
   - `#include <mge/render/3d/Mesh.h>`
   - `#include <sandbox/Chunk.h>`
-- Third‑party headers: `<SDL2/...>`, `<GL/glew.h>`, `<glm/...>`, `<stb/stb_image.h>`.
+- Third‑party headers: `<SDL3/...>`, `<GL/glew.h>`, `<glm/...>`, `<stb/stb_image.h>`.
 - All headers use `#pragma once`.
 - Every target lists its sources explicitly in its own `CMakeLists.txt`. Add new files there.
 

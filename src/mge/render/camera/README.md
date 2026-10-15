@@ -13,7 +13,7 @@ Camera3D (concrete, not derived from Camera)
 | File | Purpose | Used by SandboxApp? |
 |------|---------|---------------------|
 | `Camera.h/.cpp` | Abstract base: position, projection & view matrices | via Camera2D |
-| `Camera2D.h/.cpp` | Orthographic camera for 2D/HUD | Yes – `m_guiCamera` |
+| `Camera2D.h/.cpp` | Orthographic camera for 2D | No (the HUD was removed in #9) |
 | `Camera3D.h/.cpp` | Perspective free‑fly camera with mouse look + AABB collision callback | Yes – `camera` |
 | `FirstPersonCamera.h/.cpp` | Camera3D with gravity, jumping, ground detection | No |
 
@@ -28,7 +28,6 @@ Camera3D (concrete, not derived from Camera)
   **normalised** view (height spans 2 units), *not* pixel coordinates.
 - `update()`: `view = translate(-position)`.
 - `setZoom/getZoom` – note `setZoom` doesn't rebuild the projection; call `updateProjection` after.
-- SandboxApp passes only the projection to `GUILabel::draw` (view is ignored).
 
 ## `Camera3D`
 

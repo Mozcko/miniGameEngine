@@ -1,6 +1,6 @@
 #include <mge/render/camera/FirstPersonCamera.h>
 #include <mge/platform/InputManager.h>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <cmath>
 
 namespace mge {

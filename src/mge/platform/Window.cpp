@@ -10,14 +10,14 @@ namespace mge {
     }
 
     Window::~Window() {
-        if (m_glContext) SDL_GL_DeleteContext(m_glContext);
+        if (m_glContext) SDL_GL_DestroyContext(m_glContext);
         if (m_sdlWindow) SDL_DestroyWindow(m_sdlWindow);
         SDL_Quit();
         MGE_LOG_INFO("Window", "Ventana cerrada y recursos liberados");
     }
 
     bool Window::init() {
-        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        if (!SDL_Init(SDL_INIT_VIDEO)) {
             MGE_LOG_FATAL("Window", "No se pudo inicializar SDL: ", SDL_GetError());
             return false;
         }
@@ -28,8 +28,7 @@ namespace mge {
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
         m_sdlWindow =
-            SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_width,
-                             m_height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+            SDL_CreateWindow(m_title.c_str(), m_width, m_height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
         if (m_sdlWindow == nullptr) {
             MGE_LOG_FATAL("Window", "No se pudo crear la ventana SDL: ", SDL_GetError());
@@ -44,6 +43,13 @@ namespace mge {
 
         glewExperimental = GL_TRUE;
         GLenum glewStatus = glewInit();
+        // SDL3 prefiere Wayland (contexto EGL). El GLEW de las distros está compilado para GLX y
+        // devuelve GLEW_ERROR_NO_GLX_DISPLAY, pero solo después de cargar las funciones de OpenGL
+        // (glewContextInit va primero), así que el contexto es utilizable.
+        if (glewStatus == GLEW_ERROR_NO_GLX_DISPLAY) {
+            MGE_LOG_DEBUG("Window", "GLEW sin display GLX (contexto EGL/Wayland): se continúa");
+            glewStatus = GLEW_OK;
+        }
         if (glewStatus != GLEW_OK) {
             MGE_LOG_FATAL("Window", "No se pudo inicializar GLEW: ",
                           reinterpret_cast<const char*>(glewGetErrorString(glewStatus)));
@@ -70,7 +76,7 @@ namespace mge {
     void Window::handleEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
+            if (event.type == SDL_EVENT_QUIT) {
                 m_isClosed = true;
             }
         }

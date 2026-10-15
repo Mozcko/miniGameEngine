@@ -2,14 +2,14 @@
 
 [![CI](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml)
 
-A small, educational C++17 game engine built on **SDL2 + OpenGL 3.3 Core (via GLEW)**, with a
+A small, educational C++17 game engine built on **SDL3 + OpenGL 3.3 Core (via GLEW)**, with a
 Minecraft‑style voxel sandbox as its demo game.
 
 The engine owns `main()` and the game loop. A game plugs in by subclassing
 `mge::Application` and defining `mge::createApplication()` (the "Hazel‑style" entry‑point
 pattern). The current client is `SandboxApp` (`games/sandbox/SandboxApp.cpp`): it streams in procedurally
 generated 16×16×16 block chunks around a free‑flying, collision‑aware camera, animates
-water/lava tiles, and draws a 2D text HUD.
+water/lava tiles.
 
 > Source code comments are written in **Spanish**. The documentation is in English.
 
@@ -25,7 +25,8 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** and the
 
 ```bash
 # Fedora (adjust package names for your distro – see docs/BUILDING.md)
-sudo dnf install cmake gcc-c++ SDL2-devel SDL2_mixer-devel SDL2_ttf-devel glew-devel glm-devel stb_image-devel
+sudo dnf install cmake gcc-c++ SDL3-devel glew-devel glm-devel stb_image-devel
+# (without SDL3-devel, CMake builds SDL3 from source – see docs/BUILDING.md)
 
 cmake --preset release          # or: cmake -S . -B build (defaults to Release)
 cmake --build --preset release
@@ -69,9 +70,9 @@ miniGameEngine/
 │       ├── render/         mge_render: OpenGL renderer (legacy until #40)
 │       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
 │       │   ├── 3d/         Mesh (VAO/VBO/EBO)
-│       │   ├── 2d/         Sprite, Animation, GUILabel
+│       │   ├── 2d/         Sprite, Animation (legacy, unused)
 │       │   └── camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
-│       ├── audio/          mge_audio: SDL_mixer wrapper
+│       ├── audio/          mge_audio: WAV SFX on SDL3 audio streams
 │       └── app/            mge_app + mge_main: Application loop, main()
 ├── games/
 │   └── sandbox/            The voxel sandbox game     → games/sandbox/README.md
@@ -79,7 +80,6 @@ miniGameEngine/
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── shaders/            GLSL 330 shaders
 │   ├── textures/           512×512 block tileset atlas
-│   ├── fonts/              Pixel fonts for the HUD
 │   ├── sounds/             WAV sound effects (unused by current game)
 │   ├── music/              MP3 music (unused by current game)
 │   └── levels/             ASCII 2D level files (legacy, no loader exists)
@@ -109,7 +109,7 @@ Every folder under `src/`, `games/` and `assets/` has its own `README.md` descri
 | [src/mge/render/README.md](src/mge/render/README.md) | `mge_render` overview |
 | [src/mge/render/core/README.md](src/mge/render/core/README.md) | Vertex, Texture, GLSLProgram, ResourceManager |
 | [src/mge/render/3d/README.md](src/mge/render/3d/README.md) | Mesh |
-| [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation, GUILabel |
+| [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation (legacy) |
 | [src/mge/render/camera/README.md](src/mge/render/camera/README.md) | Camera hierarchy |
 | [games/sandbox/README.md](games/sandbox/README.md) | SandboxApp, Chunk, Block (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |

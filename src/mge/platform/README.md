@@ -1,12 +1,12 @@
 # src/mge/platform/  →  target `mge_platform`
 
-Window + OpenGL context (GLEW) and input. Depends on `mge_core`, SDL2, GLEW, OpenGL.
+Window + OpenGL context (GLEW) and input. Depends on `mge_core`, SDL3, GLEW, OpenGL.
 
 ## Window
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `Window.h/.cpp` | `mge` | Creates the SDL2 window, the OpenGL context, initialises GLEW and sets default GL state |
+| `Window.h/.cpp` | `mge` | Creates the SDL3 window, the OpenGL context, initialises GLEW and sets default GL state |
 
 ## `mge::Window`
 

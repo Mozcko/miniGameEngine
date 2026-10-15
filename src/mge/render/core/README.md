@@ -32,7 +32,6 @@ A **lightweight, copyable handle** around a GL texture id plus a CPU copy of the
 | Member | Behaviour |
 |--------|-----------|
 | `load(path)` | Deletes any previous id held by *this* object; `stbi_set_flip_vertically_on_load(true)`; loads with native channel count; keeps the pixels in `m_originalPixels`; creates `GL_TEXTURE_2D` with **`GL_NEAREST`** min/mag filter, `CLAMP_TO_EDGE`, format `GL_RGB` or `GL_RGBA` (3/4 channels only), generates mipmaps. Logs and returns on failure (id stays 0). |
-| `loadFromSurface(SDL_Surface*)` | Used for TTF text. `GL_LINEAR` filtering, picks `GL_RGBA` vs `GL_BGRA` from the surface's red mask, internal format `GL_RGBA`. No CPU copy kept. |
 | `bind()` | `glActiveTexture(GL_TEXTURE0)` + bind. Always unit 0. |
 | `unbind()` | Binds 0. |
 | `updateTile(dest, src, tileW, tileH)` | Copies atlas tile `src` (from the **original** pixels) into tile `dest` on the GPU with `glTexSubImage2D`. Tile indices are row‑major from the image's top‑left. Used for animated water/lava. Leaves the texture bound. |

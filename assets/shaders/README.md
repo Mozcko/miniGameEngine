@@ -7,7 +7,7 @@ All vertex shaders follow the engine's attribute layout from `Mesh::init`:
 | Pair | Inputs | Uniforms | Output | Used by |
 |------|--------|----------|--------|---------|
 | `basic3d.vert` / `basic3d.frag` | `vec3 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 model`, `mat4 view`, `mat4 projection`; `sampler2D myTexture`, `vec4 baseColor` | `texture(myTexture, uv) * baseColor` | `SandboxApp::m_shader3D` → chunks |
-| `texture.vert` / `texture.frag` | `vec2 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 P`; `sampler2D myTexture` | `texture(myTexture, uv)` | `SandboxApp::m_guiShader` → `GUILabel` |
+| `texture.vert` / `texture.frag` | `vec2 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 P`; `sampler2D myTexture` | `texture(myTexture, uv)` | Nothing since #9 (was the TTF HUD) |
 | `color.vert` / `color.frag` | `vec2 vertexPosition` (0) | `mat4 P` | constant orange `(1, 0.5, 0, 1)` | Nothing (early test shader) |
 
 ### Notes

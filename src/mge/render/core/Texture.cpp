@@ -1,7 +1,6 @@
 #include <mge/render/core/Texture.h>
 #include <mge/core/Log.h>
 #include <cstring> // Para std::memcpy
-#include <SDL2/SDL.h>
 
 // Definimos esto SOLO AQUÍ para que stb_image se compile
 #define STB_IMAGE_IMPLEMENTATION
@@ -124,36 +123,5 @@ namespace mge {
         GLenum format = (m_numChannels == 4) ? GL_RGBA : GL_RGB;
         glTexSubImage2D(GL_TEXTURE_2D, 0, glDestX, glDestY, tileW, tileH, format, GL_UNSIGNED_BYTE,
                         tileData.data());
-    }
-
-    void Texture::loadFromSurface(SDL_Surface* surface) {
-        if (m_textureId != 0) glDeleteTextures(1, &m_textureId);
-
-        m_width = surface->w;
-        m_height = surface->h;
-        m_numChannels = surface->format->BytesPerPixel;
-
-        glGenTextures(1, &m_textureId);
-        glBindTexture(GL_TEXTURE_2D, m_textureId);
-
-        // Filtros
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Texto suave
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        // Detectar formato SDL (Suele ser RGBA o BGRA)
-        GLenum mode = GL_RGB;
-        if (m_numChannels == 4) {
-            if (surface->format->Rmask == 0x000000ff)
-                mode = GL_RGBA;
-            else
-                mode = GL_BGRA; // SDL a veces usa BGRA
-        }
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, mode, GL_UNSIGNED_BYTE,
-                     surface->pixels);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
