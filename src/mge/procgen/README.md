@@ -8,10 +8,11 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 |------|----------|
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
 | `MeshOps.h/.cpp` | transform, append/merge, weld, flip, recompute normals, polygon triangulation, extrude, lathe, sweep |
+| `Noise.h/.cpp` | `mge::Noise`: value, Perlin, simplex, Worley (2D/3D), fbm, ridged, billow, domain warp, batch sampling |
 | `detail/MeshBuilding.h/.cpp` | Internal helpers (oriented triangles, `revolve`), not public API |
 | `Primitives.h/.cpp` | `mge::primitives::` plane, box, uvSphere, icosphere, cylinder, cone, torus, capsule |
 
-Planned in M2: noise (#22), SDF + surface nets (#23).
+Planned in M2: SDF + surface nets (#23).
 
 ## `MeshData`
 
@@ -92,6 +93,46 @@ Tests: `tests/procgen/test_mesh_ops.cpp` cover:
 - a watertight extrude;
 - a lathed cylinder with exact radius, and a closed lathe;
 - straight, helix and closed sweeps.
+
+## Noise – `<mge/procgen/Noise.h>`
+
+```cpp
+mge::Noise noise(worldSeed);                                     // permutation table from Pcg32(seed)
+float h = noise.fbm(mge::NoiseType::Simplex, x, z, {/*octaves*/ 6, /*frequency*/ 0.01f});
+float cells = noise.worley(x, z).f1;                             // distance to the nearest feature point
+float organic = noise.domainWarp(mge::NoiseType::Perlin, x, z, /*strength*/ 2.0f);
+```
+
+| Function | Range | Notes |
+|----------|-------|-------|
+| `value(x,y[,z])` | [−1, 1] | Smoothly interpolated random lattice values |
+| `perlin(x,y[,z])` | ≈[−1, 1] (clamped) | Gradient noise; **exactly 0 at integer points** |
+| `simplex(x,y[,z])` | ≈[−1, 1] (clamped) | Gustavson's simplex; fewer directional artefacts (the patent expired in 2022) |
+| `worley(x,y[,z])` | `{f1, f2}` distances | One feature point per cell, 3×3(×3) search. f1 < √2 (2D) / √3 (3D) |
+| `fbm(type, …, settings)` | [−1, 1] | Sum of octaves, **normalised by the total amplitude** (`octaves`, `frequency`, `lacunarity`, `gain`) |
+| `ridged(type, x, y, settings)` | [0, 1] | `(1 − |n|)²` per octave: mountain ridges |
+| `billow(type, x, y, settings)` | [−1, 1] | `|n|·2 − 1`: puffy / cloud‑like |
+| `domainWarp(type, …, strength, settings)` | [−1, 1] | fbm sampled at coordinates offset by other fbm fields |
+| `sample(type, xs, ys[, zs], out, n)` | | Batch loop (same values as single samples) |
+
+Deterministic: the same seed gives the same output on every platform; different seeds use
+different permutation tables (Fisher–Yates with `Pcg32`). Worley feature points come from
+`hash2i` / `hash3i`.
+
+**Performance** (`bench/noise_bench`, Release, this dev machine, ns per sample): value 2D 29,
+Perlin 2D 23, simplex 2D 31, Worley 2D 71, Perlin 3D 49, simplex 3D 51, **Worley 3D 543** (27 cells
+× 3 hashes), fbm (5 octaves) 184, domain warp 620. Optimising is M7 work (SIMD, cheaper Worley
+hashing).
+
+Tests (`tests/procgen/test_noise.cpp`):
+- determinism across seeds;
+- range and mean ≈ 0 over 20k samples;
+- Perlin lattice zeros;
+- continuity (Lipschitz);
+- Worley bounds;
+- fractal ranges, and that more octaves add fine detail relative to coarse;
+- domain warp;
+- batch equals single samples.
 
 **GPU:** `mge::Mesh::init(const MeshData&)` (`mge_render`) uploads it. The legacy OpenGL renderer
 uses position, colour and UV, and ignores normals until M3.

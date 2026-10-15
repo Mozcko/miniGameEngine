@@ -49,7 +49,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | Target | Kind | Defined in | Contents |
   |--------|------|------------|----------|
   | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** (std + GLM): Application runner, Module, Clock/Time, Input, Random, ECS, Log |
-| `ecs_bench` | executable | `bench/` | ECS benchmark (core only) |
+| `ecs_bench`, `noise_bench` | executables | `bench/` | ECS and noise benchmarks (run from a Release build) |
   | `mge_procgen` | static lib | `src/mge/procgen/` | Procedural generation, headless (always built) |
 | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
