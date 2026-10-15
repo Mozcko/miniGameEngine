@@ -64,6 +64,7 @@ namespace mge {
         m_time.m_accumulator += scaled;
         int steps = 0;
         while (m_time.m_accumulator + kEpsilon >= fixedDelta && steps < m_config.maxFixedStepsPerFrame) {
+            m_world.run(SystemPhase::Fixed, m_time.m_fixedDelta);
             onFixedUpdate(m_time.m_fixedDelta);
             m_time.m_accumulator -= fixedDelta;
             m_time.m_fixedStepCount++;
@@ -106,7 +107,9 @@ namespace mge {
             advanceTime(now - lastTime); // onFixedUpdate 0..N veces
             lastTime = now;
 
+            m_world.run(SystemPhase::Update, m_time.m_delta);
             onUpdate(m_time.m_delta);
+            m_world.run(SystemPhase::Render, m_time.m_delta);
             onRender();
 
             for (const auto& module : m_modules) module->onFrameEnd(*this);

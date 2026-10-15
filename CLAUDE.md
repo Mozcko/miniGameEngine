@@ -71,6 +71,11 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
 
+## ECS
+`app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems
+per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.
+The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
+
 ## Randomness
 `<mge/core/Random.h>`: `Pcg32 rng(hash2i(x, z, seed), stream)`; never `rand()`. The sandbox world seed
 defaults to `Chunk::kDefaultWorldSeed` (1337).

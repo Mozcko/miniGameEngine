@@ -76,6 +76,7 @@ miniGameEngine/
 │       └── app/            mge_main: main() (core-only)
 ├── games/
 │   └── sandbox/            The voxel sandbox game     → games/sandbox/README.md
+├── bench/                  Benchmarks (ecs_bench)
 ├── examples/               Small engine programs (headless_smoke) → examples/README.md
 ├── tests/                  doctest unit tests (headless): core/, sandbox/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
@@ -103,7 +104,7 @@ Every folder under `src/`, `games/` and `assets/` has its own `README.md` descri
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Bugs and debt, with file references |
 | [src/README.md](src/README.md) | Source tree overview, include/namespace conventions |
 | [src/mge/README.md](src/mge/README.md) | Engine module map |
-| [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Application runner + modules, Clock/Time, Input, Log (headless) |
+| [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Application runner + modules, Clock/Time, Input, Random, ECS, Log (headless) |
 | [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
 | [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |
