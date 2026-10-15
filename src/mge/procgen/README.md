@@ -7,8 +7,9 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 | File | Contents |
 |------|----------|
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
+| `Primitives.h/.cpp` | `mge::primitives::` plane, box, uvSphere, icosphere, cylinder, cone, torus, capsule |
 
-Planned in M2: primitives (#20), mesh operations (#21), noise (#22), SDF + surface nets (#23).
+Planned in M2: mesh operations (#21), noise (#22), SDF + surface nets (#23).
 
 ## `MeshData`
 
@@ -32,6 +33,37 @@ mge::writeObj(mesh, "quad.obj");              // look at it in Blender / any OBJ
 | `bounds()` | `mge::Aabb` (empty for an empty mesh) |
 | `validate()` | Empty string when valid; otherwise the first problem (attribute lengths, index out of range, incomplete triangle) |
 | `writeObj(mesh, path)` | `v x y z r g b` (vertex colour extension), `vt`, `vn`, `f a/a/a` (1‑based). Returns false if the file can't be written |
+
+## Primitives – `<mge/procgen/Primitives.h>`
+
+All are centred on the origin, have normals, UVs and an optional colour, and are wound
+**counter‑clockwise seen from outside**. Closed shapes are **watertight**: once the seam and pole
+duplicates are welded, every edge is shared by exactly two triangles.
+
+| Function | Vertices / triangles | Notes |
+|----------|----------------------|-------|
+| `plane(w, d, segX = 1, segZ = 1)` | (sx+1)(sz+1) / 2·sx·sz | XZ plane at y = 0, normal +Y (open) |
+| `box(size)` | 24 / 12 | Flat faces |
+| `uvSphere(r, segments = 32, rings = 16)` | (rings+1)(seg+1) / 2·seg·(rings−1) | Poles are single triangles (no degenerate quads) |
+| `icosphere(r, subdivisions = 2)` | 10·4ⁿ+2 / 20·4ⁿ | Shared vertices; spherical UVs have a seam |
+| `cylinder(r, h, segments = 32, caps = true)` | 4·seg+6 / 4·seg | y ∈ [−h/2, h/2]; without caps it's open |
+| `cone(r, h, segments = 32)` | 3·seg+4 / 2·seg | Base at −h/2, apex at +h/2, slanted side normals |
+| `torus(R, r, segments = 48, sides = 24)` | (sides+1)(seg+1) / 2·seg·sides | In the XZ plane |
+| `capsule(r, h, segments = 32, rings = 8)` | 2(rings+1)(seg+1) / 4·seg·rings | Total height h + 2r |
+
+Invalid parameters are clamped to safe minimums (e.g. ≥ 3 segments).
+
+How they're built:
+- Every round shape is one helper, `revolve()`, that revolves rows (radius, height, normal) around
+  Y. A row with radius 0 is a pole and produces triangles, not quads. The torus is a circle
+  revolved the same way.
+- Winding is never derived by hand: each triangle is checked against its vertices' analytic
+  normals and flipped if needed (`addOrientedTriangle`).
+
+Tests (`tests/procgen/test_primitives.cpp`, with helpers in `tests/procgen/MeshChecks.h`):
+- exact counts, `validate()`, unit normals;
+- **watertight** (each directed edge once, plus its reverse once, after welding);
+- **winding matches normals**, outward normals, and bounds that match the parameters.
 
 **GPU:** `mge::Mesh::init(const MeshData&)` (`mge_render`) uploads it. The legacy OpenGL renderer
 uses position, colour and UV, and ignores normals until M3.
