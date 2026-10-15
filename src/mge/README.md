@@ -2,6 +2,11 @@
 
 The engine. Each subfolder is one CMake target with its own `CMakeLists.txt` and `README.md`.
 
+`#include <mge/mge.h>` (`src/mge/mge.h`) pulls in the common API: the whole core always, plus
+platform, render and audio headers only if the program links that module. Each module target
+exports `MGE_HAS_PLATFORM`, `MGE_HAS_RENDER` or `MGE_HAS_AUDIO`, so a headless program never needs
+SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.md).
+
 | Folder | Target | Depends on | Contents | Doc |
 |--------|--------|------------|----------|-----|
 | `core/` | `mge_core` | std only | `Application` runner + `Module`, `Clock`/`Time`, `Input`, `Log` | [core/README.md](core/README.md) |

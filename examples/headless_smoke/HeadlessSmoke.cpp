@@ -1,8 +1,8 @@
 // Smoke test headless: una Application SIN módulos (sin ventana, sin GPU, sin SDL inicializado)
 // que corre 1000 frames generando chunks del sandbox y verificando sus invariantes.
 // Sale con código != 0 si algo falla. Se ejecuta en CI (también con ASan/UBSan).
-#include <mge/core/Application.h>
-#include <mge/core/Log.h>
+#include <mge/mge.h>
+
 #include <game/Chunk.h>
 
 #include <memory>

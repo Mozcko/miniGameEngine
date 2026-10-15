@@ -76,6 +76,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.
 The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
 
+## Umbrella header & guide
+`#include <mge/mge.h>` = core + linked modules (`MGE_HAS_PLATFORM/RENDER/AUDIO` come from the module targets).
+Newcomer guide: `docs/FIRST_GAME.md` (keep it in sync with `templates/`).
+
 ## Editor
 `.vscode/`: tasks (Build dev = Ctrl+Shift+B, Run game, Test, ASan, Lint, New game) and gdb launch configs
 (Debug sandbox, offscreen, core/game tests with a doctest filter). All paths assume the `dev` preset (`build/`).
