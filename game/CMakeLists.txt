@@ -5,8 +5,8 @@ add_library(sandbox_world STATIC
     Block.h Block.cpp
     Chunk.h Chunk.cpp
 )
-# Permite #include <sandbox/Chunk.h>
-target_include_directories(sandbox_world PUBLIC ${PROJECT_SOURCE_DIR}/games)
+# Permite #include <game/Chunk.h>
+target_include_directories(sandbox_world PUBLIC ${PROJECT_SOURCE_DIR})
 target_link_libraries(sandbox_world PUBLIC mge_render)
 mge_set_warnings(sandbox_world)
 

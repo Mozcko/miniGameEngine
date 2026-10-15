@@ -6,7 +6,7 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 ## 1. Big picture
 
 ```
- games/sandbox/                              src/mge/  (one static library per folder)
+ game/                              src/mge/  (one static library per folder)
  ───────────────                             ─────────────────────────────────────────────────────────
  sandbox (exe) ──────────────────────────►  mge_main      main() → createApplication() → run()      ─┐
    SandboxApp : mge::Application             mge_platform  PlatformModule: Window, GL ctx, GLEW,       │

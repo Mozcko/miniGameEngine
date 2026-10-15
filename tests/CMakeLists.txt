@@ -44,12 +44,12 @@ endif()
 
 # --- Tests del sandbox (necesitan los módulos del motor) ---
 if(MGE_BUILD_MODULES)
-    add_executable(sandbox_tests
+    add_executable(game_tests
         test_main.cpp
-        sandbox/test_block.cpp
-        sandbox/test_chunk.cpp
+        game/test_block.cpp
+        game/test_chunk.cpp
     )
-    target_link_libraries(sandbox_tests PRIVATE sandbox_world doctest_header)
-    mge_set_warnings(sandbox_tests)
-    doctest_discover_tests(sandbox_tests TEST_PREFIX "sandbox: ")
+    target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
+    mge_set_warnings(game_tests)
+    doctest_discover_tests(game_tests TEST_PREFIX "game: ")
 endif()

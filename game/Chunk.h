@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <mge/render/3d/Mesh.h>
 #include <mge/render/core/GLSLProgram.h>
-#include <sandbox/Block.h>
+#include <game/Block.h>
 #include <mge/core/Random.h>
 
 #include <cstdint>

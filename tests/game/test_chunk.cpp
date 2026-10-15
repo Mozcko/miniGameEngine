@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include <sandbox/Chunk.h>
+#include <game/Chunk.h>
 #include <initializer_list>
 #include <memory>
 #include <utility>

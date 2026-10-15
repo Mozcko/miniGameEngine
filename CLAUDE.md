@@ -17,7 +17,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 - C++17 mini game engine: **SDL3** (window/input/events/audio), OpenGL 3.3 Core via GLEW (legacy
   renderer until #40), GLM math, stb_image (textures). Linux/Fedora dev box, CMake build. SDL3 is
   used from the system (`SDL3-devel`) or built from source via FetchContent (pinned 3.4.18).
-- Demo client: `games/sandbox/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
+- Demo client: `game/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
   procedural sine/cosine terrain, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
 - Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
 
@@ -35,8 +35,8 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
   builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform` (PlatformModule), `mge_render`, `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
-- `games/sandbox/` = `sandbox_world` lib (Block/Chunk) + `sandbox` exe (written to the build dir root).
-- Tests: `tests/core/` → `mge_core_tests` (core only), `tests/sandbox/` → `sandbox_tests`.
+- `game/` = `sandbox_world` lib (Block/Chunk) + `sandbox` exe (written to the build dir root).
+- Tests: `tests/core/` → `mge_core_tests` (core only), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
 
 ## Architecture in 10 lines
@@ -66,7 +66,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Formatting: `.clang-format`, checked in CI with clang-format **22.1.8**. Before committing, run
   **`scripts/lint.sh --fix`**: the same format + naming checks as CI, including untracked new files.
   It needs `cmake --preset ci` first.
-- Include roots `src/` and `games/`; always root‑relative: `#include <mge/core/Time.h>`, `#include <sandbox/Chunk.h>`.
+- Include roots `src/` and the repo root (for `game/`); always root‑relative: `#include <mge/core/Time.h>`, `#include <game/Chunk.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.

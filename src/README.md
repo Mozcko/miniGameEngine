@@ -1,6 +1,6 @@
 # src/
 
-Engine source code. Games live outside, in [`games/`](../games/), and tests in
+Engine source code. The game lives outside, in [`game/`](../game/), and tests in
 [`tests/`](../tests/README.md).
 
 ```
@@ -16,7 +16,7 @@ src/
 ## Dependency direction
 
 ```
-games/sandbox ──► mge_main ──────────────────► mge_core (Application runner, Module)
+game ──► mge_main ──────────────────► mge_core (Application runner, Module)
       ├─────────────────────► mge_platform ──► mge_core   (PlatformModule)
       ├─────────────────────► mge_audio ─────► mge_core   (AudioModule)
       └─────────────────────► mge_render ────► mge_core
@@ -29,11 +29,11 @@ games/sandbox ──► mge_main ───────────────�
 
 ## Include conventions
 
-- `src/` is the include root for the engine and `games/` for games. Always include
+- `src/` is the include root for the engine and the repo root for the game (`<game/…>`). Always include
   root‑relative:
   - `#include <mge/core/Time.h>`
   - `#include <mge/render/3d/Mesh.h>`
-  - `#include <sandbox/Chunk.h>`
+  - `#include <game/Chunk.h>`
 - Third‑party headers: `<SDL3/...>`, `<GL/glew.h>`, `<glm/...>`, `<stb/stb_image.h>`.
 - All headers use `#pragma once`.
 - Every target lists its sources explicitly in its own `CMakeLists.txt`. Add new files there.

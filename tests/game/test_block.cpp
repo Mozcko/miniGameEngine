@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include <sandbox/Block.h>
+#include <game/Block.h>
 #include <initializer_list>
 
 using namespace mge;

@@ -54,15 +54,15 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
-  | `sandbox_world` | static lib | `games/sandbox/` | `Block`, `Chunk` (testable game logic) |
-  | `sandbox` | executable | `games/sandbox/` | The game; output in the build dir root |
+  | `sandbox_world` | static lib | `game/` | `Block`, `Chunk` (testable game logic) |
+  | `sandbox` | executable | `game/` | The game; output in the build dir root |
   | `mge_core_tests` | executable | `tests/` | Core tests – link only `mge_core` |
-  | `sandbox_tests` | executable | `tests/` | Sandbox tests |
+  | `game_tests` | executable | `tests/` | Sandbox tests |
 
   Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
 - `-DMGE_BUILD_MODULES=OFF` builds only `mge_core` + `mge_core_tests`. No SDL, GLEW or OpenGL is
   needed; this is how CI proves the core is headless.
-- Include roots are `src/` (`#include <mge/core/Time.h>`) and `games/` (`#include <sandbox/Chunk.h>`).
+- Include roots are `src/` (`#include <mge/core/Time.h>`) and the repo root, for the game (`#include <game/Chunk.h>`).
 - OpenGL is linked through GLVND (`OpenGL::GL`).
 
 ## SDL3: system package or built from source
