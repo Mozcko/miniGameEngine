@@ -1,11 +1,11 @@
 #include <sandbox/Chunk.h>
 #include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
-#include <cstdlib> // Para rand() y srand()
 
 namespace mge {
 
-    Chunk::Chunk(int x, int z) : m_x(x), m_z(z), m_meshOpaque(nullptr), m_meshTransparent(nullptr) {
+    Chunk::Chunk(int x, int z, std::uint32_t worldSeed)
+        : m_x(x), m_z(z), m_seed(worldSeed), m_meshOpaque(nullptr), m_meshTransparent(nullptr) {
         // Solo datos (CPU). La malla (GPU) se construye aparte con buildMesh(),
         // así la generación se puede probar sin contexto OpenGL.
         generate();
@@ -35,8 +35,8 @@ namespace mge {
                 int worldX = m_x * kChunkSize + x;
                 int worldZ = m_z * kChunkSize + z;
 
-                // Semilla determinista por columna
-                srand(worldX * 8921 + worldZ * 33771);
+                // Generador determinista por columna (stream 1 = terreno). Sin estado global.
+                Pcg32 rng(hash2i(worldX, worldZ, m_seed), 1);
 
                 int height = getTerrainHeight(worldX, worldZ);
 
@@ -44,12 +44,12 @@ namespace mge {
                 BlockType surface = BlockType::Grass;
                 if (height <= waterLevel + 1) {
                     surface = BlockType::Sand; // Playas
-                } else if ((rand() % 100) < 5) {
+                } else if (rng.range(0, 100) < 5) {
                     surface = BlockType::Gravel; // Parches de grava
                 }
 
                 // Probabilidad de piscina de lava (rara)
-                bool lavaPool = (rand() % 200 == 0) && height > waterLevel;
+                bool lavaPool = (rng.range(0, 200) == 0) && height > waterLevel;
 
                 for (int y = 0; y < kChunkHeight; y++) {
                     if (y > height) {
@@ -78,23 +78,21 @@ namespace mge {
             for (int z = 0; z < kChunkSize; z++) {
                 int worldX = m_x * kChunkSize + x;
                 int worldZ = m_z * kChunkSize + z;
-                // Semilla distinta a la de la pasada 1: con la misma semilla, la primera tirada
-                // repetía la de la grava (siempre >= 5 en el pasto) y nunca salían árboles ni rosas.
-                // Sigue siendo determinista por columna. (#5; el RNG definitivo llega en #14)
-                srand((worldX * 8921 + worldZ * 33771) ^ 0x5bd1e995);
+                // Misma columna, otro stream (2 = decoración): independiente de las tiradas del terreno
+                Pcg32 rng(hash2i(worldX, worldZ, m_seed), 2);
 
                 int height = getTerrainHeight(worldX, worldZ);
                 BlockType surface = m_blocks[x][height][z].getType();
 
                 // Solo decorar sobre Pasto y encima del nivel del agua
                 if (surface == BlockType::Grass && height > waterLevel) {
-                    int r = rand() % 100;
+                    int r = rng.range(0, 100);
                     int y = height + 1;
 
                     if (y >= kChunkHeight) continue;
 
                     if (r < 2) { // 2% Árbol
-                        placeTree(x, y, z);
+                        placeTree(x, y, z, rng);
                     } else if (r < 4) { // 2% Rosa
                         m_blocks[x][y][z] = Block(BlockType::Rose);
                     } else if (r < 6) { // 2% Margarita
@@ -105,8 +103,8 @@ namespace mge {
         }
     }
 
-    void Chunk::placeTree(int x, int y, int z) {
-        int treeHeight = 4 + (rand() % 2); // Altura 4 o 5
+    void Chunk::placeTree(int x, int y, int z, Pcg32& rng) {
+        int treeHeight = rng.range(4, 6); // Altura 4 o 5
 
         // Hojas (Copa del árbol)
         for (int ly = y + treeHeight - 2; ly <= y + treeHeight + 1; ly++) {

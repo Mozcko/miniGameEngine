@@ -82,8 +82,9 @@ cd build && ./sandbox                       # run from a dir next to assets/
   `MGE_VERIFY`). Never `std::cout`, `printf` or `exit()`: log, then return an error to the caller.
 - **Ownership:** classes that own GPU or OS resources must not be copyable. Prefer RAII and
   `std::unique_ptr` over raw `new`/`delete` in new code.
-- **Determinism:** procedural generation must be deterministic for a given seed. Don't use
-  `rand()` in new code; the engine RNG arrives in #14.
+- **Determinism:** procedural generation must be deterministic for a given seed. Use
+  `<mge/core/Random.h>` (`Pcg32`, `hash2i`/`hash3i`) and never `rand()`/`srand()` or `std::random_device`.
+  Seed per entity or coordinate from a hash; don't share one generator across unrelated systems.
 - **Documentation:** each folder under `src/` has a `README.md`. Update it, and
   `docs/KNOWN_ISSUES.md` when you fix a listed issue, in the same PR.
 

@@ -140,3 +140,17 @@ TEST_CASE("La decoración genera árboles, rosas y flores (regresión #5)") {
     CHECK(flowerRate > 0.01);
     CHECK(flowerRate < 0.03);
 }
+
+TEST_CASE("La semilla del mundo cambia el terreno; la misma semilla lo repite") {
+    auto a = std::make_unique<Chunk>(0, 0, 1u);
+    auto b = std::make_unique<Chunk>(0, 0, 1u);
+    auto c = std::make_unique<Chunk>(0, 0, 2u);
+    CHECK(sameBlocks(*a, *b));
+    // La altura no depende de la semilla todavía (sin/cos, #27), pero la decoración y la grava sí
+    CHECK_FALSE(sameBlocks(*a, *c));
+}
+
+TEST_CASE("Coordenadas de chunk lejanas no rompen la generación (sin overflow)") {
+    auto far = std::make_unique<Chunk>(100000, -100000);
+    CHECK(far->getBlock(0, 0, 0).isSolid());
+}
