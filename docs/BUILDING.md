@@ -197,12 +197,24 @@ Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Ca
 | `fatal error: stb/stb_image.h` / `glm/glm.hpp` not found | Install the header packages above, or add their include dir to `include_directories()` in CMakeLists. |
 | Mouse can't escape window | Cursor is locked by design. Press `P` to pause (releases it) or `Esc` to quit. |
 
-## Editor notes
+## VS Code
 
-- `.vscode/tasks.json` contains only an auto‑generated "compile active file with gcc" task. It
-  does **not** build this project (it's single‑file C, not CMake). Use the CMake commands above or
-  the CMake Tools extension.
-- `.vscode/settings.json` only tweaks minimap/scrollbar colours.
+Open the folder and install the recommended extensions (**CMake Tools**, **C/C++**, CMake syntax;
+VS Code suggests them from `.vscode/extensions.json`). CMake Tools then configures with the `dev`
+preset.
+
+| Want to… | Do |
+|----------|----|
+| Build | **Ctrl+Shift+B** ("Build (dev)", configures first if needed) |
+| Run the game | Terminal → Run Task → **Run game** (or "Run game (offscreen, 300 frames)") |
+| Debug the game | **F5** → "Debug sandbox" (gdb, builds first). "Debug sandbox (offscreen, 300 frames)" needs no window |
+| Debug tests | F5 → "Debug core tests" / "Debug game tests", then enter a doctest filter (e.g. `*chunk*`, or `*` for all) |
+| Run tests | Run Task → **Test (dev)** (default test task) or **Test (ASan + UBSan)**; CMake Tools' Testing panel also lists every CTest test |
+| Lint / format | Run Task → **Lint (format + naming)** (`scripts/lint.sh --fix`); files are also formatted on save with `.clang-format` |
+| New game | Run Task → **New game** (asks for a name and template, then reconfigures) |
+
+IntelliSense takes include paths and flags from CMake Tools. `build*/` folders are hidden from the
+explorer and from search.
 
 ## The `build/` folder
 

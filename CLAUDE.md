@@ -76,6 +76,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.
 The sandbox doesn't use the ECS yet (cameras/chunks are plain members). Benchmark: `bench/ecs_bench`.
 
+## Editor
+`.vscode/`: tasks (Build dev = Ctrl+Shift+B, Run game, Test, ASan, Lint, New game) and gdb launch configs
+(Debug sandbox, offscreen, core/game tests with a doctest filter). All paths assume the `dev` preset (`build/`).
+
 ## Games
 Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MODULES …] [HEADLESS] [SMOKE_FRAMES n])`
 (`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `scripts/new-game.sh <name> [--headless]`

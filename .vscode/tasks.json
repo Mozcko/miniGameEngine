@@ -1,28 +1,74 @@
 {
+    // Tareas del proyecto. Ctrl+Shift+B = "Build (dev)". Terminal > Run Task... para el resto.
+    "version": "2.0.0",
     "tasks": [
         {
-            "type": "cppbuild",
-            "label": "C/C++: gcc compilar archivo activo",
-            "command": "/usr/bin/gcc",
-            "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
-            ],
-            "options": {
-                "cwd": "${fileDirname}"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "detail": "Tarea generada por el depurador."
+            "label": "Configure (dev)",
+            "type": "shell",
+            "command": "cmake --preset dev",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build (dev)",
+            "type": "shell",
+            "command": "test -f build/CMakeCache.txt || cmake --preset dev; cmake --build --preset dev",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "label": "Run game",
+            "type": "shell",
+            "command": "scripts/run.sh dev",
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "label": "Run game (offscreen, 300 frames)",
+            "type": "shell",
+            "command": "scripts/run.sh dev",
+            "options": { "env": { "SDL_VIDEODRIVER": "offscreen", "SDL_AUDIODRIVER": "dummy", "MGE_MAX_FRAMES": "300" } },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test (dev)",
+            "type": "shell",
+            "command": "cmake --build --preset dev && ctest --preset dev",
+            "group": { "kind": "test", "isDefault": true },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "label": "Test (ASan + UBSan)",
+            "type": "shell",
+            "command": "test -f build-asan/CMakeCache.txt || cmake --preset asan; cmake --build --preset asan && ctest --preset asan",
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "label": "Lint (format + naming)",
+            "type": "shell",
+            "command": "test -f build-ci/CMakeCache.txt || cmake --preset ci; scripts/lint.sh --fix",
+            "problemMatcher": []
+        },
+        {
+            "label": "New game",
+            "type": "shell",
+            "command": "scripts/new-game.sh ${input:gameName} ${input:gameTemplate} && cmake --preset dev",
+            "problemMatcher": []
         }
     ],
-    "version": "2.0.0"
+    "inputs": [
+        {
+            "id": "gameName",
+            "type": "promptString",
+            "description": "Nombre del juego (minúsculas y _, ej: space_shooter)"
+        },
+        {
+            "id": "gameTemplate",
+            "type": "pickString",
+            "description": "Plantilla",
+            "options": [
+                { "label": "window (ventana)", "value": "" },
+                { "label": "headless (sin ventana)", "value": "--headless" }
+            ],
+            "default": ""
+        }
+    ]
 }

@@ -89,7 +89,7 @@ miniGameEngine/
 │   ├── music/              MP3 music (unused by current game)
 │   └── levels/             ASCII 2D level files (legacy, no loader exists)
 ├── build/, build-*/        CMake build dirs (git-ignored)
-└── .vscode/                Editor settings + a single‑file gcc task (not the CMake build)
+└── .vscode/                VS Code: build (Ctrl+Shift+B), run, F5 debug, tests, lint, new game
 ```
 
 Every folder under `src/`, `game/` and `assets/` has its own `README.md` describing each file in detail.
