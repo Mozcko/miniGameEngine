@@ -72,7 +72,8 @@ bool solid = world.isSolid({3, 5, -2});
   same whatever order chunks load in.
 - **Unloaded chunks read as air**, and `setBlock` on them returns false.
 - **Dirty flags:**
-  - New chunks start dirty.
+  - New chunks start dirty, and so do their 6 loaded face neighbours: their meshes saw air on that
+    side.
   - `setBlock` marks the chunk dirty, plus the neighbour across the face when the block sits on a
     border (that neighbour's mesh can see the block).
   - The game re‑meshes `dirtyChunks()` and then calls `clearDirty(coord)`.
@@ -82,7 +83,9 @@ bool solid = world.isSolid({3, 5, -2});
 
 ```cpp
 mge::ChunkMeshOptions options;
-options.atlas = {16, 16};
+options.atlas = {16, 16};          // tiles → UVs
+options.greedy = true;             // default: merge equal faces of colour‑only cubes
+options.ambientOcclusion = false;  // per‑vertex AO in the colour (aoStrength = 0.5)
 mge::ChunkMesh mesh = mge::buildChunkMesh(world, {0, 0, 0}, options);
 // mesh.opaque / mesh.transparent: MeshData in chunk‑local space (0..16);
 // draw with model = translate(chunkOrigin(coord)). GPU upload: Mesh::init(const MeshData&).
@@ -98,13 +101,29 @@ same transparent block (water against water).
 - UVs come from the face's tile, or are (0, 0) for untextured blocks.
 
 **Neighbours** across chunk borders are read from the world, and an unloaded neighbour counts as
-air. A game can load one ring of chunks more than it meshes, so borders see real data. The
-sandbox does this.
+air. When that neighbour loads, `VoxelWorld` marks this chunk dirty, so re‑meshing the dirty chunks
+removes any seam. A game can also load one ring of chunks more than it meshes, which avoids the
+re‑mesh; the sandbox does this.
 
-**Planned in M2:**
-- #26: re‑mesh neighbours when a chunk loads, greedy meshing for colour‑only cubes, optional AO,
-  and trees that cross chunk borders.
-- #27: noise terrain.
+**Greedy meshing** (`greedy`, on by default):
+- For each face direction and slice, visible faces of **colour‑only** cubes are merged into maximal
+  rectangles of the same block (the classic greedy mask: widen along u, then grow along v).
+- **Textured** faces stay one quad each, because an atlas tile can't repeat across a big quad until
+  the new renderer (M3).
+- On a flat 16×4×16 slab this gives 12 triangles instead of 1 024. On the gallery terrain it roughly
+  halves the triangle count.
+
+**Ambient occlusion** (`ambientOcclusion`, off by default):
+- Each face corner looks at the 3 blocks around it in the layer in front of the face.
+- The vertex colour is darkened by up to `aoStrength` for a fully enclosed corner.
+- Quads flip their diagonal when needed to avoid the anisotropy artefact.
+- With greedy on, only faces whose 4 corners share the same AO value are merged, so the shading is
+  unchanged.
+- Diagonal neighbour chunks aren't re‑dirtied, so AO at a chunk corner can be stale until that
+  chunk is re‑meshed.
+
+Planned: #27 noise terrain (sandbox).
 
 Tests: `tests/voxel/` → `mge_voxel_tests` (registry, coordinates incl. negatives, world get/set
-across chunks, dirty propagation, generator determinism, mesher face rules and atlas UVs).
+across chunks, dirty propagation, generator determinism, mesher face rules, atlas UVs, seam‑free
+meshing against an independent reference, greedy vs naive area and count, AO).

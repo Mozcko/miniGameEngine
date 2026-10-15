@@ -1,4 +1,4 @@
-// Galería procedural: genera mallas con mge_procgen y las exporta a OBJ en <build>/gallery/
+// Galería procedural: genera mallas con mge_procgen (y mge_voxel) y las exporta a OBJ en <build>/gallery/
 // para verlas en Blender o cualquier visor OBJ. Headless (sin ventana ni GPU); también es un
 // smoke test: sale con código 1 si alguna malla es inválida o no se pudo escribir.
 #include <mge/mge.h>
@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -130,6 +131,101 @@ namespace {
                                                      {0.6f, 0.4f, 0.25f, 1.0f}));
     }
 
+    // Voxels (#25, #26): un mundo de 4×2×4 chunks solo con colores (sin texturas), mallado con greedy + AO.
+    // Es el camino procedural de mge_voxel; el sandbox usa el otro (atlas de texturas).
+    struct VoxelBlocks {
+        mge::BlockRegistry registry;
+        mge::BlockId grass, dirt, stone, sand, water, snow;
+
+        static mge::BlockDesc colored(const char* name, glm::vec4 color, bool opaque = true) {
+            mge::BlockDesc desc;
+            desc.name = name;
+            desc.color = color;
+            desc.opaque = opaque;
+            desc.solid = opaque;
+            return desc;
+        }
+
+        VoxelBlocks() {
+            grass = registry.add(colored("grass", {0.30f, 0.62f, 0.25f, 1.0f}));
+            dirt = registry.add(colored("dirt", {0.47f, 0.33f, 0.21f, 1.0f}));
+            stone = registry.add(colored("stone", {0.52f, 0.52f, 0.55f, 1.0f}));
+            sand = registry.add(colored("sand", {0.86f, 0.80f, 0.56f, 1.0f}));
+            water = registry.add(colored("water", {0.20f, 0.42f, 0.85f, 0.7f}, false));
+            snow = registry.add(colored("snow", {0.95f, 0.95f, 0.97f, 1.0f}));
+        }
+    };
+
+    class ColorTerrain : public mge::TerrainGenerator {
+    public:
+        explicit ColorTerrain(const VoxelBlocks& b) : m_b(b), m_noise(7) {}
+
+        void generate(const mge::ChunkCoord& coord, mge::ChunkData& chunk) const override {
+            mge::FractalSettings settings;
+            settings.octaves = 4;
+            settings.frequency = 0.02f;
+            const glm::ivec3 origin = mge::chunkOrigin(coord);
+            for (int x = 0; x < mge::kChunkSize; x++) {
+                for (int z = 0; z < mge::kChunkSize; z++) {
+                    const float n = m_noise.fbm(mge::NoiseType::Simplex, float(origin.x + x),
+                                                float(origin.z + z), settings);
+                    const int height = 10 + static_cast<int>(n * 14.0f);
+                    for (int y = 0; y < mge::kChunkSize; y++) {
+                        const int wy = origin.y + y;
+                        mge::BlockId id = mge::kAir;
+                        if (wy > height)
+                            id = wy <= kWaterLevel ? m_b.water : mge::kAir;
+                        else if (wy < height - 3)
+                            id = m_b.stone;
+                        else if (wy < height)
+                            id = m_b.dirt;
+                        else
+                            id = height <= kWaterLevel + 1 ? m_b.sand : height > 19 ? m_b.snow : m_b.grass;
+                        chunk.set(x, y, z, id);
+                    }
+                }
+            }
+        }
+
+    private:
+        static constexpr int kWaterLevel = 7;
+        const VoxelBlocks& m_b;
+        mge::Noise m_noise;
+    };
+
+    void addVoxelTerrain(std::vector<std::pair<std::string, mge::MeshData>>& meshes) {
+        const VoxelBlocks blocks;
+        mge::VoxelWorld world(blocks.registry, std::make_unique<ColorTerrain>(blocks));
+        for (int x = 0; x < 4; x++)
+            for (int y = 0; y < 2; y++)
+                for (int z = 0; z < 4; z++) world.loadChunk({x, y, z});
+
+        mge::ChunkMeshOptions options;
+        options.ambientOcclusion = true;
+        mge::MeshData opaque, transparent;
+        std::size_t naiveTriangles = 0;
+        mge::ChunkMeshOptions naive;
+        naive.greedy = false;
+        for (const mge::ChunkCoord& coord : world.loadedChunks()) {
+            mge::ChunkMesh mesh = mge::buildChunkMesh(world, coord, options);
+            const glm::mat4 toWorld = glm::translate(glm::mat4(1.0f), glm::vec3(mge::chunkOrigin(coord)));
+            mge::transformMesh(mesh.opaque, toWorld);
+            mge::transformMesh(mesh.transparent, toWorld);
+            mge::appendMesh(opaque, mesh.opaque);
+            mge::appendMesh(transparent, mesh.transparent);
+            const mge::ChunkMesh plain = mge::buildChunkMesh(world, coord, naive);
+            naiveTriangles += plain.opaque.triangleCount() + plain.transparent.triangleCount();
+        }
+        MGE_LOG_INFO("Gallery", "voxels: ", opaque.triangleCount() + transparent.triangleCount(),
+                     " triángulos con greedy, ", naiveTriangles, " sin greedy");
+        // Escala 1/8 para verlo del mismo tamaño que el resto de la galería
+        const glm::mat4 shrink = glm::scale(glm::mat4(1.0f), glm::vec3(0.125f));
+        mge::transformMesh(opaque, shrink);
+        mge::transformMesh(transparent, shrink);
+        meshes.emplace_back("voxel_terrain", std::move(opaque));
+        meshes.emplace_back("voxel_water", std::move(transparent));
+    }
+
     class ProcgenGallery : public mge::Application {
     public:
         ProcgenGallery() : mge::Application(makeConfig()) {}
@@ -154,6 +250,7 @@ namespace {
             addMeshOps(meshes);
             meshes.emplace_back("noise_terrain", noiseTerrain());
             addSdfShapes(meshes);
+            addVoxelTerrain(meshes);
             meshes.emplace_back("capsule", prim::capsule(0.5f, 1.5f, 32, 8, {0.2f, 0.8f, 0.7f, 1.0f}));
 
             int written = 0;

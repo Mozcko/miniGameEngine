@@ -57,6 +57,12 @@ TEST_CASE("VoxelWorld: marcas de sucio y propagación al vecino del borde") {
     for (int x = -1; x <= 1; x++) world.loadChunk({x, 0, 0});
     CHECK(world.dirtyChunks().size() == 3); // Recién cargados: sucios
     for (const ChunkCoord& c : world.loadedChunks()) world.clearDirty(c);
+    world.loadChunk({2, 0, 0}); // Cargar un chunk ensucia a sus vecinos cargados (solo los de cara)
+    CHECK(world.isDirty({2, 0, 0}));
+    CHECK(world.isDirty({1, 0, 0}));
+    CHECK_FALSE(world.isDirty({0, 0, 0}));
+    world.unloadChunk({2, 0, 0});
+    for (const ChunkCoord& c : world.loadedChunks()) world.clearDirty(c);
     CHECK(world.dirtyChunks().empty());
 
     world.setBlock({5, 5, 5}, b.stone); // Interior

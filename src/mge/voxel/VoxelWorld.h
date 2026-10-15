@@ -27,7 +27,8 @@ namespace mge {
 
         const BlockRegistry& registry() const { return m_registry; }
 
-        // Crea y genera el chunk si no existe (queda sucio); si ya existe lo devuelve tal cual
+        // Crea y genera el chunk si no existe; si ya existe lo devuelve tal cual. El chunk nuevo queda
+        // sucio, y también sus 6 vecinos cargados: su malla veía aire en ese lado y ahora hay datos.
         ChunkData& loadChunk(const ChunkCoord& coord);
         void unloadChunk(const ChunkCoord& coord);
         bool isLoaded(const ChunkCoord& coord) const { return m_chunks.count(coord) != 0; }
@@ -55,6 +56,8 @@ namespace mge {
             ChunkData data;
             bool dirty = true;
         };
+
+        void markFaceNeighboursDirty(const ChunkCoord& coord);
 
         const BlockRegistry& m_registry;
         std::unique_ptr<TerrainGenerator> m_generator;

@@ -9,7 +9,7 @@ game only says **which blocks exist** and **what the terrain looks like**.
 |------|----------|
 | `SandboxApp.cpp` | `SandboxApp : mge::Application` (game loop callbacks, chunk streaming, GPU meshes) and `mge::createApplication()` |
 | `SandboxBlocks.h/.cpp` | `sandbox::SandboxBlocks` (ids) and `registerSandboxBlocks(registry)`: 20 blocks, each with atlas tiles **and** a flat colour; atlas constants (`kWaterTile`, `kLavaTile`) |
-| `SandboxTerrain.h/.cpp` | `sandbox::SandboxTerrain : mge::TerrainGenerator`: sin/cos terrain, beaches, gravel, lava, trees and flowers |
+| `SandboxTerrain.h/.cpp` | `sandbox::SandboxTerrain : mge::TerrainGenerator`: sin/cos terrain, beaches, gravel, lava, trees (crossing chunk borders) and flowers |
 
 Game code lives in namespace `sandbox`.
 
@@ -81,7 +81,8 @@ while the cursor is locked).
 3. `streamChunks()`:
    - load (generate) every chunk column within `kRenderDistance + 1` = 5 of the camera chunk;
    - mesh every **dirty** chunk within `kRenderDistance` = 4 (9×9 = 81 chunks) with
-     `buildChunkMesh`, upload it (`Mesh::init(MeshData)`) and clear the dirty flag.
+     `buildChunkMesh`, upload it (`Mesh::init(MeshData)`) and clear the dirty flag. Loading a chunk
+     dirties its loaded neighbours, so meshes always match the data.
 
    The extra ring means borders are meshed against real neighbours. Everything is synchronous.
 4. `camera.update(deltaTime)`.
@@ -97,8 +98,10 @@ FPS log every 5 s. See `docs/ARCHITECTURE.md` §6.
 
 ## World layout
 
-- One chunk tall for now: chunks `(cx, 0, cz)`, blocks y = 0..15. Generators leave other `cy`
-  empty. Noise terrain with 4 vertical chunks is #27.
+- One chunk tall for now: the sandbox loads chunks `(cx, 0, cz)`, blocks y = 0..15. Noise terrain
+  with 4 vertical chunks is #27.
+- The generator works in world Y, so any `cy` is valid: below 0 is solid stone, and above the
+  surface there is only air plus tree tops.
 - Block `(x, y, z)` occupies `[x, x+1)³`, and chunk `(cx, 0, cz)` starts at block `(cx*16, 0, cz*16)`.
 
 ## `SandboxTerrain` – generation rules (`kWaterLevel = 5`)
@@ -110,6 +113,9 @@ Randomness comes from `mge::Pcg32` (`<mge/core/Random.h>`, #14), with no global 
 
 **Height:** `terrainHeight(wx, wz) = int((sin(wx*0.2) + cos(wz*0.2)) * 3 + 6)`, clamped to [1, 15].
 
+Each column's height and surface come from a pure function, `column(wx, wz)`, so any chunk can
+recompute any column.
+
 **Pass 1, terrain:**
 - `y > height`: Water if `y ≤ 5`, else Air.
 - `y == height`:
@@ -119,11 +125,17 @@ Randomness comes from `mge::Pcg32` (`<mge/core/Random.h>`, #14), with no global 
 
 **Pass 2, decoration** (Grass above water only): one `range(0,100)` roll gives 2 % tree (height
 `range(4,6)`), 2 % Rose, 2 % Flower.
+- The pass also visits the columns up to `kTreeRadius = 2` blocks **outside** the chunk, in world
+  order (x, then z). Their trees can reach into this chunk.
+- Every chunk replays the same events in the same order, so where two trees touch, the result is
+  identical whichever chunk generates it.
 
 **Trees:**
 - The trunk is Log.
-- The canopy is Leaves: a diamond with Manhattan distance < 4, 4 layers from `y+h-2` to `y+h+1`.
-  Leaves are written only into air **inside this chunk**, so trees are cut at borders (KI#6, fixed in #26).
+- The canopy is Leaves: a diamond with Manhattan distance < 4, 4 layers from `y+h-2` to `y+h+1`,
+  written only into air.
+- Each chunk writes the part of the tree that falls inside it, so trees **cross chunk borders
+  intact** (KI#6, fixed in #26). Tests check full canopies near borders and load‑order independence.
 
 The terrain *height* doesn't use the seed yet (sin/cos; noise terrain is #27). A regression test in
 `tests/game/test_sandbox_terrain.cpp` checks each decoration lands at 1–3 % of grass columns.

@@ -15,6 +15,7 @@ namespace mge {
         if (m_generator) m_generator->generate(coord, entry->data);
         ChunkData& data = entry->data;
         m_chunks.emplace(coord, std::move(entry));
+        markFaceNeighboursDirty(coord);
         return data;
     }
 
@@ -53,6 +54,8 @@ namespace mge {
         markDirty(coord);
 
         // Bloque en un borde: la malla del vecino de ese lado también lo mira
+        // (sin vecinos en diagonal: el AO de las esquinas puede quedar desactualizado hasta el próximo
+        // mallado)
         for (int axis = 0; axis < 3; axis++) {
             if (local[axis] == 0) {
                 ChunkCoord n = coord;
@@ -65,6 +68,15 @@ namespace mge {
             }
         }
         return true;
+    }
+
+    void VoxelWorld::markFaceNeighboursDirty(const ChunkCoord& coord) {
+        markDirty({coord.x - 1, coord.y, coord.z});
+        markDirty({coord.x + 1, coord.y, coord.z});
+        markDirty({coord.x, coord.y - 1, coord.z});
+        markDirty({coord.x, coord.y + 1, coord.z});
+        markDirty({coord.x, coord.y, coord.z - 1});
+        markDirty({coord.x, coord.y, coord.z + 1});
     }
 
     bool VoxelWorld::isDirty(const ChunkCoord& coord) const {
