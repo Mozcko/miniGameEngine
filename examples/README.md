@@ -5,6 +5,7 @@ Small programs built on the engine, one folder each. `examples/CMakeLists.txt` l
 
 | Folder | Target | What it shows |
 |--------|--------|---------------|
+| `procgen_gallery/` | `procgen_gallery` | Exports procedurally generated meshes to `<build>/gallery/*.obj` (view them in Blender). Headless, built even without modules; its smoke test fails if a mesh is invalid |
 | `headless_smoke/` | `headless_smoke` | An `mge::Application` with **no modules**: no window, no GPU, SDL never initialised. It runs 1000 frames, generating a sandbox chunk per frame and checking terrain invariants, and exits non‑zero on failure (`setExitCode`). CTest: `smoke: headless_smoke headless 1000 frames`, also run under ASan/UBSan in CI |
 
 New game or tool: `scripts/new-game.sh <name> [--headless]` creates `examples/<name>/` from

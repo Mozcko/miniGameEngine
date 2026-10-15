@@ -89,8 +89,9 @@ endif()
 add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES)
     add_subdirectory(game)
-    add_subdirectory(examples)
 endif()
+# examples/ decide qué compilar según MGE_BUILD_MODULES (los headless van siempre)
+add_subdirectory(examples)
 
 # --- Benchmarks ---
 if(MGE_BUILD_BENCHMARKS)
