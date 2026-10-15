@@ -66,10 +66,10 @@ while running:
     raw = clock.now() − last  (clamped to maxFrameTime = 0.25 s)
     accumulator += raw × timeScale
     while accumulator ≥ 1/tickRate and steps < 5:      ← fixed timestep (extra backlog is dropped)
-        onFixedUpdate(1/tickRate)
+        world.run(Fixed); onFixedUpdate(1/tickRate)
     alpha = accumulator / (1/tickRate)
-    onUpdate(raw × timeScale)
-    onRender()
+    world.run(Update); onUpdate(raw × timeScale)
+    world.run(Render); onRender()
     for module in modules:  module.onFrameEnd(app)     ← Platform: swap buffers
     frameCount++ ; stop when frameCount == config.maxFrames (if > 0)
 ```

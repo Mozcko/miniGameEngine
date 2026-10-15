@@ -1,6 +1,6 @@
 # src/mge/core/  →  target `mge_core`
 
-The **headless core**: standard library only (GLM later). **No SDL, no GPU headers** – enforced
+The **headless core**: standard library + GLM (header‑only math) only. **No SDL, no GPU headers** – enforced
 by the CI `core-only` job, which builds this target on a machine without SDL/GL installed
 (`-DMGE_BUILD_MODULES=OFF`). See [ADR 0003](../../../docs/adr/0003-headless-core.md).
 
@@ -10,11 +10,11 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
+| `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
 
-Upcoming in M1: ECS (#16).
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
@@ -95,6 +95,35 @@ Tests: `tests/core/test_input.cpp`.
 Pattern: `Pcg32 rng(hash2i(worldX, worldZ, worldSeed), /*stream=*/1);`. Never use `rand()`.
 Tests: `tests/core/test_random.cpp` (reference vectors, streams, bounds, χ² uniformity, hash
 grid with no collisions).
+
+---
+
+## ECS – `src/mge/core/ecs/`
+
+```cpp
+mge::Registry& registry = app.world().registry();
+mge::Entity e = registry.create();
+registry.add<mge::Transform>(e, mge::Transform{{0, 5, 0}});
+registry.add<Velocity>(e, Velocity{1, 0, 0});              // any movable type is a component
+app.world().addSystem(mge::SystemPhase::Fixed, "movement", [](mge::World& w, float dt) {
+    w.registry().each<mge::Transform, Velocity>([dt](mge::Entity, mge::Transform& t, Velocity& v) {
+        t.position += v.value * dt;
+    });
+});
+```
+
+| Piece | Behaviour |
+|-------|-----------|
+| `Entity` | 32‑bit index + 32‑bit generation. `destroy` bumps the generation, so stale handles fail `valid()`. Indices are recycled. `kNullEntity` is the null handle |
+| `Registry` | `create`, `destroy` (removes all components), `valid`, `aliveCount`; per component type: `add` (replaces if present), `get`, `tryGet` (nullptr if absent), `has`, `remove`, `count` |
+| Storage | One **sparse set** per type: dense contiguous arrays of entities and components, O(1) add/get/remove (swap‑and‑pop). Type ids come from a static counter |
+| `view<A, B…>()` / `each<A, B…>(fn)` | Iterates the **smallest** pool and checks the others (pools looked up once per call). `fn(Entity, A&, B&…)` may modify components but must not add/remove these types during the iteration. Don't repeat a type in the list |
+| `Transform` | `position`, `rotation` (quat), `scale`, `localMatrix()` (T·R·S) |
+| `Parent` + `TransformSystem::update` | Computes `WorldTransform` (world = parent world · local), parents first. Invalid parents → root; cycles or depth > 256 → root + warning |
+| `World` | `registry()` + systems per `SystemPhase` (Fixed / Update / Render), run in registration order. `Application` owns one (`app.world()`): **Fixed** runs in every fixed step before `onFixedUpdate`, **Update** before `onUpdate`, **Render** before `onRender` |
+
+Benchmark (`bench/ecs_bench`, Release, this dev machine): 100k entities, `each<Position, Velocity>`
+≈ **2.7 ns/entity**; create + 2.5 components ≈ 86 ns/entity. Tests: `tests/core/test_ecs.cpp`.
 
 ---
 

@@ -97,8 +97,9 @@ jobs:
             if [ -e "$h" ]; then echo "::error::$h is installed; this job must run without it"; exit 1; fi
           done
 
-      - name: Install build tools only
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+      # Solo herramientas + GLM (matemática header-only, permitida en el core por ADR 0003)
+      - name: Install build tools and GLM only
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build libglm-dev
 
       - name: Configure (core only, warnings as errors)
         run: cmake -S . -B build-core -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMGE_WERROR=ON -DMGE_BUILD_MODULES=OFF

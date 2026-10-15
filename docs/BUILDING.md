@@ -35,6 +35,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `MGE_WERROR` | `OFF` | Treat warnings as errors (`ON` in the `ci` preset) |
 | `MGE_BUILD_TESTS` | `ON` | Build the test executables and register them with CTest |
 | `MGE_SANITIZERS` | `OFF` | AddressSanitizer + UndefinedBehaviorSanitizer for the whole build (`asan` preset). UB aborts (`-fno-sanitize-recover`) |
+| `MGE_BUILD_BENCHMARKS` | `ON` | Build `bench/` (e.g. `ecs_bench`; run from a Release build) |
 | `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
@@ -47,7 +48,8 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   |--------|------|----------|
   | Target | Kind | Defined in | Contents |
   |--------|------|------------|----------|
-  | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU**: Application runner, Module, Log, Time |
+  | `mge_core` | static lib | `src/mge/core/` | Headless core – **no SDL/GPU** (std + GLM): Application runner, Module, Clock/Time, Input, Random, ECS, Log |
+| `ecs_bench` | executable | `bench/` | ECS benchmark (core only) |
   | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |

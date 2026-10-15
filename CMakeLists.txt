@@ -21,6 +21,7 @@ option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
 option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
 option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
+option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 
 # --- Sanitizers (todo el build, incluidas dependencias, para que ASan vea todas las asignaciones) ---
@@ -86,6 +87,11 @@ add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES)
     add_subdirectory(games/sandbox)
     add_subdirectory(examples/headless_smoke)
+endif()
+
+# --- Benchmarks ---
+if(MGE_BUILD_BENCHMARKS)
+    add_subdirectory(bench)
 endif()
 
 # --- Tests unitarios ---

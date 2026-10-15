@@ -3,6 +3,7 @@
 #include <mge/core/Clock.h>
 #include <mge/core/Module.h>
 #include <mge/core/Time.h>
+#include <mge/core/ecs/World.h>
 
 #include <cstdint>
 #include <memory>
@@ -61,6 +62,11 @@ namespace mge {
         Time& time() { return m_time; }
         const Time& time() const { return m_time; }
 
+        // Entidades + sistemas. El loop corre las fases: Fixed en cada paso fijo (antes de
+        // onFixedUpdate), Update antes de onUpdate y Render antes de onRender.
+        World& world() { return m_world; }
+        const World& world() const { return m_world; }
+
         // Reemplaza el reloj (antes de run()). Por defecto SteadyClock (tiempo real).
         // Tests/headless deterministas: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
         void setClock(std::unique_ptr<Clock> clock) { m_clock = std::move(clock); }
@@ -107,6 +113,7 @@ namespace mge {
         bool m_running = false;
         int m_exitCode = 0;
         Time m_time;
+        World m_world;
         double m_fixedDeltaSeconds = 1.0 / 60.0; // Precisión completa para el acumulador
         std::unique_ptr<Clock> m_clock;
     };
