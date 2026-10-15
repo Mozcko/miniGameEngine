@@ -211,7 +211,8 @@ The game no longer depends on the working directory. `mge::assetPath("shaders/x.
 4. the source tree's `assets/`, whose absolute path is baked in at configure time. This means a
    build dir placed anywhere still works.
 
-Useful environment variables: `MGE_MAX_FRAMES=N` (exit after N frames), `MGE_ASSET_DIR`,
+Useful environment variables: `MGE_MAX_FRAMES=N` (exit after N frames), `MGE_VSYNC=0|1` (override
+`ApplicationConfig::vsync`), `MGE_GPU_DEBUG=0|1` (GPU validation on/off; default on in Debug), `MGE_ASSET_DIR`,
 `SDL_VIDEODRIVER=offscreen`, `SDL_AUDIODRIVER=dummy`.
 
 Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Category] message`):

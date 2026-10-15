@@ -33,7 +33,9 @@ namespace mge {
         GpuDevice& operator=(const GpuDevice&) = delete;
 
         SDL_GPUDevice* get() const { return m_device; }
-        const char* driverName() const;
+        const char* driverName() const; // "vulkan", "metal", "direct3d12"
+        // Formato de profundidad elegido al crear el device (chooseDepthFormat: D32/D24/D16)
+        SDL_GPUTextureFormat depthFormat() const { return m_depthFormat; }
 
         // --- Recursos ---
         GpuBuffer createBuffer(SDL_GPUBufferUsageFlags usage, std::uint32_t size);
@@ -42,6 +44,8 @@ namespace mge {
         // Textura 2D en la que se puede dibujar y luego leer (o muestrear)
         GpuTexture createRenderTarget(std::uint32_t width, std::uint32_t height,
                                       SDL_GPUTextureFormat format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+        // Buffer de profundidad (depthFormat()) para un render pass del tamaño dado
+        GpuTexture createDepthTarget(std::uint32_t width, std::uint32_t height);
         GpuSampler createSampler(const SDL_GPUSamplerCreateInfo& info);
         GpuShader createShader(const SDL_GPUShaderCreateInfo& info);
         // Shader embebido (mge_add_shaders) de vértices o fragmentos, con los recursos que usa
@@ -65,5 +69,6 @@ namespace mge {
         explicit GpuDevice(SDL_GPUDevice* device) : m_device(device) {}
 
         SDL_GPUDevice* m_device = nullptr;
+        SDL_GPUTextureFormat m_depthFormat = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
     };
 }

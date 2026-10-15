@@ -229,3 +229,18 @@ TEST_CASE("requestStop dentro de onInit evita el loop (regresión: antes se igno
     CHECK(app.updates == 0);
     CHECK(app.shutdownCalled);
 }
+
+TEST_CASE("MGE_VSYNC del entorno pisa ApplicationConfig::vsync") {
+    {
+        ScopedEnv env("MGE_VSYNC", "0");
+        CHECK_FALSE(Application(ApplicationConfig{}).getConfig().vsync);
+    }
+    {
+        ScopedEnv env("MGE_VSYNC", "1");
+        ApplicationConfig off;
+        off.vsync = false;
+        CHECK(Application(off).getConfig().vsync);
+    }
+    ScopedEnv env("MGE_VSYNC", "tal vez"); // Inválido: se ignora
+    CHECK(Application(ApplicationConfig{}).getConfig().vsync);
+}

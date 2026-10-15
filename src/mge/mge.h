@@ -52,6 +52,7 @@
 #include <mge/gpu/Handles.h>
 #include <mge/gpu/Pipeline.h>
 #include <mge/gpu/Shader.h>
+#include <mge/gpu/Swapchain.h>
 #endif
 
 // --- Render (OpenGL legacy hasta #40) ---

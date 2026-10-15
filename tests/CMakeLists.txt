@@ -75,6 +75,7 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         gpu/test_gpu_device.cpp
         gpu/test_gpu_shaders.cpp
+        gpu/test_gpu_swapchain.cpp
     )
     target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
     mge_add_shaders(mge_gpu_tests SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)

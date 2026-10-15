@@ -1,6 +1,7 @@
 #include <mge/gpu/GpuDevice.h>
 
 #include <mge/core/Log.h>
+#include <mge/gpu/Swapchain.h>
 
 #include <cstring>
 
@@ -21,9 +22,25 @@ namespace mge {
             MGE_LOG_ERROR("Gpu", "No hay una GPU compatible (SDL GPU, SPIR-V): ", SDL_GetError());
             return nullptr;
         }
-        MGE_LOG_INFO("Gpu", "Device creado: ", SDL_GetGPUDeviceDriver(device),
-                     options.debug ? " (modo debug: validación si las capas están instaladas)" : "");
-        return std::unique_ptr<GpuDevice>(new GpuDevice(device));
+        auto result = std::unique_ptr<GpuDevice>(new GpuDevice(device));
+        result->m_depthFormat = chooseDepthFormat([device](SDL_GPUTextureFormat format) {
+            return SDL_GPUTextureSupportsFormat(device, format, SDL_GPU_TEXTURETYPE_2D,
+                                                SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
+        });
+
+        // Qué GPU y driver tocaron (las propiedades son opcionales según el backend)
+        const SDL_PropertiesID props = SDL_GetGPUDeviceProperties(device);
+        const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "?");
+        const char* driver = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, "?");
+        const char* version = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, nullptr);
+        if (!version) version = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "?");
+        MGE_LOG_INFO("Gpu", "Device ", SDL_GetGPUDeviceDriver(device), ": ", name, " (", driver, " ", version,
+                     "), profundidad ",
+                     result->m_depthFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT   ? "D32"
+                     : result->m_depthFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM ? "D24"
+                                                                                : "D16",
+                     options.debug ? ", modo debug (validación si las capas están instaladas)" : "");
+        return result;
     }
 
     GpuDevice::~GpuDevice() {
@@ -62,6 +79,19 @@ namespace mge {
         info.type = SDL_GPU_TEXTURETYPE_2D;
         info.format = format;
         info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = width;
+        info.height = height;
+        info.layer_count_or_depth = 1;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        return createTexture(info);
+    }
+
+    GpuTexture GpuDevice::createDepthTarget(std::uint32_t width, std::uint32_t height) {
+        SDL_GPUTextureCreateInfo info{};
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = m_depthFormat;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
         info.width = width;
         info.height = height;
         info.layer_count_or_depth = 1;
