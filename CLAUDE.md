@@ -48,8 +48,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
    `onShutdown()` → initialised modules `onShutdown` in reverse. Returns 0 / 1 (init failed).
 4. Time (#12): `onFixedUpdate(fixedDt)` at `tickRate` (max 5/frame), `onUpdate(scaledDt)`, `app.time()` (alpha,
    unscaled delta, `setTimeScale`). `setClock(make_unique<ManualClock>(1/60.))` = deterministic. No static `Time`.
-   Game stops with `requestStop()`; raw SDL events via `PlatformModule::setEventCallback` (until #15).
-5. Static singletons: `InputManager`, `Time`, `AudioManager`, `ResourceManager`.
+   Game stops with `requestStop()`. Input (#15): core `InputState`/`ActionMap` (`<mge/core/Input.h>`), owned by
+   `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); cameras take a `CameraInput` struct.
+   `setEventCallback` is only for window events (resize/focus).
+5. Static singletons left: `AudioManager`, `ResourceManager` (input and time are no longer static).
 6. `Mesh` = VAO/VBO/EBO of `Vertex{vec3 pos, vec4 color, vec2 uv}`. **Attrib loc 0 = position, loc 1 = UV; color is NOT sent** (see Mesh.cpp).
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
 8. `Texture` is a copyable handle; destructor does NOT free GPU memory (call `destroy()`).

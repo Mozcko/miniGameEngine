@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mge/core/Input.h>
 #include <mge/core/Module.h>
 #include <mge/platform/Window.h>
 
@@ -10,7 +11,7 @@
 namespace mge {
 
     // Módulo de plataforma: crea la ventana + contexto OpenGL (con el título/tamaño del
-    // ApplicationConfig), procesa los eventos de SDL cada frame y presenta la imagen al final.
+    // ApplicationConfig), traduce los eventos de SDL3 al input del core cada frame y presenta la imagen.
     class PlatformModule : public Module {
     public:
         using EventCallback = std::function<void(const SDL_Event&)>;
@@ -22,8 +23,25 @@ namespace mge {
         void onFrameEnd(Application& app) override;
         void onShutdown(Application& app) override;
 
-        // Recibe cada evento de SDL antes que el InputManager.
-        // Temporal: en #15 los juegos usarán acciones de input en lugar de eventos crudos.
+        // Input del frame actual (independiente de SDL) y las acciones del juego
+        InputState& input() { return m_input; }
+        const InputState& input() const { return m_input; }
+        ActionMap& actions() { return m_actions; }
+        const ActionMap& actions() const { return m_actions; }
+
+        // Atajos: acción del ActionMap evaluada sobre el input actual
+        bool isActionDown(const std::string& action) const { return m_actions.isDown(m_input, action); }
+        bool wasActionPressed(const std::string& action) const {
+            return m_actions.wasPressed(m_input, action);
+        }
+        float axis(const std::string& axisName) const { return m_actions.axis(m_input, axisName); }
+
+        // Cursor capturado: oculto, movimiento relativo y confinado a la ventana (cámaras FPS)
+        void setCursorLocked(bool locked);
+        bool isCursorLocked() const { return m_cursorLocked; }
+
+        // Eventos crudos de SDL para lo que no es input (ej: cambio de tamaño de la ventana).
+        // Se llama antes de actualizar el input.
         void setEventCallback(EventCallback callback) { m_eventCallback = std::move(callback); }
 
         // Válido entre onInit y onShutdown
@@ -32,5 +50,8 @@ namespace mge {
     private:
         std::unique_ptr<Window> m_window;
         EventCallback m_eventCallback;
+        InputState m_input;
+        ActionMap m_actions;
+        bool m_cursorLocked = false;
     };
 }

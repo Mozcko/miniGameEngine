@@ -20,6 +20,7 @@ include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 add_executable(mge_core_tests
     test_main.cpp
     core/test_application.cpp
+    core/test_input.cpp
     core/test_log.cpp
     core/test_log_stripped.cpp
     core/test_time.cpp
@@ -27,6 +28,17 @@ add_executable(mge_core_tests
 target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
 mge_set_warnings(mge_core_tests)
 doctest_discover_tests(mge_core_tests TEST_PREFIX "core: ")
+
+# --- Tests de los módulos (necesitan SDL; no abren ventana) ---
+if(MGE_BUILD_MODULES)
+    add_executable(mge_platform_tests
+        test_main.cpp
+        platform/test_sdl_input.cpp
+    )
+    target_link_libraries(mge_platform_tests PRIVATE mge_platform doctest_header)
+    mge_set_warnings(mge_platform_tests)
+    doctest_discover_tests(mge_platform_tests TEST_PREFIX "platform: ")
+endif()
 
 # --- Tests del sandbox (necesitan los módulos del motor) ---
 if(MGE_BUILD_MODULES)

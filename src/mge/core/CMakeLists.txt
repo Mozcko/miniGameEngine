@@ -1,6 +1,7 @@
 # Core del motor: SOLO la librería estándar (y GLM más adelante). Prohibido incluir SDL o GPU.
 add_library(mge_core STATIC
     Application.h Application.cpp
+    Input.h Input.cpp
     Log.h Log.cpp
     Module.h
     Clock.h Clock.cpp

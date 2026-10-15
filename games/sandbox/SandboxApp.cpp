@@ -1,7 +1,6 @@
 #include <mge/core/Application.h>
 #include <mge/audio/AudioModule.h>
 #include <mge/platform/PlatformModule.h>
-#include <mge/platform/InputManager.h>
 #include <mge/core/Log.h>
 #include <vector>
 #include <map>
@@ -30,8 +29,10 @@ public:
     }
 
     bool onInit() override {
-        // Los eventos crudos de SDL llegan por el módulo de plataforma (acciones de input en #15)
-        getModule<PlatformModule>()->setEventCallback([this](const SDL_Event& event) { handleEvent(event); });
+        m_platform = getModule<PlatformModule>();
+        // Eventos de ventana (tamaño, foco); el input del juego va por acciones
+        m_platform->setEventCallback([this](const SDL_Event& event) { handleWindowEvent(event); });
+        bindControls(m_platform->actions());
 
         // 1. Shaders
         bool shaderOk =
@@ -75,7 +76,7 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         // Configuración inicial del ratón
-        mge::InputManager::setCursorMode(true);
+        m_platform->setCursorLocked(true);
 
         // El HUD de texto (SDL_ttf) se quitó en #9; vuelve con la fuente embebida en M4 (#41-#43).
         // Mientras tanto los FPS se escriben en el log (nivel Debug) cada 5 segundos.
@@ -94,7 +95,18 @@ public:
         m_tilesetTexture.destroy();
     }
 
-    void handleEvent(const SDL_Event& event) {
+    // Controles del sandbox (mismas teclas que antes): cambiar un control = cambiar un binding
+    static void bindControls(mge::ActionMap& actions) {
+        actions.bindAxis("MoveForward", Key::W, Key::S);
+        actions.bindAxis("MoveRight", Key::D, Key::A);
+        actions.bindAxis("MoveUp", Key::Space, Key::LeftShift);
+        actions.bind("Sprint", Key::LeftCtrl);
+        actions.bind("Pause", Key::P);
+        actions.bind("Quit", Key::Escape);
+        actions.bind("CaptureMouse", MouseButton::Left);
+    }
+
+    void handleWindowEvent(const SDL_Event& event) {
         // Tamaño en píxeles (no en puntos): correcto también en pantallas HiDPI
         if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
             int newWidth = event.window.data1;
@@ -104,33 +116,42 @@ public:
         }
 
         if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && m_mouseCaptured && !m_isPaused) {
-            mge::InputManager::setCursorMode(true);
+            m_platform->setCursorLocked(true);
         }
+    }
 
-        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !m_isPaused) {
-            mge::InputManager::setCursorMode(true);
+    void handleActions() {
+        if (m_platform->wasActionPressed("Quit")) requestStop();
+
+        if (m_platform->wasActionPressed("CaptureMouse") && !m_isPaused) m_platform->setCursorLocked(true);
+
+        if (m_platform->wasActionPressed("Pause")) {
+            m_isPaused = !m_isPaused;
+            time().setTimeScale(m_isPaused ? 0.0f : 1.0f);
+            m_platform->setCursorLocked(!m_isPaused);
         }
+    }
 
-        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
-            if (event.key.key == SDLK_ESCAPE) requestStop();
-
-            if (event.key.key == SDLK_P) {
-                m_isPaused = !m_isPaused;
-                if (m_isPaused) {
-                    time().setTimeScale(0.0f);
-                    mge::InputManager::setCursorMode(false);
-                } else {
-                    time().setTimeScale(1.0f);
-                    mge::InputManager::setCursorMode(true);
-                }
-            }
+    // Traduce acciones y ratón a la intención de movimiento de la cámara
+    mge::CameraInput cameraInput() const {
+        mge::CameraInput input;
+        input.moveForward = m_platform->axis("MoveForward");
+        input.moveRight = m_platform->axis("MoveRight");
+        input.moveUp = m_platform->axis("MoveUp");
+        input.sprint = m_platform->isActionDown("Sprint");
+        // Solo mirar con el ratón si está capturado
+        if (m_platform->isCursorLocked()) {
+            input.lookX = m_platform->input().mouseDelta().x;
+            input.lookY = m_platform->input().mouseDelta().y;
         }
+        return input;
     }
 
     // dt es el tiempo escalado (0 en pausa). El sandbox todavía no tiene simulación de paso fijo:
     // cámara y streaming de chunks corren una vez por frame.
     void onUpdate(float dt) override {
         float deltaTime = dt;
+        handleActions();
 
         // Animaciones
         m_animTimer += time().unscaledDelta();
@@ -163,7 +184,7 @@ public:
             }
         }
 
-        m_camera.update(deltaTime);
+        m_camera.update(deltaTime, cameraInput());
     }
 
     void onRender() override {
@@ -207,6 +228,8 @@ public:
     }
 
 private:
+    PlatformModule* m_platform = nullptr; // Válido entre onInit y el cierre
+
     static mge::ApplicationConfig makeConfig() {
         mge::ApplicationConfig config;
         config.title = "miniGameEngine - Sandbox";

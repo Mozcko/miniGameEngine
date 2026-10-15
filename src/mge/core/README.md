@@ -8,11 +8,12 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 |------|-----------|---------|
 | `Application.h/.cpp` | `mge` | `ApplicationConfig` + the runner: owns the loop and the modules, runs headless when no platform module is added |
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
+| `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
 
-Upcoming in M1: input state (#15), RNG (#14), ECS (#16).
+Upcoming in M1: RNG (#14), ECS (#16).
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
@@ -52,6 +53,32 @@ mge::Application* mge::createApplication() { return new MyGame(); }
 The core knows no concrete module. Platform and audio live in their own targets
 (`PlatformModule`, `AudioModule`), so a program that adds none runs with no window, GPU or SDL.
 Tests: `tests/core/test_application.cpp`.
+
+---
+
+## Input – `mge::InputState` + `mge::ActionMap`
+
+```cpp
+auto& platform = *getModule<mge::PlatformModule>();
+platform.actions().bindAxis("MoveForward", mge::Key::W, mge::Key::S);
+platform.actions().bind("Jump", mge::Key::Space);
+platform.actions().bind("Jump", mge::MouseButton::Right);         // several bindings per action
+// each frame:
+if (platform.wasActionPressed("Jump")) { /* … */ }
+float forward = platform.axis("MoveForward");                      // -1..1
+mge::Vec2f look = platform.input().mouseDelta();
+```
+
+| Item | Behaviour |
+|------|-----------|
+| `InputState::beginFrame()` | Saves the previous key/button state and resets mouse delta and wheel. The platform module calls it before applying the frame's events |
+| `isDown` / `wasPressed` / `wasReleased` | Level / pressed this frame / released this frame, for `Key` and `MouseButton`. Press + release within one frame leaves no edge |
+| `mousePosition()`, `mouseDelta()`, `wheel()` | Position persists; delta and wheel accumulate per frame |
+| `clear()` | Releases everything (focus lost) |
+| `ActionMap::bind(action, Key / MouseButton)` | Any binding drives the action. `wasPressed` fires only when the first binding goes down; `wasReleased` only when the last one goes up |
+| `ActionMap::bindAxis(axis, positive, negative)` | Sums +1/−1 over all pairs, clamped to [−1, 1] |
+
+Tests: `tests/core/test_input.cpp`.
 
 ---
 

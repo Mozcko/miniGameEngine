@@ -1,6 +1,10 @@
 # src/mge/render/camera/
 
-Namespace: `mge`. Two **independent** hierarchies:
+Namespace: `mge`. Cameras don't read the keyboard: the game converts its actions into a
+`CameraInput` { `moveForward`, `moveRight`, `moveUp` (−1..1), `sprint`, `jump`, `lookX`, `lookY`
+(mouse pixels) }. So `mge_render` doesn't depend on the platform (#15).
+
+Two **independent** hierarchies:
 
 ```
 Camera (abstract, int width/height, m_ prefixed members)
@@ -39,10 +43,10 @@ Camera3D (concrete, not derived from Camera)
 | `MovementSpeed` | 10 units/s (`setSpeed`) |
 | `MouseSensitivity` | 0.1 °/pixel (`setSensitivity`) |
 
-`update(float dt)` – returns immediately if `dt ≤ 0.0001` (so time scale 0 = frozen camera):
-1. **Mouse look** – only if `InputManager::isCursorLocked()`. Pitch clamped to ±89°.
-2. **Free‑fly movement** – `W/S` along `Front` (includes pitch), `A/D` along `Right`,
-   `Space`/`LShift` up/down along world Y. `LCtrl` ×2.5. Direction normalised.
+`update(float dt, const CameraInput& input)` – returns immediately if `dt ≤ 0.0001` (so time scale 0 = frozen camera):
+1. **Mouse look** from `input.lookX/lookY` (the game passes 0 when the cursor isn't captured). Pitch clamped to ±89°.
+2. **Free‑fly movement** – `moveForward` along `Front` (includes pitch), `moveRight` along `Right`,
+   `moveUp` along world Y; `sprint` ×2.5. Direction normalised.
 3. **Collision** (if a callback is set) – moves X, then Z, then Y; after each axis, if the AABB
    `m_position ± 0.3` overlaps (callback returns true) that axis move is undone. No gravity.
 4. `view = lookAt(m_position, m_position + m_front, m_up)`.
@@ -62,8 +66,8 @@ uninitialised.
 
 `update(dt)`:
 - Mouse look always (ignores cursor lock state).
-- `WASD` on the XZ plane (pitch removed), `LCtrl` ×1.5 sprint.
-- `Space` while grounded → `velocity.y = 6.5`.
+- `moveForward`/`moveRight` on the XZ plane (pitch removed), `sprint` ×1.5.
+- `jump` while grounded → `velocity.y = 6.5`.
 - With collision callback: player AABB is `m_position + [(-0.3,-1.5,-0.3) .. (0.3,0.3,0.3)]`
   (eye 1.5 above feet). X then Z resolved like Camera3D; gravity `-18 u/s²`; on downward hit
   snaps feet to the block top (`floor(min.y + 0.5) + 0.5`) and sets grounded; upward hit

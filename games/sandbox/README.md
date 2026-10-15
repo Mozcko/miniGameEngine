@@ -37,7 +37,7 @@ Include as `#include <sandbox/Chunk.h>`.
 `PlatformModule` then `AudioModule`.
 
 ### `onInit` (returns false → clean exit with code 1)
-0. Register `handleEvent` as the `PlatformModule` event callback.
+0. Keep a pointer to `PlatformModule`, register `handleWindowEvent` (resize/focus) and bind the controls (`bindControls`).
 1. Compile/link `m_shader3D`; set the camera position; install the **collision callback**: convert the
    AABB to block coordinates with `floor(v + 0.5)` and return true if any block in range
    `isSolid()` (via `getGlobalBlock`).
@@ -46,14 +46,26 @@ Include as `#include <sandbox/Chunk.h>`.
 4. Lock the cursor.
 5. Log the controls (Info).
 
-### `handleEvent(const SDL_Event&)` (platform event callback)
+### Controls (`bindControls` → `ActionMap`)
+| Action / axis | Binding |
+|---------------|---------|
+| `MoveForward` axis | W / S |
+| `MoveRight` axis | D / A |
+| `MoveUp` axis | Space / Left Shift |
+| `Sprint` | Left Ctrl |
+| `Pause` | P |
+| `Quit` | Esc |
+| `CaptureMouse` | Left mouse button |
+
+`handleActions()` (start of `onUpdate`) handles Quit, CaptureMouse and Pause with `wasActionPressed`.
+`cameraInput()` builds the camera's `CameraInput` from the axes, Sprint, and the mouse delta (only
+while the cursor is locked).
+
+### `handleWindowEvent(const SDL_Event&)` (platform event callback)
 | Event | Action |
 |-------|--------|
 | Window resized | `glViewport` + `camera.updateProjection` (listens to `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`, so HiDPI is correct) |
 | Focus gained (not paused) | Re‑lock cursor |
-| Mouse button down (not paused) | Re‑lock cursor |
-| `Esc` | `requestStop()` |
-| `P` | Toggle pause: `time().setTimeScale(0 / 1)`, cursor unlock/lock |
 
 ### `onUpdate(dt)` (`dt` = scaled frame time, 0 while paused)
 1. Use `dt` for the camera.

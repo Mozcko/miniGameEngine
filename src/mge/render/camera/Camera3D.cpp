@@ -1,6 +1,4 @@
 #include <mge/render/camera/Camera3D.h>
-#include <mge/platform/InputManager.h> // Asegúrate de que la ruta sea correcta
-#include <SDL3/SDL.h>
 #include <cmath>
 
 namespace mge {
@@ -18,41 +16,29 @@ namespace mge {
         updateProjection(m_width, m_height);
     }
 
-    void Camera3D::update(float deltaTime) {
+    void Camera3D::update(float deltaTime, const CameraInput& input) {
         // Si deltaTime es 0 (juego pausado), no procesamos movimiento
         if (deltaTime <= 0.0001f) return;
 
-        // 1. Ratón
-        if (InputManager::isCursorLocked()) {
-            glm::vec2 mouseDelta = InputManager::getMouseDelta();
-            if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-                m_yaw += mouseDelta.x * m_mouseSensitivity;
-                m_pitch -= mouseDelta.y * m_mouseSensitivity; // Invertido (SDL Y es abajo)
+        // 1. Ratón (el juego manda lookX/lookY en 0 si el cursor no está capturado)
+        if (input.lookX != 0.0f || input.lookY != 0.0f) {
+            m_yaw += input.lookX * m_mouseSensitivity;
+            m_pitch -= input.lookY * m_mouseSensitivity; // Invertido (en pantalla Y es abajo)
 
-                if (m_pitch > 89.0f) m_pitch = 89.0f;
-                if (m_pitch < -89.0f) m_pitch = -89.0f;
+            if (m_pitch > 89.0f) m_pitch = 89.0f;
+            if (m_pitch < -89.0f) m_pitch = -89.0f;
 
-                updateCameraVectors();
-            }
+            updateCameraVectors();
         }
 
         // 2. Teclado
         float speed = m_movementSpeed * deltaTime;
 
-        // Sprint con Control
-        if (InputManager::isKeyPressed(SDL_SCANCODE_LCTRL)) {
-            speed *= 2.5f;
-        }
-
-        glm::vec3 moveDir(0.0f);
+        if (input.sprint) speed *= 2.5f;
 
         // Movimiento libre (Free Fly)
-        if (InputManager::isKeyPressed(SDL_SCANCODE_W)) moveDir += m_front;
-        if (InputManager::isKeyPressed(SDL_SCANCODE_S)) moveDir -= m_front;
-        if (InputManager::isKeyPressed(SDL_SCANCODE_A)) moveDir -= m_right;
-        if (InputManager::isKeyPressed(SDL_SCANCODE_D)) moveDir += m_right;
-        if (InputManager::isKeyPressed(SDL_SCANCODE_SPACE)) moveDir += m_worldUp;
-        if (InputManager::isKeyPressed(SDL_SCANCODE_LSHIFT)) moveDir -= m_worldUp;
+        glm::vec3 moveDir =
+            m_front * input.moveForward + m_right * input.moveRight + m_worldUp * input.moveUp;
 
         if (glm::length(moveDir) > 0.0f) moveDir = glm::normalize(moveDir) * speed;
 

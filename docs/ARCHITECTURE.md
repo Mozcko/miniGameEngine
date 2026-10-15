@@ -10,11 +10,11 @@ per‑file reference, see the `README.md` in each folder under `src/`.
  ───────────────                             ─────────────────────────────────────────────────────────
  sandbox (exe) ──────────────────────────►  mge_main      main() → createApplication() → run()      ─┐
    SandboxApp : mge::Application             mge_platform  PlatformModule: Window, GL ctx, GLEW,       │
-     addModule<PlatformModule>() ────────►                InputManager, SDL event pump ──────────────┤
+     addModule<PlatformModule>() ────────►                SDL event pump → InputState/ActionMap ─────┤
      addModule<AudioModule>()   ─────────►  mge_audio     AudioModule: AudioManager (SDL3 audio) ────┤
  sandbox_world (lib)                                                                                  ▼
    Chunk, Block ─────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
-                                                          (→ mge_platform, temporary until #15)    Application runner + Module,
+                                                                                                   Application runner + Module,
                                                                                                    Log, Time  (no SDL, no GPU)
  Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
 ```
@@ -50,7 +50,7 @@ A game:
    the modules already initialised are shut down in reverse and `run()` returns 1.
    - `PlatformModule` creates the `Window` from the config: SDL video, OpenGL **3.3 Core**
      double‑buffered resizable window, `glewInit()` (EGL‑tolerant), blending on, depth test off,
-     and `InputManager::init`.
+     and resets the input state.
    - `AudioModule` calls `AudioManager::init()` (SDL3 audio, default device; failure → silent, not
      fatal).
 2. The game's `onInit()` runs, with modules ready (for example a GL context exists). If it returns
@@ -60,8 +60,8 @@ A game:
 
 ```
 while running:
-    for module in modules:  module.onFrameBegin(app)   ← Platform: InputManager::update, poll SDL events
-                                                          (QUIT → requestStop, game event callback, input)
+    for module in modules:  module.onFrameBegin(app)   ← Platform: input.beginFrame, poll SDL events
+                                                          (QUIT → requestStop, window-event callback, input)
     if a module requested stop: break                  ← no update/render for that frame
     raw = clock.now() − last  (clamped to maxFrameTime = 0.25 s)
     accumulator += raw × timeScale
@@ -74,8 +74,8 @@ while running:
     frameCount++ ; stop when frameCount == config.maxFrames (if > 0)
 ```
 
-The game receives raw SDL events through `PlatformModule::setEventCallback` until input actions
-land in #15.
+The game reads input through `PlatformModule::actions()` / `input()` (core `ActionMap` / `InputState`).
+Raw SDL events (`setEventCallback`) are only used for window events.
 
 Time is app‑owned (`app.time()`, see `src/mge/core/README.md`). The sandbox has no fixed‑step
 simulation yet: it moves the camera and streams chunks in `onUpdate(dt)`. Pausing (`P`) sets the
@@ -158,7 +158,6 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 
 | Class | Namespace | State | Lifetime |
 |-------|-----------|-------|----------|
-| `InputManager` | `mge` | mouse pos/delta, cursor lock, window ptr | `PlatformModule` init/shutdown |
 | `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
 | `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | `AudioModule` init/shutdown |
 | `ResourceManager` | `mge` | `Texture` cache by path | never cleared automatically (unused) |
