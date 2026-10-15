@@ -1,0 +1,75 @@
+{
+    // F5 = depurar el juego con gdb (compila antes con "Build (dev)").
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug sandbox",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/sandbox",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "setupCommands": [
+                { "description": "Pretty printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+            ],
+            "preLaunchTask": "Build (dev)"
+        },
+        {
+            "name": "Debug sandbox (offscreen, 300 frames)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/sandbox",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "SDL_VIDEODRIVER", "value": "offscreen" },
+                { "name": "SDL_AUDIODRIVER", "value": "dummy" },
+                { "name": "MGE_MAX_FRAMES", "value": "300" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "setupCommands": [
+                { "description": "Pretty printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+            ],
+            "preLaunchTask": "Build (dev)"
+        },
+        {
+            "name": "Debug core tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/mge_core_tests",
+            "args": ["-tc=${input:testFilter}"],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "setupCommands": [
+                { "description": "Pretty printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+            ],
+            "preLaunchTask": "Build (dev)"
+        },
+        {
+            "name": "Debug game tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/game_tests",
+            "args": ["-tc=${input:testFilter}"],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "setupCommands": [
+                { "description": "Pretty printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+            ],
+            "preLaunchTask": "Build (dev)"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "Filtro de doctest (-tc=), ej: *chunk*  (* = todos)",
+            "default": "*"
+        }
+    ]
+}

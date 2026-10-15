@@ -1,6 +1,37 @@
 {
+    // --- Apariencia (preferencias del autor) ---
     "workbench.colorCustomizations": {
         "minimap.background": "#00000000",
         "scrollbar.shadow": "#00000000"
+    },
+
+    // --- CMake Tools: usar CMakePresets.json (dev / release / ci / asan) ---
+    "cmake.useCMakePresets": "always",
+    "cmake.configureOnOpen": true,
+    "cmake.ctest.testExplorerIntegrationEnabled": true,
+
+    // --- IntelliSense (C/C++): toma includes y flags de CMake Tools ---
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.cppStandard": "c++17",
+
+    // --- Formato: .clang-format del proyecto ---
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "editor.formatOnSave": true,
+    "[cpp]": { "editor.defaultFormatter": "ms-vscode.cpptools" },
+    "[c]": { "editor.defaultFormatter": "ms-vscode.cpptools" },
+
+    // --- Archivos ---
+    "files.associations": {
+        "*.vert": "glsl",
+        "*.frag": "glsl",
+        "*.cpp.in": "cpp",
+        "CMakeLists.txt.in": "cmake"
+    },
+    "files.exclude": {
+        "build*/": true
+    },
+    "search.exclude": {
+        "build*/": true
     }
 }
