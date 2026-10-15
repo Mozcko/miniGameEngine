@@ -35,7 +35,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
   builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform` (PlatformModule), `mge_render`, `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
-- `game/` = `sandbox_world` lib (Block/Chunk) + `sandbox` exe (written to the build dir root).
+- `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/core/` → `mge_core_tests` (core only), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
 
@@ -66,7 +66,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Formatting: `.clang-format`, checked in CI with clang-format **22.1.8**. Before committing, run
   **`scripts/lint.sh --fix`**: the same format + naming checks as CI, including untracked new files.
   It needs `cmake --preset ci` first.
-- Include roots `src/` and the repo root (for `game/`); always root‑relative: `#include <mge/core/Time.h>`, `#include <game/Chunk.h>`.
+- Include roots `src/` and the repo root (for `game/`); always root‑relative: `#include <mge/core/Time.h>`, `#include <game/SandboxTerrain.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
@@ -92,6 +92,12 @@ Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MOD
 ## Procgen
 `mge_procgen` (headless, always built): `MeshData` (SoA, all attributes same length, `validate()`, `writeObj`).
 GPU upload: `Mesh::init(const MeshData&)`. Visual checks: `examples/procgen_gallery` → `<build>/gallery/*.obj`.
+
+## Voxel
+`mge_voxel` (headless, always built): `BlockRegistry` (id 0 = air; `BlockDesc` colour and/or atlas tiles), 16³ chunks stacked in
+all axes (`ChunkCoord`, `chunkOf`/`localOf`/`blockAt`; block (x,y,z) occupies [x,x+1)), `VoxelWorld` (+ `TerrainGenerator`,
+dirty flags), `buildChunkMesh` → `{opaque, transparent}` MeshData in chunk‑local space. The game only registers blocks and
+implements a generator.
 
 ## Assets
 Always `mge::assetPath("shaders/x.vert")` (`<mge/core/Assets.h>`), never `"../assets/..."`; the root is logged at startup

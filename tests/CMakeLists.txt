@@ -47,6 +47,17 @@ target_link_libraries(mge_procgen_tests PRIVATE mge_procgen doctest_header)
 mge_set_warnings(mge_procgen_tests)
 doctest_discover_tests(mge_procgen_tests TEST_PREFIX "procgen: ")
 
+add_executable(mge_voxel_tests
+    test_main.cpp
+    voxel/test_block_registry.cpp
+    voxel/test_chunk_coords.cpp
+    voxel/test_chunk_mesher.cpp
+    voxel/test_voxel_world.cpp
+)
+target_link_libraries(mge_voxel_tests PRIVATE mge_voxel doctest_header)
+mge_set_warnings(mge_voxel_tests)
+doctest_discover_tests(mge_voxel_tests TEST_PREFIX "voxel: ")
+
 # --- Tests de los módulos (necesitan SDL; no abren ventana) ---
 if(MGE_BUILD_MODULES)
     add_executable(mge_platform_tests
@@ -63,11 +74,11 @@ endif()
 if(MGE_BUILD_MODULES)
     add_executable(game_tests
         test_main.cpp
-        game/test_block.cpp
-        game/test_chunk.cpp
+        game/test_sandbox_blocks.cpp
+        game/test_sandbox_terrain.cpp
         game/test_camera.cpp
     )
-    target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
+    target_link_libraries(game_tests PRIVATE sandbox_world mge_render doctest_header)
     mge_set_warnings(game_tests)
     doctest_discover_tests(game_tests TEST_PREFIX "game: ")
 endif()

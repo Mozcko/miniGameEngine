@@ -29,6 +29,14 @@
 #include <mge/procgen/Sdf.h>
 #endif
 
+// --- Mundos voxel (headless) ---
+#ifdef MGE_HAS_VOXEL
+#include <mge/voxel/Block.h>
+#include <mge/voxel/Chunk.h>
+#include <mge/voxel/ChunkMesher.h>
+#include <mge/voxel/VoxelWorld.h>
+#endif
+
 // --- Plataforma: ventana, contexto OpenGL, input de SDL ---
 #ifdef MGE_HAS_PLATFORM
 #include <mge/platform/PlatformModule.h>

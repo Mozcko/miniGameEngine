@@ -1,13 +1,13 @@
 # Sandbox: mundo voxel de prueba del motor
 
-# Lógica del mundo (bloques y chunks): librería aparte para poder testearla
+# Contenido del mundo (bloques y terreno) sobre mge_voxel: headless, testeable sin ventana
 add_library(sandbox_world STATIC
-    Block.h Block.cpp
-    Chunk.h Chunk.cpp
+    SandboxBlocks.h SandboxBlocks.cpp
+    SandboxTerrain.h SandboxTerrain.cpp
 )
-# Permite #include <game/Chunk.h>
+# Permite #include <game/SandboxTerrain.h>
 target_include_directories(sandbox_world PUBLIC ${PROJECT_SOURCE_DIR})
-target_link_libraries(sandbox_world PUBLIC mge_render)
+target_link_libraries(sandbox_world PUBLIC mge_voxel)
 mge_set_warnings(sandbox_world)
 
 # Ejecutable del juego (+ targets run / run-sandbox y smoke test offscreen de 120 frames)

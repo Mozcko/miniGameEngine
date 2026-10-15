@@ -27,17 +27,21 @@ ctest --preset dev                      # all tests
 | `platform/test_umbrella_platform.cpp` | `<mge/mge.h>` with `mge_platform`: `PlatformModule` is available |
 | `core/test_input.cpp` | `InputState` edges, mouse delta/wheel, `clear`, `ActionMap` multi‑binding actions and axes |
 | `platform/test_sdl_input.cpp` | `mge_platform_tests`: scancode/button translation and `applySdlEvent` with hand‑built SDL events (no SDL init, no window) |
-| `game/test_block.cpp` | `Block` active/solid/opaque rules, atlas UV lookup per face (`Block::getUVs`) |
-| `game/test_chunk.cpp` | `Chunk` generation: determinism, terrain rules (solid floor, water ≤ level 5), out‑of‑range access |
+| `voxel/test_block_registry.cpp` | `mge_voxel_tests`: air is id 0, ids/lookup by name, per‑face tiles, atlas UVs |
+| `voxel/test_chunk_coords.cpp` | floorDiv/floorMod, world → chunk → local incl. negatives and vertical, `blockAt`, `ChunkData`, hash |
+| `voxel/test_voxel_world.cpp` | Load/unload, get/set across chunks (negative, vertical), dirty flags + border propagation, generator determinism |
+| `voxel/test_chunk_mesher.cpp` | Face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
+| `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, cross shapes, atlas tiles per face, every block has tiles and colour |
+| `game/test_sandbox_terrain.cpp` | `SandboxTerrain`: determinism, one chunk tall, terrain rules (solid floor, water ≤ level 5), decoration rates 1–3 %, seed, far coordinates |
 
 ## Writing tests
 - Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.
 - Link only what you test. `mge_core_tests` (`tests/core/`) links **only `mge_core`**, so it
-  also builds with `-DMGE_BUILD_MODULES=OFF`. `game_tests` (`tests/game/`) links `sandbox_world`.
+  also builds with `-DMGE_BUILD_MODULES=OFF`, like `mge_procgen_tests` and `mge_voxel_tests`.
+  `game_tests` (`tests/game/`) links `sandbox_world` (headless) and `mge_render` (camera test).
   CTest names are prefixed `core: ` / `sandbox: `.
-- **Never** call code that needs a GPU context. For example, `Chunk::buildMesh()` creates OpenGL
-  buffers, so construct chunks and test their data without it. (`Chunk(cx, cz)` only generates
-  blocks.)
+- **Never** call code that needs a GPU context. Test CPU data instead: `MeshData` from
+  `buildChunkMesh`, `ChunkData` from a generator. `Mesh::init` needs OpenGL.
 - Allocate chunks on the heap (`std::make_unique<Chunk>`): each one is about 16 KB of blocks.
 - Code must build warning‑free under the `ci` preset (`-Werror`) with GCC and Clang. That means
   C++17 only: no C++20 features such as lambda‑captured structured bindings.
