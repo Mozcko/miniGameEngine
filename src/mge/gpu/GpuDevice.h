@@ -58,6 +58,9 @@ namespace mge {
         CommandBuffer acquireCommandBuffer();
         // Copia bytes de la CPU a un buffer de la GPU (con su propio command buffer, sin esperar)
         bool uploadToBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size);
+        // Copia píxeles RGBA8 de la CPU a una región de una textura (filas en el orden de la textura)
+        bool uploadToTexture(const GpuTexture& texture, std::uint32_t x, std::uint32_t y, std::uint32_t width,
+                             std::uint32_t height, const void* rgba);
         // Sube una MeshData (vértices entrelazados + índices). Malla vacía → GpuMesh vacía
         GpuMesh uploadMesh(const MeshData& mesh);
         // Lee una textura RGBA8 a la CPU (bloquea hasta que la GPU termine). Para tests y capturas.

@@ -173,8 +173,8 @@ Tests (`tests/procgen/test_sdf.cpp`):
 - vertex count grows with resolution;
 - empty results when no surface is inside the bounds.
 
-**GPU:** `mge::Mesh::init(const MeshData&)` (`mge_render`) uploads it. The legacy OpenGL renderer
-uses position, colour and UV, and ignores normals until M3.
+**GPU:** `GpuDevice::uploadMesh(const MeshData&)` (`mge_gpu`) uploads every attribute (position,
+normal, colour, UV) as `GpuVertex`. `MeshRenderer` (`mge_graphics`) draws it.
 
 **Gallery:** `examples/procgen_gallery` exports every generated mesh to `<build>/gallery/*.obj`.
 

@@ -289,3 +289,33 @@ TEST_CASE("AO: oscurece las esquinas del piso junto a una pared; apagado no camb
     const auto areaN = areaByNormal(mesh);
     for (int i = 0; i < 6; i++) CHECK(areaG[i] == doctest::Approx(areaN[i]));
 }
+
+TEST_CASE("Mesher: los bloques con textura van en blanco salvo con tintTextured") {
+    BlockRegistry registry;
+    BlockDesc brick;
+    brick.name = "brick";
+    brick.color = {0.8f, 0.2f, 0.1f, 1.0f};
+    brick.setTile(7);
+    const BlockId textured = registry.add(brick);
+    BlockDesc paint;
+    paint.name = "paint";
+    paint.color = {0.1f, 0.6f, 0.3f, 1.0f};
+    const BlockId colorOnly = registry.add(paint);
+
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    world.setBlock({0, 0, 0}, textured);
+    world.setBlock({5, 0, 0}, colorOnly);
+
+    ChunkMeshOptions options = naive();
+    const MeshData white = buildChunkMesh(world, {0, 0, 0}, options).opaque;
+    options.tintTextured = true;
+    const MeshData tinted = buildChunkMesh(world, {0, 0, 0}, options).opaque;
+    REQUIRE(white.vertexCount() == tinted.vertexCount());
+    for (std::size_t i = 0; i < white.vertexCount(); i++) {
+        const bool isBrick = white.positions[i].x <= 1.0f;
+        CAPTURE(i);
+        CHECK(white.colors[i] == (isBrick ? glm::vec4(1.0f) : paint.color)); // Sin textura: siempre su color
+        CHECK(tinted.colors[i] == (isBrick ? brick.color : paint.color));
+    }
+}

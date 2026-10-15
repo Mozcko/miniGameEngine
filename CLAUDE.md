@@ -53,11 +53,13 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
    `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); cameras take a `CameraInput` struct.
    `setEventCallback` is only for window events (resize/focus).
 5. Static singletons left: `AudioManager`, `ResourceManager` (input and time are no longer static).
-6. `Mesh` = VAO/VBO/EBO of `Vertex{vec3 pos, vec4 color, vec2 uv}`. **Attrib loc 0 = position, loc 1 = UV; color is NOT sent** (see Mesh.cpp).
+6. Rendering = SDL3 GPU (`mge_gpu` + `mge_graphics`): `device.uploadMesh(MeshData)` → `GpuMesh` (`GpuVertex{pos, normal, color, uv}`),
+   `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent). Legacy GL `mge_render` is dead code until #40 (only `Camera3D` used).
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
-8. `Texture` is a copyable handle; destructor does NOT free GPU memory (call `destroy()`).
+8. `Texture2D` (move‑only) from file or pixels; stored flipped so engine UVs stay GL‑style (v up, (0,0) = image bottom‑left).
 9. Cameras: `Camera`(abstract) → `Camera2D`; separate `Camera3D` (free‑fly + AABB collision callback) → `FirstPersonCamera` (gravity/jump; currently unused).
-10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off.
+10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off. Legacy cameras build GL projections →
+   wrap with `depthZeroToOne` (SDL GPU wants Z in [0,1]) until #32.
 
 ## Conventions
 - **One engine namespace `mge`** (game code: `sandbox`). Naming, enforced by
@@ -92,7 +94,7 @@ Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MOD
 
 ## Procgen
 `mge_procgen` (headless, always built): `MeshData` (SoA, all attributes same length, `validate()`, `writeObj`).
-GPU upload: `Mesh::init(const MeshData&)`. Visual checks: `examples/procgen_gallery` → `<build>/gallery/*.obj`.
+GPU upload: `device.uploadMesh(meshData)` (mge_gpu). Visual checks: `examples/procgen_gallery` → `<build>/gallery/*.obj`.
 
 ## Voxel
 `mge_voxel` (headless, always built): `BlockRegistry` (id 0 = air; `BlockDesc` colour and/or atlas tiles), 16³ chunks stacked in
@@ -110,6 +112,8 @@ Shaders: GLSL → SPIR‑V at build time, `mge_add_shaders(target SHADERS x.vert
 Pipelines: `GraphicsPipelineDesc` → `device.createGraphicsPipeline(desc)`. glslang: system or fetched from source.
 Render tests: `tests/render` golden PNGs (`MGE_UPDATE_GOLDEN=1` to regenerate, then look at them). SDL GPU NDC is Y‑up with Z in [0,1]:
 use `glm::perspectiveRH_ZO`; CCW front faces as in MeshData.
+`mge_graphics`: `Texture2D::fromFile/fromPixels`, `MeshRenderer` (README in src/mge/graphics). Default `mge_add_game` MODULES:
+`platform gpu graphics audio`; `PlatformOptions::openGl` defaults to false.
 Vsync: `ApplicationConfig::vsync` (env `MGE_VSYNC`), `GpuModule::setVsync`; depth: `device.depthFormat()` (D32/D24) + `createDepthTarget`.
 
 ## Assets

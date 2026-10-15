@@ -74,6 +74,7 @@ miniGameEngine/
 │       ├── voxel/          mge_voxel: headless voxel worlds (blocks, chunks, meshing)
 │       ├── platform/       mge_platform: PlatformModule, SDL window (+ legacy GL context), SDL→input
 │       ├── gpu/            mge_gpu: GpuModule + RAII wrappers over SDL3 GPU (Vulkan)
+│       ├── graphics/       mge_graphics: Texture2D, MeshRenderer (the renderer on SDL GPU)
 │       ├── render/         mge_render: OpenGL renderer (legacy until #40)
 │       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
 │       │   ├── 3d/         Mesh (VAO/VBO/EBO)
@@ -117,6 +118,7 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [src/mge/procgen/README.md](src/mge/procgen/README.md) | `mge_procgen`: MeshData, primitives, mesh ops, noise, SDF (headless) |
 | [src/mge/voxel/README.md](src/mge/voxel/README.md) | `mge_voxel`: blocks, chunks, VoxelWorld, chunk meshing (headless) |
 | [src/mge/gpu/README.md](src/mge/gpu/README.md) | `mge_gpu`: SDL3 GPU device, swapchain, RAII handles, mesh upload |
+| [src/mge/graphics/README.md](src/mge/graphics/README.md) | `mge_graphics`: textures and mesh rendering on SDL GPU |
 | [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
 | [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |

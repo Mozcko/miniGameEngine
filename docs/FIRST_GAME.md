@@ -1,8 +1,8 @@
 # Your first game
 
 This guide takes you from nothing to a running game with input, an entity, and a test that runs
-without a window, in about 10 minutes. It uses the current engine API: SDL3 window, OpenGL drawing
-(until the new renderer in M3), and the ECS. The code shown is what `scripts/new-game.sh`
+without a window, in about 10 minutes. It uses the current engine API: SDL3 window, the SDL3 GPU
+API (Vulkan/Metal/D3D12) for drawing, and the ECS. The code shown is what `scripts/new-game.sh`
 generates; CI builds that template on every PR, so the guide stays accurate.
 
 Prerequisites: the project builds (`docs/BUILDING.md`).
@@ -36,7 +36,7 @@ examples/space_shooter/
 ```cmake
 mge_add_game(space_shooter
     SOURCES SpaceShooter.cpp
-    MODULES platform audio      # window + input, sound. Omit MODULES for all three (incl. render)
+    MODULES platform gpu audio  # window + input, GPU, sound. Default: platform gpu graphics audio
     SMOKE_FRAMES 30)            # CTest runs the game 30 frames offscreen
 ```
 
@@ -56,12 +56,12 @@ The engine owns `main()` and calls your hooks in this order:
 
 | Hook | When | Use it for |
 |------|------|------------|
-| constructor | before anything starts | `addModule<…>()`: choose platform, audio |
-| `bool onInit()` | modules are ready (window and GL context exist) | load things, bind input, create entities. Return `false` to abort (exit code 1) |
+| constructor | before anything starts | `addModule<…>()`: choose platform, GPU, audio |
+| `bool onInit()` | modules are ready (window and GPU device exist) | load things, bind input, create entities. Return `false` to abort (exit code 1) |
 | `onFixedUpdate(float fixedDt)` | 0..N times per frame at a fixed 60 Hz | **simulation**: physics, rules. Deterministic |
 | `onUpdate(float dt)` | once per frame, scaled time (0 while paused) | input, camera, things that follow the frame rate |
 | `onRender()` | once per frame | draw. `time().alpha()` interpolates between fixed steps |
-| `onShutdown()` | after the loop, before modules shut down | free GPU resources (the context still exists) |
+| `onShutdown()` | after the loop, before modules shut down | free GPU resources (the device still exists) |
 
 Stop with `requestStop()`. Pause with `time().setTimeScale(0.0f)`.
 
@@ -69,7 +69,8 @@ Stop with `requestStop()`. Pause with `time().setTimeScale(0.0f)`.
 class SpaceShooter : public mge::Application {
 public:
     SpaceShooter() : mge::Application(makeConfig()) {
-        addModule<mge::PlatformModule>(); // window, OpenGL and input
+        addModule<mge::PlatformModule>(); // window and input
+        addModule<mge::GpuModule>();      // GPU (Vulkan/Metal/D3D12); after the platform
         addModule<mge::AudioModule>();
     }
     // ...
@@ -138,20 +139,31 @@ bool onInit() override {
 For positions use the built‑in `mge::Transform` (and `mge::Parent` for hierarchies; see
 `src/mge/core/README.md`).
 
-## 6. Drawing (for now)
+## 6. Drawing
 
-Until the new renderer lands (M3), a game draws with OpenGL directly or with the engine's legacy
-`Mesh`/`GLSLProgram` (see `game/`). The template only clears the screen:
+`GpuModule` gives you the frame each time `onRender` runs: a command buffer plus the window's image.
+The template only clears it:
 
 ```cpp
 void onRender() override {
+    const mge::GpuFrame* frame = m_gpu->frame();       // m_gpu = getModule<mge::GpuModule>()
+    if (!frame) return;                                // minimised window: no image this frame
     const float phase = world().registry().get<Pulse>(m_pulse).phase;
-    glClearColor(0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    mge::ColorTarget target;
+    target.texture = frame->swapchain;
+    target.clearColor = {0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f};
+    mge::RenderPass pass = frame->cmd->beginRenderPass(target);   // ends at scope exit
 }
 ```
 
-The platform module presents the frame for you.
+The `GpuModule` submits the frame for you.
+
+**Drawing meshes:**
+- **Engine renderer:** link `graphics` and use `mge::MeshRenderer`. Generated or loaded meshes
+  (`MeshData` → `device.uploadMesh`), textures (`Texture2D`) and a camera; see
+  `src/mge/graphics/README.md` and `game/SandboxApp.cpp`.
+- **Your own shaders:** write GLSL and embed it with `mge_add_shaders`. See
+  `examples/gpu_triangle` and `src/mge/gpu/README.md`.
 
 ## 7. Logging, randomness, assets
 

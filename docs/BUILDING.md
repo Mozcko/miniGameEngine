@@ -54,7 +54,8 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `mge_voxel` | static lib | `src/mge/voxel/` | Voxel worlds, headless (always built) |
   | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_gpu` | static lib | `src/mge/gpu/` | SDL3 GPU (Vulkan): `GpuModule`, RAII handles, mesh upload |
-  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer (legacy, removed in #40) |
+  | `mge_graphics` | static lib | `src/mge/graphics/` | Renderer on SDL GPU: `Texture2D`, `MeshRenderer` |
+  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer (legacy, removed in #40; only its cameras are still used) |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
   | `sandbox_world` | static lib | `game/` | Sandbox blocks + terrain generator (headless, on `mge_voxel`) |
@@ -157,7 +158,7 @@ Every program is declared with **`mge_add_game()`** (`cmake/MgeGame.cmake`):
 mge_add_game(<name>
     SOURCES <files...>             # required
     [LIBRARIES <libs...>]          # extra game libraries
-    [MODULES platform render audio]   # engine modules (default: all three)
+    [MODULES platform gpu graphics audio]   # engine modules (this is the default; `render` = legacy GL)
     [HEADLESS]                     # no modules: no window, GPU or SDL
     [SMOKE_FRAMES <n>])            # CTest smoke test running n frames (windowed → offscreen, label gpu)
 ```

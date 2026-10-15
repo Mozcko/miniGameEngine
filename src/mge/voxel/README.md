@@ -86,9 +86,10 @@ mge::ChunkMeshOptions options;
 options.atlas = {16, 16};          // tiles → UVs
 options.greedy = true;             // default: merge equal faces of colour‑only cubes
 options.ambientOcclusion = false;  // per‑vertex AO in the colour (aoStrength = 0.5)
+options.tintTextured = false;      // textured blocks: white vertex colour (texture as is); true = tint with BlockDesc::color
 mge::ChunkMesh mesh = mge::buildChunkMesh(world, {0, 0, 0}, options);
 // mesh.opaque / mesh.transparent: MeshData in chunk‑local space (0..16);
-// draw with model = translate(chunkOrigin(coord)). GPU upload: Mesh::init(const MeshData&).
+// draw with model = translate(chunkOrigin(coord)). GPU upload: device.uploadMesh(meshData) (mge_gpu).
 ```
 
 **Face rule:** a cube face is emitted unless the neighbour is an opaque cube, or both blocks are the
@@ -97,7 +98,8 @@ same transparent block (water against water).
 **Vertices:**
 - positions are in chunk‑local space;
 - normals are per face;
-- colour is `BlockDesc::color`;
+- colour is `BlockDesc::color` for colour‑only blocks. Textured blocks get white, so the texture
+  shows as is, unless `tintTextured`. AO darkens either;
 - UVs come from the face's tile, or are (0, 0) for untextured blocks.
 
 **Neighbours** across chunk borders are read from the world, and an unloaded neighbour counts as

@@ -14,5 +14,5 @@ mge_set_warnings(sandbox_world)
 mge_add_game(sandbox
     SOURCES SandboxApp.cpp
     LIBRARIES sandbox_world
-    MODULES platform render audio
+    MODULES platform gpu graphics audio render  # render: solo Camera3D (legacy) hasta #32/#40
     SMOKE_FRAMES 120)

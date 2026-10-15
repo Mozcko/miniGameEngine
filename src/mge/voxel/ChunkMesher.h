@@ -14,6 +14,9 @@ namespace mge {
         // Con greedy, solo se unen caras con la misma oclusión en sus 4 esquinas.
         bool ambientOcclusion = false;
         float aoStrength = 0.5f; // Color en un rincón cerrado = 1 - aoStrength
+        // Bloques con textura: false (por defecto) = color de vértice blanco (la textura tal cual, más el
+        // AO); true = la textura se tiñe con BlockDesc::color. Los bloques sin textura usan siempre su color.
+        bool tintTextured = false;
     };
 
     // Malla de un chunk en coordenadas locales (0..16): dibujar con model = translate(chunkOrigin).
