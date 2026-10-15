@@ -1,40 +1,50 @@
 # src/
 
-All C++ source code. Compiled into one executable (`miniGameEngine`) by the root
-`CMakeLists.txt`, which globs every `.cpp`/`.h` under `src/Engine/` and `src/Game/`.
+Engine source code. Games live outside, in [`games/`](../games/), and tests in
+[`tests/`](../tests/README.md).
 
-| Folder | Role |
-|--------|------|
-| [`Engine/`](Engine/README.md) | Reusable engine: entry point, application loop, window, input, audio, rendering. Knows nothing about the game. |
-| [`Game/`](Game/README.md) | The client application (`SandboxApp`) – a Minecraft‑style voxel sandbox built on the engine. |
+```
+src/
+└── mge/                 the engine (one folder per CMake target)  → mge/README.md
+    ├── core/            mge_core      – headless: no SDL, no GPU
+    ├── platform/        mge_platform  – SDL window, GL context, input
+    ├── render/          mge_render    – OpenGL renderer (legacy until #40)
+    ├── audio/           mge_audio     – audio
+    └── app/             mge_app + mge_main – Application loop and main()
+```
 
 ## Dependency direction
 
-`Game` → `Engine` only. The single "upward" link is the function
-`Engine::CreateApplication()`, which is **declared** in `Engine/Core/Application.h` and
-**defined** in `Game/SandboxApp.cpp`; `Engine/Main.cpp` calls it.
+```
+games/sandbox ──► mge_app ──► mge_platform ──► mge_core
+      │              └──────► mge_audio ─────► mge_core
+      └─────────────────────► mge_render ────► mge_core (+ mge_platform, temporary)
+```
+
+- `mge_core` depends on nothing but the standard library. The CI `core-only` job proves it by
+  building with `-DMGE_BUILD_MODULES=OFF` on a machine without SDL.
+- The single "upward" link is `Engine::CreateApplication()`: it is **declared** in
+  `mge/app/Application.h` and **defined** by the game; `mge/app/Main.cpp` calls it.
+- **Temporary:** `mge_render` links `mge_platform` because the cameras read the static
+  `InputManager`. Removed in #15, when input moves into the core.
 
 ## Include conventions
 
-- `src/` is on the include path (`include_directories(src)`), so both styles work:
-  - `#include <Engine/Core/Application.h>` (root‑relative), and
-  - `#include "../Engine/Graphics/3D/Mesh.h"` (file‑relative).
-  Inside `Engine/` files mostly use file‑relative includes.
-- Third‑party headers: `<SDL2/SDL.h>`, `<SDL2/SDL_mixer.h>`, `<SDL2/SDL_ttf.h>`, `<GL/glew.h>`,
-  `<glm/...>`, `<stb/stb_image.h>`.
+- `src/` is the include root for the engine and `games/` for games. Always include
+  root‑relative:
+  - `#include <mge/core/Time.h>`
+  - `#include <mge/render/3d/Mesh.h>`
+  - `#include <sandbox/Chunk.h>`
+- Third‑party headers: `<SDL2/...>`, `<GL/glew.h>`, `<glm/...>`, `<stb/stb_image.h>`.
 - All headers use `#pragma once`.
+- Every target lists its sources explicitly in its own `CMakeLists.txt`. Add new files there.
 
-## Namespaces
+## Namespaces (until #10 unifies them into `mge`)
 
 | Namespace | Contains |
 |-----------|----------|
 | `Engine` | `Application`, `CreateApplication`, `InputManager`, `Camera`, `Camera2D`, `Camera3D`, `FirstPersonCamera` |
-| `MiniGameEngine` | `Window`, `Time`, `ResourceManager`, `AudioManager`, `Vertex`, `Texture`, `GLSLProgram`, `Mesh`, `Sprite`, `Animation`, `GUILabel`, and the game's `Block`, `BlockType`, `UVRect`, `Chunk`, `CHUNK_SIZE`, `CHUNK_HEIGHT` |
-| global | `SandboxApp`, `ChunkKey` (in `SandboxApp.cpp`, which does `using namespace MiniGameEngine;`) |
+| `MiniGameEngine` | `Window`, `Time`, `ResourceManager`, `AudioManager`, `Vertex`, `Texture`, `GLSLProgram`, `Mesh`, `Sprite`, `Animation`, `GUILabel`, and the sandbox's `Block`, `Chunk` |
 
 ## Style
-
-- Comments are in Spanish.
-- `Engine::` classes: `PascalCase` methods, `m_` / `s_` member prefixes.
-- `MiniGameEngine::` classes: `camelCase` methods, `_` member prefix.
-- Match the style of the file you're editing.
+Comments are in Spanish. Naming and conventions are in [CONTRIBUTING.md](../CONTRIBUTING.md).

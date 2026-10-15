@@ -7,7 +7,7 @@ Minecraft‑style voxel sandbox as its demo game.
 
 The engine owns `main()` and the game loop. A game plugs in by subclassing
 `Engine::Application` and defining `Engine::CreateApplication()` (the "Hazel‑style" entry‑point
-pattern). The current client is `SandboxApp` (`src/Game/SandboxApp.cpp`): it streams in procedurally
+pattern). The current client is `SandboxApp` (`games/sandbox/SandboxApp.cpp`): it streams in procedurally
 generated 16×16×16 block chunks around a free‑flying, collision‑aware camera, animates
 water/lava tiles, and draws a 2D text HUD.
 
@@ -29,7 +29,7 @@ sudo dnf install cmake gcc-c++ SDL2-devel SDL2_mixer-devel SDL2_ttf-devel glew-d
 
 cmake --preset release          # or: cmake -S . -B build (defaults to Release)
 cmake --build --preset release
-cd build-release && ./miniGameEngine   # MUST run from a dir next to assets/ ("../assets/...")
+cd build-release && ./sandbox   # MUST run from a dir next to assets/ ("../assets/...")
 ```
 
 ### Controls (SandboxApp)
@@ -50,7 +50,8 @@ cd build-release && ./miniGameEngine   # MUST run from a dir next to assets/ (".
 
 ```
 miniGameEngine/
-├── CMakeLists.txt          Build script: one executable from src/Engine + src/Game
+├── CMakeLists.txt          Root build script (options, dependencies, subdirectories)
+├── CMakePresets.json       dev / release / ci presets
 ├── CONTRIBUTING.md         Workflow, conventions, PR rules
 ├── CLAUDE.md               Condensed context for AI assistants / new contributors
 ├── README.md               This file
@@ -61,20 +62,20 @@ miniGameEngine/
 │   ├── ARCHITECTURE.md     Main loop, namespaces, rendering pipeline, ownership
 │   ├── BUILDING.md         Dependencies, build/run, troubleshooting
 │   └── KNOWN_ISSUES.md     Bugs, quirks and technical debt found while reviewing
-├── src/                    All C++ code              → src/README.md
-│   ├── Engine/             Reusable engine           → src/Engine/README.md
-│   │   ├── Main.cpp        Program entry point
-│   │   ├── Core/           Application, Time, ResourceManager
-│   │   ├── Window/         SDL window + GL context + GLEW init
-│   │   ├── Input/          Keyboard / mouse state
-│   │   ├── Audio/          SDL_mixer wrapper (SFX + music)
-│   │   └── Graphics/       Rendering                 → src/Engine/Graphics/README.md
-│   │       ├── Core/       Vertex, Texture, GLSLProgram
-│   │       ├── 3D/         Mesh (VAO/VBO/EBO)
-│   │       ├── 2D/         Sprite, Animation, GUILabel
-│   │       └── Camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
-│   └── Game/               The voxel sandbox client  → src/Game/README.md
-├── tests/                  doctest unit tests (headless)  → tests/README.md
+├── src/                    Engine source             → src/README.md
+│   └── mge/                One folder per CMake target → src/mge/README.md
+│       ├── core/           mge_core: headless, no SDL/GPU (Time)
+│       ├── platform/       mge_platform: SDL window + GL context + GLEW, InputManager
+│       ├── render/         mge_render: OpenGL renderer (legacy until #40)
+│       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
+│       │   ├── 3d/         Mesh (VAO/VBO/EBO)
+│       │   ├── 2d/         Sprite, Animation, GUILabel
+│       │   └── camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
+│       ├── audio/          mge_audio: SDL_mixer wrapper
+│       └── app/            mge_app + mge_main: Application loop, main()
+├── games/
+│   └── sandbox/            The voxel sandbox game     → games/sandbox/README.md
+├── tests/                  doctest unit tests (headless): core/, sandbox/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── shaders/            GLSL 330 shaders
 │   ├── textures/           512×512 block tileset atlas
@@ -82,11 +83,11 @@ miniGameEngine/
 │   ├── sounds/             WAV sound effects (unused by current game)
 │   ├── music/              MP3 music (unused by current game)
 │   └── levels/             ASCII 2D level files (legacy, no loader exists)
-├── build/                  CMake build dir (git-ignored)
+├── build/, build-*/        CMake build dirs (git-ignored)
 └── .vscode/                Editor settings + a single‑file gcc task (not the CMake build)
 ```
 
-Every folder under `src/` and `assets/` has its own `README.md` describing each file in detail.
+Every folder under `src/`, `games/` and `assets/` has its own `README.md` describing each file in detail.
 
 ## Documentation index
 
@@ -100,17 +101,17 @@ Every folder under `src/` and `assets/` has its own `README.md` describing each 
 | [docs/BUILDING.md](docs/BUILDING.md) | Toolchain, dependencies, running, troubleshooting |
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Bugs and debt, with file references |
 | [src/README.md](src/README.md) | Source tree overview, include/namespace conventions |
-| [src/Engine/README.md](src/Engine/README.md) | Engine module map |
-| [src/Engine/Core/README.md](src/Engine/Core/README.md) | Application, Time, ResourceManager |
-| [src/Engine/Window/README.md](src/Engine/Window/README.md) | Window |
-| [src/Engine/Input/README.md](src/Engine/Input/README.md) | InputManager |
-| [src/Engine/Audio/README.md](src/Engine/Audio/README.md) | AudioManager |
-| [src/Engine/Graphics/README.md](src/Engine/Graphics/README.md) | Graphics overview |
-| [src/Engine/Graphics/Core/README.md](src/Engine/Graphics/Core/README.md) | Vertex, Texture, GLSLProgram |
-| [src/Engine/Graphics/3D/README.md](src/Engine/Graphics/3D/README.md) | Mesh |
-| [src/Engine/Graphics/2D/README.md](src/Engine/Graphics/2D/README.md) | Sprite, Animation, GUILabel |
-| [src/Engine/Graphics/Camera/README.md](src/Engine/Graphics/Camera/README.md) | Camera hierarchy |
-| [src/Game/README.md](src/Game/README.md) | SandboxApp, Chunk, Block (voxel world) |
+| [src/mge/README.md](src/mge/README.md) | Engine module map |
+| [src/mge/core/README.md](src/mge/core/README.md) | `mge_core`: Time (headless) |
+| [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: Window, InputManager |
+| [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
+| [src/mge/app/README.md](src/mge/app/README.md) | `mge_app`/`mge_main`: Application loop, main() |
+| [src/mge/render/README.md](src/mge/render/README.md) | `mge_render` overview |
+| [src/mge/render/core/README.md](src/mge/render/core/README.md) | Vertex, Texture, GLSLProgram, ResourceManager |
+| [src/mge/render/3d/README.md](src/mge/render/3d/README.md) | Mesh |
+| [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation, GUILabel |
+| [src/mge/render/camera/README.md](src/mge/render/camera/README.md) | Camera hierarchy |
+| [games/sandbox/README.md](games/sandbox/README.md) | SandboxApp, Chunk, Block (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |
 
 ## License

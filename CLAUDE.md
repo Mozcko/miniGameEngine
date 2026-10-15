@@ -16,21 +16,28 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 ## What this is (current state, pre-migration)
 - C++17 mini game engine: SDL2 (window/input/events), OpenGL 3.3 Core via GLEW, GLM math,
   stb_image (textures), SDL2_ttf (text), SDL2_mixer (audio). Linux/Fedora dev box, CMake build.
-- Demo client: `src/Game/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
+- Demo client: `games/sandbox/SandboxApp.cpp` – Minecraft‑like voxel world (16×16×16 chunks,
   procedural sine/cosine terrain, trees/flowers, animated water/lava, text HUD).
 - Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
 
 ## Build & run
 ```bash
 cmake --preset dev && cmake --build --preset dev   # Debug + warnings → build/ (also: release, ci)
-cd build && ./miniGameEngine        # cwd MUST be build/: assets use "../assets/..." paths
+cd build && ./sandbox        # cwd MUST be build/: assets use "../assets/..." paths
 ```
 Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. CI: GitHub Actions (`.github/workflows/ci.yml`, GCC + Clang, `ci` preset) must be green before merging.
 Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 
+## Layout & targets
+- `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
+  builds it with `-DMGE_BUILD_MODULES=OFF`), `mge_platform`, `mge_render`, `mge_audio`, `mge_app` + `mge_main`.
+- `games/sandbox/` = `sandbox_world` lib (Block/Chunk) + `sandbox` exe (written to the build dir root).
+- Tests: `tests/core/` → `mge_core_tests` (core only), `tests/sandbox/` → `sandbox_tests`.
+- Explicit source lists per target CMakeLists (no globbing) – add new files there.
+
 ## Architecture in 10 lines
-1. `src/Engine/Main.cpp` owns `main()` → `Engine::CreateApplication()` (defined by the game) → `Run()`.
+1. `src/mge/app/Main.cpp` owns `main()` → `Engine::CreateApplication()` (defined by the game) → `Run()`.
 2. `Engine::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW) → TTF_Init.
 3. `Run()`: InputManager::Init → `OnInit()` → loop { dt, InputManager::Update, poll events
    (→ `OnEvent` + InputManager::ProcessEvent), `OnUpdate(dt)`, `OnRender()`, swapBuffers }.
@@ -48,7 +55,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Members: `_camelCase` in MiniGameEngine classes, `m_PascalCase`/`s_PascalCase` in Engine classes;
   Camera3D mixes in PascalCase public‑style fields (`Position`, `Yaw`...). Match the file you're in.
 - Methods: `camelCase` in MiniGameEngine, `PascalCase` in Engine (InputManager, Application).
-- Include root is `src/` (`#include <Engine/Core/Application.h>`), relative includes also used.
+- Include roots `src/` and `games/`; always root‑relative: `#include <mge/core/Time.h>`, `#include <sandbox/Chunk.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
