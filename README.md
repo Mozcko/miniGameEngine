@@ -60,6 +60,7 @@ miniGameEngine/
 ├── README.md               This file
 ├── LICENSE                 GNU LGPL v2.1
 ├── docs/                   Cross‑cutting documentation
+│   ├── FIRST_GAME.md       Your first game in 10 minutes
 │   ├── ROADMAP.md          Goals, decisions, milestones → GitHub issues
 │   ├── adr/                Architecture decision records
 │   ├── ARCHITECTURE.md     Main loop, namespaces, rendering pipeline, ownership
@@ -98,6 +99,7 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 
 | Document | What it covers |
 |----------|----------------|
+| [docs/FIRST_GAME.md](docs/FIRST_GAME.md) | **Start here to make a game**: scaffold, lifecycle, input, ECS, run/debug/test |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Goals, key decisions, milestones and GitHub issues |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, branch/commit/PR rules, conventions, labels |
 | [docs/adr/](docs/adr/README.md) | Architecture decision records (SDL3 GPU, zero assets, headless core) |

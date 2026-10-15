@@ -1,10 +1,7 @@
 // @GAME_TITLE@: programa headless generado con scripts/new-game.sh (plantilla "headless").
 // Sin módulos: sin ventana, GPU ni SDL. Ideal para simulaciones, servidores y herramientas.
 // Corre 600 frames con un reloj manual (determinista) y verifica el resultado al terminar.
-#include <mge/core/Application.h>
-#include <mge/core/Clock.h>
-#include <mge/core/Log.h>
-#include <mge/core/ecs/World.h>
+#include <mge/mge.h> // Sin módulos enlazados: solo el core (sin SDL ni OpenGL)
 
 #include <memory>
 

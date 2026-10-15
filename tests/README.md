@@ -18,6 +18,8 @@ ctest --preset dev                      # all tests
 | `test_main.cpp` | doctest `main()` – no tests here |
 | `core/test_time.cpp` | `Time`: scaling, pause, hitch clamp, real clock never negative |
 | `core/test_ecs.cpp` | Entity lifecycle/recycling, components, swap‑and‑pop integrity, views, transform hierarchy (rotation, cycles, destroyed parent), World phases, ECS systems in a headless app |
+| `core/test_umbrella.cpp` | `<mge/mge.h>` with only `mge_core`: compiles without SDL and doesn't see module headers (`#error` otherwise) |
+| `platform/test_umbrella_platform.cpp` | `<mge/mge.h>` with `mge_platform`: `PlatformModule` is available |
 | `core/test_input.cpp` | `InputState` edges, mouse delta/wheel, `clear`, `ActionMap` multi‑binding actions and axes |
 | `platform/test_sdl_input.cpp` | `mge_platform_tests`: scancode/button translation and `applySdlEvent` with hand‑built SDL events (no SDL init, no window) |
 | `game/test_block.cpp` | `Block` active/solid/opaque rules, atlas UV lookup per face (`Block::getUVs`) |

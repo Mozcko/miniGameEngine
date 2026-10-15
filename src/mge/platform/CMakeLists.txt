@@ -7,3 +7,6 @@ add_library(mge_platform STATIC
 target_link_libraries(mge_platform PUBLIC mge_core SDL3::SDL3 OpenGL::GL GLEW::GLEW)
 target_include_directories(mge_platform SYSTEM PUBLIC ${GLEW_INCLUDE_DIRS})
 mge_set_warnings(mge_platform)
+
+# Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_PLATFORM
+target_compile_definitions(mge_platform INTERFACE MGE_HAS_PLATFORM=1)

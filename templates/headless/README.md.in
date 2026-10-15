@@ -7,5 +7,5 @@ GPU and no SDL. It runs 600 deterministic frames (`ManualClock`) and verifies it
 ```bash
 cmake --preset dev
 cmake --build --preset dev --target run-@GAME_NAME@
-ctest --preset dev -R @GAME_NAME@
+cmake --build --preset dev && ctest --preset dev -R @GAME_NAME@
 ```

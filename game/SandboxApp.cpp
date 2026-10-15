@@ -1,18 +1,11 @@
-#include <mge/core/Application.h>
-#include <mge/core/Assets.h>
-#include <mge/audio/AudioModule.h>
-#include <mge/platform/PlatformModule.h>
-#include <mge/core/Log.h>
-#include <vector>
-#include <map>
-#include <SDL3/SDL.h>
-#include <mge/render/core/GLSLProgram.h>
-#include <mge/render/core/Texture.h>
-#include <mge/render/3d/Mesh.h>
-#include <mge/render/camera/Camera3D.h>
+#include <mge/mge.h>
+
 #include <game/Block.h>
 #include <game/Chunk.h>
+#include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <map>
+#include <vector>
 
 using namespace mge;
 

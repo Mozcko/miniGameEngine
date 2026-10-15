@@ -42,6 +42,7 @@ ctest --preset dev                                 # headless unit tests
 scripts/run.sh                             # build + run (works from any directory)
 ```
 
+- **Making a game:** start with [docs/FIRST_GAME.md](docs/FIRST_GAME.md).
 - **VS Code:** Ctrl+Shift+B builds, F5 debugs the game, and tasks run tests, lint and new‑game (see BUILDING → VS Code).
 - Reproduce CI with `cmake --preset ci -G Ninja && cmake --build --preset ci && ctest --preset ci`
   (`-Werror`).

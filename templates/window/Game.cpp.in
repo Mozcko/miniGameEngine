@@ -1,13 +1,9 @@
 // @GAME_TITLE@: juego generado con scripts/new-game.sh (plantilla "window").
 // Una ventana cuyo color de fondo late. Muestra: módulos, acciones de input, una entidad del ECS
 // actualizada en el paso fijo y el log. Esc sale, Espacio (mantener) acelera.
-#include <mge/audio/AudioModule.h>
-#include <mge/core/Application.h>
-#include <mge/core/Log.h>
-#include <mge/core/ecs/World.h>
-#include <mge/platform/PlatformModule.h>
+#include <mge/mge.h> // API del motor (core + los módulos que enlaza este juego)
 
-#include <GL/glew.h>
+#include <GL/glew.h> // OpenGL directo hasta el renderer nuevo (M3)
 #include <cmath>
 
 namespace {

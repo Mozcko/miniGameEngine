@@ -16,3 +16,6 @@ add_library(mge_render STATIC
 target_link_libraries(mge_render PUBLIC mge_core OpenGL::GL GLEW::GLEW)
 target_include_directories(mge_render SYSTEM PUBLIC ${GLEW_INCLUDE_DIRS})
 mge_set_warnings(mge_render)
+
+# Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_RENDER
+target_compile_definitions(mge_render INTERFACE MGE_HAS_RENDER=1)

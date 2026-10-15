@@ -27,6 +27,7 @@ add_executable(mge_core_tests
     core/test_random.cpp
     core/test_log_stripped.cpp
     core/test_time.cpp
+    core/test_umbrella.cpp
 )
 target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
 mge_set_warnings(mge_core_tests)
@@ -37,6 +38,7 @@ if(MGE_BUILD_MODULES)
     add_executable(mge_platform_tests
         test_main.cpp
         platform/test_sdl_input.cpp
+        platform/test_umbrella_platform.cpp
     )
     target_link_libraries(mge_platform_tests PRIVATE mge_platform doctest_header)
     mge_set_warnings(mge_platform_tests)
