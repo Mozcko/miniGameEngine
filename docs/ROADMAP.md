@@ -4,12 +4,14 @@ Goal: a **heavily optimizable C++ engine** whose **core runs headless** (no wind
 
 ## Key decisions
 
+Recorded as ADRs in [docs/adr/](adr/README.md). Contribution rules are in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 | Decision | Choice |
 |---|---|
-| Headless | `mge_core` builds/runs without SDL or a GPU; platform/render/audio are optional modules |
+| Headless ([ADR 0003](adr/0003-headless-core.md)) | `mge_core` builds/runs without SDL or a GPU; platform/render/audio are optional modules |
 | Visuals | Hybrid: CPU procedural meshes + procedural shaders + optional SDF raymarching |
-| Assets | Zero external files: shaders embedded as bytecode, bitmap font in code, synthesized audio |
-| GPU API | **SDL3 GPU API** (Vulkan on Linux/Windows, Metal on macOS, D3D12 on Windows/Xbox). **No new work on OpenGL**; the GL renderer is removed after parity (#40) |
+| Assets ([ADR 0002](adr/0002-zero-asset-policy.md)) | Zero external files: shaders embedded as bytecode, bitmap font in code, synthesized audio |
+| GPU API ([ADR 0001](adr/0001-sdl3-gpu-api.md)) | **SDL3 GPU API** (Vulkan on Linux/Windows, Metal on macOS, D3D12 on Windows/Xbox). **No new work on OpenGL**; the GL renderer is removed after parity (#40) |
 | Platform | **SDL3** (migration in #9) |
 
 ## Migration path OpenGL → SDL3 GPU
@@ -33,13 +35,13 @@ _Make the repo safe to change: clean history, strict build, tests and CI._ Repo 
 
 | # | Issue | Labels |
 |---|---|---|
-| [#1](https://github.com/Mozcko/miniGameEngine/issues/1) | Commit documentation and stop tracking the build/ directory | chore, priority:critical, size:S |
-| [#2](https://github.com/Mozcko/miniGameEngine/issues/2) | Harden CMake: Release default, warnings, C++17 required, compile_commands | chore, priority:high, size:S |
-| [#3](https://github.com/Mozcko/miniGameEngine/issues/3) | Add a unit test framework (doctest + CTest) | testing, priority:high, size:S |
-| [#4](https://github.com/Mozcko/miniGameEngine/issues/4) | GitHub Actions CI: Linux build with warnings + tests | chore, priority:high, size:M |
-| [#5](https://github.com/Mozcko/miniGameEngine/issues/5) | Bug: trees and roses never spawn (RNG reuse in Chunk::generate) | bug, priority:high, size:S, good first issue |
-| [#6](https://github.com/Mozcko/miniGameEngine/issues/6) | Bug: FPS counter divides by zero while paused | bug, priority:low, size:S, good first issue |
-| [#7](https://github.com/Mozcko/miniGameEngine/issues/7) | Add ROADMAP.md, CONTRIBUTING.md and architecture decision records | documentation, priority:medium, size:S |
+| [#1](https://github.com/Mozcko/miniGameEngine/issues/1) | ✅ Commit documentation and stop tracking the build/ directory | chore, priority:critical, size:S |
+| [#2](https://github.com/Mozcko/miniGameEngine/issues/2) | ✅ Harden CMake: Release default, warnings, C++17 required, compile_commands | chore, priority:high, size:S |
+| [#3](https://github.com/Mozcko/miniGameEngine/issues/3) | ✅ Add a unit test framework (doctest + CTest) | testing, priority:high, size:S |
+| [#4](https://github.com/Mozcko/miniGameEngine/issues/4) | ✅ GitHub Actions CI: Linux build with warnings + tests | chore, priority:high, size:M |
+| [#5](https://github.com/Mozcko/miniGameEngine/issues/5) | ✅ Bug: trees and roses never spawn (RNG reuse in Chunk::generate) | bug, priority:high, size:S, good first issue |
+| [#6](https://github.com/Mozcko/miniGameEngine/issues/6) | ✅ Bug: FPS counter divides by zero while paused | bug, priority:low, size:S, good first issue |
+| [#7](https://github.com/Mozcko/miniGameEngine/issues/7) | ✅ Add ROADMAP.md, CONTRIBUTING.md and architecture decision records | documentation, priority:medium, size:S |
 
 ### M1 · Headless Core & SDL3 — [epic #69](https://github.com/Mozcko/miniGameEngine/issues/69)
 
@@ -159,4 +161,4 @@ _Ship a game that is a single executable with no asset files._ A showcase game b
 
 ## Suggested order
 
-#1 → #2 → #3 → #4 (safety net) → #5, #6 (quick fixes) → #8 → #9 → #10 → #11 → #12 … Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7) is done. Next: #8 → #9 → #10 → #11 → #12 … Each issue's **Depends on** section on GitHub lists its prerequisites.

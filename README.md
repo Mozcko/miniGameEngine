@@ -51,11 +51,13 @@ cd build-release && ./miniGameEngine   # MUST run from a dir next to assets/ (".
 ```
 miniGameEngine/
 ├── CMakeLists.txt          Build script: one executable from src/Engine + src/Game
+├── CONTRIBUTING.md         Workflow, conventions, PR rules
 ├── CLAUDE.md               Condensed context for AI assistants / new contributors
 ├── README.md               This file
 ├── LICENSE                 GNU LGPL v2.1
 ├── docs/                   Cross‑cutting documentation
 │   ├── ROADMAP.md          Goals, decisions, milestones → GitHub issues
+│   ├── adr/                Architecture decision records
 │   ├── ARCHITECTURE.md     Main loop, namespaces, rendering pipeline, ownership
 │   ├── BUILDING.md         Dependencies, build/run, troubleshooting
 │   └── KNOWN_ISSUES.md     Bugs, quirks and technical debt found while reviewing
@@ -91,6 +93,8 @@ Every folder under `src/` and `assets/` has its own `README.md` describing each 
 | Document | What it covers |
 |----------|----------------|
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Goals, key decisions, milestones and GitHub issues |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, branch/commit/PR rules, conventions, labels |
+| [docs/adr/](docs/adr/README.md) | Architecture decision records (SDL3 GPU, zero assets, headless core) |
 | [CLAUDE.md](CLAUDE.md) | Short "everything you need to know" summary and conventions |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together at runtime |
 | [docs/BUILDING.md](docs/BUILDING.md) | Toolchain, dependencies, running, troubleshooting |
