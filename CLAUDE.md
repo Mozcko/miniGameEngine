@@ -9,7 +9,9 @@ and a `README.md` inside every folder of `src/` and `assets/`.
   issues #1–#67, epics #68–#76 on Mozcko/miniGameEngine).
 - **GPU API decision: SDL3 GPU API (Vulkan/Metal/D3D12). Do NOT build new features on OpenGL** – the
   GL renderer is legacy and gets deleted after parity (#40). Platform moves SDL2 → SDL3 (#9).
-- Branches: `type/<issue>-slug` (e.g. `chore/1-repo-hygiene`); PRs reference "Closes #N".
+- Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
+  per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
+  0002 zero assets, 0003 headless core) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state, pre-migration)
 - C++17 mini game engine: SDL2 (window/input/events), OpenGL 3.3 Core via GLEW, GLM math,
