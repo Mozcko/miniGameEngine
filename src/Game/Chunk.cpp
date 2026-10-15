@@ -105,7 +105,10 @@ namespace MiniGameEngine
             {
                 int worldX = _x * CHUNK_SIZE + x;
                 int worldZ = _z * CHUNK_SIZE + z;
-                srand(worldX * 8921 + worldZ * 33771); // Misma semilla para consistencia
+                // Semilla distinta a la de la pasada 1: con la misma semilla, la primera tirada
+                // repetía la de la grava (siempre >= 5 en el pasto) y nunca salían árboles ni rosas.
+                // Sigue siendo determinista por columna. (#5; el RNG definitivo llega en #14)
+                srand((worldX * 8921 + worldZ * 33771) ^ 0x5bd1e995);
 
                 int height = getTerrainHeight(worldX, worldZ);
                 BlockType surface = _blocks[x][height][z].getType();

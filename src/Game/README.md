@@ -98,10 +98,10 @@ in pass 2):
 - `height-3 < y < height`: Dirt (2 layers). Below: Stone.
 - Pass 2, on Grass above water: 2 % tree, 2 % Rose, 2 % Flower (one `rand()%100` roll).
 
-⚠️ **Bug:** the decoration roll is the *first* `rand()` after re‑seeding, which is the same value
-as pass 1's gravel roll. Grass columns only exist where that roll was ≥ 5, so trees (r < 2) and
-roses (r < 4) **never spawn**; only flowers (r == 5, ~1 %) appear. Verified by generating 1,600
-chunks headlessly. See `docs/KNOWN_ISSUES.md` #0.
+Pass 2 seeds with `seed ^ 0x5bd1e995`. Re‑using pass 1's seed made the decoration roll repeat the
+gravel roll, so trees and roses never spawned (fixed in #5). A regression test in
+`tests/test_chunk.cpp` checks that each decoration lands at 1–3 % of grass columns; the measured
+rate is ≈ 1.9 %.
 
 ### Meshing rules
 - Skip Air. Non‑opaque blocks go to the transparent mesh, others to the opaque mesh.

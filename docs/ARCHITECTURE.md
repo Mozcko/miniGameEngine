@@ -146,9 +146,9 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 - **Chunk** = 16 (X) × 16 (Y) × 16 (Z) `Block`s, world position `(cx*16, 0, cz*16)`.
 - **Generation** (`Chunk::generate`): height = `(sin(wx*0.2) + cos(wz*0.2)) * 3 + 6`, clamped
   to [1, 15]. Below the surface: 2 layers dirt, rest stone. Water fills air up to y = 5. Surface is
-  sand near water, else grass with 5 % gravel and 0.5 % lava pools. Decoration pass is *intended* as 2 % trees,
-  2 % roses, 2 % flowers on grass, but because of an RNG reuse bug only flowers (~1 %) ever
-  spawn (KNOWN_ISSUES #0). `srand(wx*8921 + wz*33771)` per column → deterministic world.
+  sand near water, else grass with 5 % gravel and 0.5 % lava pools. Decoration pass: 2 % trees,
+  2 % roses, 2 % flowers on grass. Per column, pass 1 seeds `srand(wx*8921 + wz*33771)` and pass 2
+  seeds the same value XOR `0x5bd1e995` (#5) → deterministic world.
 - **Meshing** (`Chunk::buildMesh`): face culling against neighbours (cross‑chunk neighbours are
   *predicted* procedurally, not read from the real neighbour chunk), cross‑shaped billboards for
   plants/cobweb, separate opaque / transparent meshes.
