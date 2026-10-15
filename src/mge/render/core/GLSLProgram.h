@@ -3,7 +3,7 @@
 #include <string>
 #include <GL/glew.h>
 
-namespace MiniGameEngine {
+namespace mge {
 
     class GLSLProgram {
     public:
@@ -21,7 +21,7 @@ namespace MiniGameEngine {
 
         // Activa el shader para usarlo
         void use();
-        
+
         // Desactiva el shader
         void unuse();
 
@@ -30,12 +30,12 @@ namespace MiniGameEngine {
 
     private:
         // ID del programa en la GPU
-        GLuint _programID;
-        GLuint _vertexShaderID;
-        GLuint _fragmentShaderID;
-        
+        GLuint m_programId;
+        GLuint m_vertexShaderId;
+        GLuint m_fragmentShaderId;
+
         // Contador de atributos
-        int _numAttributes;
+        int m_numAttributes;
 
         // Función auxiliar para compilar un shader individual
         void compileShader(const std::string& filePath, GLuint id);

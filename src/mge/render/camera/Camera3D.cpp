@@ -3,20 +3,19 @@
 #include <SDL2/SDL.h>
 #include <cmath>
 
-namespace Engine {
+namespace mge {
 
     Camera3D::Camera3D(int width, int height, glm::vec3 position)
-        : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(10.0f), MouseSensitivity(0.1f),
-          _width((float)width), _height((float)height), _fov(45.0f),
-          m_Velocity(0.0f), m_IsGrounded(false)
-    {
-        Position = position;
-        WorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        Yaw = -90.0f;
-        Pitch = 0.0f;
-        
+        : m_front(glm::vec3(0.0f, 0.0f, -1.0f)), m_movementSpeed(10.0f), m_mouseSensitivity(0.1f),
+          m_width((float)width), m_height((float)height), m_fov(45.0f), m_velocity(0.0f),
+          m_isGrounded(false) {
+        m_position = position;
+        m_worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        m_yaw = -90.0f;
+        m_pitch = 0.0f;
+
         updateCameraVectors();
-        updateProjection(_width, _height);
+        updateProjection(m_width, m_height);
     }
 
     void Camera3D::update(float deltaTime) {
@@ -24,86 +23,86 @@ namespace Engine {
         if (deltaTime <= 0.0001f) return;
 
         // 1. Ratón
-        if (InputManager::IsCursorLocked()) {
-            glm::vec2 mouseDelta = InputManager::GetMouseDelta();
+        if (InputManager::isCursorLocked()) {
+            glm::vec2 mouseDelta = InputManager::getMouseDelta();
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-                Yaw   += mouseDelta.x * MouseSensitivity;
-                Pitch -= mouseDelta.y * MouseSensitivity; // Invertido (SDL Y es abajo)
+                m_yaw += mouseDelta.x * m_mouseSensitivity;
+                m_pitch -= mouseDelta.y * m_mouseSensitivity; // Invertido (SDL Y es abajo)
 
-                if (Pitch > 89.0f) Pitch = 89.0f;
-                if (Pitch < -89.0f) Pitch = -89.0f;
+                if (m_pitch > 89.0f) m_pitch = 89.0f;
+                if (m_pitch < -89.0f) m_pitch = -89.0f;
 
                 updateCameraVectors();
             }
         }
 
         // 2. Teclado
-        float speed = MovementSpeed * deltaTime;
-        
+        float speed = m_movementSpeed * deltaTime;
+
         // Sprint con Control
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_LCTRL)) {
+        if (InputManager::isKeyPressed(SDL_SCANCODE_LCTRL)) {
             speed *= 2.5f;
         }
 
         glm::vec3 moveDir(0.0f);
-        
+
         // Movimiento libre (Free Fly)
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_W)) moveDir += Front;
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_S)) moveDir -= Front;
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_A)) moveDir -= Right;
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_D)) moveDir += Right;
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_SPACE)) moveDir += WorldUp;
-        if (InputManager::IsKeyPressed(SDL_SCANCODE_LSHIFT)) moveDir -= WorldUp;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_W)) moveDir += m_front;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_S)) moveDir -= m_front;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_A)) moveDir -= m_right;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_D)) moveDir += m_right;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_SPACE)) moveDir += m_worldUp;
+        if (InputManager::isKeyPressed(SDL_SCANCODE_LSHIFT)) moveDir -= m_worldUp;
 
         if (glm::length(moveDir) > 0.0f) moveDir = glm::normalize(moveDir) * speed;
 
-        if (m_CollisionCallback) {
+        if (m_collisionCallback) {
             // Colisiones sin gravedad (Flotar)
             glm::vec3 boxSize(0.3f); // Tamaño de la caja de colisión
-            
+
             // Eje X
-            Position.x += moveDir.x;
-            if (m_CollisionCallback(Position - boxSize, Position + boxSize)) Position.x -= moveDir.x;
+            m_position.x += moveDir.x;
+            if (m_collisionCallback(m_position - boxSize, m_position + boxSize)) m_position.x -= moveDir.x;
 
             // Eje Z
-            Position.z += moveDir.z;
-            if (m_CollisionCallback(Position - boxSize, Position + boxSize)) Position.z -= moveDir.z;
+            m_position.z += moveDir.z;
+            if (m_collisionCallback(m_position - boxSize, m_position + boxSize)) m_position.z -= moveDir.z;
 
             // Eje Y
-            Position.y += moveDir.y;
-            if (m_CollisionCallback(Position - boxSize, Position + boxSize)) Position.y -= moveDir.y;
-            
+            m_position.y += moveDir.y;
+            if (m_collisionCallback(m_position - boxSize, m_position + boxSize)) m_position.y -= moveDir.y;
+
         } else {
             // Sin colisiones
-            Position += moveDir;
+            m_position += moveDir;
         }
 
         // Recalcular vista si hubo movimiento (opcional optimizar checkeando cambios)
-        _viewMatrix = glm::lookAt(Position, Position + Front, Up);
+        m_viewMatrix = glm::lookAt(m_position, m_position + m_front, m_up);
     }
 
     void Camera3D::updateProjection(float width, float height) {
-        _width = width;
-        _height = height;
-        _projectionMatrix = glm::perspective(glm::radians(_fov), _width / _height, 0.1f, 1000.0f);
+        m_width = width;
+        m_height = height;
+        m_projectionMatrix = glm::perspective(glm::radians(m_fov), m_width / m_height, 0.1f, 1000.0f);
     }
 
     void Camera3D::updateCameraVectors() {
         glm::vec3 front;
-        front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-        front.y = sin(glm::radians(Pitch));
-        front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-        Front = glm::normalize(front);
-        Right = glm::normalize(glm::cross(Front, WorldUp));
-        Up    = glm::normalize(glm::cross(Right, Front));
+        front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+        front.y = sin(glm::radians(m_pitch));
+        front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+        m_front = glm::normalize(front);
+        m_right = glm::normalize(glm::cross(m_front, m_worldUp));
+        m_up = glm::normalize(glm::cross(m_right, m_front));
     }
 
     glm::mat4 Camera3D::getViewMatrix() const {
-        return _viewMatrix;
+        return m_viewMatrix;
     }
 
     glm::mat4 Camera3D::getProjectionMatrix() const {
-        return _projectionMatrix;
+        return m_projectionMatrix;
     }
 
     bool Camera3D::isSphereVisible(const glm::vec3& /*center*/, float /*radius*/) const {

@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 #include <mge/core/Time.h>
 
-using namespace MiniGameEngine;
+using namespace mge;
 
 // Time es estático: cada test deja la escala en 1 para no afectar a los demás
 struct TimeScaleGuard {

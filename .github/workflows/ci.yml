@@ -83,3 +83,28 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build-core --output-on-failure
+
+  # Formato (clang-format) y convención de nombres (clang-tidy), mismas versiones que en desarrollo
+  lint:
+    name: lint (format + naming)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libsdl2-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libglew-dev libglm-dev libstb-dev
+          pip install --user clang-format==22.1.8 clang-tidy==22.1.8
+
+      - name: clang-format
+        run: git ls-files '*.h' '*.cpp' | xargs clang-format --dry-run --Werror
+
+      - name: Configure (compile_commands.json)
+        run: cmake --preset ci -G Ninja
+
+      - name: clang-tidy (naming convention)
+        run: git ls-files '*.cpp' | xargs -P 4 -n 1 clang-tidy -p build-ci --quiet

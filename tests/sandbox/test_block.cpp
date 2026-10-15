@@ -2,7 +2,7 @@
 #include <sandbox/Block.h>
 #include <initializer_list>
 
-using namespace MiniGameEngine;
+using namespace mge;
 
 TEST_CASE("Air es el único bloque inactivo") {
     CHECK_FALSE(Block().isActive());
@@ -30,9 +30,8 @@ TEST_CASE("Vidrio y hojas: sólidos pero transparentes") {
 
 TEST_CASE("Bloques normales: sólidos y opacos") {
     for (BlockType t : {BlockType::Grass, BlockType::Dirt, BlockType::Stone, BlockType::Wood,
-                        BlockType::RefinedStone, BlockType::Brick, BlockType::TNT,
-                        BlockType::Cobblestone, BlockType::Coal, BlockType::Sand,
-                        BlockType::Gravel, BlockType::Log}) {
+                        BlockType::RefinedStone, BlockType::Brick, BlockType::TNT, BlockType::Cobblestone,
+                        BlockType::Coal, BlockType::Sand, BlockType::Gravel, BlockType::Log}) {
         CAPTURE(static_cast<int>(t));
         CHECK(Block(t).isSolid());
         CHECK(Block(t).isOpaque());
@@ -45,10 +44,10 @@ static void checkTile(const UVRect& uv, int tile) {
     const float step = 1.0f / 16.0f;
     const int col = tile % 16;
     const int row = tile / 16;
-    CHECK(uv.u_min == doctest::Approx(col * step));
-    CHECK(uv.u_max == doctest::Approx((col + 1) * step));
-    CHECK(uv.v_max == doctest::Approx(1.0f - row * step));
-    CHECK(uv.v_min == doctest::Approx(1.0f - (row + 1) * step));
+    CHECK(uv.uMin == doctest::Approx(col * step));
+    CHECK(uv.uMax == doctest::Approx((col + 1) * step));
+    CHECK(uv.vMax == doctest::Approx(1.0f - row * step));
+    CHECK(uv.vMin == doctest::Approx(1.0f - (row + 1) * step));
 }
 
 TEST_CASE("UVs del pasto por cara") {

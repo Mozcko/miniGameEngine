@@ -1,15 +1,15 @@
 # games/sandbox/
 
 The client application: a Minecraft‑style voxel sandbox. Depends on the engine (`src/mge`); nothing
-in the engine depends on it except the `Engine::CreateApplication()` definition.
+in the engine depends on it except the `mge::createApplication()` definition.
 
 | File | Contents |
 |------|----------|
-| `SandboxApp.cpp` | `SandboxApp : Engine::Application` (game loop callbacks), `ChunkKey`, and `Engine::CreateApplication()` |
-| `Chunk.h/.cpp` | `Chunk` – 16×16×16 block storage, terrain generation, mesh building, drawing. Constants `CHUNK_SIZE = 16`, `CHUNK_HEIGHT = 16` |
+| `SandboxApp.cpp` | `SandboxApp : mge::Application` (game loop callbacks), `ChunkKey`, and `mge::createApplication()` |
+| `Chunk.h/.cpp` | `Chunk` – 16×16×16 block storage, terrain generation, mesh building, drawing. Constants `kChunkSize = 16`, `kChunkHeight = 16` |
 | `Block.h/.cpp` | `BlockType` enum, `UVRect`, `Block` (solid/opaque rules, per‑face atlas UVs) |
 
-Block and Chunk live in namespace `MiniGameEngine` (same as engine classes).
+Block and Chunk live in namespace `mge` (same as engine classes).
 
 CMake (`games/sandbox/CMakeLists.txt`): `sandbox_world` (static lib: Block, Chunk – tested by
 `tests/sandbox/`) and `sandbox` (executable: SandboxApp + `mge_main`, written to the build dir root).
@@ -22,46 +22,46 @@ Include as `#include <sandbox/Chunk.h>`.
 ### Members
 | Member | Type | Role |
 |--------|------|------|
-| `shader3D` | `GLSLProgram` | `basic3d.vert/frag` – world rendering |
-| `camera` | `Engine::Camera3D` | Player view, created 1280×720, starts at (0, 25, 0) |
-| `chunkMap` | `std::map<ChunkKey, Chunk*>` | All loaded chunks, owned (deleted in destructor) |
-| `tilesetTexture` | `Texture` | `Minecraft-like_3d_tileset.png` |
-| `_guiShader` | `GLSLProgram` | `texture.vert/frag` – HUD |
-| `_guiCamera` | `Engine::Camera2D` | HUD projection |
-| `_fpsLabel`, `_infoLabel` | `GUILabel` | Yellow "FPS: N" (PixelOperator8‑Bold 24) and white "MiniGameEngine v1.0 - WASD to Move" (PixelOperator8 16) |
-| `waterFrames` / `lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
-| `waterTarget` / `lavaTarget` | `int` | Tiles 207 / 239 – overwritten each animation step |
-| `animTimer`, `currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
-| `isPaused`, `mouseCaptured` | `bool` | Pause state; `mouseCaptured` is always true |
+| `m_shader3D` | `GLSLProgram` | `basic3d.vert/frag` – world rendering |
+| `camera` | `mge::Camera3D` | Player view, created 1280×720, starts at (0, 25, 0) |
+| `m_chunkMap` | `std::map<ChunkKey, Chunk*>` | All loaded chunks, owned (deleted in destructor) |
+| `m_tilesetTexture` | `Texture` | `Minecraft-like_3d_tileset.png` |
+| `m_guiShader` | `GLSLProgram` | `texture.vert/frag` – HUD |
+| `m_guiCamera` | `mge::Camera2D` | HUD projection |
+| `m_fpsLabel`, `m_infoLabel` | `GUILabel` | Yellow "FPS: N" (PixelOperator8‑Bold 24) and white "MiniGameEngine v1.0 - WASD to Move" (PixelOperator8 16) |
+| `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
+| `m_waterTarget` / `m_lavaTarget` | `int` | Tiles 207 / 239 – overwritten each animation step |
+| `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
+| `m_isPaused`, `m_mouseCaptured` | `bool` | Pause state; `m_mouseCaptured` is always true |
 
-### `OnInit`
-1. Compile/link `shader3D`; set the camera position; install the **collision callback**: convert the
+### `onInit`
+1. Compile/link `m_shader3D`; set the camera position; install the **collision callback**: convert the
    AABB to block coordinates with `floor(v + 0.5)` and return true if any block in range
    `isSolid()` (via `getGlobalBlock`).
 2. Load the tileset texture.
 3. GL state: depth test on, back‑face culling on, alpha blending.
 4. `Time::init()`, lock the cursor.
-5. Compile/link `_guiShader`, initialise both labels.
+5. Compile/link `m_guiShader`, initialise both labels.
 
-### `OnEvent`
+### `onEvent`
 | Event | Action |
 |-------|--------|
 | Window resized | `glViewport` + `camera.updateProjection` (HUD camera not updated) |
 | Focus gained (not paused) | Re‑lock cursor |
 | Mouse button down (not paused) | Re‑lock cursor |
-| `Esc` | `m_Running = false` |
+| `Esc` | `m_running = false` |
 | `P` | Toggle pause: time scale 0/1, cursor unlock/lock |
 
-### `OnUpdate(dt)` (the `dt` argument is ignored)
+### `onUpdate(dt)` (the `dt` argument is ignored)
 1. `Time::update()`; `deltaTime = Time::getDeltaTime()`.
-2. Every 0.2 s of unscaled time: `tilesetTexture.updateTile(207, waterFrames[i % 5], 32, 32)` and
+2. Every 0.2 s of unscaled time: `m_tilesetTexture.updateTile(207, m_waterFrames[i % 5], 32, 32)` and
    the same for lava into 239.
 3. Chunk streaming: camera chunk `(floor(x/16), floor(z/16))`; for every chunk within
    `renderDist = 4` (9×9 = 81 chunks) that passes `isSphereVisible` (always true) and isn't
    loaded → `new Chunk(cx, cz)` (generation) then `chunk->buildMesh()` (GPU upload), both synchronously.
 4. `camera.update(deltaTime)`.
 
-### `OnRender`
+### `onRender`
 Sky clear → opaque pass over all chunks → transparent pass with `glDepthMask(GL_FALSE)` →
 HUD with depth test off (FPS text refreshed every 60 frames). See `docs/ARCHITECTURE.md` §6.
 
@@ -78,14 +78,14 @@ Unloaded chunk → `Air`. `y` is passed through; `Chunk::getBlock` returns Air o
 ## `Chunk`
 
 World‑space origin `(cx*16, 0, cz*16)`; block `(x,y,z)` is a unit cube centred at
-`origin + (x, y, z)`. Storage: `Block _blocks[16][16][16]` indexed `[x][y][z]`.
+`origin + (x, y, z)`. Storage: `Block m_blocks[16][16][16]` indexed `[x][y][z]`.
 
 | Method | Behaviour |
 |--------|-----------|
 | `Chunk(cx, cz)` | `generate()` only (CPU data, no GPU) – testable headless. Call `buildMesh()` before drawing. |
 | `~Chunk()` | Deletes both meshes. |
 | `generate()` | Pass 1 terrain, pass 2 decoration (below). |
-| `buildMesh()` | Builds `_meshOpaque` and `_meshTransparent` (below). Calling it twice leaks the old meshes. |
+| `buildMesh()` | Builds `m_meshOpaque` and `m_meshTransparent` (below). Calling it twice leaks the old meshes. |
 | `drawOpaque(shader)` / `drawTransparent(shader)` | Sets uniform `model = translate(getPosition())` and draws. Shader must already be in use. |
 | `getBlock(x,y,z)` | Local coords; Air when out of range. |
 | `getPosition()`, `getCenter()`, `getRadius()` (14) | For placement / culling. |
@@ -93,7 +93,7 @@ World‑space origin `(cx*16, 0, cz*16)`; block `(x,y,z)` is a unit cube centred
 | `placeTree(x,y,z)` (private) | Trunk of 4–5 `Log`; diamond‑ish canopy of `Leaves` (Manhattan dist < 4, radius 2, 4 layers from `y+h-2` to `y+h+1`) only inside this chunk and only into air. |
 | `getNeighborBlock(x,y,z)` (private) | Inside chunk → real block; outside in XZ → *procedural guess* (above height: water if y ≤ 5 else air; else Stone). |
 
-### Generation rules (`WATER_LEVEL = 5`)
+### Generation rules (`waterLevel = 5`)
 Per column, seeded with `srand(wx*8921 + wz*33771)` (deterministic; the same seed is re‑applied
 in pass 2):
 - `y > height`: Water if `y ≤ 5`, else Air.
@@ -121,7 +121,7 @@ rate is ≈ 1.9 %.
 
 ## `Block` / `BlockType`
 
-`Block` is a 1‑field value type (`BlockType _type`, default Air).
+`Block` is a 1‑field value type (`BlockType m_type`, default Air).
 
 | Rule | Types |
 |------|-------|

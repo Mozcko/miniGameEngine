@@ -2,27 +2,27 @@
 #include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 
-namespace Engine {
+namespace mge {
 
     class InputManager {
     public:
-        static void Init(SDL_Window* window);
-        static void Update();
-        static void ProcessEvent(const SDL_Event& event);
+        static void init(SDL_Window* window);
+        static void update();
+        static void processEvent(const SDL_Event& event);
 
         // Mouse
-        static glm::vec2 GetMousePosition();
-        static glm::vec2 GetMouseDelta();
-        static void SetCursorMode(bool locked);
-        static bool IsCursorLocked();
+        static glm::vec2 getMousePosition();
+        static glm::vec2 getMouseDelta();
+        static void setCursorMode(bool locked);
+        static bool isCursorLocked();
 
         // Keyboard
-        static bool IsKeyPressed(SDL_Scancode key);
+        static bool isKeyPressed(SDL_Scancode key);
 
     private:
-        static glm::vec2 s_MousePos;
-        static glm::vec2 s_MouseDelta;
-        static bool s_CursorLocked;
-        static SDL_Window* s_Window;
+        static glm::vec2 s_mousePos;
+        static glm::vec2 s_mouseDelta;
+        static bool s_cursorLocked;
+        static SDL_Window* s_window;
     };
 }

@@ -1,6 +1,6 @@
 # src/mge/render/2d/
 
-2D helpers. Namespace: `MiniGameEngine`. These are largely leftovers from an earlier 2D
+2D helpers. Namespace: `mge`. These are largely leftovers from an earlier 2D
 platformer stage of the project (see `assets/levels/`); today only `GUILabel` (and the `Sprite`
 it contains) is used, for the HUD in `SandboxApp`.
 
@@ -19,7 +19,7 @@ it contains) is used, for the HUD in `SandboxApp`.
 | `init(x, y, w, h)` | Whole texture on a w×h quad (calls `initFromAtlas` with tile = whole image). |
 | `initFromAtlas(x, y, w, h, texW, texH, tileW, tileH, tileIndex)` | Computes UVs for tile `tileIndex` (row‑major from **top‑left**: `col = idx % (texW/tileW)`, `row = idx / cols`, `v = 1 − row*tileH/texH`), applies horizontal flip, builds 4 vertices (BL, TL, TR, BR) at z = 0 and indices `0,1,2, 2,3,0`, then `Mesh::init`. |
 | `setPosition(x, y)` | Stores and **rebuilds the whole mesh** (positions are baked into vertices; no model matrix). |
-| `setFlipX(bool)` | Swaps u_min/u_max; rebuilds only if changed. |
+| `setFlipX(bool)` | Swaps uMin/uMax; rebuilds only if changed. |
 | `setColor(r,g,b,a)` | Stores tint and rebuilds – but color isn't uploaded by `Mesh`, so no visible effect today. |
 | `draw()` | Inherited from `Mesh`. Bind a shader (`texture.vert/frag`) and texture first. |
 
@@ -57,7 +57,7 @@ On‑screen text. Owns a `TTF_Font*`, a `Texture` and a `Sprite`.
 | `setText(text, color = white)` | No‑op if text and color are unchanged. Otherwise `TTF_RenderText_Blended` → `Texture::loadFromSurface` → `Sprite::init(0, 0, surfaceW, surfaceH)`. Color is `glm::vec4` in 0..1. |
 | `setPosition(x, y)` | Stored; applied at draw time. |
 | `setScale(s)` | Stored but **not applied** (no model matrix in the 2D shader). |
-| `draw(shader, projection)` | `shader.use()`, uploads `projection` to uniform `P`, `_sprite.setPosition(...)` (rebuilds GPU buffers every frame), binds texture, draws, unbinds. Skips if text is empty. |
+| `draw(shader, projection)` | `shader.use()`, uploads `projection` to uniform `P`, `m_sprite.setPosition(...)` (rebuilds GPU buffers every frame), binds texture, draws, unbinds. Skips if text is empty. |
 | `~GUILabel()` | `TTF_CloseFont`. The GL texture isn't destroyed. |
 
 Expected shader: `assets/shaders/texture.vert/.frag`. Positions are meant to be screen pixels

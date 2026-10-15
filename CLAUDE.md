@@ -37,11 +37,11 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
 
 ## Architecture in 10 lines
-1. `src/mge/app/Main.cpp` owns `main()` → `Engine::CreateApplication()` (defined by the game) → `Run()`.
-2. `Engine::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW) → TTF_Init.
-3. `Run()`: InputManager::Init → `OnInit()` → loop { dt, InputManager::Update, poll events
-   (→ `OnEvent` + InputManager::ProcessEvent), `OnUpdate(dt)`, `OnRender()`, swapBuffers }.
-4. Game stops by setting protected `m_Running = false`.
+1. `src/mge/app/Main.cpp` owns `main()` → `mge::createApplication()` (defined by the game) → `run()`.
+2. `mge::Application` ctor: AudioManager::init → SDL_Init → `Window` (1280×720, GL 3.3 core, GLEW) → TTF_Init.
+3. `run()`: InputManager::init → `onInit()` → loop { dt, InputManager::update, poll events
+   (→ `onEvent` + InputManager::processEvent), `onUpdate(dt)`, `onRender()`, swapBuffers }.
+4. Game stops by setting protected `m_running = false`.
 5. Static singletons: `InputManager`, `Time`, `AudioManager`, `ResourceManager`.
 6. `Mesh` = VAO/VBO/EBO of `Vertex{vec3 pos, vec4 color, vec2 uv}`. **Attrib loc 0 = position, loc 1 = UV; color is NOT sent** (see Mesh.cpp).
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
@@ -50,11 +50,13 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off, then HUD.
 
 ## Conventions
-- Two namespaces coexist: `Engine::` (Application, InputManager, all cameras) and
-  `MiniGameEngine::` (everything else, incl. game Block/Chunk). Don't "fix" this casually – it's pervasive.
-- Members: `_camelCase` in MiniGameEngine classes, `m_PascalCase`/`s_PascalCase` in Engine classes;
-  Camera3D mixes in PascalCase public‑style fields (`Position`, `Yaw`...). Match the file you're in.
-- Methods: `camelCase` in MiniGameEngine, `PascalCase` in Engine (InputManager, Application).
+- **One namespace `mge`** (the sandbox's Block/Chunk currently live in it too). Naming, enforced by
+  `.clang-tidy` in the CI `lint` job: types `PascalCase`, functions/methods `camelCase`,
+  private/protected members `m_camelCase`, static members `s_camelCase`, static constants
+  `kPascalCase`, public data fields `camelCase`, macros `UPPER_CASE`.
+- Formatting: `.clang-format`, checked in CI with clang-format **22.1.8**. Before committing, run
+  `git ls-files '*.h' '*.cpp' | xargs clang-format -i`. Local naming check:
+  `git ls-files '*.cpp' | xargs -n1 clang-tidy -p build-ci --quiet`.
 - Include roots `src/` and `games/`; always root‑relative: `#include <mge/core/Time.h>`, `#include <sandbox/Chunk.h>`.
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Blocks are unit cubes **centered** on integer coords (±0.5) → world→block uses `floor(v + 0.5f)`.
@@ -65,8 +67,8 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - `Camera2D` ortho is in aspect units (−1.78..1.78 × −1..1), but HUD labels are placed in pixels
   (e.g. y=680) and `GL_CULL_FACE` is on while sprite quads wind clockwise → HUD text is probably invisible.
 - `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).
-- `Window::init` disables depth test; SandboxApp re‑enables it in `OnInit`.
+- `Window::init` disables depth test; SandboxApp re‑enables it in `onInit`.
 - `SDL_Quit()` is called by both `~Window` and `~Application`.
-- SandboxApp ignores the `dt` passed to `OnUpdate` and uses `Time::` instead.
+- SandboxApp ignores the `dt` passed to `onUpdate` and uses `Time::` instead.
 - Unused code/assets: ResourceManager, Animation, FirstPersonCamera, AudioManager calls,
   `color.*` shaders, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).

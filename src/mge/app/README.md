@@ -6,12 +6,12 @@ runner, and platform/audio become optional modules.
 
 | File | Target | Purpose |
 |------|--------|---------|
-| `Application.h/.cpp` | `mge_app` | Base class for games (namespace `Engine`) |
-| `Main.cpp` | `mge_main` (OBJECT library) | `main()`: `CreateApplication()` → `Run()` → `delete`. Linked into each game executable |
+| `Application.h/.cpp` | `mge_app` | Base class for games (namespace `mge`) |
+| `Main.cpp` | `mge_main` (OBJECT library) | `main()`: `createApplication()` → `run()` → `delete`. Linked into each game executable |
 
 Depends on: `mge_platform`, `mge_audio`, SDL2_ttf.
 
-## `Engine::Application`
+## `mge::Application`
 
 ### Interface
 ```cpp
@@ -19,39 +19,39 @@ class Application {
 public:
     Application();
     virtual ~Application();
-    void Run();                                  // blocks until m_Running == false
+    void Run();                                  // blocks until m_running == false
 
-    virtual void OnInit() = 0;                   // once, after window + input exist
-    virtual void OnUpdate(float dt) = 0;         // every frame, dt in seconds
-    virtual void OnRender() = 0;                 // every frame, after OnUpdate
-    virtual void OnEvent(SDL_Event& event) {}    // every SDL event, before InputManager sees it
+    virtual void onInit() = 0;                   // once, after window + input exist
+    virtual void onUpdate(float dt) = 0;         // every frame, dt in seconds
+    virtual void onRender() = 0;                 // every frame, after onUpdate
+    virtual void onEvent(SDL_Event& event) {}    // every SDL event, before InputManager sees it
 
-    MiniGameEngine::Window& GetWindow();
+    mge::Window& getWindow();
 protected:
-    bool m_Running;                              // set false to exit
-    std::unique_ptr<MiniGameEngine::Window> m_Window;
+    bool m_running;                              // set false to exit
+    std::unique_ptr<mge::Window> m_window;
 private:
-    void CalculateDeltaTime();                   // SDL performance counter based
-    float m_DeltaTime; Uint64 m_LastFrameTime;
+    void calculateDeltaTime();                   // SDL performance counter based
+    float m_deltaTime; Uint64 m_lastFrameTime;
 };
-Application* CreateApplication();                // defined by the game
+Application* createApplication();                // defined by the game
 ```
 
 ### Constructor (in order)
 1. `AudioManager::init()`
-2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)` – on failure sets `m_Running = false` and returns
-   (the window is then never created → `Run()` would dereference null).
+2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)` – on failure sets `m_running = false` and returns
+   (the window is then never created → `run()` would dereference null).
 3. Creates `Window("Mini Game Engine - Minecraft Cube", 1280, 720)` – title and size are hard‑coded here.
 4. `TTF_Init()` (error printed with `printf`, not fatal).
 
 ### Destructor
-`AudioManager::shutdown()` → `TTF_Quit()` → `SDL_Quit()`; then `m_Window` is destroyed.
+`AudioManager::shutdown()` → `TTF_Quit()` → `SDL_Quit()`; then `m_window` is destroyed.
 
-### `Run()`
+### `run()`
 ```
-InputManager::Init(window) → OnInit() → loop:
-    CalculateDeltaTime → InputManager::Update → poll events (SDL_QUIT ends loop; OnEvent; InputManager::ProcessEvent)
-    → OnUpdate(m_DeltaTime) → OnRender() → m_Window->swapBuffers()
+InputManager::init(window) → onInit() → loop:
+    calculateDeltaTime → InputManager::update → poll events (SDL_QUIT ends loop; onEvent; InputManager::processEvent)
+    → onUpdate(m_deltaTime) → onRender() → m_window->swapBuffers()
 ```
-No frame cap; vsync depends on driver defaults (no `SDL_GL_SetSwapInterval` call). `m_DeltaTime`
+No frame cap; vsync depends on driver defaults (no `SDL_GL_SetSwapInterval` call). `m_deltaTime`
 is **not clamped** (unlike `Time`).

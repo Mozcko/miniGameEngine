@@ -9,7 +9,7 @@ per‑file reference, see the `README.md` in each folder under `src/`.
  games/sandbox/                         src/mge/  (one static library per folder)
  ───────────────                        ────────────────────────────────────────────
  sandbox (exe) ─────────────────────►  mge_main  (OBJECT: main() → createApplication)
-   SandboxApp : Engine::Application ─►  mge_app   Application loop ─┬─► mge_platform  Window, GL ctx, GLEW, InputManager ─┐
+   SandboxApp : mge::Application ─►  mge_app   Application loop ─┬─► mge_platform  Window, GL ctx, GLEW, InputManager ─┐
  sandbox_world (lib)                                                └─► mge_audio     AudioManager (SDL_mixer)           │
    Chunk, Block ────────────────────►  mge_render  Mesh, Texture, GLSLProgram, Cameras … ──(temp)──► mge_platform        │
                                                      │                                                                   ▼
@@ -21,32 +21,32 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
 separate executable plus a `sandbox_world` library so its logic can be tested.
 `-DMGE_BUILD_MODULES=OFF` builds only `mge_core`, which CI checks on a machine without SDL.
-The game plugs in through the `Application` / `CreateApplication` contract.
+The game plugs in through the `Application` / `createApplication` contract.
 
 ## 2. The entry‑point contract
 
 ```cpp
 // src/mge/app/Main.cpp
 int main(int, char**) {
-    auto app = Engine::CreateApplication();   // implemented by the game
-    app->Run();
+    auto app = mge::createApplication();   // implemented by the game
+    app->run();
     delete app;
 }
 ```
 
 A game must:
-1. Subclass `Engine::Application` and implement `OnInit()`, `OnUpdate(float dt)`,
-   `OnRender()` (pure virtual) and optionally `OnEvent(SDL_Event&)`.
-2. Define `Engine::Application* Engine::CreateApplication()` returning a heap instance.
-3. Stop the loop by setting the protected member `m_Running = false`.
+1. Subclass `mge::Application` and implement `onInit()`, `onUpdate(float dt)`,
+   `onRender()` (pure virtual) and optionally `onEvent(SDL_Event&)`.
+2. Define `mge::Application* mge::createApplication()` returning a heap instance.
+3. Stop the loop by setting the protected member `m_running = false`.
 
 ## 3. Startup sequence
 
-`Engine::Application::Application()` (`src/mge/app/Application.cpp`):
+`mge::Application::Application()` (`src/mge/app/Application.cpp`):
 
-1. `MiniGameEngine::AudioManager::init()` – `Mix_OpenAudio(44100, default, stereo, 2048)`.
+1. `mge::AudioManager::init()` – `Mix_OpenAudio(44100, default, stereo, 2048)`.
 2. `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER)`.
-3. `m_Window = make_unique<Window>("Mini Game Engine - Minecraft Cube", 1280, 720)`:
+3. `m_window = make_unique<Window>("Mini Game Engine - Minecraft Cube", 1280, 720)`:
    - requests an OpenGL **3.3 Core**, double‑buffered context, resizable window;
    - runs `glewInit()` (with `glewExperimental = GL_TRUE`);
    - enables alpha blending, **disables** depth testing (2D default), prints GL version.
@@ -60,24 +60,24 @@ Then the derived constructor runs (SandboxApp constructs its `Camera3D` and `Cam
 `Application::Run()`:
 
 ```
-InputManager::Init(sdlWindow)
-OnInit()                                   ← game loads shaders, textures, fonts, GL state
+InputManager::init(sdlWindow)
+onInit()                                   ← game loads shaders, textures, fonts, GL state
 lastFrameTime = SDL_GetPerformanceCounter()
-while (m_Running):
-    CalculateDeltaTime()                   ← m_DeltaTime (seconds, unclamped)
-    InputManager::Update()                 ← reset mouse delta, re‑assert cursor lock
+while (m_running):
+    calculateDeltaTime()                   ← m_deltaTime (seconds, unclamped)
+    InputManager::update()                 ← reset mouse delta, re‑assert cursor lock
     for each SDL_Event:
-        SDL_QUIT → m_Running = false
-        OnEvent(event)                     ← game first
-        InputManager::ProcessEvent(event)  ← then input accumulates mouse motion
-    OnUpdate(m_DeltaTime)
-    OnRender()
+        SDL_QUIT → m_running = false
+        onEvent(event)                     ← game first
+        InputManager::processEvent(event)  ← then input accumulates mouse motion
+    onUpdate(m_deltaTime)
+    onRender()
     window.swapBuffers()
 ```
 
-Note: there is a second, independent timer – `MiniGameEngine::Time` – which supports a
+Note: there is a second, independent timer – `mge::Time` – which supports a
 **time scale** (pause/slow‑mo) and clamps big hitches to 0.1 s. SandboxApp calls
-`Time::update()` at the top of `OnUpdate` and uses `Time::getDeltaTime()` instead of the `dt`
+`Time::update()` at the top of `onUpdate` and uses `Time::getDeltaTime()` instead of the `dt`
 argument. Pausing sets the time scale to 0, which freezes the camera (camera `update` returns early
 for dt ≈ 0) while tile animations keep running on unscaled time.
 
@@ -85,7 +85,7 @@ for dt ≈ 0) while tile animations keep running on unscaled time.
 
 `delete app` → `~SandboxApp` (deletes chunks) → member destructors (GUILabels close fonts,
 Meshes delete GL buffers, …) → `~Application`: `AudioManager::shutdown()`, `TTF_Quit()`,
-`SDL_Quit()` → `m_Window` unique_ptr destroyed: deletes GL context, destroys window, `SDL_Quit()`
+`SDL_Quit()` → `m_window` unique_ptr destroyed: deletes GL context, destroys window, `SDL_Quit()`
 again.
 
 Caveat: `~Application` body runs before its own members are destroyed, so `SDL_Quit()` and
@@ -96,7 +96,7 @@ is fragile – see `KNOWN_ISSUES.md`.
 ## 6. Rendering pipeline
 
 ### Vertex format and Mesh
-`MiniGameEngine::Vertex { vec3 position; vec4 color; vec2 uv; }` (36 bytes, interleaved).
+`mge::Vertex { vec3 position; vec4 color; vec2 uv; }` (36 bytes, interleaved).
 `Mesh::init(vertices, indices)` uploads to a VAO + VBO + EBO (`GL_STATIC_DRAW`) and sets:
 
 | location | data            | type  |
@@ -112,13 +112,13 @@ All shaders therefore read `layout(location=0)` position and `layout(location=1)
 
 | Program | Files | Uniforms | Used by |
 |---------|-------|----------|---------|
-| `shader3D` | `basic3d.vert/.frag` | `model`, `view`, `projection`, `myTexture`, `baseColor` | Chunks |
-| `_guiShader` | `texture.vert/.frag` | `P`, `myTexture` (defaults to unit 0) | GUILabel |
+| `m_shader3D` | `basic3d.vert/.frag` | `model`, `view`, `projection`, `myTexture`, `baseColor` | Chunks |
+| `m_guiShader` | `texture.vert/.frag` | `P`, `myTexture` (defaults to unit 0) | GUILabel |
 | – | `color.vert/.frag` | `P` | nothing (legacy) |
 
-### SandboxApp frame (OnRender)
+### SandboxApp frame (onRender)
 1. Clear to sky blue `(0.5, 0.7, 1.0)`, clear color + depth.
-2. Bind `shader3D`; upload camera projection & view, `baseColor = white`, sampler unit 0.
+2. Bind `m_shader3D`; upload camera projection & view, `baseColor = white`, sampler unit 0.
 3. Bind the tileset texture.
 4. **Opaque pass** – for every loaded chunk: set `model = translate(chunkPos)`, draw opaque mesh.
 5. **Transparent pass** – `glDepthMask(GL_FALSE)`, draw each chunk's transparent mesh
@@ -126,7 +126,7 @@ All shaders therefore read `layout(location=0)` position and `layout(location=1)
 6. **HUD** – disable depth test, draw FPS and info `GUILabel`s with the 2D shader and the
    `Camera2D` projection, re‑enable depth test.
 
-Global GL state set in `SandboxApp::OnInit`: depth test on, back‑face culling on (CCW = front),
+Global GL state set in `SandboxApp::onInit`: depth test on, back‑face culling on (CCW = front),
 alpha blending `SRC_ALPHA, ONE_MINUS_SRC_ALPHA`.
 
 ### Textures
@@ -147,7 +147,7 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 - **Meshing** (`Chunk::buildMesh`): face culling against neighbours (cross‑chunk neighbours are
   *predicted* procedurally, not read from the real neighbour chunk), cross‑shaped billboards for
   plants/cobweb, separate opaque / transparent meshes.
-- **Streaming** (`SandboxApp::OnUpdate`): every frame, any missing chunk within a 9×9 area
+- **Streaming** (`SandboxApp::onUpdate`): every frame, any missing chunk within a 9×9 area
   (`renderDist = 4`) around the camera is created synchronously. Chunks are stored in
   `std::map<ChunkKey, Chunk*>` and never unloaded.
 - **Collision**: `Camera3D` moves axis by axis (X, Z, Y) and asks a callback whether its AABB
@@ -158,18 +158,18 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 
 | Class | Namespace | State | Lifetime |
 |-------|-----------|-------|----------|
-| `InputManager` | `Engine` | mouse pos/delta, cursor lock, window ptr | `Init` in `Run()` |
-| `Time` | `MiniGameEngine` | last tick, dt, raw dt, time scale | `init()` called by the game |
-| `AudioManager` | `MiniGameEngine` | `Mix_Chunk*` / `Mix_Music*` caches by path | Application ctor/dtor |
-| `ResourceManager` | `MiniGameEngine` | `Texture` cache by path | never cleared automatically (unused) |
+| `InputManager` | `mge` | mouse pos/delta, cursor lock, window ptr | `init` in `run()` |
+| `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
+| `AudioManager` | `mge` | `Mix_Chunk*` / `Mix_Music*` caches by path | Application ctor/dtor |
+| `ResourceManager` | `mge` | `Texture` cache by path | never cleared automatically (unused) |
 
 ## 9. Ownership summary
 
 | Object | Owner | How freed |
 |--------|-------|-----------|
 | `Application` | `main()` | `delete app` |
-| `Window` | `Application::m_Window` (unique_ptr) | RAII |
-| `Chunk*` | `SandboxApp::chunkMap` | deleted in `~SandboxApp` |
+| `Window` | `Application::m_window` (unique_ptr) | RAII |
+| `Chunk*` | `SandboxApp::m_chunkMap` | deleted in `~SandboxApp` |
 | `Mesh*` inside Chunk | Chunk | deleted in `~Chunk` |
 | GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
 | GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |

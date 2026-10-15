@@ -1,17 +1,17 @@
 #include <mge/platform/Window.h>
 #include <iostream>
 
-namespace MiniGameEngine {
+namespace mge {
 
-    Window::Window(const std::string& title, int width, int height) 
-        : _title(title), _width(width), _height(height), _isClosed(false), _sdlWindow(nullptr), _glContext(nullptr)
-    {
+    Window::Window(const std::string& title, int width, int height)
+        : m_title(title), m_width(width), m_height(height), m_isClosed(false), m_sdlWindow(nullptr),
+          m_glContext(nullptr) {
         init();
     }
 
     Window::~Window() {
-        if (_glContext) SDL_GL_DeleteContext(_glContext);
-        if (_sdlWindow) SDL_DestroyWindow(_sdlWindow);
+        if (m_glContext) SDL_GL_DeleteContext(m_glContext);
+        if (m_sdlWindow) SDL_DestroyWindow(m_sdlWindow);
         SDL_Quit();
         std::cout << "Ventana cerrada y recursos liberados correctamente.\n";
     }
@@ -27,20 +27,17 @@ namespace MiniGameEngine {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-        _sdlWindow = SDL_CreateWindow(
-            _title.c_str(),
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            _width, _height,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE 
-        );
+        m_sdlWindow =
+            SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_width,
+                             m_height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
-        if (_sdlWindow == nullptr) {
+        if (m_sdlWindow == nullptr) {
             std::cerr << "Error al crear ventana SDL: " << SDL_GetError() << std::endl;
             exit(1);
         }
 
-        _glContext = SDL_GL_CreateContext(_sdlWindow);
-        if (_glContext == nullptr) {
+        m_glContext = SDL_GL_CreateContext(m_sdlWindow);
+        if (m_glContext == nullptr) {
             std::cerr << "Error al crear contexto OpenGL: " << SDL_GetError() << std::endl;
             exit(1);
         }
@@ -50,7 +47,7 @@ namespace MiniGameEngine {
             std::cerr << "Error al inicializar GLEW" << std::endl;
             exit(1);
         }
-        
+
         // --- CONFIGURACIÓN CRÍTICA ---
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -64,14 +61,14 @@ namespace MiniGameEngine {
     }
 
     void Window::swapBuffers() {
-        SDL_GL_SwapWindow(_sdlWindow);
+        SDL_GL_SwapWindow(m_sdlWindow);
     }
-    
+
     void Window::handleEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
-                _isClosed = true;
+                m_isClosed = true;
             }
         }
     }

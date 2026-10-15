@@ -1,0 +1,5 @@
+# Commits ignorados por `git blame` (formateo masivo).
+# Configurar una vez: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: format the whole tree with clang-format (#10)
+70df72446b55323b477ae89ff7182bfc31bea82f

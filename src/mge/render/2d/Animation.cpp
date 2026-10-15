@@ -1,41 +1,42 @@
 #include <mge/render/2d/Animation.h>
 
-namespace MiniGameEngine {
+namespace mge {
 
-    Animation::Animation(float speed, bool loop) 
-        : _currentFrameIndex(0), _speed(speed), _timeElapsed(0.0f), _loop(loop)
-    {}
+    Animation::Animation(float speed, bool loop)
+        : m_currentFrameIndex(0), m_speed(speed), m_timeElapsed(0.0f), m_loop(loop) {}
 
     void Animation::addFrame(int tileIndex) {
-        _frames.push_back(tileIndex);
+        m_frames.push_back(tileIndex);
     }
 
     void Animation::update(float deltaTime) {
         // Sin frames no hay nada que animar (evita underflow de size() - 1)
-        if (_frames.empty()) return;
+        if (m_frames.empty()) return;
 
-        _timeElapsed += deltaTime;
-        const int frameCount = static_cast<int>(_frames.size());
+        m_timeElapsed += deltaTime;
+        const int frameCount = static_cast<int>(m_frames.size());
 
         // Si pasó el tiempo suficiente, avanzamos al siguiente frame
-        if (_timeElapsed >= _speed) {
-            _timeElapsed -= _speed; // Restamos en lugar de poner 0 para no perder tiempo sobrante
+        if (m_timeElapsed >= m_speed) {
+            m_timeElapsed -= m_speed; // Restamos en lugar de poner 0 para no perder tiempo sobrante
 
             // Solo avanzamos si estamos en loop O si no hemos llegado al final
-            if (_loop || _currentFrameIndex < frameCount - 1) {
-                _currentFrameIndex++;
+            if (m_loop || m_currentFrameIndex < frameCount - 1) {
+                m_currentFrameIndex++;
             }
 
             // Si llegamos al final, volvemos al principio (Loop)
-            if (_currentFrameIndex >= frameCount) {
-                if (_loop) _currentFrameIndex = 0;
-                else _currentFrameIndex = frameCount - 1;
+            if (m_currentFrameIndex >= frameCount) {
+                if (m_loop)
+                    m_currentFrameIndex = 0;
+                else
+                    m_currentFrameIndex = frameCount - 1;
             }
         }
     }
 
     int Animation::getCurrentTile() const {
-        if (_frames.empty()) return 0;
-        return _frames[_currentFrameIndex];
+        if (m_frames.empty()) return 0;
+        return m_frames[m_currentFrameIndex];
     }
 }

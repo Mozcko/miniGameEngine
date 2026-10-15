@@ -6,11 +6,11 @@ Window + OpenGL context (GLEW) and input. Depends on `mge_core`, SDL2, GLEW, Ope
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `Window.h/.cpp` | `MiniGameEngine` | Creates the SDL2 window, the OpenGL context, initialises GLEW and sets default GL state |
+| `Window.h/.cpp` | `mge` | Creates the SDL2 window, the OpenGL context, initialises GLEW and sets default GL state |
 
-## `MiniGameEngine::Window`
+## `mge::Window`
 
-Owned by `Engine::Application` (`std::unique_ptr<Window> m_Window`). Created in the
+Owned by `mge::Application` (`std::unique_ptr<Window> m_window`). Created in the
 Application constructor with `("Mini Game Engine - Minecraft Cube", 1280, 720)`.
 
 ### What `init()` does (called from the constructor)
@@ -22,7 +22,7 @@ Application constructor with `("Mini Game Engine - Minecraft Cube", 1280, 720)`.
 6. Default GL state:
    - `glEnable(GL_BLEND)`, `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)`
    - `glDisable(GL_DEPTH_TEST)` – a 2D‑friendly default (a comment explains sprites were being
-     discarded by the depth test). **3D games must enable it** (SandboxApp does in `OnInit`).
+     discarded by the depth test). **3D games must enable it** (SandboxApp does in `onInit`).
 7. Prints `OpenGL Version: …`.
 
 Any failure in steps 1–5 prints an error and calls `exit(1)`.
@@ -34,7 +34,7 @@ Any failure in steps 1–5 prints an error and calls `exit(1)`.
 | `~Window()` | Deletes GL context, destroys window, calls `SDL_Quit()`, prints a goodbye message. |
 | `swapBuffers()` | `SDL_GL_SwapWindow` – called by `Application::Run` each frame. |
 | `getWidth()/getHeight()` | The **initial** size; not updated on resize. |
-| `getSDLWindow()` | Raw `SDL_Window*` (used by `InputManager::Init` for mouse grab). |
+| `getSDLWindow()` | Raw `SDL_Window*` (used by `InputManager::init` for mouse grab). |
 | `handleEvents()`, `isClosed()`, `close()` | Legacy self‑contained event loop; **unused** – `Application::Run` polls events itself. Don't call `handleEvents()` alongside Run: it would swallow events. |
 
 ### Resizing
@@ -46,29 +46,29 @@ The window is resizable, but `Window` does nothing on resize. The game must hand
 ## Input
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `InputManager.h/.cpp` | `Engine` | Static keyboard / mouse state and cursor locking |
+| `InputManager.h/.cpp` | `mge` | Static keyboard / mouse state and cursor locking |
 
-## `Engine::InputManager` (all static)
+## `mge::InputManager` (all static)
 
 ### Lifecycle (driven by `Application::Run`, don't call these yourself)
 | Call | When | Effect |
 |------|------|--------|
-| `Init(SDL_Window*)` | once, before `OnInit` | Stores window, resets state, cursor unlocked |
-| `Update()` | start of every frame, before event polling | Resets `MouseDelta` to 0; if locked, re‑asserts relative mouse mode + window grab (needed after focus changes) |
-| `ProcessEvent(e)` | for every SDL event, *after* the game's `OnEvent` | On `SDL_MOUSEMOTION`: stores absolute position, **accumulates** `xrel/yrel` into the delta |
+| `init(SDL_Window*)` | once, before `onInit` | Stores window, resets state, cursor unlocked |
+| `update()` | start of every frame, before event polling | Resets `MouseDelta` to 0; if locked, re‑asserts relative mouse mode + window grab (needed after focus changes) |
+| `processEvent(e)` | for every SDL event, *after* the game's `onEvent` | On `SDL_MOUSEMOTION`: stores absolute position, **accumulates** `xrel/yrel` into the delta |
 
 ### Query API
 | Method | Returns |
 |--------|---------|
-| `GetMousePosition()` | `glm::vec2` last absolute mouse position in window pixels (y down) |
-| `GetMouseDelta()` | `glm::vec2` total relative motion this frame (y down) |
-| `IsKeyPressed(SDL_Scancode)` | Current held state via `SDL_GetKeyboardState` (level, not edge‑triggered) |
-| `SetCursorMode(bool locked)` | Locks/unlocks: `SDL_SetRelativeMouseMode` + `SDL_SetWindowGrab` |
-| `IsCursorLocked()` | Current lock flag |
+| `getMousePosition()` | `glm::vec2` last absolute mouse position in window pixels (y down) |
+| `getMouseDelta()` | `glm::vec2` total relative motion this frame (y down) |
+| `isKeyPressed(SDL_Scancode)` | Current held state via `SDL_GetKeyboardState` (level, not edge‑triggered) |
+| `setCursorMode(bool locked)` | Locks/unlocks: `SDL_SetRelativeMouseMode` + `SDL_SetWindowGrab` |
+| `isCursorLocked()` | Current lock flag |
 
 ### Notes
 - There is **no** "pressed this frame" / "released" API and no mouse‑button query. For
-  one‑shot actions handle `SDL_KEYDOWN` / `SDL_MOUSEBUTTONDOWN` in `OnEvent` (SandboxApp does this
+  one‑shot actions handle `SDL_KEYDOWN` / `SDL_MOUSEBUTTONDOWN` in `onEvent` (SandboxApp does this
   for `Esc`, `P` and click‑to‑capture).
 - Keys use **scancodes** (physical layout: `SDL_SCANCODE_W`), events use keycodes (`SDLK_p`).
-- `Camera3D` only applies mouse look when `IsCursorLocked()`; `FirstPersonCamera` always does.
+- `Camera3D` only applies mouse look when `isCursorLocked()`; `FirstPersonCamera` always does.

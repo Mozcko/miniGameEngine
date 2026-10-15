@@ -5,8 +5,7 @@
 #include <mge/render/core/Texture.h>
 #include <mge/render/2d/Sprite.h>
 
-
-namespace MiniGameEngine {
+namespace mge {
 
     class GLSLProgram;
 
@@ -25,17 +24,17 @@ namespace MiniGameEngine {
         // Requiere pasarle el shader de texturas (el 2D) y la cámara ortográfica
         void draw(GLSLProgram& shader, const glm::mat4& cameraMatrix);
 
-        void setPosition(float x, float y) { _position = glm::vec2(x, y); }
-        void setScale(float scale) { _scale = scale; }
+        void setPosition(float x, float y) { m_position = glm::vec2(x, y); }
+        void setScale(float scale) { m_scale = scale; }
 
     private:
-        TTF_Font* _font;
-        Texture _texture;
-        Sprite _sprite; // Usamos un sprite para dibujarlo
-        
-        std::string _text;
-        glm::vec2 _position;
-        float _scale;
-        glm::vec4 _color;
+        TTF_Font* m_font;
+        Texture m_texture;
+        Sprite m_sprite; // Usamos un sprite para dibujarlo
+
+        std::string m_text;
+        glm::vec2 m_position;
+        float m_scale;
+        glm::vec4 m_color;
     };
 }

@@ -4,20 +4,19 @@
 #include <memory>
 #include <utility>
 
-using namespace MiniGameEngine;
+using namespace mge;
 
 // Estos tests solo usan la generación (CPU). No llaman a buildMesh(), así que
 // no necesitan ventana ni contexto OpenGL.
 
 namespace {
-    const int WATER_LEVEL = 5; // Igual que en Chunk::generate
+    const int kWaterLevel = 5; // Igual que en Chunk::generate
 
     bool sameBlocks(const Chunk& a, const Chunk& b) {
-        for (int x = 0; x < CHUNK_SIZE; x++)
-            for (int y = 0; y < CHUNK_HEIGHT; y++)
-                for (int z = 0; z < CHUNK_SIZE; z++)
-                    if (a.getBlock(x, y, z).getType() != b.getBlock(x, y, z).getType())
-                        return false;
+        for (int x = 0; x < kChunkSize; x++)
+            for (int y = 0; y < kChunkHeight; y++)
+                for (int z = 0; z < kChunkSize; z++)
+                    if (a.getBlock(x, y, z).getType() != b.getBlock(x, y, z).getType()) return false;
         return true;
     }
 }
@@ -43,26 +42,26 @@ TEST_CASE("Chunks distintos generan terreno distinto") {
 TEST_CASE("getBlock fuera de rango devuelve Air") {
     auto c = std::make_unique<Chunk>(0, 0);
     CHECK(c->getBlock(-1, 0, 0).getType() == BlockType::Air);
-    CHECK(c->getBlock(CHUNK_SIZE, 0, 0).getType() == BlockType::Air);
+    CHECK(c->getBlock(kChunkSize, 0, 0).getType() == BlockType::Air);
     CHECK(c->getBlock(0, -1, 0).getType() == BlockType::Air);
-    CHECK(c->getBlock(0, CHUNK_HEIGHT, 0).getType() == BlockType::Air);
-    CHECK(c->getBlock(0, 0, CHUNK_SIZE).getType() == BlockType::Air);
+    CHECK(c->getBlock(0, kChunkHeight, 0).getType() == BlockType::Air);
+    CHECK(c->getBlock(0, 0, kChunkSize).getType() == BlockType::Air);
 }
 
 TEST_CASE("Reglas del terreno en un área de 8x8 chunks") {
     for (int cx = -4; cx < 4; cx++) {
         for (int cz = -4; cz < 4; cz++) {
             auto c = std::make_unique<Chunk>(cx, cz);
-            for (int x = 0; x < CHUNK_SIZE; x++) {
-                for (int z = 0; z < CHUNK_SIZE; z++) {
+            for (int x = 0; x < kChunkSize; x++) {
+                for (int z = 0; z < kChunkSize; z++) {
                     // La altura mínima es 1: el fondo siempre es sólido
                     CHECK(c->getBlock(x, 0, z).isSolid());
 
-                    for (int y = 0; y < CHUNK_HEIGHT; y++) {
+                    for (int y = 0; y < kChunkHeight; y++) {
                         BlockType t = c->getBlock(x, y, z).getType();
                         // El agua nunca supera el nivel del mar
                         if (t == BlockType::Water) {
-                            CHECK(y <= WATER_LEVEL);
+                            CHECK(y <= kWaterLevel);
                         }
                         // Bajo el agua no hay aire (el agua llena hasta el suelo)
                         if (t == BlockType::Water && y > 0) {
@@ -78,8 +77,8 @@ TEST_CASE("Reglas del terreno en un área de 8x8 chunks") {
 TEST_CASE("Los chunks recién creados no tienen malla hasta buildMesh") {
     // Crear y destruir sin buildMesh no debe tocar la GPU ni fallar
     auto c = std::make_unique<Chunk>(2, 2);
-    CHECK(c->getPosition().x == doctest::Approx(2.0f * CHUNK_SIZE));
-    CHECK(c->getPosition().z == doctest::Approx(2.0f * CHUNK_SIZE));
+    CHECK(c->getPosition().x == doctest::Approx(2.0f * kChunkSize));
+    CHECK(c->getPosition().z == doctest::Approx(2.0f * kChunkSize));
 }
 
 TEST_CASE("La decoración genera árboles, rosas y flores (regresión #5)") {
@@ -90,20 +89,20 @@ TEST_CASE("La decoración genera árboles, rosas y flores (regresión #5)") {
     for (int cx = -10; cx < 10; cx++) {
         for (int cz = -10; cz < 10; cz++) {
             auto c = std::make_unique<Chunk>(cx, cz);
-            for (int x = 0; x < CHUNK_SIZE; x++) {
-                for (int z = 0; z < CHUNK_SIZE; z++) {
-                    for (int y = 0; y < CHUNK_HEIGHT; y++) {
+            for (int x = 0; x < kChunkSize; x++) {
+                for (int z = 0; z < kChunkSize; z++) {
+                    for (int y = 0; y < kChunkHeight; y++) {
                         switch (c->getBlock(x, y, z).getType()) {
-                            case BlockType::Log:    logs++; break;
-                            case BlockType::Leaves: leaves++; break;
-                            case BlockType::Rose:   roses++; break;
-                            case BlockType::Flower: flowers++; break;
-                            default: break;
+                        case BlockType::Log: logs++; break;
+                        case BlockType::Leaves: leaves++; break;
+                        case BlockType::Rose: roses++; break;
+                        case BlockType::Flower: flowers++; break;
+                        default: break;
                         }
                     }
 
                     // Superficie: primer bloque desde arriba que no sea aire ni decoración
-                    for (int y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+                    for (int y = kChunkHeight - 1; y >= 0; y--) {
                         BlockType t = c->getBlock(x, y, z).getType();
                         if (t == BlockType::Air || t == BlockType::Leaves || t == BlockType::Log ||
                             t == BlockType::Rose || t == BlockType::Flower)

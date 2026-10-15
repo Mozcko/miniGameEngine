@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <mge/render/core/Vertex.h> // Incluimos la nueva estructura
 
-namespace MiniGameEngine {
+namespace mge {
 
     class Mesh {
     public:
@@ -12,14 +12,14 @@ namespace MiniGameEngine {
 
         // Inicializa los buffers con la nueva estructura Vertex
         void init(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
-        
+
         // Método virtual: Las clases hijas podrían querer dibujar diferente (ej: GL_LINES)
         virtual void draw();
 
     protected:
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _ebo;
-        int _indexCount;
+        GLuint m_vao;
+        GLuint m_vbo;
+        GLuint m_ebo;
+        int m_indexCount;
     };
 }

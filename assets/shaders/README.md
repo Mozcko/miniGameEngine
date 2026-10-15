@@ -1,13 +1,13 @@
 # assets/shaders/
 
-GLSL `#version 330 core` shaders, loaded at runtime by `MiniGameEngine::GLSLProgram`.
+GLSL `#version 330 core` shaders, loaded at runtime by `mge::GLSLProgram`.
 All vertex shaders follow the engine's attribute layout from `Mesh::init`:
 **location 0 = position, location 1 = UV**.
 
 | Pair | Inputs | Uniforms | Output | Used by |
 |------|--------|----------|--------|---------|
-| `basic3d.vert` / `basic3d.frag` | `vec3 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 model`, `mat4 view`, `mat4 projection`; `sampler2D myTexture`, `vec4 baseColor` | `texture(myTexture, uv) * baseColor` | `SandboxApp::shader3D` → chunks |
-| `texture.vert` / `texture.frag` | `vec2 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 P`; `sampler2D myTexture` | `texture(myTexture, uv)` | `SandboxApp::_guiShader` → `GUILabel` |
+| `basic3d.vert` / `basic3d.frag` | `vec3 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 model`, `mat4 view`, `mat4 projection`; `sampler2D myTexture`, `vec4 baseColor` | `texture(myTexture, uv) * baseColor` | `SandboxApp::m_shader3D` → chunks |
+| `texture.vert` / `texture.frag` | `vec2 vertexPosition` (0), `vec2 vertexUV` (1) | `mat4 P`; `sampler2D myTexture` | `texture(myTexture, uv)` | `SandboxApp::m_guiShader` → `GUILabel` |
 | `color.vert` / `color.frag` | `vec2 vertexPosition` (0) | `mat4 P` | constant orange `(1, 0.5, 0, 1)` | Nothing (early test shader) |
 
 ### Notes
@@ -17,5 +17,5 @@ All vertex shaders follow the engine's attribute layout from `Mesh::init`:
   texels still write depth in the opaque pass.
 - `myTexture` is never explicitly set for the GUI shader – it defaults to unit 0, which is what
   `Texture::bind()` uses.
-- To add a shader: create the pair here, then in `OnInit`:
+- To add a shader: create the pair here, then in `onInit`:
   `compileShaders("../assets/shaders/x.vert", "../assets/shaders/x.frag"); addAttribute(...); linkShaders();`
