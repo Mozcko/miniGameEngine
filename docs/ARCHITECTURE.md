@@ -155,14 +155,15 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
   - It answers `getBlock` / `setBlock` / `isSolid` in world coordinates; unloaded chunks read as air.
   - It keeps dirty flags: a new chunk dirties its loaded neighbours, and `setBlock` on a border also
     dirties the neighbour.
-- **Generation (sandbox):** `SandboxTerrain`.
-  - Height = `(sin(wx*0.2) + cos(wz*0.2)) * 3 + 6`, clamped to [1, 15], one chunk tall.
-  - Below the surface: 2 layers of dirt, then stone. Water fills air up to y = 5.
-  - Surface: sand near water, otherwise grass with 5 % gravel and 0.5 % lava pools.
-  - Decoration: 2 % trees, 2 % roses, 2 % flowers on grass. Trees from columns up to 2 blocks
-    outside the chunk are replayed too, so they cross borders intact.
-  - Each column uses a `Pcg32` seeded with `hash2i(wx, wz, seed)`: stream 1 for terrain, stream 2
-    for decoration. No global RNG state.
+- **Generation (sandbox):** `SandboxTerrain`, from a seed.
+  - Height = simplex fbm hills + ridged mountains under a low‑frequency mask, in a 64‑block world
+    (4 vertical chunks). Water is at 20.
+  - Biomes come from height plus temperature/moisture noise: plains (grass, trees, flowers),
+    desert, mountains, shore.
+  - 3D‑noise tunnel caves, which never break the floor or the surface.
+  - Each column is a pure function; a `Pcg32` per column (stream 1 terrain, stream 2 decoration)
+    gives a deterministic world with no global RNG state.
+  - Trees from columns up to 2 blocks outside the chunk are replayed too, so they cross borders intact.
 - **Meshing:** `buildChunkMesh(world, coord)` returns opaque and transparent `MeshData` in
   chunk‑local space.
   - A face is hidden only by an opaque cube, or by the same transparent block (water against water).
@@ -171,7 +172,7 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
     neighbours, so seams heal on the next re‑mesh.
   - Greedy meshing merges faces of colour‑only cubes. Optional per‑vertex AO is written into the colour.
 - **Streaming** (`SandboxApp::streamChunks`, every frame, synchronous):
-  - Load every chunk column within 5 of the camera.
+  - Load every chunk column (4 chunks tall) within 5 of the camera.
   - Mesh the dirty ones within 4 (9×9), then upload with `Mesh::init(MeshData)`.
   - The extra loaded ring means borders mesh against real data.
   - Chunks are never unloaded (KI#4).

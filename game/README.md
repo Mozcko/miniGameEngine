@@ -9,7 +9,7 @@ game only says **which blocks exist** and **what the terrain looks like**.
 |------|----------|
 | `SandboxApp.cpp` | `SandboxApp : mge::Application` (game loop callbacks, chunk streaming, GPU meshes) and `mge::createApplication()` |
 | `SandboxBlocks.h/.cpp` | `sandbox::SandboxBlocks` (ids) and `registerSandboxBlocks(registry)`: 20 blocks, each with atlas tiles **and** a flat colour; atlas constants (`kWaterTile`, `kLavaTile`) |
-| `SandboxTerrain.h/.cpp` | `sandbox::SandboxTerrain : mge::TerrainGenerator`: sin/cos terrain, beaches, gravel, lava, trees (crossing chunk borders) and flowers |
+| `SandboxTerrain.h/.cpp` | `sandbox::SandboxTerrain : mge::TerrainGenerator`: noise terrain (fbm + ridged mountains), biomes (plains, desert, mountains, shore), caves, trees (crossing chunk borders) and flowers; `TerrainSettings`, `Biome` |
 
 Game code lives in namespace `sandbox`.
 
@@ -79,12 +79,13 @@ while the cursor is locked).
 2. Every 0.2 s of unscaled time (`time().unscaledDelta()`): `m_tilesetTexture.updateTile(kWaterTile, m_waterFrames[i % 5], 32, 32)` and
    the same for lava into `kLavaTile`.
 3. `streamChunks()`:
-   - load (generate) every chunk column within `kRenderDistance + 1` = 5 of the camera chunk;
+   - load (generate) every chunk column (4 chunks tall) within `kRenderDistance + 1` = 5 of the camera chunk;
    - mesh every **dirty** chunk within `kRenderDistance` = 4 (9×9 = 81 chunks) with
      `buildChunkMesh`, upload it (`Mesh::init(MeshData)`) and clear the dirty flag. Loading a chunk
      dirties its loaded neighbours, so meshes always match the data.
 
    The extra ring means borders are meshed against real neighbours. Everything is synchronous.
+   The time taken is logged: Info for the first load (startup), Debug afterwards.
 4. `camera.update(deltaTime)`.
 
 ### `onShutdown`
@@ -98,35 +99,61 @@ FPS log every 5 s. See `docs/ARCHITECTURE.md` §6.
 
 ## World layout
 
-- One chunk tall for now: the sandbox loads chunks `(cx, 0, cz)`, blocks y = 0..15. Noise terrain
-  with 4 vertical chunks is #27.
-- The generator works in world Y, so any `cy` is valid: below 0 is solid stone, and above the
-  surface there is only air plus tree tops.
-- Block `(x, y, z)` occupies `[x, x+1)³`, and chunk `(cx, 0, cz)` starts at block `(cx*16, 0, cz*16)`.
+- **64 blocks tall:** `kWorldChunksY = 4` vertical chunks (y = 0..63). The sandbox loads whole
+  chunk columns `(cx, 0..3, cz)`.
+- The generator works in world Y, so any `cy` is valid: y ≤ 0 is solid stone, and above the world
+  there is nothing.
+- Block `(x, y, z)` occupies `[x, x+1)³`, and chunk `(cx, cy, cz)` starts at block `(cx*16, cy*16, cz*16)`.
+- **Spawn:** the camera starts at `(0.5, max(surface, water) + 2.5, 0.5)`, above the terrain.
 
-## `SandboxTerrain` – generation rules (`kWaterLevel = 5`)
+## `SandboxTerrain` – generation (noise, #27)
 
-Randomness comes from `mge::Pcg32` (`<mge/core/Random.h>`, #14), with no global state.
-- Each column `(wx, wz)` gets its own generator seeded with `hash2i(wx, wz, seed)`.
-- Stream **1** is used for terrain and stream **2** for decoration, so the two passes are independent.
-- The seed is a constructor argument (default `SandboxTerrain::kDefaultSeed = 1337`).
+`SandboxTerrain(blocks, TerrainSettings{seed = 1337, caves = true})`. Everything comes from the
+seed, so the same seed gives the same world on every machine.
+- **Noise fields:** six `mge::Noise` instances (seed + 0..5) for height, mountains, temperature,
+  moisture and two cave fields.
+- **Randomness:** `mge::Pcg32` per column, seeded with `hash2i(wx, wz, seed)`. Stream **1** is
+  used for terrain and stream **2** for decoration, with no global state.
 
-**Height:** `terrainHeight(wx, wz) = int((sin(wx*0.2) + cos(wz*0.2)) * 3 + 6)`, clamped to [1, 15].
+Each column's height, biome and blocks come from a pure function, `column(wx, wz)`, so any chunk
+can recompute any column. Within one `generate()` call they are computed once for the chunk plus
+the tree margin.
 
-Each column's height and surface come from a pure function, `column(wx, wz)`, so any chunk can
-recompute any column.
+**Height** (`surfaceHeight(wx, wz)`, `kWaterLevel = 20`):
+- `24 + hills * 10 + mask * ridges * 30`, clamped to [1, `kMaxSurfaceHeight` = 56]:
+  - `hills`: simplex fbm, 5 octaves, frequency 0.008;
+  - `mask`: smoothstep(0.1, 0.5) of a very low‑frequency fbm (0.0025). It decides where mountains
+    exist;
+  - `ridges`: ridged simplex, 4 octaves, 0.012.
+- Result: rolling hills, lakes and seas below 20, and mountain ranges up to ~56.
 
-**Pass 1, terrain:**
-- `y > height`: Water if `y ≤ 5`, else Air.
-- `y == height`:
-  - Lava if this column is a lava pool (`range(0,200) == 0` and height > 5);
-  - otherwise the surface: Sand if `height ≤ 6`, else Gravel with 5 % chance, else Grass.
-- `height-3 < y < height`: Dirt (2 layers). Below: Stone.
+**Biomes** (`biome(wx, wz)`):
 
-**Pass 2, decoration** (Grass above water only): one `range(0,100)` roll gives 2 % tree (height
+| Biome | When | Surface / below |
+|-------|------|-----------------|
+| Shore | height ≤ water + 1 | sand / sand |
+| Mountains | mask > 0.3 and height > water + 14 | stone (15 % gravel) / stone |
+| Desert | temperature > 0.1 and moisture < 0 (both: fbm, 3 octaves, 0.003) | sand / sand |
+| Plains | otherwise | grass (5 % gravel, 0.5 % lava pool) / dirt |
+
+**Pass 1, terrain** (world y):
+- `y ≤ 0`: Stone (the floor, never carved).
+- `y > height`: Water if `y ≤ 20`, else Air.
+- Cave → Air (below).
+- `y == height`: the surface block.
+- The 3 layers below the surface: filler. Deeper: Stone.
+
+**Caves** (`isCave`, on by default):
+- Tunnels form where two 3D simplex fields (frequency 0.045 horizontal, 0.07 vertical) are **both**
+  within ±0.09 of zero. This is the intersection of two "sheets", which gives worm‑like tunnels.
+- Caves only carve y in [1, height − 4]. The floor and the 3 layers under the surface stay intact,
+  so no holes to the void or to the surface, and no flooding.
+
+**Pass 2, decoration** (Plains grass only): one `range(0,100)` roll gives 2 % tree (height
 `range(4,6)`), 2 % Rose, 2 % Flower.
 - The pass also visits the columns up to `kTreeRadius = 2` blocks **outside** the chunk, in world
   order (x, then z). Their trees can reach into this chunk.
+- Columns whose trees can't reach this chunk's Y range are skipped.
 - Every chunk replays the same events in the same order, so where two trees touch, the result is
   identical whichever chunk generates it.
 
@@ -135,10 +162,20 @@ recompute any column.
 - The canopy is Leaves: a diamond with Manhattan distance < 4, 4 layers from `y+h-2` to `y+h+1`,
   written only into air.
 - Each chunk writes the part of the tree that falls inside it, so trees **cross chunk borders
-  intact** (KI#6, fixed in #26). Tests check full canopies near borders and load‑order independence.
+  intact**, also vertically (KI#6, fixed in #26).
 
-The terrain *height* doesn't use the seed yet (sin/cos; noise terrain is #27). A regression test in
-`tests/game/test_sandbox_terrain.cpp` checks each decoration lands at 1–3 % of grass columns.
+**Cost.** Startup generates 484 chunks (11×11 columns × 4) in ~175 ms and meshes and uploads 324
+in ~130 ms (Release, this machine; the sandbox logs it).
+
+**Tests** (`tests/game/test_sandbox_terrain.cpp`) cover:
+- determinism and the seed;
+- height range (seas and mountains exist);
+- every biome above 2 % of a 6 000² area;
+- block rules (floor never carved, water only above the surface and ≤ 20);
+- cave rate, with caves off meaning none;
+- decoration at 1–3 % of grass columns;
+- trees across borders and load‑order independence.
+
 History: #5 fixed a bug where both passes reused one `srand` seed, so trees and roses never spawned.
 
 ## Blocks (`SandboxBlocks`)
