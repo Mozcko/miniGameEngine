@@ -23,6 +23,7 @@
 // --- Generación procedural (headless) ---
 #ifdef MGE_HAS_PROCGEN
 #include <mge/procgen/MeshData.h>
+#include <mge/procgen/Primitives.h>
 #endif
 
 // --- Plataforma: ventana, contexto OpenGL, input de SDL ---

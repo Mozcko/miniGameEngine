@@ -1,6 +1,7 @@
 # Generación procedural en CPU (headless: solo core + GLM). Se compila siempre, también sin módulos.
 add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
+    Primitives.h Primitives.cpp
 )
 target_link_libraries(mge_procgen PUBLIC mge_core)
 mge_set_warnings(mge_procgen)

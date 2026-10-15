@@ -33,6 +33,17 @@ namespace {
             std::vector<std::pair<std::string, mge::MeshData>> meshes;
             meshes.emplace_back("quad", coloredQuad());
 
+            // Primitivas (#20)
+            namespace prim = mge::primitives;
+            meshes.emplace_back("plane", prim::plane(4.0f, 4.0f, 8, 8, {0.4f, 0.8f, 0.3f, 1.0f}));
+            meshes.emplace_back("box", prim::box({1.0f, 2.0f, 1.5f}, {0.9f, 0.5f, 0.2f, 1.0f}));
+            meshes.emplace_back("uv_sphere", prim::uvSphere(1.0f, 32, 16, {0.3f, 0.5f, 0.9f, 1.0f}));
+            meshes.emplace_back("icosphere", prim::icosphere(1.0f, 3, {0.8f, 0.8f, 0.9f, 1.0f}));
+            meshes.emplace_back("cylinder", prim::cylinder(0.7f, 2.0f, 32, true, {0.9f, 0.2f, 0.3f, 1.0f}));
+            meshes.emplace_back("cone", prim::cone(0.8f, 2.0f, 32, {0.9f, 0.8f, 0.2f, 1.0f}));
+            meshes.emplace_back("torus", prim::torus(1.2f, 0.4f, 48, 24, {0.6f, 0.3f, 0.8f, 1.0f}));
+            meshes.emplace_back("capsule", prim::capsule(0.5f, 1.5f, 32, 8, {0.2f, 0.8f, 0.7f, 1.0f}));
+
             int written = 0;
             for (const auto& [name, mesh] : meshes) {
                 const std::string error = mesh.validate();
