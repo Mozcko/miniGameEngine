@@ -142,8 +142,9 @@ water and lava animation works (every 0.2 s, frames are blitted into tile 207 / 
 - **Generation** (`Chunk::generate`): height = `(sin(wx*0.2) + cos(wz*0.2)) * 3 + 6`, clamped
   to [1, 15]. Below the surface: 2 layers dirt, rest stone. Water fills air up to y = 5. Surface is
   sand near water, else grass with 5 % gravel and 0.5 % lava pools. Decoration pass: 2 % trees,
-  2 % roses, 2 % flowers on grass. Per column, pass 1 seeds `srand(wx*8921 + wz*33771)` and pass 2
-  seeds the same value XOR `0x5bd1e995` (#5) → deterministic world.
+  2 % roses, 2 % flowers on grass. Each column uses a `Pcg32` seeded with
+  `hash2i(wx, wz, worldSeed)`, stream 1 for terrain and stream 2 for decoration (#14). That gives a
+  deterministic world with no global RNG state.
 - **Meshing** (`Chunk::buildMesh`): face culling against neighbours (cross‑chunk neighbours are
   *predicted* procedurally, not read from the real neighbour chunk), cross‑shaped billboards for
   plants/cobweb, separate opaque / transparent meshes.

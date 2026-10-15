@@ -112,18 +112,21 @@ World‑space origin `(cx*16, 0, cz*16)`; block `(x,y,z)` is a unit cube centred
 | `getNeighborBlock(x,y,z)` (private) | Inside chunk → real block; outside in XZ → *procedural guess* (above height: water if y ≤ 5 else air; else Stone). |
 
 ### Generation rules (`waterLevel = 5`)
-Per column, seeded with `srand(wx*8921 + wz*33771)` (deterministic; the same seed is re‑applied
-in pass 2):
+Randomness comes from `mge::Pcg32` (`<mge/core/Random.h>`, #14), with no global state. Each
+column `(wx, wz)` gets its own generator seeded with `hash2i(wx, wz, worldSeed)`. Stream **1** is
+used for terrain and stream **2** for decoration, so the two passes are independent. The world seed
+is a `Chunk` constructor argument (default `Chunk::kDefaultWorldSeed = 1337`).
 - `y > height`: Water if `y ≤ 5`, else Air.
-- `y == height`: Lava if lava pool (`rand()%200 == 0` and height > 5), else surface:
+- `y == height`: Lava if lava pool (`range(0,200) == 0` and height > 5), else surface:
   Sand if `height ≤ 6`, else Gravel with 5 % chance, else Grass.
 - `height-3 < y < height`: Dirt (2 layers). Below: Stone.
-- Pass 2, on Grass above water: 2 % tree, 2 % Rose, 2 % Flower (one `rand()%100` roll).
+- Pass 2, on Grass above water: 2 % tree (height `range(4,6)`), 2 % Rose, 2 % Flower (one
+  `range(0,100)` roll).
 
-Pass 2 seeds with `seed ^ 0x5bd1e995`. Re‑using pass 1's seed made the decoration roll repeat the
-gravel roll, so trees and roses never spawned (fixed in #5). A regression test in
-`tests/test_chunk.cpp` checks that each decoration lands at 1–3 % of grass columns; the measured
-rate is ≈ 1.9 %.
+The terrain *height* doesn't use the seed yet (sin/cos; noise terrain is #27). A regression test in
+`tests/sandbox/test_chunk.cpp` checks each decoration lands at 1–3 % of grass columns (measured
+≈ 1.95 %). History: #5 fixed a bug where both passes reused one `srand` seed, so trees and roses
+never spawned.
 
 ### Meshing rules
 - Skip Air. Non‑opaque blocks go to the transparent mesh, others to the opaque mesh.

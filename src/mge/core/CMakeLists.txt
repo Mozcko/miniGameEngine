@@ -4,6 +4,7 @@ add_library(mge_core STATIC
     Input.h Input.cpp
     Log.h Log.cpp
     Module.h
+    Random.h
     Clock.h Clock.cpp
     Time.h
 )

@@ -9,11 +9,12 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Application.h/.cpp` | `mge` | `ApplicationConfig` + the runner: owns the loop and the modules, runs headless when no platform module is added |
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
+| `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
 
-Upcoming in M1: RNG (#14), ECS (#16).
+Upcoming in M1: ECS (#16).
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
 
@@ -79,6 +80,21 @@ mge::Vec2f look = platform.input().mouseDelta();
 | `ActionMap::bindAxis(axis, positive, negative)` | Sums +1/−1 over all pairs, clamped to [−1, 1] |
 
 Tests: `tests/core/test_input.cpp`.
+
+---
+
+## Randomness – `<mge/core/Random.h>` (header‑only)
+
+| Item | Use |
+|------|-----|
+| `Pcg32 rng(seed, stream)` | Fast, small, high‑quality generator: `nextU32()`, `nextFloat01()` ([0,1)), `nextBounded(n)` (unbiased), `range(min, maxExclusive)`, `chance(p)`. It's the reference PCG32, verified against pcg‑random.org's known‑answer vectors. Different `stream`s with the same seed are independent |
+| `hash2i(x, z, seed)`, `hash3i(x, y, z, seed)` | Stateless coordinate hashes: same input → same value on every platform; neighbours are uncorrelated. Use them to seed per‑coordinate generators |
+| `mix64(x)`, `splitmix64(state)` | 64‑bit mixers (`constexpr`); derive several seeds from one |
+| `toFloat01(u32)` | u32 → float in [0, 1) using the top 24 bits |
+
+Pattern: `Pcg32 rng(hash2i(worldX, worldZ, worldSeed), /*stream=*/1);`. Never use `rand()`.
+Tests: `tests/core/test_random.cpp` (reference vectors, streams, bounds, χ² uniformity, hash
+grid with no collisions).
 
 ---
 

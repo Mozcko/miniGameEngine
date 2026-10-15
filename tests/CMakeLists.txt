@@ -22,6 +22,7 @@ add_executable(mge_core_tests
     core/test_application.cpp
     core/test_input.cpp
     core/test_log.cpp
+    core/test_random.cpp
     core/test_log_stripped.cpp
     core/test_time.cpp
 )

@@ -4,6 +4,9 @@
 #include <mge/render/3d/Mesh.h>
 #include <mge/render/core/GLSLProgram.h>
 #include <sandbox/Block.h>
+#include <mge/core/Random.h>
+
+#include <cstdint>
 
 namespace mge {
 
@@ -12,7 +15,11 @@ namespace mge {
 
     class Chunk {
     public:
-        Chunk(int x, int z); // Genera los bloques; llamar buildMesh() antes de dibujar
+        // Semilla del mundo por defecto (mismo mundo en todas las plataformas)
+        static constexpr std::uint32_t kDefaultWorldSeed = 1337;
+
+        // Genera los bloques (determinista para (x, z, seed)); llamar buildMesh() antes de dibujar
+        Chunk(int x, int z, std::uint32_t worldSeed = kDefaultWorldSeed);
         ~Chunk();
 
         void generate();
@@ -27,9 +34,10 @@ namespace mge {
 
     private:
         static int getTerrainHeight(int worldX, int worldZ);
-        void placeTree(int x, int y, int z);
+        void placeTree(int x, int y, int z, Pcg32& rng);
 
         int m_x, m_z;
+        std::uint32_t m_seed;
         Block m_blocks[kChunkSize][kChunkHeight][kChunkSize];
         Mesh* m_meshOpaque;
         Mesh* m_meshTransparent;
