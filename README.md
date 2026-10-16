@@ -79,7 +79,6 @@ miniGameEngine/
 │       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
 │       │   ├── 3d/         Mesh (VAO/VBO/EBO)
 │       │   ├── 2d/         Sprite, Animation (legacy, unused)
-│       │   └── camera/     Camera, Camera2D, Camera3D, FirstPersonCamera
 │       ├── audio/          mge_audio: WAV SFX on SDL3 audio streams
 │       └── app/            mge_main: main() (core-only)
 ├── game/                   The game (voxel sandbox)  → game/README.md
@@ -126,7 +125,6 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [src/mge/render/core/README.md](src/mge/render/core/README.md) | Vertex, Texture, GLSLProgram, ResourceManager |
 | [src/mge/render/3d/README.md](src/mge/render/3d/README.md) | Mesh |
 | [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation (legacy) |
-| [src/mge/render/camera/README.md](src/mge/render/camera/README.md) | Camera hierarchy |
 | [examples/README.md](examples/README.md) | Example programs (headless smoke test) |
 | [game/README.md](game/README.md) | SandboxApp, Chunk, Block (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |

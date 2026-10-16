@@ -70,11 +70,12 @@ namespace mge {
 
     // --- Frustum ---
 
-    Frustum Frustum::fromViewProjection(const glm::mat4& m) {
+    Frustum Frustum::fromViewProjection(const glm::mat4& m, DepthRange depthRange) {
         // Filas de la matriz (glm es column-major: m[columna][fila])
         auto row = [&m](int r) { return glm::vec4(m[0][r], m[1][r], m[2][r], m[3][r]); };
         const glm::vec4 r0 = row(0), r1 = row(1), r2 = row(2), r3 = row(3);
-        const glm::vec4 raw[6] = {r3 + r0, r3 - r0, r3 + r1, r3 - r1, r3 + r2, r3 - r2};
+        const glm::vec4 nearPlane = depthRange == DepthRange::ZeroToOne ? r2 : r3 + r2;
+        const glm::vec4 raw[6] = {r3 + r0, r3 - r0, r3 + r1, r3 - r1, nearPlane, r3 - r2};
 
         Frustum frustum;
         for (int i = 0; i < 6; i++) {

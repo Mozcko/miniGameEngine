@@ -32,7 +32,7 @@ namespace mge {
         // (re)crea si cambia el tamaño. false = no se pudo (no dibujar)
         bool begin(CommandBuffer& cmd, SDL_GPUTexture* target, std::uint32_t width, std::uint32_t height,
                    const glm::vec4& clearColor);
-        // Proyección con Z en [0, 1] (glm::perspectiveRH_ZO o depthZeroToOne)
+        // Proyección con Z en [0, 1] (Camera del ECS: cameraMatrices, o glm::perspectiveRH_ZO)
         void setCamera(const glm::mat4& viewProjection) { m_viewProjection = viewProjection; }
         // texture == nullptr → blanca (solo el color de los vértices)
         void draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture = nullptr,

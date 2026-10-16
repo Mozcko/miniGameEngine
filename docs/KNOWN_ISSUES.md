@@ -31,8 +31,8 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 | 11 | Low | `GLSLProgram::getUniformLocation` | (`GL_INVALID_INDEX` comparison fixed in #2.) Prints for every lookup of an optimised‑out uniform. Locations are queried every frame (not cached). |
 | 12 | ✅ Fixed (#13) | `GLSLProgram::compileShader` | Compile failure prints but continues to link (link then also fails). Missing file calls `exit(1)`. |
 | 13 | ✅ Fixed by the SDL GPU path (#28/#30): `GpuVertex` uploads the colour; legacy `Mesh` is deleted in #40 | `render/3d/Mesh.cpp` `init` | Vertex `color` is never sent to the GPU (attrib 1 is set to color and immediately overwritten by UV). `Sprite::setColor` therefore has no visible effect. |
-| 14 | Low | `render/camera/FirstPersonCamera.h` | Re‑declares `m_velocity`, `m_isGrounded`, `m_collisionCallback`, **shadowing** the same members of `Camera3D`, and `setCollisionCallback` is non‑virtual. Calling it through a `Camera3D&` sets the wrong callback. |
-| 15 | Low | `game/SandboxApp.cpp` `handleEvent` | On resize, only the 3D camera projection updates; (the HUD camera is gone since #9.) `Window::m_width/m_height` are never updated either. |
+| 14 | 🗑️ Removed (#32): legacy cameras deleted | `render/camera/FirstPersonCamera.h` | Re‑declares `m_velocity`, `m_isGrounded`, `m_collisionCallback`, **shadowing** the same members of `Camera3D`, and `setCollisionCallback` is non‑virtual. Calling it through a `Camera3D&` sets the wrong callback. |
+| 15 | ✅ Fixed (#32): the engine updates every camera's aspect from the swapchain size (`CameraSystem`) | `game/SandboxApp.cpp` `handleEvent` | On resize, only the 3D camera projection updates; (the HUD camera is gone since #9.) `Window::m_width/m_height` are never updated either. |
 | 16 | ✅ Fixed (#2) | `render/2d/Animation.cpp` `update` | `_frames.size() - 1` is unsigned → with zero frames it underflows; comparison of `int` with `size_t`. |
 | 17 | 🗑️ Removed (#9) | `Texture::loadFromSurface` | For 3‑channel surfaces passes `GL_RGB` without accounting for SDL row pitch (`GL_UNPACK_ALIGNMENT`). TTF blended surfaces are 4‑channel so fine today. |
 
@@ -54,8 +54,8 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 - ~~Two namespaces (`Engine` and `MiniGameEngine`) and two naming styles coexist~~ – unified into `mge` with one convention in #10.
 - ~~Two delta‑time sources (`Application::m_DeltaTime` and `Time`)~~ – single app‑owned clock with a fixed timestep since #12.
 - `Window::handleEvents()` / `isClosed()` / `close()` are unused (Application polls events itself).
-- Unused code: `ResourceManager`, `Animation`, `FirstPersonCamera`, `AudioManager` (initialised
-  but nothing is played), `Camera2D::update` view matrix (GUI uses projection only),
+- Unused code: `ResourceManager`, `Animation`, `AudioManager` (initialised
+  but nothing is played),
   `Chunk::getRadius` hard‑coded 14 (actual half‑diagonal of 16³ is ≈ 13.86, fine).
 - Unused assets: `color.vert/.frag`, `sounds/`, `music/`, `levels/` (no level parser exists).
 - Asset paths are hard‑coded relative to `build/`.

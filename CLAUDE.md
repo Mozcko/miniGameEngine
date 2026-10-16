@@ -50,16 +50,16 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 4. Time (#12): `onFixedUpdate(fixedDt)` at `tickRate` (max 5/frame), `onUpdate(scaledDt)`, `app.time()` (alpha,
    unscaled delta, `setTimeScale`). `setClock(make_unique<ManualClock>(1/60.))` = deterministic. No static `Time`.
    Game stops with `requestStop()`. Input (#15): core `InputState`/`ActionMap` (`<mge/core/Input.h>`), owned by
-   `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); cameras take a `CameraInput` struct.
+   `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); camera controllers take a `CameraInput` struct.
    `setEventCallback` is only for window events (resize/focus).
 5. Static singletons left: `AudioManager`, `ResourceManager` (input and time are no longer static).
 6. Rendering = SDL3 GPU (`mge_gpu` + `mge_graphics`): `device.uploadMesh(MeshData)` → `GpuMesh` (`GpuVertex{pos, normal, color, uv}`),
-   `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent). Legacy GL `mge_render` is dead code until #40 (only `Camera3D` used).
+   `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent). Legacy GL `mge_render` is dead code until #40.
 7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
 8. `Texture2D` (move‑only) from file or pixels; stored flipped so engine UVs stay GL‑style (v up, (0,0) = image bottom‑left).
-9. Cameras: `Camera`(abstract) → `Camera2D`; separate `Camera3D` (free‑fly + AABB collision callback) → `FirstPersonCamera` (gravity/jump; currently unused).
-10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off. Legacy cameras build GL projections →
-   wrap with `depthZeroToOne` (SDL GPU wants Z in [0,1]) until #32.
+9. Cameras (core, #32): ECS `Camera` component + `Transform`; `cameraMatrices(world, camera, viewport())` (Z in [0,1], `.frustum` for culling);
+   `CameraSystem` sets `autoAspect` from `Application::viewport()` (set by GpuModule) before the Render phase; `FlyController` = free fly + collisions.
+10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off.
 
 ## Conventions
 - **One engine namespace `mge`** (game code: `sandbox`). Naming, enforced by
@@ -131,11 +131,11 @@ and return an error instead. `Window::isValid()`, `GLSLProgram::compileShaders/l
 success.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
-- Chunks are never unloaded (#57). Frustum culling is real since #24 (`Camera3D::isAabbVisible`), used for drawing only.
+- Chunks are never unloaded (#57). Frustum culling via `CameraMatrices::frustum` (`Frustum::fromViewProjection`, `DepthRange::ZeroToOne` by default), drawing only.
 - SDL3 + GLEW: on Wayland/EGL `glewInit` returns `GLEW_ERROR_NO_GLX_DISPLAY`; `Window` treats it as
   success (functions are already loaded). Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy`.
 - `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).
 - `Window::init` disables depth test; SandboxApp re‑enables it in `onInit`.
 - `SDL_Quit()` is called by both `~Window` and `~Application`.
-- Unused code/assets: ResourceManager, Animation, FirstPersonCamera, AudioManager calls,
+- Unused code/assets: ResourceManager, Animation, AudioManager calls,
   `color.*` shaders, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).

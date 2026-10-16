@@ -1,5 +1,8 @@
 #include <mge/core/Application.h>
 #include <mge/core/Log.h>
+#include <mge/core/ecs/Camera.h>
+
+#include <algorithm>
 
 #include <cstdlib>
 #include <string>
@@ -7,6 +10,8 @@
 namespace mge {
 
     Application::Application(ApplicationConfig config) : m_config(std::move(config)) {
+        m_viewport = {static_cast<unsigned>(std::max(m_config.width, 0)),
+                      static_cast<unsigned>(std::max(m_config.height, 0))};
         // Límite de frames desde el entorno (CI / smoke tests), solo si el juego no fijó uno
         if (m_config.maxFrames == 0) {
             if (const char* env = std::getenv("MGE_MAX_FRAMES")) {
@@ -121,6 +126,7 @@ namespace mge {
 
             m_world.run(SystemPhase::Update, m_time.m_delta);
             onUpdate(m_time.m_delta);
+            CameraSystem::update(m_world.registry(), m_viewport);
             m_world.run(SystemPhase::Render, m_time.m_delta);
             onRender();
 

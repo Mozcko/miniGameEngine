@@ -22,8 +22,8 @@ struct GpuChunk {
 class SandboxApp : public mge::Application {
 public:
     SandboxApp()
-        : mge::Application(makeConfig()), m_camera(1280, 720),
-          m_blocks(sandbox::registerSandboxBlocks(m_registry)), m_world(m_registry, makeTerrain()) {
+        : mge::Application(makeConfig()), m_blocks(sandbox::registerSandboxBlocks(m_registry)),
+          m_world(m_registry, makeTerrain()) {
         // Módulos que usa el sandbox (orden de inicialización; se cierran al revés).
         // Ventana sin OpenGL: la toma la GPU de SDL (Vulkan) en el GpuModule
         addModule<PlatformModule>();
@@ -45,11 +45,16 @@ public:
         // 2. Cámara
         // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
         const int ground = std::max(m_terrain->surfaceHeight(0, 0), sandbox::SandboxTerrain::kWaterLevel);
-        m_camera.setPosition(glm::vec3(0.5f, static_cast<float>(ground) + 2.5f, 0.5f));
+        m_fly.setPosition(glm::vec3(0.5f, static_cast<float>(ground) + 2.5f, 0.5f));
+        // Entidad cámara: Transform (lo escribe el FlyController) + Camera (el aspecto lo ajusta el motor)
+        m_cameraEntity = world().registry().create();
+        world().registry().add<Transform>(m_cameraEntity);
+        world().registry().add<Camera>(m_cameraEntity);
+        m_fly.apply(world().registry().get<Transform>(m_cameraEntity));
 
         // Configurar Colisiones
         // Colisiones: ¿algún bloque sólido toca la caja? (el bloque (x,y,z) ocupa [x, x+1)³)
-        m_camera.setCollisionCallback([this](const glm::vec3& min, const glm::vec3& max) -> bool {
+        m_fly.setCollisionCallback([this](const glm::vec3& min, const glm::vec3& max) -> bool {
             const glm::ivec3 lo = blockAt(min);
             const glm::ivec3 hi = blockAt(max);
             for (int x = lo.x; x <= hi.x; x++)
@@ -97,14 +102,8 @@ public:
         actions.bind("CaptureMouse", MouseButton::Left);
     }
 
+    // El cambio de tamaño ya no necesita código: el motor ajusta las cámaras al viewport (CameraSystem)
     void handleWindowEvent(const SDL_Event& event) {
-        // Tamaño en píxeles (no en puntos): correcto también en pantallas HiDPI
-        if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-            int newWidth = event.window.data1;
-            int newHeight = event.window.data2;
-            m_camera.updateProjection((float)newWidth, (float)newHeight); // El swapchain sigue solo
-        }
-
         if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && m_mouseCaptured && !m_isPaused) {
             m_platform->setCursorLocked(true);
         }
@@ -153,7 +152,8 @@ public:
         }
 
         streamChunks();
-        m_camera.update(deltaTime, cameraInput());
+        m_fly.update(deltaTime, cameraInput());
+        m_fly.apply(world().registry().get<Transform>(m_cameraEntity));
     }
 
     void onRender() override {
@@ -162,14 +162,17 @@ public:
         if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
                                {0.5f, 0.7f, 1.0f, 1.0f}))
             return;
-        // La cámara todavía es la del renderer OpenGL (Z de -1 a 1): se adapta a SDL GPU (#32 la reemplaza)
-        m_renderer->setCamera(depthZeroToOne(m_camera.getProjectionMatrix()) * m_camera.getViewMatrix());
+        // La cámara del ECS: el aspecto ya está ajustado al tamaño real del swapchain (CameraSystem)
+        Registry& registry = world().registry();
+        const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
+                                                     registry.get<Camera>(m_cameraEntity), viewport());
+        m_renderer->setCamera(camera.viewProjection);
 
         // Primero lo opaco, después lo transparente (mezcla, sin escribir profundidad)
         for (bool transparent : {false, true}) {
             for (auto& [coord, gpu] : m_gpuChunks) {
                 const GpuMesh& mesh = transparent ? gpu.transparent : gpu.opaque;
-                if (mesh.empty() || !m_camera.isAabbVisible(chunkBounds(coord))) continue;
+                if (mesh.empty() || !camera.frustum.intersects(chunkBounds(coord))) continue;
                 const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
                 m_renderer->draw(mesh, model, &m_atlas,
                                  transparent ? MeshPass::Transparent : MeshPass::Opaque);
@@ -203,7 +206,7 @@ private:
     void streamChunks() {
         using Clock = std::chrono::steady_clock;
         const auto start = Clock::now();
-        const ChunkCoord center = chunkOf(blockAt(m_camera.getPosition()));
+        const ChunkCoord center = chunkOf(blockAt(m_fly.position()));
         const int load = kRenderDistance + 1;
         const std::size_t before = m_world.chunkCount();
         // Columnas enteras: todos los chunks verticales del mundo
@@ -274,7 +277,8 @@ private:
     }
 
     std::unique_ptr<MeshRenderer> m_renderer;
-    mge::Camera3D m_camera;
+    FlyController m_fly;   // Mueve la cámara (vuelo libre con colisiones)
+    Entity m_cameraEntity; // Transform + Camera
     // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
     BlockRegistry m_registry;
     sandbox::SandboxBlocks m_blocks;

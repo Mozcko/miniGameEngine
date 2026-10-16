@@ -109,11 +109,11 @@ grid with no collisions).
 | `Sphere` | `contains`, and intersects a sphere or an `Aabb` (closest point) |
 | `Plane` | `dot(normal, p) + d = 0`, unit normal; `fromPointNormal`, signed `distance` (positive on the normal side) |
 | `Ray` | `origin` + normalized `direction`; `at(t)` |
-| `Frustum::fromViewProjection(P * V)` | Gribb–Hartmann, 6 normalized planes pointing inward (OpenGL clip space). `contains(point)`, plus `intersects(Sphere / Aabb)`, which are conservative (may accept boxes just outside near corners) |
+| `Frustum::fromViewProjection(P * V, DepthRange)` | Gribb–Hartmann, 6 normalized planes pointing inward. `DepthRange::ZeroToOne` (default; the engine's projections, SDL GPU) or `MinusOneToOne` (OpenGL / `glm::perspective`): only the near plane differs. `contains(point)`, plus `intersects(Sphere / Aabb)`, which are conservative (may accept boxes just outside near corners) |
 | `intersectRayAabb / Sphere / Plane / Triangle` | `std::optional<float>` distance `t ≥ 0`. Inside a box or sphere gives `t = 0`. Parallel → `nullopt`. The triangle test (Möller–Trumbore) is double‑sided |
 
-Used by `Camera3D::isSphereVisible` / `isAabbVisible` (frustum culling). Tests:
-`tests/core/test_geometry.cpp`.
+Used for frustum culling through `CameraMatrices::frustum` (see Cameras below). Tests:
+`tests/core/test_geometry.cpp`, `tests/core/test_camera.cpp`.
 
 ---
 
@@ -143,6 +143,41 @@ app.world().addSystem(mge::SystemPhase::Fixed, "movement", [](mge::World& w, flo
 
 Benchmark (`bench/ecs_bench`, Release, this dev machine): 100k entities, `each<Position, Velocity>`
 ≈ **2.7 ns/entity**; create + 2.5 components ≈ 86 ns/entity. Tests: `tests/core/test_ecs.cpp`.
+
+---
+
+## Cameras – `<mge/core/ecs/Camera.h>`, `<mge/core/FlyController.h>`
+
+Cameras are ECS components. They live in the core, so they're headless and testable without a GPU.
+
+```cpp
+mge::Registry& registry = world().registry();
+mge::Entity camera = registry.create();
+registry.add<mge::Transform>(camera);          // the camera looks down its local -Z, +Y up
+registry.add<mge::Camera>(camera);             // perspective, 45°, near 0.1, far 1000, autoAspect
+
+mge::FlyController fly({0, 20, 0});            // free fly + optional AABB collision
+fly.update(dt, input);                         // CameraInput: move/look intents from the game's actions
+fly.apply(registry.get<mge::Transform>(camera));
+
+const mge::CameraMatrices m = mge::cameraMatrices(registry.get<mge::Transform>(camera).localMatrix(),
+                                                  registry.get<mge::Camera>(camera), viewport());
+renderer.setCamera(m.viewProjection);          // m.view, m.projection, m.position, m.frustum (culling)
+```
+
+| Item | Notes |
+|------|-------|
+| `Camera` | `projection` (`Perspective` / `Orthographic`), `fovY` (radians), `nearPlane`, `farPlane`, `orthoHeight`, `pixelSpace`, `aspect`, `autoAspect` |
+| Projections | Z in **[0, 1]** (SDL GPU / Vulkan / D3D / Metal): `perspectiveRH_ZO`, `orthoRH_ZO`. NDC +Y is up |
+| Pixel space | Orthographic with `pixelSpace = true`: (0, 0) is the **top‑left**, y grows downwards, 1 unit = 1 pixel (UI). A quad that is CCW in pixel coordinates is CW on screen |
+| `cameraMatrices(world, camera, viewport)` | `view = inverse(world)`, `projection`, `viewProjection`, `position`, `frustum` (`DepthRange::ZeroToOne`) |
+| `CameraSystem::update(registry, viewport)` | Sets `aspect` on every `autoAspect` camera; a zero viewport (minimised) keeps it. **The Application runs it before the Render phase**, so window resizes reach every camera with no game code |
+| `Application::viewport()` / `setViewport()` | Size in pixels of the image being drawn. Starts at `config.width × config.height`; `GpuModule` updates it each frame from the swapchain |
+| `FlyController` | Yaw/pitch from `lookX/lookY × sensitivity` (pitch clamped to ±89°), movement along the view (`speed`, `sprintMultiplier`), collisions axis by axis (X, Z, Y) against `halfExtents` around the position, so it slides along walls. `dt <= 0` (paused) does nothing. `apply(Transform&)` writes position + rotation |
+| `CameraInput` | `moveForward`, `moveRight`, `moveUp` (−1..1), `sprint`, `lookX`, `lookY` (mouse pixels). Controllers never read keys, so they don't depend on the platform |
+
+Replaces the legacy `Camera`/`Camera2D`/`Camera3D`/`FirstPersonCamera` of `mge_render` (#32), which
+built OpenGL projections. Tests: `tests/core/test_camera.cpp`.
 
 ---
 

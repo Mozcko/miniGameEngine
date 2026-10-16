@@ -7,8 +7,10 @@ add_library(mge_core STATIC
     Module.h
     Random.h
     Clock.h Clock.cpp
+    FlyController.h FlyController.cpp
     Time.h
     math/Geometry.h math/Geometry.cpp
+    ecs/Camera.h ecs/Camera.cpp
     ecs/Entity.h
     ecs/Registry.h ecs/Registry.cpp
     ecs/Transform.h ecs/Transform.cpp

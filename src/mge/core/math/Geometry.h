@@ -58,11 +58,19 @@ namespace mge {
         glm::vec3 at(float t) const { return origin + direction * t; }
     };
 
+    // Rango de Z de la proyección: [0, 1] (SDL GPU, Vulkan, D3D, Metal) o [-1, 1] (OpenGL, glm::perspective)
+    enum class DepthRange {
+        ZeroToOne,
+        MinusOneToOne
+    };
+
     // Frustum de cámara: 6 planos con la normal hacia adentro (left, right, bottom, top, near, far)
     class Frustum {
     public:
-        // Extrae los planos de projection * view (Gribb–Hartmann). Convención OpenGL (z en [-w, w]).
-        static Frustum fromViewProjection(const glm::mat4& viewProjection);
+        // Extrae los planos de projection * view (Gribb–Hartmann). Solo cambia el plano cercano:
+        // z >= 0 con ZeroToOne (por defecto, el del motor) o z >= -w con MinusOneToOne.
+        static Frustum fromViewProjection(const glm::mat4& viewProjection,
+                                          DepthRange depthRange = DepthRange::ZeroToOne);
 
         bool contains(const glm::vec3& point) const;
         // Conservador: puede devolver true para cajas/esferas apenas afuera cerca de las esquinas
