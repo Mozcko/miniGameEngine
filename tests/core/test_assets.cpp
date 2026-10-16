@@ -45,7 +45,7 @@ TEST_CASE("Sin MGE_ASSET_DIR se encuentra assets/ del proyecto (desde cualquier 
     fs::path root = assetRoot();
     CHECK(fs::is_directory(root));
     CHECK(root.filename() == "assets");
-    CHECK(fs::exists(assetPath("shaders/basic3d.vert")));
+    CHECK(fs::exists(assetPath("textures/Minecraft-like_3d_tileset.png")));
 }
 
 TEST_CASE("MGE_ASSET_DIR tiene prioridad") {

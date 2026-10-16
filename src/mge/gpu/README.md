@@ -10,8 +10,7 @@
 It depends on `mge_core`, `mge_procgen` (for `MeshData`), `mge_platform` (the window) and SDL3.
 Programs that link it see `MGE_HAS_GPU`, and `<mge/mge.h>` then includes it.
 
-The high‑level renderer (pipelines, cameras, materials) arrives in `mge_graphics` (#30). The legacy
-OpenGL renderer (`mge_render`) is deleted in #40.
+The high‑level renderer (textures, mesh drawing) is [`mge_graphics`](../graphics/README.md).
 
 | File | Contents |
 |------|----------|
@@ -28,9 +27,7 @@ OpenGL renderer (`mge_render`) is deleted in #40.
 
 ```cpp
 MyGame() : mge::Application(config) {
-    mge::PlatformOptions platform;
-    platform.openGl = false;                 // the window belongs to SDL GPU, not to an OpenGL context
-    addModule<mge::PlatformModule>(platform);
+    addModule<mge::PlatformModule>();        // the window
     addModule<mge::GpuModule>();             // AFTER the platform: it needs the window
 }
 
@@ -47,7 +44,7 @@ void onRender() override {
 ```
 
 **`GpuModule` lifecycle:**
-1. `onInit` needs a `PlatformModule` without a GL context, added before it. It creates the device
+1. `onInit` needs a `PlatformModule`, added before it. It creates the device
    and claims the window.
 2. `onFrameBegin` runs after the platform has polled events. It acquires a command buffer and the
    swapchain image.

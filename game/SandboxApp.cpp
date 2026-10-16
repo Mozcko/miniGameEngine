@@ -25,7 +25,7 @@ public:
         : mge::Application(makeConfig()), m_blocks(sandbox::registerSandboxBlocks(m_registry)),
           m_world(m_registry, makeTerrain()) {
         // Módulos que usa el sandbox (orden de inicialización; se cierran al revés).
-        // Ventana sin OpenGL: la toma la GPU de SDL (Vulkan) en el GpuModule
+        // La ventana la toma la GPU de SDL (Vulkan) en el GpuModule
         addModule<PlatformModule>();
         addModule<GpuModule>();
         addModule<AudioModule>();

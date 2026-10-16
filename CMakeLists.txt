@@ -48,10 +48,6 @@ endfunction()
 
 # --- Dependencias de los módulos (el core no necesita ninguna) ---
 if(MGE_BUILD_MODULES)
-    set(OpenGL_GL_PREFERENCE GLVND)
-    find_package(GLEW REQUIRED)
-    find_package(OpenGL REQUIRED)
-
     # SDL3: usa el del sistema si existe (ej: SDL3-devel en Fedora); si no, lo compila desde
     # el código fuente (CI en Ubuntu 24.04, que no trae SDL3). Versión fijada + hash.
     include(FetchContent)

@@ -40,8 +40,8 @@ Pixels are RGBA8 with **row 0 at the top** (image order).
 | `copyFromOriginal(device, srcX, srcY, w, h, dstX, dstY)` | Copy a region of the **original** image (needs `keepCpuCopy`) somewhere else, e.g. animated atlas tiles |
 | `width()`, `height()`, `gpu()`, `originalPixels()` | |
 
-stb_image is compiled here with `STB_IMAGE_STATIC`, so it doesn't clash with the legacy GL
-renderer's copy until #40 removes that.
+stb_image is compiled here with `STB_IMAGE_STATIC`, so another copy in the same program (e.g. the
+render tests) doesn't clash.
 
 ## `MeshRenderer`
 

@@ -14,7 +14,7 @@ namespace mge {
     // Si ninguna existe se usa "assets" relativo (con un aviso).
     // Nota: los assets en archivos desaparecen en M8 (ADR 0002); mientras tanto esto evita depender del cwd.
 
-    // Ruta completa de un asset: assetPath("shaders/basic3d.vert")
+    // Ruta completa de un asset: assetPath("textures/atlas.png")
     std::filesystem::path assetPath(std::string_view relative);
 
     // Raíz de assets en uso (la resuelve en la primera llamada)

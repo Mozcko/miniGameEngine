@@ -6,19 +6,18 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 ## 1. Big picture
 
 ```
- game/                              src/mge/  (one static library per folder)
- ───────────────                             ─────────────────────────────────────────────────────────
- sandbox (exe) ──────────────────────────►  mge_main      main() → createApplication() → run()      ─┐
-   SandboxApp : mge::Application             mge_platform  PlatformModule: Window, GL ctx, GLEW,       │
-     addModule<PlatformModule>() ────────►                SDL event pump → InputState/ActionMap ─────┤
-     addModule<AudioModule>()   ─────────►  mge_audio     AudioModule: AudioManager (SDL3 audio) ────┤
- sandbox_world (lib, headless)        ─►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher ──┐   ▼
-   SandboxBlocks, SandboxTerrain             mge_procgen   MeshData, primitives, noise, SDF ───────┴► mge_core
- SandboxApp ─────────────────────────────►  mge_render    Mesh, Texture, GLSLProgram, Cameras ──►  mge_core
- (new games, M3) ────────────────────────►  mge_gpu       GpuModule: SDL3 GPU device + swapchain ──►  mge_platform
-                                                                                                   Application runner + Module,
-                                                                                                   Log, Time  (no SDL, no GPU)
- Third party: SDL3 · GLEW/OpenGL 3.3 · GLM · stb_image (core: none)
+ game/                                     src/mge/  (one static library per folder)
+ ────────────────────────                  ──────────────────────────────────────────────────────────────
+ sandbox (exe) ─────────────────────────►  mge_main      main() → createApplication() → run()
+   SandboxApp : mge::Application           mge_platform  PlatformModule: Window, SDL events → InputState/ActionMap
+     addModule<PlatformModule>()           mge_gpu       GpuModule: SDL3 GPU device + swapchain, RAII handles
+     addModule<GpuModule>()                mge_graphics  MeshRenderer, Texture2D (embedded shaders)
+     addModule<AudioModule>()              mge_audio     AudioModule: AudioManager (SDL3 audio)
+ sandbox_world (lib, headless) ─────────►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher
+   SandboxBlocks, SandboxTerrain           mge_procgen   MeshData, primitives, noise, SDF
+                                           mge_core      Application runner + Module, ECS, cameras, Input, Log, Time
+                                                         (no SDL, no GPU)
+ Third party: SDL3 (incl. SDL GPU → Vulkan) · glslang (build time) · GLM · stb_image (core: GLM only)
 ```
 
 Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
@@ -41,7 +40,8 @@ A game:
 1. Subclasses `mge::Application` (`<mge/core/Application.h>`), passing an `ApplicationConfig`
    (title, size, `headless`, `maxFrames`).
 2. Adds the **modules** it needs in its constructor, for example `addModule<PlatformModule>()`
-   (window, GL, events) and `addModule<AudioModule>()`. A headless program adds none.
+   (window, events), `addModule<GpuModule>()` (SDL3 GPU) and `addModule<AudioModule>()`. A
+   headless program adds none.
 3. Overrides the hooks it needs: `bool onInit()`, `onUpdate(float dt)`, `onRender()`,
    `onShutdown()`. None are mandatory.
 4. Defines `mge::Application* mge::createApplication()`.
@@ -51,12 +51,12 @@ A game:
 
 1. Each module's `onInit(app)` runs **in the order the modules were added**. If one returns false,
    the modules already initialised are shut down in reverse and `run()` returns 1.
-   - `PlatformModule` creates the `Window` from the config: SDL video, OpenGL **3.3 Core**
-     double‑buffered resizable window, `glewInit()` (EGL‑tolerant), blending on, depth test off,
-     and resets the input state.
+   - `PlatformModule` initialises SDL video and creates the resizable `Window` from the config.
+   - `GpuModule` creates the SDL GPU device (Vulkan; validation in Debug), claims the window and
+     sets the present mode from `config.vsync`.
    - `AudioModule` calls `AudioManager::init()` (SDL3 audio, default device; failure → silent, not
      fatal).
-2. The game's `onInit()` runs, with modules ready (for example a GL context exists). If it returns
+2. The game's `onInit()` runs, with modules ready (for example the GPU device exists). If it returns
    false, all modules are shut down and `run()` returns 1.
 
 ## 4. Frame loop
@@ -65,6 +65,8 @@ A game:
 while running:
     for module in modules:  module.onFrameBegin(app)   ← Platform: input.beginFrame, poll SDL events
                                                           (QUIT → requestStop, window-event callback, input)
+                                                          Gpu: acquire command buffer + swapchain image,
+                                                          app.setViewport(swapchain size)
     if a module requested stop: break                  ← no update/render for that frame
     raw = clock.now() − last  (clamped to maxFrameTime = 0.25 s)
     accumulator += raw × timeScale
@@ -72,8 +74,9 @@ while running:
         world.run(Fixed); onFixedUpdate(1/tickRate)
     alpha = accumulator / (1/tickRate)
     world.run(Update); onUpdate(raw × timeScale)
+    CameraSystem::update(registry, viewport)            ← autoAspect cameras follow the window
     world.run(Render); onRender()
-    for module in modules:  module.onFrameEnd(app)     ← Platform: swap buffers
+    for module in modules:  module.onFrameEnd(app)     ← Gpu: submit (SDL presents)
     frameCount++ ; stop when frameCount == config.maxFrames (if > 0)
 ```
 
@@ -87,21 +90,22 @@ use `time().unscaledDelta()`.
 
 ## 5. Shutdown sequence
 
-After the loop: the game's `onShutdown()` runs first. SandboxApp frees its chunk meshes there,
-while the GL context still exists. Then each **initialised** module's `onShutdown(app)` runs in
-**reverse order**: Audio closes the device, Platform destroys the window and GL context. Finally
+After the loop: the game's `onShutdown()` runs first. SandboxApp frees its GPU meshes, atlas and
+renderer there, while the GPU device still exists. Then each **initialised** module's
+`onShutdown(app)` runs in **reverse order**: Audio closes the device, Gpu waits for the GPU,
+releases the window and destroys the device, then Platform destroys the window. Finally
 `main()` destroys the `Application`.
 
 SDL lifetime (#17): each module owns its SDL subsystem (`PlatformModule` → video,
 `AudioManager` → audio) via `SDL_InitSubSystem`/`SDL_QuitSubSystem`. Whichever module releases the
-last subsystem calls `SDL_Quit()`, exactly once. The game's GL resources are freed in `onShutdown`,
-before the window and context go away. The full lifecycle runs clean under ASan/UBSan
+last subsystem calls `SDL_Quit()`, exactly once. The game's GPU resources are freed in
+`onShutdown`, before the device goes away. The full lifecycle runs clean under ASan/UBSan
 (`asan` preset).
 
 ## 6. Rendering pipeline (SDL3 GPU, #28–#30)
 
-The sandbox renders through the **SDL3 GPU API** (Vulkan; Metal/D3D12 later). The legacy OpenGL
-renderer (`mge_render`) is no longer used; #40 deletes it. Cameras are core ECS components (#32).
+The engine renders through the **SDL3 GPU API** (Vulkan; Metal/D3D12 later). The OpenGL/GLEW
+renderer was deleted in #40. Cameras are core ECS components (#32).
 
 ### Frame flow
 1. `PlatformModule::onFrameBegin`: poll SDL events, update the input.
@@ -192,7 +196,6 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
 |-------|-----------|-------|----------|
 | `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
 | `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | `AudioModule` init/shutdown |
-| `ResourceManager` | `mge` | `Texture` cache by path | never cleared automatically (unused) |
 
 ## 9. Ownership summary
 
@@ -200,10 +203,8 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
 |--------|-------|-----------|
 | `Application` | `main()` (`std::unique_ptr`) | RAII after `run()` returns |
 | Modules | `Application::m_modules` | `onShutdown` in reverse order, then destroyed with the app |
-| `Window` | `PlatformModule` (unique_ptr) | reset in `PlatformModule::onShutdown` |
+| `Window` | `PlatformModule` (unique_ptr) | reset in `PlatformModule::onShutdown`, after `GpuModule` released it |
 | Chunk data | `VoxelWorld` (`unique_ptr` per chunk) | `unloadChunk` or with the world |
 | Chunk GPU meshes | `SandboxApp::m_gpuChunks` (`GpuMesh`: move‑only GPU buffers) | cleared in `SandboxApp::onShutdown`, before the `GpuModule` destroys the device |
 | GPU device | `GpuModule` (`unique_ptr<GpuDevice>`) | `onShutdown`: wait idle, release the window, destroy |
-| GL buffers | `Mesh` | `~Mesh` (Mesh is **not** copy‑safe – copying would double free) |
-| GL textures | nobody automatically | `Texture::destroy()` must be called explicitly |
-| GL programs | `GLSLProgram` | never deleted (destructor is empty) |
+| GPU buffers, textures, samplers, pipelines | Move‑only `GpuHandle`s (`GpuMesh`, `Texture2D`, `MeshRenderer` members) | released by their destructors, before the `GpuDevice` |

@@ -1,8 +1,8 @@
-// <mge/mge.h> enlazando solo mge_core: debe compilar sin SDL ni OpenGL y no ver los módulos
+// <mge/mge.h> enlazando solo mge_core: debe compilar sin SDL ni GPU y no ver los módulos
 #include <doctest/doctest.h>
 #include <mge/mge.h>
 
-#if defined(MGE_HAS_PLATFORM) || defined(MGE_HAS_RENDER) || defined(MGE_HAS_AUDIO)
+#if defined(MGE_HAS_PLATFORM) || defined(MGE_HAS_GPU) || defined(MGE_HAS_GRAPHICS) || defined(MGE_HAS_AUDIO)
 #error "mge_core_tests no enlaza módulos: <mge/mge.h> no debería incluirlos"
 #endif
 

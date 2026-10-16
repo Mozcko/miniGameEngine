@@ -100,7 +100,7 @@ namespace mge {
         }
 
     protected:
-        // Hooks del juego. onInit corre después de inicializar los módulos (ej: con contexto OpenGL).
+        // Hooks del juego. onInit corre después de inicializar los módulos (ej: con la GPU lista).
         // Devolver false aborta el arranque.
         virtual bool onInit() { return true; }
         // Simulación determinista: 0..N veces por frame, siempre con el mismo fixedDt (1 / tickRate)

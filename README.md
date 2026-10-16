@@ -2,14 +2,14 @@
 
 [![CI](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/Mozcko/miniGameEngine/actions/workflows/ci.yml)
 
-A small, educational C++17 game engine built on **SDL3 + OpenGL 3.3 Core (via GLEW)**, with a
+A small, educational C++17 game engine built on **SDL3** and the **SDL3 GPU API** (Vulkan), with a
 Minecraft‑style voxel sandbox as its demo game.
 
 The engine owns `main()` and the game loop. A game plugs in by subclassing
 `mge::Application` and defining `mge::createApplication()` (the "Hazel‑style" entry‑point
 pattern). The current client is `SandboxApp` (`game/SandboxApp.cpp`): it streams in procedurally
-generated 16×16×16 block chunks around a free‑flying, collision‑aware camera, animates
-water/lava tiles.
+generated 16³ block chunks (noise terrain, biomes, caves) around a free‑flying, collision‑aware
+camera, and animates water/lava tiles.
 
 > Source code comments are written in **Spanish**. The documentation is in English.
 
@@ -26,7 +26,7 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** and the
 
 ```bash
 # Fedora (adjust package names for your distro – see docs/BUILDING.md)
-sudo dnf install cmake gcc-c++ SDL3-devel glew-devel glm-devel stb_image-devel
+sudo dnf install cmake gcc-c++ SDL3-devel glm-devel stb_image-devel stb_image_write-devel glslang vulkan-loader mesa-vulkan-drivers
 # (without SDL3-devel, CMake builds SDL3 from source – see docs/BUILDING.md)
 
 scripts/run.sh                   # configure (first time) + build + run, from any directory
@@ -72,13 +72,9 @@ miniGameEngine/
 │       ├── core/           mge_core: headless, no SDL/GPU (Time)
 │       ├── procgen/        mge_procgen: headless procedural generation (meshes, noise, SDF)
 │       ├── voxel/          mge_voxel: headless voxel worlds (blocks, chunks, meshing)
-│       ├── platform/       mge_platform: PlatformModule, SDL window (+ legacy GL context), SDL→input
+│       ├── platform/       mge_platform: PlatformModule, SDL window, SDL→input
 │       ├── gpu/            mge_gpu: GpuModule + RAII wrappers over SDL3 GPU (Vulkan)
 │       ├── graphics/       mge_graphics: Texture2D, MeshRenderer (the renderer on SDL GPU)
-│       ├── render/         mge_render: OpenGL renderer (legacy until #40)
-│       │   ├── core/       Vertex, Texture, GLSLProgram, ResourceManager
-│       │   ├── 3d/         Mesh (VAO/VBO/EBO)
-│       │   ├── 2d/         Sprite, Animation (legacy, unused)
 │       ├── audio/          mge_audio: WAV SFX on SDL3 audio streams
 │       └── app/            mge_main: main() (core-only)
 ├── game/                   The game (voxel sandbox)  → game/README.md
@@ -88,7 +84,6 @@ miniGameEngine/
 ├── examples/               Small engine programs (headless_smoke) → examples/README.md
 ├── tests/                  doctest unit tests (headless): core/, platform/, game/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
-│   ├── shaders/            GLSL 330 shaders
 │   ├── textures/           512×512 block tileset atlas
 │   ├── sounds/             WAV sound effects (unused by current game)
 │   ├── music/              MP3 music (unused by current game)
@@ -121,12 +116,8 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
 | [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |
-| [src/mge/render/README.md](src/mge/render/README.md) | `mge_render` overview |
-| [src/mge/render/core/README.md](src/mge/render/core/README.md) | Vertex, Texture, GLSLProgram, ResourceManager |
-| [src/mge/render/3d/README.md](src/mge/render/3d/README.md) | Mesh |
-| [src/mge/render/2d/README.md](src/mge/render/2d/README.md) | Sprite, Animation (legacy) |
 | [examples/README.md](examples/README.md) | Example programs (headless smoke test) |
-| [game/README.md](game/README.md) | SandboxApp, Chunk, Block (voxel world) |
+| [game/README.md](game/README.md) | SandboxApp, SandboxBlocks, SandboxTerrain (voxel world) |
 | [assets/README.md](assets/README.md) | Asset overview and path rules |
 
 ## License

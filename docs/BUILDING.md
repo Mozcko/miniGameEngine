@@ -10,13 +10,11 @@
 | Vulkan loader + driver | SDL3 GPU backend (`mge_gpu`) | loaded at runtime by SDL | `vulkan-loader` + `mesa-vulkan-drivers` | `libvulkan1` + `mesa-vulkan-drivers` |
 | glslang | GLSL → SPIR‑V shader compiler (build time, #29) | `find_program(glslang / glslangValidator)`; if missing, **built from source** (pinned 16.2.0, SHA‑256) | `glslang` | `glslang-tools` |
 | Vulkan validation layers (optional) | GPU API error checking in Debug builds | loaded at runtime | `vulkan-validation-layers` | `vulkan-validationlayers` |
-| GLEW | OpenGL loader (legacy renderer, removed in #40) | `find_package(GLEW)` | `glew-devel` | `libglew-dev` |
-| OpenGL 3.3 | rendering | `find_package(OpenGL)` | mesa / GPU driver | `libgl-dev` |
 | GLM | math (header‑only) | **no** – must be on the default include path | `glm-devel` | `libglm-dev` |
 | stb_image | PNG loading (header‑only) | **no** – included as `<stb/stb_image.h>` | `stb_image-devel` (or `stb-devel`) | `libstb-dev` |
 
-`STB_IMAGE_IMPLEMENTATION` is defined in exactly one place:
-`src/mge/render/core/Texture.cpp`. Don't define it anywhere else.
+`STB_IMAGE_IMPLEMENTATION` is defined in `src/mge/graphics/Texture2D.cpp` with `STB_IMAGE_STATIC`
+(private to that file). The render tests have their own copy, plus stb_image_write.
 
 ## Build
 
@@ -55,7 +53,6 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `mge_platform` | static lib | `src/mge/platform/` | `PlatformModule`: window, GL context, input |
   | `mge_gpu` | static lib | `src/mge/gpu/` | SDL3 GPU (Vulkan): `GpuModule`, RAII handles, mesh upload |
   | `mge_graphics` | static lib | `src/mge/graphics/` | Renderer on SDL GPU: `Texture2D`, `MeshRenderer` |
-  | `mge_render` | static lib | `src/mge/render/` | OpenGL renderer (legacy, removed in #40; only its cameras are still used) |
   | `mge_audio` | static lib | `src/mge/audio/` | `AudioModule` |
   | `mge_main` | OBJECT lib | `src/mge/app/` | `main()` → `createApplication()` → `run()` (core‑only) |
   | `sandbox_world` | static lib | `game/` | Sandbox blocks + terrain generator (headless, on `mge_voxel`) |
@@ -65,10 +62,9 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
   | `ecs_bench`, `noise_bench` | executables | `bench/` | ECS and noise benchmarks (run from a Release build) |
 
   Every target lists its sources explicitly in its own `CMakeLists.txt`: add new files there.
-- `-DMGE_BUILD_MODULES=OFF` builds only the headless targets (`mge_core`, `mge_procgen`, `mge_voxel`, their tests and `procgen_gallery`). No SDL, GLEW or OpenGL is
+- `-DMGE_BUILD_MODULES=OFF` builds only the headless targets (`mge_core`, `mge_procgen`, `mge_voxel`, their tests and `procgen_gallery`). No SDL or GPU is
   needed; this is how CI proves the core is headless.
 - Include roots are `src/` (`#include <mge/core/Time.h>`) and the repo root, for the game (`#include <game/SandboxTerrain.h>`).
-- OpenGL is linked through GLVND (`OpenGL::GL`).
 
 ## SDL3: system package or built from source
 
@@ -102,8 +98,8 @@ makes UBSan halt on the first error.
 
 ## Headless runs
 
-SDL3's offscreen video driver plus GLEW on EGL lets the game run without a display (useful in CI
-and over SSH):
+SDL3's offscreen video driver plus Vulkan's `VK_EXT_headless_surface` (Mesa drivers, including
+lavapipe) lets any SDL GPU program run without a display (useful in CI and over SSH):
 
 ```bash
 SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy MGE_MAX_FRAMES=300 ./build/sandbox
@@ -238,10 +234,9 @@ Expected console output at startup (engine log on stderr: `[seconds] [LEVEL] [Ca
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| `[Shader] No se pudo abrir el archivo: …` then `[Sandbox] No se pudo crear el shader 3D. Assets en: …` | The asset root the log shows is wrong: set `MGE_ASSET_DIR=/path/to/assets`, or check the `[Assets] Raíz de assets` line |
-| `[Texture] No se pudo cargar la textura ...` | Same as above, or PNG missing. |
+| `[Texture] No se pudo leer …` / `[Sandbox] No se pudo cargar el atlas` | The asset root is wrong: check the `[Assets] Raíz de assets` log line, or set `MGE_ASSET_DIR=/path/to/assets` |
 | SDL configure error `Couldn't find dependency package for …` | Building SDL3 from source without one of its dev packages: install it (see above) or `sudo dnf install SDL3-devel` to skip the source build. |
-| `[Window] No se pudo crear el contexto OpenGL` / `No se pudo inicializar GLEW` | GPU/driver doesn't provide GL 3.3 core (e.g. some VMs). Try `LIBGL_ALWAYS_SOFTWARE=1`. |
+| `[Gpu] No hay una GPU compatible (SDL GPU, SPIR-V)` | No Vulkan driver: install `vulkan-loader` + `mesa-vulkan-drivers` (or the GPU vendor's driver). Software fallback: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json` (lavapipe) |
 | `[Audio] No se pudo abrir el dispositivo de audio` | No audio device; non‑fatal, game continues silently. |
 | `fatal error: stb/stb_image.h` / `glm/glm.hpp` not found | Install the header packages above, or add their include dir to `include_directories()` in CMakeLists. |
 | Mouse can't escape window | Cursor is locked by design. Press `P` to pause (releases it) or `Esc` to quit. |

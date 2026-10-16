@@ -29,7 +29,7 @@ if [[ ! "$name" =~ ^[a-z][a-z0-9_]*$ ]]; then
     echo "Nombre inválido '$name': usar minúsculas, números y _ (ej: space_shooter)" >&2
     exit 1
 fi
-for reserved in sandbox run mge_core mge_main mge_platform mge_render mge_audio; do
+for reserved in sandbox run mge_core mge_main mge_platform mge_gpu mge_graphics mge_procgen mge_voxel mge_audio; do
     [[ "$name" != "$reserved" ]] || { echo "El nombre '$name' está reservado" >&2; exit 1; }
 done
 

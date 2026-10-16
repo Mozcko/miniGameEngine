@@ -14,6 +14,6 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortBlocksOnASingleLine: Empty
 AllowShortEnumsOnASingleLine: false
 FixNamespaceComments: false
-# El orden de includes importa (GL/glew.h antes que cualquier header de OpenGL)
+# El orden de includes lo decide cada archivo (no se reordenan)
 SortIncludes: Never
 IncludeBlocks: Preserve

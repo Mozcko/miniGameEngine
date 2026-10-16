@@ -3,7 +3,7 @@
 // Header "paraguas" del motor: #include <mge/mge.h> trae la API común.
 // El core siempre está incluido. Los módulos se incluyen solo si el programa los enlaza:
 // cada target de módulo define MGE_HAS_<MÓDULO> para quien lo usa (ver los CMakeLists de
-// src/mge/*). Así un programa headless nunca necesita los headers de SDL ni de OpenGL.
+// src/mge/*). Así un programa headless nunca necesita los headers de SDL ni de la GPU.
 
 // --- Core (siempre) ---
 #include <mge/core/Application.h>
@@ -39,7 +39,7 @@
 #include <mge/voxel/VoxelWorld.h>
 #endif
 
-// --- Plataforma: ventana, contexto OpenGL, input de SDL ---
+// --- Plataforma: ventana e input de SDL ---
 #ifdef MGE_HAS_PLATFORM
 #include <mge/platform/PlatformModule.h>
 #include <mge/platform/Window.h>
@@ -61,14 +61,6 @@
 #ifdef MGE_HAS_GRAPHICS
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/Texture2D.h>
-#endif
-
-// --- Render (OpenGL legacy hasta #40) ---
-#ifdef MGE_HAS_RENDER
-#include <mge/render/3d/Mesh.h>
-#include <mge/render/core/GLSLProgram.h>
-#include <mge/render/core/Texture.h>
-#include <mge/render/core/Vertex.h>
 #endif
 
 // --- Audio ---
