@@ -1,5 +1,5 @@
-// Ejemplo mínimo de SDL3 GPU (Vulkan/Metal/D3D12) sin OpenGL: PlatformModule (ventana sin contexto GL)
-// + GpuModule (device y swapchain). Un triángulo que gira, con shaders GLSL compilados a SPIR-V en el
+// Ejemplo mínimo de SDL3 GPU (Vulkan/Metal/D3D12): PlatformModule (ventana) + GpuModule (device y
+// swapchain). Un triángulo que gira, con shaders GLSL compilados a SPIR-V en el
 // build y embebidos (mge_add_shaders): el programa no lee ningún archivo. V alterna el vsync (los FPS
 // van al log cada segundo). Esc sale.
 #include <mge/mge.h>
@@ -20,9 +20,7 @@ namespace {
     class GpuTriangle : public mge::Application {
     public:
         GpuTriangle() : mge::Application(makeConfig()) {
-            mge::PlatformOptions platform;
-            platform.openGl = false; // La ventana es de la GPU de SDL
-            addModule<mge::PlatformModule>(platform);
+            addModule<mge::PlatformModule>();
             addModule<mge::GpuModule>(); // Después de la plataforma: necesita la ventana
         }
 

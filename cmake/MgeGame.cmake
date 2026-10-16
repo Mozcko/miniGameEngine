@@ -3,8 +3,7 @@
 #   mge_add_game(<nombre>
 #       SOURCES <archivos...>              # obligatorio
 #       [LIBRARIES <libs...>]              # librerías extra del juego (ej: sandbox_world)
-#       [MODULES platform gpu graphics audio render]  # módulos del motor (por defecto: platform gpu graphics audio;
-#                                                     # render = OpenGL legacy hasta #40)
+#       [MODULES platform gpu graphics audio]  # módulos del motor (por defecto: los cuatro)
 #       [HEADLESS]                         # sin módulos: sin ventana, GPU ni SDL
 #       [SMOKE_FRAMES <n>])                # registra un smoke test en CTest que corre n frames
 #
@@ -33,8 +32,8 @@ function(mge_add_game name)
             set(ARG_MODULES platform gpu graphics audio)
         endif()
         foreach(module IN LISTS ARG_MODULES)
-            if(NOT module MATCHES "^(platform|gpu|graphics|render|audio)$")
-                message(FATAL_ERROR "mge_add_game(${name}): módulo desconocido '${module}' (platform, gpu, graphics, audio, render)")
+            if(NOT module MATCHES "^(platform|gpu|graphics|audio)$")
+                message(FATAL_ERROR "mge_add_game(${name}): módulo desconocido '${module}' (platform, gpu, graphics, audio)")
             endif()
             target_link_libraries(${name} PRIVATE mge_${module})
         endforeach()

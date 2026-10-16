@@ -4,8 +4,7 @@
 
 #include <cstring>
 
-// stb_image con funciones static: no choca con la copia del renderer OpenGL legacy (mge_render) si un
-// programa enlaza los dos
+// stb_image con funciones static: no choca con otra copia de stb_image en el mismo programa (ej: tests)
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>

@@ -22,16 +22,12 @@ namespace mge {
         }
 
         const ApplicationConfig& config = app.getConfig();
-        m_window = std::make_unique<Window>(config.title, config.width, config.height, m_options.openGl);
+        m_window = std::make_unique<Window>(config.title, config.width, config.height);
         if (!m_window->isValid()) {
             m_window.reset(); // El motivo ya está en el log
             quitSdlSubsystem(SDL_INIT_VIDEO);
             return false;
         }
-        // Renderer OpenGL legacy: vsync según la config (antes nunca se pedía, KI#23). Con SDL GPU lo aplica
-        // el GpuModule.
-        if (m_window->hasGlContext() && !SDL_GL_SetSwapInterval(config.vsync ? 1 : 0))
-            MGE_LOG_WARN("Platform", "No se pudo configurar el vsync de OpenGL: ", SDL_GetError());
         return true;
     }
 
@@ -60,13 +56,9 @@ namespace mge {
         SDL_SetWindowMouseGrab(m_window->getSDLWindow(), locked);
     }
 
-    void PlatformModule::onFrameEnd(Application& /*app*/) {
-        m_window->swapBuffers();
-    }
-
     void PlatformModule::onShutdown(Application& /*app*/) {
         m_input.clear();
-        // Primero la ventana y el contexto OpenGL, después el subsistema de video
+        // Primero la ventana, después el subsistema de video
         m_window.reset();
         quitSdlSubsystem(SDL_INIT_VIDEO);
     }

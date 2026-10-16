@@ -10,25 +10,16 @@
 
 namespace mge {
 
-    struct PlatformOptions {
-        // false (por defecto): ventana sola, para el GpuModule (SDL3 GPU).
-        // true: contexto OpenGL en la ventana (renderer legacy, se borra en #40).
-        bool openGl = false;
-    };
-
-    // Módulo de plataforma: crea la ventana (con el título/tamaño del ApplicationConfig) y, si se pide,
-    // un contexto OpenGL; traduce los eventos de SDL3 al input del core cada frame y presenta la imagen.
+    // Módulo de plataforma: crea la ventana (con el título/tamaño del ApplicationConfig) y traduce los
+    // eventos de SDL3 al input del core cada frame. Para dibujar, agregar después un GpuModule.
     class PlatformModule : public Module {
     public:
         using EventCallback = std::function<void(const SDL_Event&)>;
-
-        explicit PlatformModule(PlatformOptions options = {}) : m_options(options) {}
 
         const char* name() const override { return "Platform"; }
 
         bool onInit(Application& app) override;
         void onFrameBegin(Application& app) override;
-        void onFrameEnd(Application& app) override;
         void onShutdown(Application& app) override;
 
         // Input del frame actual (independiente de SDL) y las acciones del juego
@@ -54,10 +45,8 @@ namespace mge {
 
         // Válido entre onInit y onShutdown
         Window& getWindow() { return *m_window; }
-        bool hasGlContext() const { return m_window && m_window->hasGlContext(); }
 
     private:
-        PlatformOptions m_options;
         std::unique_ptr<Window> m_window;
         EventCallback m_eventCallback;
         InputState m_input;
