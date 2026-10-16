@@ -5,6 +5,8 @@
 #include <mge/core/Time.h>
 #include <mge/core/ecs/World.h>
 
+#include <glm/glm.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -70,6 +72,12 @@ namespace mge {
         World& world() { return m_world; }
         const World& world() const { return m_world; }
 
+        // Tamaño en píxeles de la imagen que se dibuja. Lo actualiza el módulo de GPU cada frame (el
+        // swapchain sigue a la ventana); sin GPU es config.width × config.height. Antes de la fase Render
+        // el loop ajusta a este tamaño las cámaras con autoAspect (CameraSystem).
+        const glm::uvec2& viewport() const { return m_viewport; }
+        void setViewport(const glm::uvec2& viewport) { m_viewport = viewport; }
+
         // Reemplaza el reloj (antes de run()). Por defecto SteadyClock (tiempo real).
         // Tests/headless deterministas: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
         void setClock(std::unique_ptr<Clock> clock) { m_clock = std::move(clock); }
@@ -117,6 +125,7 @@ namespace mge {
         int m_exitCode = 0;
         Time m_time;
         World m_world;
+        glm::uvec2 m_viewport{0, 0};
         double m_fixedDeltaSeconds = 1.0 / 60.0; // Precisión completa para el acumulador
         std::unique_ptr<Clock> m_clock;
     };

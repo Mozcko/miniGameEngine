@@ -9,11 +9,13 @@
 #include <mge/core/Application.h>
 #include <mge/core/Assets.h>
 #include <mge/core/Clock.h>
+#include <mge/core/FlyController.h>
 #include <mge/core/Input.h>
 #include <mge/core/Log.h>
 #include <mge/core/Module.h>
 #include <mge/core/Random.h>
 #include <mge/core/Time.h>
+#include <mge/core/ecs/Camera.h>
 #include <mge/core/ecs/Entity.h>
 #include <mge/core/ecs/Registry.h>
 #include <mge/core/ecs/Transform.h>
@@ -58,16 +60,12 @@
 // --- Graphics: renderer sobre SDL3 GPU ---
 #ifdef MGE_HAS_GRAPHICS
 #include <mge/graphics/MeshRenderer.h>
-#include <mge/graphics/Projection.h>
 #include <mge/graphics/Texture2D.h>
 #endif
 
 // --- Render (OpenGL legacy hasta #40) ---
 #ifdef MGE_HAS_RENDER
 #include <mge/render/3d/Mesh.h>
-#include <mge/render/camera/Camera2D.h>
-#include <mge/render/camera/Camera3D.h>
-#include <mge/render/camera/FirstPersonCamera.h>
 #include <mge/render/core/GLSLProgram.h>
 #include <mge/render/core/Texture.h>
 #include <mge/render/core/Vertex.h>

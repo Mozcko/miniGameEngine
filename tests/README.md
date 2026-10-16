@@ -19,6 +19,7 @@ ctest --preset dev                      # all tests
 |------|--------|
 | `test_main.cpp` | doctest `main()` – no tests here |
 | `core/test_time.cpp` | `Time`: scaling, pause, hitch clamp, real clock never negative |
+| `core/test_camera.cpp` | `Camera` component: ZO perspective (near→0, far→1, +Y up), view from the transform, pixel ortho corners, world ortho, `CameraSystem` aspect (autoAspect, minimised), the app's viewport + loop, ZO vs GL frustum near plane, `FlyController` look/move/pause/apply and wall sliding |
 | `core/test_ecs.cpp` | Entity lifecycle/recycling, components, swap‑and‑pop integrity, views, transform hierarchy (rotation, cycles, destroyed parent), World phases, ECS systems in a headless app |
 | `procgen/test_sdf.cpp` | SDF distances, booleans (hard and smooth), transforms, surface nets: radius accuracy, watertight (incl. torus), winding, resolution, empty cases |
 | `procgen/test_noise.cpp` | Noise determinism, ranges, Perlin lattice zeros, continuity, Worley, fractals, warp, batch API |
@@ -65,7 +66,7 @@ optional depth). `compareWithGolden(name, image)` compares the result with
 - Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.
 - Link only what you test. `mge_core_tests` (`tests/core/`) links **only `mge_core`**, so it
   also builds with `-DMGE_BUILD_MODULES=OFF`, like `mge_procgen_tests` and `mge_voxel_tests`.
-  `game_tests` (`tests/game/`) links `sandbox_world` (headless) and `mge_render` (camera test).
+  `game_tests` (`tests/game/`) links `sandbox_world` (headless).
   CTest names are prefixed `core: ` / `sandbox: `.
 - **Never** call code that needs a GPU context. Test CPU data instead: `MeshData` from
   `buildChunkMesh`, `ChunkData` from a generator. `Mesh::init` needs OpenGL.

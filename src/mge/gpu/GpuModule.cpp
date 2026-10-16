@@ -51,7 +51,7 @@ namespace mge {
         return mode;
     }
 
-    void GpuModule::onFrameBegin(Application& /*app*/) {
+    void GpuModule::onFrameBegin(Application& app) {
         m_frame = {};
         m_cmd = m_device->acquireCommandBuffer();
         if (!m_cmd) return;
@@ -64,6 +64,7 @@ namespace mge {
         }
         // swapchain == nullptr es normal (ventana minimizada): el frame se saltea sin error
         m_frame = {&m_cmd, swapchain, width, height};
+        if (swapchain) app.setViewport({width, height}); // Las cámaras (CameraSystem) siguen al tamaño real
     }
 
     void GpuModule::onFrameEnd(Application& /*app*/) {

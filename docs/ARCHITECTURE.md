@@ -101,8 +101,7 @@ before the window and context go away. The full lifecycle runs clean under ASan/
 ## 6. Rendering pipeline (SDL3 GPU, #28–#30)
 
 The sandbox renders through the **SDL3 GPU API** (Vulkan; Metal/D3D12 later). The legacy OpenGL
-renderer (`mge_render`) is no longer used for drawing; #40 deletes it. Only its `Camera3D` (pure
-math) is still used, until #32.
+renderer (`mge_render`) is no longer used; #40 deletes it. Cameras are core ECS components (#32).
 
 ### Frame flow
 1. `PlatformModule::onFrameBegin`: poll SDL events, update the input.
@@ -130,9 +129,10 @@ read at runtime.
 
 ### Sandbox frame (`onRender`)
 1. `MeshRenderer::begin` clears to sky blue `(0.5, 0.7, 1.0)` and clears depth (D32 or D24).
-2. Camera: `depthZeroToOne(Camera3D projection) * view`. SDL GPU's NDC has Y up and Z in [0, 1].
+2. Camera: `cameraMatrices(transform, camera, viewport())` from the camera entity. Its aspect is
+   set by `CameraSystem`; the projection uses SDL GPU's NDC (Y up, Z in [0, 1]).
 3. **Opaque pass**: pipeline with depth test and write, back‑face culling (CCW = front), no
-   blending. Every chunk inside the frustum (`isAabbVisible`) is drawn with
+   blending. Every chunk inside the camera frustum (`CameraMatrices::frustum`) is drawn with
    `model = translate(chunkOrigin)` and the atlas.
 4. **Transparent pass**: alpha blending, depth test without writes. Draws water, lava, glass,
    leaves and plants, with no sorting; the cutout pass and sorting come in #31.
@@ -182,7 +182,7 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
   - Mesh the dirty ones within 4 (9×9), then upload with `device.uploadMesh`.
   - The extra loaded ring means borders mesh against real data.
   - Chunks are never unloaded (KI#4).
-- **Collision:** `Camera3D` moves axis by axis (X, Z, Y) and asks a callback whether its AABB
+- **Collision:** `FlyController` (core) moves axis by axis (X, Z, Y) and asks a callback whether its AABB
   (±0.3 around the eye) overlaps any solid block. The sandbox converts the box corners with
   `blockAt` and asks `VoxelWorld::isSolid`.
 

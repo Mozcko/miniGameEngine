@@ -7,10 +7,6 @@ add_library(mge_render STATIC
     3d/Mesh.h 3d/Mesh.cpp
     2d/Sprite.h 2d/Sprite.cpp
     2d/Animation.h 2d/Animation.cpp
-    camera/Camera.h camera/Camera.cpp
-    camera/Camera2D.h camera/Camera2D.cpp
-    camera/Camera3D.h camera/Camera3D.cpp
-    camera/FirstPersonCamera.h camera/FirstPersonCamera.cpp
 )
 # Las cámaras reciben CameraInput (no leen teclas): render no depende de platform
 target_link_libraries(mge_render PUBLIC mge_core mge_procgen OpenGL::GL GLEW::GLEW)

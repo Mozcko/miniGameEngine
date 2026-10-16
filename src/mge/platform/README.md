@@ -58,8 +58,10 @@ Any failure in steps 1–5 prints an error and calls `exit(1)`.
 | `handleEvents()`, `isClosed()`, `close()` | Legacy self‑contained event loop; **unused** – `Application::Run` polls events itself. Don't call `handleEvents()` alongside Run: it would swallow events. |
 
 ### Resizing
-The window is resizable, but `Window` does nothing on resize. The game must handle
-`SDL_WINDOWEVENT_RESIZED` (SandboxApp calls `glViewport` and `Camera3D::updateProjection`).
+The window is resizable and `Window` does nothing on resize, and nothing else is needed:
+- the SDL GPU swapchain follows the window;
+- `GpuModule` writes its size to `Application::viewport()`;
+- `CameraSystem` adjusts every `autoAspect` camera before the Render phase.
 
 ---
 

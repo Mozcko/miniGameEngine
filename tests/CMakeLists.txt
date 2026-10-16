@@ -21,6 +21,7 @@ add_executable(mge_core_tests
     test_main.cpp
     core/test_application.cpp
     core/test_assets.cpp
+    core/test_camera.cpp
     core/test_ecs.cpp
     core/test_geometry.cpp
     core/test_input.cpp
@@ -122,9 +123,8 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         game/test_sandbox_blocks.cpp
         game/test_sandbox_terrain.cpp
-        game/test_camera.cpp
     )
-    target_link_libraries(game_tests PRIVATE sandbox_world mge_render doctest_header)
+    target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
     mge_set_warnings(game_tests)
     doctest_discover_tests(game_tests TEST_PREFIX "game: ")
 endif()

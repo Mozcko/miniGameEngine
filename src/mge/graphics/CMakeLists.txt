@@ -3,7 +3,6 @@
 add_library(mge_graphics STATIC
     Texture2D.h Texture2D.cpp
     MeshRenderer.h MeshRenderer.cpp
-    Projection.h
 )
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)

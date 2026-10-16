@@ -9,10 +9,9 @@ by default (`MODULES platform gpu graphics audio`).
 |------|----------|
 | `Texture2D.h/.cpp` | `Texture2D`: RGBA8 texture from a file (stb_image) or from pixels, region updates, tile copies from the original image |
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `MeshPass`: draws `GpuMesh`es with texture × vertex colour, camera, depth |
-| `Projection.h` | `depthZeroToOne(glProjection)`: adapts GL‑style projections (Z −1..1) to SDL GPU (Z 0..1) |
 | `shaders/mesh.vert/.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`, `texture(albedo, uv) * color` |
 
-Coming in M3: the render queue with a cutout pass (#31), cameras as ECS components (#32), lighting
+Coming in M3: the render queue with a cutout pass (#31), lighting
 and fog (#33), procedural materials (#34) and debug drawing (#38).
 
 ## `Texture2D`
@@ -73,9 +72,8 @@ void onRender() override {
 `begin` also works on any colour target, not only the swapchain; the render tests draw into
 offscreen textures this way.
 
-**Cameras.** `MeshRenderer` expects projections with Z in [0, 1]. The legacy `Camera3D` (in
-`mge_render`) still builds OpenGL projections, so the sandbox wraps it with
-`depthZeroToOne(camera.getProjectionMatrix())`. Camera components replace this in #32.
+**Cameras.** `MeshRenderer` expects projections with Z in [0, 1]. The core's `Camera` component
+produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md` → Cameras).
 
 ## Tests
 `tests/render/test_graphics.cpp` (label `gpu`):
