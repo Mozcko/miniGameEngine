@@ -115,14 +115,15 @@ TEST_CASE("Render: escena del sandbox (SandboxTerrain + atlas PNG + MeshRenderer
     ChunkMeshOptions options;
     options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
     struct Chunk {
-        GpuMesh opaque, transparent;
+        GpuMesh opaque, cutout, transparent;
     };
     std::map<ChunkCoord, Chunk> meshes;
     for (int x = -1; x <= 1; x++)
         for (int z = -1; z <= 1; z++)
             for (int y = 0; y < sandbox::SandboxTerrain::kWorldChunksY; y++) {
                 ChunkMesh mesh = buildChunkMesh(world, {x, y, z}, options);
-                meshes[{x, y, z}] = {device.uploadMesh(mesh.opaque), device.uploadMesh(mesh.transparent)};
+                meshes[{x, y, z}] = {device.uploadMesh(mesh.opaque), device.uploadMesh(mesh.cutout),
+                                     device.uploadMesh(mesh.transparent)};
             }
 
     const glm::vec3 eye(-14.0f, static_cast<float>(ground) + 9.0f, -14.0f);
@@ -135,18 +136,111 @@ TEST_CASE("Render: escena del sandbox (SandboxTerrain + atlas PNG + MeshRenderer
     CommandBuffer cmd = device.acquireCommandBuffer();
     REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, {0.5f, 0.7f, 1.0f, 1.0f}));
     renderer.setCamera(projection * view);
-    for (bool transparent : {false, true})
-        for (const auto& [coord, chunk] : meshes)
-            renderer.draw(transparent ? chunk.transparent : chunk.opaque,
-                          glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord))), &atlas,
-                          transparent ? MeshPass::Transparent : MeshPass::Opaque);
+    RenderQueue queue;
+    for (const auto& [coord, chunk] : meshes) {
+        const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
+        const glm::vec3 center = glm::vec3(chunkOrigin(coord)) + glm::vec3(kChunkSize * 0.5f);
+        queue.add({&chunk.opaque, model, &atlas, MeshPass::Opaque, center});
+        queue.add({&chunk.cutout, model, &atlas, MeshPass::Cutout, center});
+        queue.add({&chunk.transparent, model, &atlas, MeshPass::Transparent, center});
+    }
+    queue.sort(eye, glm::normalize(glm::vec3(4.0f, static_cast<float>(ground) - 2.0f, 4.0f) - eye));
+    renderer.submit(queue);
     renderer.end();
     REQUIRE(cmd.submitAndWait());
     CHECK(renderer.drawCalls() > 9);
+    CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Hojas y flores
 
     const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
     // Tolerancia por defecto (1 %): entre Intel y lavapipe difieren ~0.3 % (bordes de texel y de triángulos)
     const mge_test::GoldenResult result = mge_test::compareWithGolden("sandbox_scene", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
+}
+
+TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparente atrás→adelante") {
+    // Mallas "no vacías" falsas: la cola solo mira indexCount
+    GpuMesh mesh;
+    mesh.indexCount = 3;
+    RenderQueue queue;
+    const glm::vec3 near(0, 0, -2), mid(0, 0, -10), far(0, 0, -30);
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, near});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, far});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, mid});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, far});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, near});
+    GpuMesh empty;
+    queue.add({&empty, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near}); // Vacía: no entra
+    CHECK(queue.size() == 6);
+
+    queue.sort(glm::vec3(0.0f), glm::vec3(0, 0, -1));
+    const auto& items = queue.items();
+    auto is = [&](std::size_t i, MeshPass pass, const glm::vec3& center) {
+        return items[i].pass == pass && items[i].center == center;
+    };
+    CHECK(is(0, MeshPass::Opaque, near));
+    CHECK(is(1, MeshPass::Opaque, far));
+    CHECK(is(2, MeshPass::Cutout, near));
+    CHECK(is(3, MeshPass::Cutout, mid));
+    CHECK(is(4, MeshPass::Transparent, far)); // Lo lejano primero
+    CHECK(is(5, MeshPass::Transparent, near));
+}
+
+TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sobre el pasto") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    BlockRegistry registry;
+    const sandbox::SandboxBlocks b = sandbox::registerSandboxBlocks(registry);
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    for (int x = 0; x < 8; x++)
+        for (int z = 0; z < 8; z++) world.setBlock({x, 0, z}, b.grass);
+    for (int x = 4; x < 8; x++)
+        for (int z = 0; z < 4; z++) world.setBlock({x, 1, z}, b.water); // Charco al fondo
+    world.setBlock({5, 2, 5}, b.leaves);                                // Hojas entre la cámara y el agua
+    world.setBlock({5, 3, 5}, b.leaves);
+    world.setBlock({2, 1, 5}, b.flower);
+    world.setBlock({3, 1, 4}, b.rose);
+
+    ChunkMeshOptions options;
+    options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, options);
+    REQUIRE_FALSE(mesh.cutout.empty());
+    REQUIRE_FALSE(mesh.transparent.empty());
+    const GpuMesh opaque = device.uploadMesh(mesh.opaque);
+    const GpuMesh cutout = device.uploadMesh(mesh.cutout);
+    const GpuMesh transparent = device.uploadMesh(mesh.transparent);
+
+    const Texture2D atlas =
+        Texture2D::fromFile(device, MGE_TEST_ASSET_DIR "/textures/Minecraft-like_3d_tileset.png");
+    REQUIRE(atlas);
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    const glm::vec3 eye(4.0f, 5.5f, 11.0f), target(5.0f, 1.5f, 2.0f);
+    const glm::mat4 viewProjection = glm::perspectiveRH_ZO(glm::radians(55.0f), 1.0f, 0.1f, 100.0f) *
+                                     glm::lookAt(eye, target, glm::vec3(0, 1, 0));
+
+    RenderQueue queue;
+    // Orden de alta al revés a propósito: la cola lo corrige
+    queue.add({&transparent, glm::mat4(1.0f), &atlas, MeshPass::Transparent, glm::vec3(6, 1, 2)});
+    queue.add({&cutout, glm::mat4(1.0f), &atlas, MeshPass::Cutout, glm::vec3(5, 2, 5)});
+    queue.add({&opaque, glm::mat4(1.0f), &atlas, MeshPass::Opaque, glm::vec3(4, 0, 4)});
+    queue.sort(eye, glm::normalize(target - eye));
+
+    constexpr std::uint32_t kSize = 160;
+    GpuTexture targetTexture = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, targetTexture.get(), kSize, kSize, {0.5f, 0.7f, 1.0f, 1.0f}));
+    renderer.setCamera(viewProjection);
+    renderer.submit(queue);
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+    CHECK(renderer.stats().drawCalls[static_cast<std::size_t>(MeshPass::Cutout)] == 1);
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(targetTexture, kSize, kSize)};
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("cutout_leaves_water", image);
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }

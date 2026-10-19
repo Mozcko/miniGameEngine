@@ -31,6 +31,13 @@ namespace mge {
         Cross, // Dos planos diagonales (flores, pasto alto)
     };
 
+    // En qué pasada se dibuja un bloque
+    enum class RenderLayer : std::uint8_t {
+        Opaque,      // Sólido a la vista
+        Cutout,      // Con agujeros (hojas, plantas): píxeles transparentes descartados, escribe profundidad
+        Translucent, // Semitransparente (agua, vidrio): mezcla alfa, ordenado de atrás hacia adelante
+    };
+
     // Descripción de un tipo de bloque. Ambos caminos (ADR 0004):
     //   - procedural: `color` (color por vértice)
     //   - asset: `tiles`, un tile del atlas por cara (-1 = sin textura)
@@ -42,11 +49,16 @@ namespace mge {
         BlockShape shape = BlockShape::Cube;
         glm::vec4 color = glm::vec4(1.0f);
         std::array<int, kBlockFaceCount> tiles = {-1, -1, -1, -1, -1, -1};
+        // Pasada de dibujo; sin fijar: Opaque si opaque, si no Translucent
+        std::optional<RenderLayer> layer;
 
         BlockDesc& setTile(int tile);                        // Todas las caras
         BlockDesc& setTiles(int top, int bottom, int sides); // Arriba / abajo / costados
         bool textured() const;
         int tile(BlockFace face) const { return tiles[static_cast<int>(face)]; }
+        RenderLayer renderLayer() const {
+            return layer ? *layer : (opaque ? RenderLayer::Opaque : RenderLayer::Translucent);
+        }
     };
 
     // Catálogo de bloques del juego. El id 0 (aire: ni sólido ni opaco, sin forma) ya viene registrado.

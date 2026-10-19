@@ -20,9 +20,11 @@ namespace mge {
     };
 
     // Malla de un chunk en coordenadas locales (0..16): dibujar con model = translate(chunkOrigin).
-    // opaque: bloques opacos. transparent: el resto (agua, vidrio, hojas, cruces).
+    // Una malla por pasada de dibujo (BlockDesc::renderLayer): opaque (sólidos), cutout (hojas, plantas:
+    // prueba alfa) y transparent (translúcidos: agua, vidrio, lava; mezcla alfa).
     struct ChunkMesh {
         MeshData opaque;
+        MeshData cutout;
         MeshData transparent;
     };
 

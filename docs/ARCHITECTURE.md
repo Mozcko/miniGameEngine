@@ -129,18 +129,22 @@ read at runtime.
 | Shader | Where | Inputs |
 |--------|-------|--------|
 | `mesh.vert/.frag` | `mge_graphics` | vertex UBO `{viewProjection, model}` (set 1); fragment sampler `albedo` (set 2); output `texture × vertexColor` |
+| `mesh_cutout.frag` | `mge_graphics` | as `mesh.frag`, discards alpha < 0.5 (Cutout pass) |
 | `triangle.*` | `examples/gpu_triangle` | vertex UBO `{angle, aspect}` |
 
 ### Sandbox frame (`onRender`)
 1. `MeshRenderer::begin` clears to sky blue `(0.5, 0.7, 1.0)` and clears depth (D32 or D24).
 2. Camera: `cameraMatrices(transform, camera, viewport())` from the camera entity. Its aspect is
    set by `CameraSystem`; the projection uses SDL GPU's NDC (Y up, Z in [0, 1]).
-3. **Opaque pass**: pipeline with depth test and write, back‑face culling (CCW = front), no
-   blending. Every chunk inside the camera frustum (`CameraMatrices::frustum`) is drawn with
-   `model = translate(chunkOrigin)` and the atlas.
-4. **Transparent pass**: alpha blending, depth test without writes. Draws water, lava, glass,
-   leaves and plants, with no sorting; the cutout pass and sorting come in #31.
-5. Every 5 s the average FPS is written to the Debug log.
+3. Every chunk inside the camera frustum (`CameraMatrices::frustum`) adds three items to the
+   `RenderQueue` (#31), with `model = translate(chunkOrigin)` and the atlas.
+4. The queue sorts by pass, then by depth, and `MeshRenderer::submit` draws it:
+   - **Opaque**, front‑to‑back: depth test + write, back‑face culling (CCW = front), no blending.
+   - **Cutout**, front‑to‑back: the same, but pixels with alpha < 0.5 are discarded (leaves,
+     plants).
+   - **Transparent**, back‑to‑front: alpha blending, depth test without writes (water, lava,
+     glass).
+5. Every 5 s the average FPS and per‑pass draw calls and triangles are written to the Debug log.
 
 ### Textures
 `Texture2D::fromFile` (stb_image → RGBA8) stores the image flipped vertically, so the engine's

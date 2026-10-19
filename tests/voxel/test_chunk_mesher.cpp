@@ -319,3 +319,31 @@ TEST_CASE("Mesher: los bloques con textura van en blanco salvo con tintTextured"
         CHECK(tinted.colors[i] == (isBrick ? brick.color : paint.color));
     }
 }
+
+TEST_CASE("Mesher: cada bloque va a la malla de su RenderLayer") {
+    BlockRegistry registry;
+    BlockDesc stone;
+    stone.name = "stone";
+    BlockDesc leaves;
+    leaves.name = "leaves";
+    leaves.opaque = false;
+    leaves.layer = RenderLayer::Cutout;
+    BlockDesc water;
+    water.name = "water";
+    water.opaque = false; // Sin layer: translúcido por defecto
+    CHECK(stone.renderLayer() == RenderLayer::Opaque);
+    CHECK(leaves.renderLayer() == RenderLayer::Cutout);
+    CHECK(water.renderLayer() == RenderLayer::Translucent);
+
+    const BlockId s = registry.add(stone), l = registry.add(leaves), w = registry.add(water);
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    world.setBlock({0, 0, 0}, s);
+    world.setBlock({4, 0, 0}, l);
+    world.setBlock({8, 0, 0}, w);
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, naive());
+    CHECK(mesh.opaque.triangleCount() == 12);
+    CHECK(mesh.cutout.triangleCount() == 12);
+    CHECK(mesh.transparent.triangleCount() == 12);
+    CHECK(mesh.cutout.bounds().min.x == doctest::Approx(4.0f));
+}

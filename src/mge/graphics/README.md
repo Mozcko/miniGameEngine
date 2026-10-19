@@ -8,10 +8,11 @@ by default (`MODULES platform gpu graphics audio`).
 | File | Contents |
 |------|----------|
 | `Texture2D.h/.cpp` | `Texture2D`: RGBA8 texture from a file (stb_image) or from pixels, region updates, tile copies from the original image |
-| `MeshRenderer.h/.cpp` | `MeshRenderer`, `MeshPass`: draws `GpuMesh`es with texture × vertex colour, camera, depth |
-| `shaders/mesh.vert/.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`, `texture(albedo, uv) * color` |
+| `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
+| `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
+| `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`, `texture(albedo, uv) * color`; the cutout variant discards alpha < 0.5 |
 
-Coming in M3: the render queue with a cutout pass (#31), lighting
+Coming in M3: lighting
 and fog (#33), procedural materials (#34) and debug drawing (#38).
 
 ## `Texture2D`
@@ -53,21 +54,26 @@ void onRender() override {
     const mge::GpuFrame* frame = gpuModule->frame();
     if (!frame || !m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height, sky)) return;
     m_renderer->setCamera(glm::perspectiveRH_ZO(fov, aspect, 0.1f, 500.0f) * view);   // Z in [0, 1]
-    m_renderer->draw(mesh, model, &atlas);                          // opaque (default)
-    m_renderer->draw(water, model, &atlas, mge::MeshPass::Transparent);   // after the opaque ones
+    m_queue.clear();
+    m_queue.add({&mesh, model, &atlas, mge::MeshPass::Opaque, center});
+    m_queue.add({&leaves, model, &atlas, mge::MeshPass::Cutout, center});
+    m_queue.add({&water, model, &atlas, mge::MeshPass::Transparent, center});
+    m_queue.sort(cameraPosition, cameraForward);   // by pass, then by depth
+    m_renderer->submit(m_queue);                   // or draw(mesh, model, &tex, pass) yourself, in pass order
     m_renderer->end();
 }
 ```
 
 | Feature | Behaviour |
 |---------|-----------|
-| **Passes** | `Opaque`: depth test + write, no blending. `Transparent`: alpha blending, depth test **without** write. Draw opaque first. Sorting comes with the render queue (#31) |
-| **Culling** | Back faces culled, counter‑clockwise = front (MeshData's winding) |
+| **Passes** (#31) | **`Opaque`**: depth test + write, no blending. **`Cutout`**: like opaque, but pixels with alpha < 0.5 are discarded (leaves, plants), so holes need no sorting. **`Transparent`**: alpha blending, depth test **without** write (water, glass). Draw in that order |
+| **`RenderQueue`** | `add({mesh, model, texture, pass, center})` skips empty meshes. `sort(cameraPosition, cameraForward)` orders by pass, then opaque/cutout **front‑to‑back** (early depth rejection) and transparent **back‑to‑front** (correct blending), by each item's centre. A single mesh's triangles are not sorted, so overlapping translucent surfaces inside one chunk can still blend in the wrong order |
+| **Culling** | Back faces culled in every pass, counter‑clockwise = front (MeshData's winding). Double‑sided things, like cross plants, carry both faces as separate quads |
 | **Shading** | `texture(albedo, uv) * vertexColor`. No texture → 1×1 white, so only the vertex colour shows (colour‑only meshes, AO) |
 | **Sampler** | Nearest filtering, clamp to edge (pixel‑art look, as the GL renderer) |
 | **Depth** | Owned by the renderer, `device.depthFormat()` (D32/D24), recreated when the target size changes (window resize) |
 | **Uniforms** | Vertex set 1 binding 0 `{viewProjection, model}`, pushed per draw. Fragment set 2 binding 0 `albedo` |
-| **Stats** | `drawCalls()`, `triangles()` of the current/last frame |
+| **Stats** | `stats()`: draw calls and triangles **per pass** (`RenderStats`, indexed by `MeshPass`), plus totals; `drawCalls()` and `triangles()` are shortcuts |
 
 `begin` also works on any colour target, not only the swapchain; the render tests draw into
 offscreen textures this way.
@@ -81,5 +87,8 @@ produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md
 - **Regions:** `updateRegion` and `copyFromOriginal` land where expected; out‑of‑bounds updates
   are rejected.
 - **Missing file:** loading a file that doesn't exist gives an invalid texture.
-- **Sandbox scene golden:** `SandboxTerrain` + the PNG atlas + `MeshRenderer`, opaque then
-  transparent. Intel and lavapipe differ on about 0.3 % of pixels.
+- **Sandbox scene golden:** `SandboxTerrain` + the PNG atlas + `MeshRenderer` through the queue.
+  Intel and lavapipe differ on about 0.3 % of pixels.
+- **`RenderQueue` order** (CPU): passes, front‑to‑back and back‑to‑front, empty meshes skipped.
+- **Cutout scene golden:** leaves in front of water, a rose and a flower over grass, added to the
+  queue in reverse order on purpose.

@@ -13,7 +13,7 @@ them. The sandbox (`game/`) is the reference user.
 | `Block.h/.cpp` | `BlockId` (`kAir = 0`), `BlockFace`, `BlockShape`, `BlockDesc`, `BlockRegistry`, `TextureAtlas`/`UvRect` |
 | `Chunk.h/.cpp` | `kChunkSize = 16`, `ChunkCoord` (+ hash), coordinate helpers, `ChunkData` |
 | `VoxelWorld.h/.cpp` | `TerrainGenerator` interface, `VoxelWorld` (loaded chunks, world get/set, dirty flags) |
-| `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, transparent}` |
+| `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, cutout, transparent}` |
 
 ## Blocks – `<mge/voxel/Block.h>`
 
@@ -30,7 +30,8 @@ mge::BlockId grassId = registry.add(grass);
 |-------------------|---------|
 | `name` | Unique; `registry.find(name)` returns the id |
 | `solid` | Collides (`VoxelWorld::isSolid`) |
-| `opaque` | Hides neighbouring faces; non‑opaque blocks go to the transparent mesh |
+| `opaque` | Hides neighbouring faces |
+| `layer` | Render pass (`RenderLayer`): `Opaque`, `Cutout` (holes: leaves, plants; alpha test, depth write) or `Translucent` (water, glass; blended). Unset → `Opaque` if `opaque`, else `Translucent` (`renderLayer()`) |
 | `shape` | `Cube` (6 culled faces), `Cross` (two diagonal double‑sided quads: plants), `None` (not drawn) |
 | `color` | Vertex colour. With a texture it multiplies it (white = texture as is) |
 | `tiles[6]` | Atlas tile per `BlockFace` (`Front +Z, Back −Z, Left −X, Right +X, Top +Y, Bottom −Y`), `-1` = untextured. `setTile(t)`, `setTiles(top, bottom, sides)` |
@@ -88,7 +89,7 @@ options.greedy = true;             // default: merge equal faces of colour‑onl
 options.ambientOcclusion = false;  // per‑vertex AO in the colour (aoStrength = 0.5)
 options.tintTextured = false;      // textured blocks: white vertex colour (texture as is); true = tint with BlockDesc::color
 mge::ChunkMesh mesh = mge::buildChunkMesh(world, {0, 0, 0}, options);
-// mesh.opaque / mesh.transparent: MeshData in chunk‑local space (0..16);
+// mesh.opaque / mesh.cutout / mesh.transparent (one per RenderLayer): MeshData in chunk‑local space (0..16);
 // draw with model = translate(chunkOrigin(coord)). GPU upload: device.uploadMesh(meshData) (mge_gpu).
 ```
 

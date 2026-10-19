@@ -16,6 +16,7 @@ using namespace mge;
 // Mallas en la GPU de un chunk (vacías si esa parte no tiene caras)
 struct GpuChunk {
     GpuMesh opaque;
+    GpuMesh cutout; // Hojas y plantas (prueba alfa)
     GpuMesh transparent;
 };
 
@@ -168,24 +169,29 @@ public:
                                                      registry.get<Camera>(m_cameraEntity), viewport());
         m_renderer->setCamera(camera.viewProjection);
 
-        // Primero lo opaco, después lo transparente (mezcla, sin escribir profundidad)
-        for (bool transparent : {false, true}) {
-            for (auto& [coord, gpu] : m_gpuChunks) {
-                const GpuMesh& mesh = transparent ? gpu.transparent : gpu.opaque;
-                if (mesh.empty() || !camera.frustum.intersects(chunkBounds(coord))) continue;
-                const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
-                m_renderer->draw(mesh, model, &m_atlas,
-                                 transparent ? MeshPass::Transparent : MeshPass::Opaque);
-            }
+        // Cola de dibujo: opaco y cutout de adelante hacia atrás, transparente de atrás hacia adelante
+        m_queue.clear();
+        for (auto& [coord, gpu] : m_gpuChunks) {
+            const Aabb bounds = chunkBounds(coord);
+            if (!camera.frustum.intersects(bounds)) continue;
+            const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
+            m_queue.add({&gpu.opaque, model, &m_atlas, MeshPass::Opaque, bounds.center()});
+            m_queue.add({&gpu.cutout, model, &m_atlas, MeshPass::Cutout, bounds.center()});
+            m_queue.add({&gpu.transparent, model, &m_atlas, MeshPass::Transparent, bounds.center()});
         }
+        m_queue.sort(camera.position, m_fly.forward());
+        m_renderer->submit(m_queue);
         m_renderer->end();
 
         // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
         m_fpsFrames++;
         m_fpsElapsed += time().unscaledDelta();
         if (m_fpsElapsed >= 5.0f) {
+            const RenderStats& stats = m_renderer->stats();
             MGE_LOG_DEBUG("Sandbox", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed), " (",
-                          m_gpuChunks.size(), " chunks)");
+                          m_gpuChunks.size(), " chunks; dibujo: ", stats.totalDrawCalls(), " llamadas, ",
+                          stats.totalTriangles(), " triángulos = opaco ", stats.triangles[0], " + cutout ",
+                          stats.triangles[1], " + transparente ", stats.triangles[2], ")");
             m_fpsFrames = 0;
             m_fpsElapsed = 0.0f;
         }
@@ -227,6 +233,7 @@ private:
             ChunkMesh mesh = buildChunkMesh(m_world, coord, options);
             GpuChunk& gpu = m_gpuChunks[coord];
             gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
+            gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
             gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
             m_world.clearDirty(coord);
             meshed++;
@@ -286,6 +293,7 @@ private:
     VoxelWorld m_world;
     bool m_firstLoad = true;
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
+    RenderQueue m_queue;
     Texture2D m_atlas;
 
     // Medición de FPS para el log

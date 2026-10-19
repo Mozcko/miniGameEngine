@@ -71,3 +71,12 @@ TEST_CASE("Sandbox: todos los bloques tienen textura y color (los dos caminos)")
         CHECK(desc.color.a > 0.0f);
     }
 }
+
+TEST_CASE("Sandbox: hojas y plantas en la pasada cutout; agua, lava y vidrio translúcidos") {
+    Registered r;
+    for (BlockId id : {r.b.leaves, r.b.rose, r.b.flower, r.b.sapling, r.b.cobweb})
+        CHECK(r.registry.get(id).renderLayer() == RenderLayer::Cutout);
+    for (BlockId id : {r.b.water, r.b.lava, r.b.glass})
+        CHECK(r.registry.get(id).renderLayer() == RenderLayer::Translucent);
+    CHECK(r.registry.get(r.b.stone).renderLayer() == RenderLayer::Opaque);
+}
