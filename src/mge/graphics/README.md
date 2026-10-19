@@ -71,10 +71,11 @@ void onRender() override {
 | **`RenderQueue`** | `add({mesh, model, texture, pass, center})` skips empty meshes. `sort(cameraPosition, cameraForward)` orders by pass, then opaque/cutout **front‑to‑back** (early depth rejection) and transparent **back‑to‑front** (correct blending), by each item's centre. A single mesh's triangles are not sorted, so overlapping translucent surfaces inside one chunk can still blend in the wrong order |
 | **Culling** | Back faces culled in every pass, counter‑clockwise = front (MeshData's winding). Double‑sided things, like cross plants, carry both faces as separate quads |
 | **Shading** | `base = texture(albedo, uv) * vertexColor`. No texture → 1×1 white, so only the vertex colour shows (colour‑only meshes, AO). Then lighting and fog (below) |
+| **Procedural detail** (#34) | `MeshMaterial {detailScale, detailStrength}`, per draw (`draw(…, material)` or `DrawItem::material`). It adds world‑space value noise to the brightness, sampled slightly inside each face so every block has a stable pattern. Meant for **colour‑only** meshes, whose greedy faces would otherwise be large and flat. Default strength 0 = off |
 | **Lighting** (#33) | `setLighting(Lighting)`. **Default `Lighting::unlit()`**: base as is. Lit: `base × (ambient(n) + sunColor × max(n·toSun, 0))`, where `ambient` mixes `groundAmbient` → `skyAmbient` by the normal's Y. **Fog**: linear from `fogStart` to `fogEnd` (distance to the camera passed in `setCamera(viewProjection, position)`), towards `fogColor`; use the sky/clear colour |
 | **Sampler** | Nearest filtering, clamp to edge (pixel‑art look, as the GL renderer) |
 | **Depth** | Owned by the renderer, `device.depthFormat()` (D32/D24), recreated when the target size changes (window resize) |
-| **Uniforms** | Vertex set 1 binding 0 `{viewProjection, model}`, pushed per draw. Fragment set 2 binding 0 `albedo`; set 3 binding 0 `Lighting` (all `vec4`, so std140 rules don't matter), pushed when it changes or the command buffer is new |
+| **Uniforms** | Vertex set 1 binding 0 `{viewProjection, model, material}`, pushed per draw. Fragment set 2 binding 0 `albedo`; set 3 binding 0 `Lighting` (all `vec4`, so std140 rules don't matter), pushed when it changes or the command buffer is new |
 | **Stats** | `stats()`: draw calls and triangles **per pass** (`RenderStats`, indexed by `MeshPass`), plus totals; `drawCalls()` and `triangles()` are shortcuts |
 
 `begin` also works on any colour target, not only the swapchain; the render tests draw into
@@ -94,5 +95,8 @@ produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md
 - **`RenderQueue` order** (CPU): passes, front‑to‑back and back‑to‑front, empty meshes skipped.
 - **Lit colour‑only voxels golden:** greedy + AO hills with sun, ambient and fog. The shape is
   readable without textures; `Lighting::unlit()` keeps the older goldens identical.
+- **Procedural sandbox golden:** the same sandbox scene drawn with `sandbox::buildProceduralAtlas()`,
+  so no image is loaded. The test also writes `render_output/procedural_atlas.png` for review.
+- **Colour detail golden:** greedy colour‑only steps with `MeshMaterial` detail and lighting.
 - **Cutout scene golden:** leaves in front of water, a rose and a flower over grass, added to the
   queue in reverse order on purpose.

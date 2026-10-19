@@ -226,6 +226,32 @@ namespace {
         meshes.emplace_back("voxel_water", std::move(transparent));
     }
 
+    // Generadores de texturas (#34): una muestra de cada uno en una imagen de 4×2 tiles de 64 px
+    bool writeTextureSamples(const std::filesystem::path& path) {
+        namespace tg = mge::texgen;
+        constexpr int kTile = 64;
+        mge::Image image(4 * kTile, 2 * kTile);
+        const tg::Palette stone({0.38f, 0.38f, 0.40f, 1}, {0.64f, 0.64f, 0.66f, 1});
+        const tg::Palette wood({0.55f, 0.40f, 0.22f, 1}, {0.78f, 0.62f, 0.38f, 1});
+        const tg::Palette brick({0.50f, 0.20f, 0.14f, 1}, {0.72f, 0.34f, 0.24f, 1});
+        auto tile = [](int i) { return tg::tileRect(i, 4, kTile); };
+        tg::noise(image, tile(0),
+                  tg::Palette({{0.0f, {0.1f, 0.3f, 0.7f, 1}},
+                               {0.5f, {0.3f, 0.6f, 0.3f, 1}},
+                               {1.0f, {0.9f, 0.9f, 0.9f, 1}}}),
+                  4.0f, 1, 5);
+        tg::noise(image, tile(1), stone, 6.0f, 2);
+        tg::speckle(image, tile(1), {0.2f, 0.2f, 0.2f, 1}, 0.05f, 3);
+        tg::bricks(image, tile(2), brick, {0.75f, 0.73f, 0.70f, 1}, 6, 3, 2, 4);
+        tg::planks(image, tile(3), wood, 5, 5);
+        tg::noise(image, tile(4), stone, 6.0f, 6);
+        tg::ore(image, tile(4), {0.95f, 0.75f, 0.20f, 1}, 6, 4, 7);
+        tg::stripes(image, tile(5), tg::Palette({0.25f, 0.17f, 0.09f, 1}, {0.45f, 0.32f, 0.18f, 1}), 5, 8);
+        tg::rings(image, tile(6), wood, 5.0f, 9);
+        tg::plant(image, tile(7), {0.2f, 0.5f, 0.15f, 1}, {0.9f, 0.2f, 0.5f, 1}, 9, 10);
+        return mge::writePng(image, path);
+    }
+
     class ProcgenGallery : public mge::Application {
     public:
         ProcgenGallery() : mge::Application(makeConfig()) {}
@@ -267,7 +293,9 @@ namespace {
                     setExitCode(1);
                 }
             }
-            MGE_LOG_INFO("Gallery", written, " mallas exportadas a ", outDir.string());
+            if (!writeTextureSamples(outDir / "texture_generators.png")) setExitCode(1);
+            MGE_LOG_INFO("Gallery", written, " mallas y texture_generators.png exportados a ",
+                         outDir.string());
             requestStop();
             return true;
         }

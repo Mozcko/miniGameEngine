@@ -84,6 +84,11 @@ stateless) then `VoxelWorld::insertChunk` on the main thread; meshing runs on a 
 (chunk + 1-block border) via `buildChunkMesh(snapshot, registry, options)`. `ChunkStreamer(world, StreamingSettings, &jobs())` does
 all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale results (unloaded / edited since) are discarded.
 
+## Procedural textures (#34)
+`mge::Image` (RGBA8, `writePng` without deps) + `mge::texgen::` generators (noise, bricks, planks, ore, stripes, rings, plant, leaves…).
+Sandbox: `buildProceduralAtlas()` (same tiles as the PNG); `M` toggles, `SANDBOX_ATLAS=procedural` loads no image.
+Colour‑only meshes: `MeshMaterial{detailScale, detailStrength}` per draw (world‑space noise in the shader).
+
 ## ECS
 `app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.

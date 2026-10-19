@@ -24,11 +24,13 @@
 
 // --- Generación procedural (headless) ---
 #ifdef MGE_HAS_PROCGEN
+#include <mge/procgen/Image.h>
 #include <mge/procgen/MeshData.h>
 #include <mge/procgen/MeshOps.h>
 #include <mge/procgen/Noise.h>
 #include <mge/procgen/Primitives.h>
 #include <mge/procgen/Sdf.h>
+#include <mge/procgen/TextureGen.h>
 #endif
 
 // --- Mundos voxel (headless) ---

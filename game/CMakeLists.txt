@@ -4,6 +4,7 @@
 add_library(sandbox_world STATIC
     SandboxBlocks.h SandboxBlocks.cpp
     SandboxTerrain.h SandboxTerrain.cpp
+    SandboxMaterials.h SandboxMaterials.cpp
 )
 # Permite #include <game/SandboxTerrain.h>
 target_include_directories(sandbox_world PUBLIC ${PROJECT_SOURCE_DIR})

@@ -25,6 +25,7 @@ ctest --preset dev                      # all tests
 | `procgen/test_noise.cpp` | Noise determinism, ranges, Perlin lattice zeros, continuity, Worley, fractals, warp, batch API |
 | `procgen/test_mesh_ops.cpp` | Transform (incl. mirror), merge, weld, flip, normals, triangulation, extrude, lathe, sweep |
 | `procgen/test_primitives.cpp` | Every primitive: counts, validity, unit normals, watertight, winding vs normals, outward normals, bounds (helpers in `procgen/MeshChecks.h`, reused by later procgen tests) |
+| `procgen/test_image.cpp` | `Image` clamp/out of range; `writePng` round trip through a minimal reader (CRCs, stored blocks, > 64 KB); texgen determinism and rect bounds; plant/leaves transparency |
 | `procgen/test_meshdata.cpp` | `mge_procgen_tests`: MeshData building, validation errors, bounds, OBJ output |
 | `core/test_umbrella.cpp` | `<mge/mge.h>` with only `mge_core`: compiles without SDL and doesn't see module headers (`#error` otherwise) |
 | `platform/test_umbrella_platform.cpp` | `<mge/mge.h>` with `mge_platform`: `PlatformModule` is available |
@@ -43,7 +44,7 @@ ctest --preset dev                      # all tests
 | `render/test_graphics.cpp` | `mge_graphics`: `Texture2D` orientation (image row 0 on top with GL‑style UVs), `updateRegion` / `copyFromOriginal`, missing file; `RenderQueue` order; **sandbox scene golden** (`SandboxTerrain` + PNG atlas + queue); **cutout golden** (leaves in front of water, plants over grass); **lit colour‑only voxels golden** (sun, ambient, AO, fog); `Lighting::unlit` |
 | `gpu/test_gpu_swapchain.cpp` | Vsync default, present‑mode choice (vsync / mailbox / immediate / fallback) and depth‑format choice with fake capabilities; the device's depth format is D24/D32 and works in a render pass |
 | `gpu/test_gpu_shaders.cpp` | Embedded SPIR‑V (magic number, stage, 4‑byte alignment); triangle with a fragment uniform drawn and read back (centre = uniform colour, corners = clear). Shaders: `gpu/shaders/test_triangle.*` |
-| `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, render layers (cutout leaves/plants), cross shapes, atlas tiles per face, every block has tiles and colour |
+| `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, render layers (cutout leaves/plants), procedural atlas covers every tile + animation frame (no filler, deterministic, leaves with holes), cross shapes, atlas tiles per face, every block has tiles and colour |
 | `game/test_sandbox_terrain.cpp` | `SandboxTerrain` (noise): determinism and seed, stone below / nothing above the world, height range (seas + mountains), every biome > 2 %, block rules (floor never carved, water ≤ 20 and above the surface), caves rate and off switch, decoration rates 1–3 %, far coordinates, trees crossing chunk borders, load‑order independence |
 
 ## Render tests (golden images)
@@ -56,6 +57,8 @@ optional depth). `compareWithGolden(name, image)` compares the result with
 | `clear` | Clear colour |
 | `sandbox_scene` | The sandbox through `mge_graphics`: seeded terrain, PNG atlas, the three passes via `RenderQueue` (`render/test_graphics.cpp`) |
 | `lit_color_voxels` | Colour‑only greedy + AO hills, lit (sun + hemisphere ambient) with fog: shape readable without textures (#33) |
+| `sandbox_scene_procedural` | The sandbox scene with the code‑generated atlas, no image loaded (#34) |
+| `color_detail_material` | Greedy colour‑only steps with `MeshMaterial` detail noise and lighting (#34) |
 | `cutout_leaves_water` | Cutout leaves in front of blended water, a rose and a flower over grass, items added in reverse order (the queue sorts them) |
 | `vertex_colors_triangle` | Rasterisation, colour interpolation, back‑face culling of a CCW triangle, NDC Y up (red tip at the top) |
 | `lit_boxes_depth` | `MeshData` → `uploadMesh`, `GpuVertex` attributes, uniform matrices (`perspectiveRH_ZO`), depth test between two boxes, directional light |

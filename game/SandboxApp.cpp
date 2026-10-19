@@ -1,12 +1,15 @@
 #include <mge/mge.h>
 
 #include <game/SandboxBlocks.h>
+#include <game/SandboxMaterials.h>
 #include <game/SandboxTerrain.h>
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
+#include <string>
 #include <map>
 #include <memory>
 #include <vector>
@@ -71,15 +74,12 @@ public:
             return false;
         });
 
-        // 3. Atlas de texturas (el camino de los assets). Se guarda una copia en la CPU para animar el agua
-        // y la lava copiando tiles.
-        m_atlas =
-            Texture2D::fromFile(m_gpu->device(), assetPath("textures/Minecraft-like_3d_tileset.png"), true);
-        if (!m_atlas) {
-            MGE_LOG_FATAL("Sandbox", "No se pudo cargar el atlas. Assets en: ", assetRoot().string(),
-                          " (se puede cambiar con MGE_ASSET_DIR)");
-            return false;
-        }
+        // 3. Atlas: el PNG (camino de los assets) o uno generado por código (camino procedural, #34). Los
+        // dos con las mismas posiciones de tiles; M alterna en vivo. SANDBOX_ATLAS=procedural arranca sin
+        // cargar ninguna imagen. Se guarda una copia en la CPU para animar el agua y la lava copiando tiles.
+        const char* atlasMode = std::getenv("SANDBOX_ATLAS");
+        const bool procedural = atlasMode && std::string(atlasMode) == "procedural";
+        if (!(procedural ? useProceduralAtlas() : usePngAtlas())) return false;
 
         // 4. Streaming del mundo en el pool de hilos del motor
         m_streamer = std::make_unique<ChunkStreamer>(m_world, streamingSettings(), &jobs());
@@ -89,8 +89,8 @@ public:
 
         // El HUD de texto (SDL_ttf) se quitó en #9; vuelve con la fuente embebida en M4 (#41-#43).
         // Mientras tanto los FPS se escriben en el log (nivel Debug) cada 5 segundos.
-        MGE_LOG_INFO("Sandbox",
-                     "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, P: pausa, Esc: salir");
+        MGE_LOG_INFO("Sandbox", "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, M: atlas "
+                                "PNG/procedural, P: pausa, Esc: salir");
         return true;
     }
 
@@ -98,7 +98,9 @@ public:
         // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
         m_streamer.reset(); // Los trabajos ya terminaron (run() los espera antes de onShutdown)
         m_gpuChunks.clear();
-        m_atlas = {};
+        m_pngAtlas = {};
+        m_proceduralAtlas = {};
+        m_atlas = nullptr;
         m_renderer.reset();
     }
 
@@ -109,6 +111,7 @@ public:
         actions.bindAxis("MoveUp", Key::Space, Key::LeftShift);
         actions.bind("Sprint", Key::LeftCtrl);
         actions.bind("Pause", Key::P);
+        actions.bind("ToggleAtlas", Key::M);
         actions.bind("Quit", Key::Escape);
         actions.bind("CaptureMouse", MouseButton::Left);
     }
@@ -122,6 +125,12 @@ public:
 
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
+        if (m_platform->wasActionPressed("ToggleAtlas")) {
+            if (m_atlas == &m_pngAtlas)
+                useProceduralAtlas();
+            else
+                usePngAtlas();
+        }
 
         if (m_platform->wasActionPressed("CaptureMouse") && !m_isPaused) m_platform->setCursorLocked(true);
 
@@ -158,8 +167,10 @@ public:
         if (m_animTimer >= 0.2f) {
             m_animTimer = 0.0f;
             m_currentAnimFrame++;
-            copyTile(m_waterFrames[m_currentAnimFrame % m_waterFrames.size()], sandbox::kWaterTile);
-            copyTile(m_lavaFrames[m_currentAnimFrame % m_lavaFrames.size()], sandbox::kLavaTile);
+            copyTile(sandbox::kWaterFrames[m_currentAnimFrame % sandbox::kWaterFrames.size()],
+                     sandbox::kWaterTile);
+            copyTile(sandbox::kLavaFrames[m_currentAnimFrame % sandbox::kLavaFrames.size()],
+                     sandbox::kLavaTile);
         }
 
         streamChunks();
@@ -185,9 +196,9 @@ public:
             const Aabb bounds = chunkBounds(coord);
             if (!camera.frustum.intersects(bounds)) continue;
             const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
-            m_queue.add({&gpu.opaque, model, &m_atlas, MeshPass::Opaque, bounds.center()});
-            m_queue.add({&gpu.cutout, model, &m_atlas, MeshPass::Cutout, bounds.center()});
-            m_queue.add({&gpu.transparent, model, &m_atlas, MeshPass::Transparent, bounds.center()});
+            m_queue.add({&gpu.opaque, model, m_atlas, MeshPass::Opaque, bounds.center(), {}});
+            m_queue.add({&gpu.cutout, model, m_atlas, MeshPass::Cutout, bounds.center(), {}});
+            m_queue.add({&gpu.transparent, model, m_atlas, MeshPass::Transparent, bounds.center(), {}});
         }
         m_queue.sort(camera.position, m_fly.forward());
         m_renderer->submit(m_queue);
@@ -274,14 +285,46 @@ private:
         return terrain;
     }
 
+    bool usePngAtlas() {
+        if (!m_pngAtlas) {
+            m_pngAtlas = Texture2D::fromFile(m_gpu->device(),
+                                             assetPath("textures/Minecraft-like_3d_tileset.png"), true);
+            if (!m_pngAtlas) {
+                MGE_LOG_ERROR("Sandbox", "No se pudo cargar el atlas. Assets en: ", assetRoot().string(),
+                              " (se puede cambiar con MGE_ASSET_DIR)");
+                return false;
+            }
+        }
+        m_atlas = &m_pngAtlas;
+        MGE_LOG_INFO("Sandbox", "Atlas: PNG (assets)");
+        return true;
+    }
+
+    bool useProceduralAtlas() {
+        if (!m_proceduralAtlas) {
+            const auto start = std::chrono::steady_clock::now();
+            const Image image = sandbox::buildProceduralAtlas();
+            m_proceduralAtlas =
+                Texture2D::fromPixels(m_gpu->device(), image.width(), image.height(), image.data(), true);
+            if (!m_proceduralAtlas) return false;
+            MGE_LOG_DEBUG(
+                "Sandbox", "Atlas procedural generado en ",
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(),
+                " ms");
+        }
+        m_atlas = &m_proceduralAtlas;
+        MGE_LOG_INFO("Sandbox", "Atlas: procedural (sin imágenes)");
+        return true;
+    }
+
     // Copia un tile del atlas original sobre otro (animación de agua y lava). Tiles de 32 px, fila 0 arriba
     void copyTile(int source, int destination) {
         constexpr int kTile = 32;
-        const int columns = static_cast<int>(m_atlas.width()) / kTile;
+        const int columns = static_cast<int>(m_atlas->width()) / kTile;
         auto x = [&](int tile) { return static_cast<std::uint32_t>((tile % columns) * kTile); };
         auto y = [&](int tile) { return static_cast<std::uint32_t>((tile / columns) * kTile); };
-        m_atlas.copyFromOriginal(m_gpu->device(), x(source), y(source), kTile, kTile, x(destination),
-                                 y(destination));
+        m_atlas->copyFromOriginal(m_gpu->device(), x(source), y(source), kTile, kTile, x(destination),
+                                  y(destination));
     }
 
     PlatformModule* m_platform = nullptr; // Válidos entre onInit y el cierre
@@ -307,14 +350,14 @@ private:
     double m_streamWorstMs = 0.0; // Peor tiempo de streamChunks desde el último log
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     RenderQueue m_queue;
-    Texture2D m_atlas;
+    Texture2D m_pngAtlas;         // Minecraft-like_3d_tileset.png (se carga la primera vez que se usa)
+    Texture2D m_proceduralAtlas;  // sandbox::buildProceduralAtlas (se genera la primera vez que se usa)
+    Texture2D* m_atlas = nullptr; // El que se dibuja
 
     // Medición de FPS para el log
     int m_fpsFrames = 0;
     float m_fpsElapsed = 0.0f;
 
-    std::vector<int> m_waterFrames = {205, 206, 207, 222, 223};
-    std::vector<int> m_lavaFrames = {237, 238, 239, 254, 255};
     float m_animTimer = 0.0f;
     int m_currentAnimFrame = 0;
 

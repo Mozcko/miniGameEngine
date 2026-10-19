@@ -7,6 +7,8 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 | File | Contents |
 |------|----------|
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
+| `Image.h/.cpp` | `Image` (RGBA8 CPU image) and `writePng` (dependency‑free PNG writer) |
+| `TextureGen.h/.cpp` | `mge::texgen::`: palettes and texture generators (noise, speckle, bricks, planks, ore, stripes, rings, plant, leaves, frame), `tileRect` |
 | `MeshOps.h/.cpp` | transform, append/merge, weld, flip, recompute normals, polygon triangulation, extrude, lathe, sweep |
 | `Noise.h/.cpp` | `mge::Noise`: value, Perlin, simplex, Worley (2D/3D), fbm, ridged, billow, domain warp, batch sampling |
 | `Sdf.h/.cpp` | `mge::sdf::`: signed distance primitives and operators, gradient normals, `surfaceNets` (SDF → MeshData) |
@@ -133,6 +135,49 @@ Tests (`tests/procgen/test_noise.cpp`):
 - fractal ranges, and that more octaves add fine detail relative to coarse;
 - domain warp;
 - batch equals single samples.
+
+## Images and texture generators – `<mge/procgen/Image.h>`, `<mge/procgen/TextureGen.h>` (#34)
+
+Textures made by code, the procedural path of [ADR 0004](../../../docs/adr/0004-procedural-first-assets-optional.md).
+They are headless and deterministic from a seed.
+
+```cpp
+mge::Image image(64, 64);                                     // RGBA8, row 0 at the top
+namespace tg = mge::texgen;
+tg::bricks(image, {0, 0, 64, 64}, tg::Palette(darkRed, lightRed), mortar, /*rows*/ 6, /*columns*/ 3, /*mortar px*/ 2, seed);
+mge::writePng(image, "bricks.png");                           // to look at it
+auto texture = mge::Texture2D::fromPixels(device, image.width(), image.height(), image.data());   // mge_graphics
+```
+
+**`Image`:**
+- `get`/`set` work in colours in [0, 1]; values are clamped, and out of range reads transparent
+  and ignores writes;
+- `fill`, `data()`, `pixels()`.
+
+**`writePng`:**
+- writes a valid PNG with **no dependencies**: zlib "stored" (uncompressed) deflate blocks, CRCs
+  and Adler‑32;
+- it works in the core‑only build;
+- it's meant for inspection, not for small files.
+
+| Generator | Result |
+|-----------|--------|
+| `Palette({stops})`, `Palette(from, to)` | Colour gradient; `sample(t)` |
+| `noise(rect, palette, scale, seed, octaves)` | Value‑noise fbm through a palette (dirt, stone, sand, water, lava) |
+| `speckle(rect, color, density, seed)` | Scattered dots |
+| `bricks(rect, palette, mortar, rows, columns, mortarPx, seed)` | Offset brick rows with per‑brick tone |
+| `planks(rect, palette, boards, seed)` | Boards with grain and dark seams |
+| `ore(rect, color, spots, radius, seed)` | Mineral spots |
+| `stripes(rect, palette, count, seed)` | Wobbly vertical bands (bark) |
+| `rings(rect, palette, spacing, seed)` | Concentric rings (cut log) |
+| `plant(rect, stem, bloom, radius, seed)` | Stem, leaves and flower on a **transparent** background (cutout pass) |
+| `leaves(rect, palette, holes, seed)` | Noise with 2×2 transparent holes |
+| `frame(rect, color, width)` | Border |
+| `tileRect(index, columns, tileSize)` | Rect of an atlas tile (tile 0 top‑left) |
+
+`examples/procgen_gallery` writes one sample of each generator to `texture_generators.png`, and
+the sandbox builds its whole atlas from them (`game/SandboxMaterials.cpp`).
+Tests: `tests/procgen/test_image.cpp`, which includes a PNG round trip with CRC checks.
 
 ## SDF + surface nets – `<mge/procgen/Sdf.h>`
 

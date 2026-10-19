@@ -1,6 +1,8 @@
 # Generación procedural en CPU (headless: solo core + GLM). Se compila siempre, también sin módulos.
 add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
+    Image.h Image.cpp
+    TextureGen.h TextureGen.cpp
     Primitives.h Primitives.cpp
     MeshOps.h MeshOps.cpp
     Noise.h Noise.cpp

@@ -12,6 +12,7 @@ namespace mge {
         struct Transforms {
             glm::mat4 viewProjection;
             glm::mat4 model;
+            glm::vec4 material; // x: escala del detalle, y: intensidad
         };
 
         // Igual que el bloque Lighting de mesh.frag (todo vec4: sin sorpresas de alineación std140)
@@ -98,7 +99,7 @@ namespace mge {
     }
 
     void MeshRenderer::draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture,
-                            MeshPass pass) {
+                            MeshPass pass, const MeshMaterial& material) {
         if (!m_pass || mesh.empty()) return;
         SDL_GPUGraphicsPipeline* pipeline = pass == MeshPass::Opaque   ? m_opaque.get()
                                             : pass == MeshPass::Cutout ? m_cutout.get()
@@ -107,7 +108,8 @@ namespace mge {
             SDL_BindGPUGraphicsPipeline(m_pass.get(), pipeline);
             m_boundPipeline = pipeline;
         }
-        const Transforms transforms{m_viewProjection, model};
+        const Transforms transforms{m_viewProjection, model,
+                                    glm::vec4(material.detailScale, material.detailStrength, 0.0f, 0.0f)};
         SDL_PushGPUVertexUniformData(m_cmd->get(), 0, &transforms, sizeof(transforms));
         if (m_lightingDirty) {
             const LightingUniform lighting = toUniform(m_lighting, m_cameraPosition);
@@ -130,7 +132,8 @@ namespace mge {
     }
 
     void MeshRenderer::submit(const RenderQueue& queue) {
-        for (const DrawItem& item : queue.items()) draw(*item.mesh, item.model, item.texture, item.pass);
+        for (const DrawItem& item : queue.items())
+            draw(*item.mesh, item.model, item.texture, item.pass, item.material);
     }
 
     void MeshRenderer::end() {

@@ -54,7 +54,7 @@ namespace mge {
         const Lighting& lighting() const { return m_lighting; }
         // texture == nullptr → blanca (solo el color de los vértices)
         void draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture = nullptr,
-                  MeshPass pass = MeshPass::Opaque);
+                  MeshPass pass = MeshPass::Opaque, const MeshMaterial& material = {});
         // Dibuja una cola ya ordenada (RenderQueue::sort)
         void submit(const RenderQueue& queue);
         void end();

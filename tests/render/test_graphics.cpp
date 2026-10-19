@@ -3,6 +3,7 @@
 #include "RenderTest.h"
 
 #include <game/SandboxBlocks.h>
+#include <game/SandboxMaterials.h>
 #include <game/SandboxTerrain.h>
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/Texture2D.h>
@@ -11,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <cmath>
+#include <filesystem>
 #include <map>
 #include <memory>
 
@@ -93,70 +95,89 @@ TEST_CASE("Texture2D: un archivo que no existe da una textura inválida") {
     CHECK_FALSE(Texture2D::fromFile(gpu.device(), "no/existe.png"));
 }
 
-TEST_CASE("Render: escena del sandbox (SandboxTerrain + atlas PNG + MeshRenderer)") {
-    GpuTestContext gpu;
-    if (!gpu.available()) return;
-    GpuDevice& device = gpu.device();
+namespace {
+    // Escena fija del sandbox (semilla por defecto) con el atlas dado
+    void sandboxScene(const char* golden, bool procedural) {
+        GpuTestContext gpu;
+        if (!gpu.available()) return;
+        GpuDevice& device = gpu.device();
 
-    BlockRegistry registry;
-    const sandbox::SandboxBlocks blocks = sandbox::registerSandboxBlocks(registry);
-    auto terrain = std::make_unique<sandbox::SandboxTerrain>(blocks);
-    const int ground = std::max(terrain->surfaceHeight(0, 0), sandbox::SandboxTerrain::kWaterLevel);
-    VoxelWorld world(registry, std::move(terrain));
-    for (int x = -2; x <= 2; x++)
-        for (int z = -2; z <= 2; z++)
-            for (int y = 0; y < sandbox::SandboxTerrain::kWorldChunksY; y++) world.loadChunk({x, y, z});
+        BlockRegistry registry;
+        const sandbox::SandboxBlocks blocks = sandbox::registerSandboxBlocks(registry);
+        auto terrain = std::make_unique<sandbox::SandboxTerrain>(blocks);
+        const int ground = std::max(terrain->surfaceHeight(0, 0), sandbox::SandboxTerrain::kWaterLevel);
+        VoxelWorld world(registry, std::move(terrain));
+        for (int x = -2; x <= 2; x++)
+            for (int z = -2; z <= 2; z++)
+                for (int y = 0; y < sandbox::SandboxTerrain::kWorldChunksY; y++) world.loadChunk({x, y, z});
 
-    const Texture2D atlas =
-        Texture2D::fromFile(device, MGE_TEST_ASSET_DIR "/textures/Minecraft-like_3d_tileset.png");
-    REQUIRE(atlas);
-    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
-    REQUIRE(renderer.valid());
+        Texture2D atlas;
+        if (procedural) {
+            const Image image = sandbox::buildProceduralAtlas();
+            writePng(image,
+                     std::filesystem::path(MGE_RENDER_OUTPUT_DIR) / "procedural_atlas.png"); // Para revisarlo
+            atlas = Texture2D::fromPixels(device, image.width(), image.height(), image.data());
+        } else {
+            atlas = Texture2D::fromFile(device, MGE_TEST_ASSET_DIR "/textures/Minecraft-like_3d_tileset.png");
+        }
+        REQUIRE(atlas);
+        MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+        REQUIRE(renderer.valid());
 
-    ChunkMeshOptions options;
-    options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
-    struct Chunk {
-        GpuMesh opaque, cutout, transparent;
-    };
-    std::map<ChunkCoord, Chunk> meshes;
-    for (int x = -1; x <= 1; x++)
-        for (int z = -1; z <= 1; z++)
-            for (int y = 0; y < sandbox::SandboxTerrain::kWorldChunksY; y++) {
-                ChunkMesh mesh = buildChunkMesh(world, {x, y, z}, options);
-                meshes[{x, y, z}] = {device.uploadMesh(mesh.opaque), device.uploadMesh(mesh.cutout),
-                                     device.uploadMesh(mesh.transparent)};
-            }
+        ChunkMeshOptions options;
+        options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+        struct Chunk {
+            GpuMesh opaque, cutout, transparent;
+        };
+        std::map<ChunkCoord, Chunk> meshes;
+        for (int x = -1; x <= 1; x++)
+            for (int z = -1; z <= 1; z++)
+                for (int y = 0; y < sandbox::SandboxTerrain::kWorldChunksY; y++) {
+                    ChunkMesh mesh = buildChunkMesh(world, {x, y, z}, options);
+                    meshes[{x, y, z}] = {device.uploadMesh(mesh.opaque), device.uploadMesh(mesh.cutout),
+                                         device.uploadMesh(mesh.transparent)};
+                }
 
-    const glm::vec3 eye(-14.0f, static_cast<float>(ground) + 9.0f, -14.0f);
-    const glm::mat4 view =
-        glm::lookAt(eye, glm::vec3(4.0f, static_cast<float>(ground) - 2.0f, 4.0f), {0, 1, 0});
-    const glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(60.0f), 1.0f, 0.1f, 200.0f);
+        const glm::vec3 eye(-14.0f, static_cast<float>(ground) + 9.0f, -14.0f);
+        const glm::mat4 view =
+            glm::lookAt(eye, glm::vec3(4.0f, static_cast<float>(ground) - 2.0f, 4.0f), {0, 1, 0});
+        const glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(60.0f), 1.0f, 0.1f, 200.0f);
 
-    constexpr std::uint32_t kSize = 192;
-    GpuTexture target = device.createRenderTarget(kSize, kSize);
-    CommandBuffer cmd = device.acquireCommandBuffer();
-    REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, {0.5f, 0.7f, 1.0f, 1.0f}));
-    renderer.setCamera(projection * view);
-    RenderQueue queue;
-    for (const auto& [coord, chunk] : meshes) {
-        const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
-        const glm::vec3 center = glm::vec3(chunkOrigin(coord)) + glm::vec3(kChunkSize * 0.5f);
-        queue.add({&chunk.opaque, model, &atlas, MeshPass::Opaque, center});
-        queue.add({&chunk.cutout, model, &atlas, MeshPass::Cutout, center});
-        queue.add({&chunk.transparent, model, &atlas, MeshPass::Transparent, center});
+        constexpr std::uint32_t kSize = 192;
+        GpuTexture target = device.createRenderTarget(kSize, kSize);
+        CommandBuffer cmd = device.acquireCommandBuffer();
+        REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, {0.5f, 0.7f, 1.0f, 1.0f}));
+        renderer.setCamera(projection * view);
+        RenderQueue queue;
+        for (const auto& [coord, chunk] : meshes) {
+            const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
+            const glm::vec3 center = glm::vec3(chunkOrigin(coord)) + glm::vec3(kChunkSize * 0.5f);
+            queue.add({&chunk.opaque, model, &atlas, MeshPass::Opaque, center, {}});
+            queue.add({&chunk.cutout, model, &atlas, MeshPass::Cutout, center, {}});
+            queue.add({&chunk.transparent, model, &atlas, MeshPass::Transparent, center, {}});
+        }
+        queue.sort(eye, glm::normalize(glm::vec3(4.0f, static_cast<float>(ground) - 2.0f, 4.0f) - eye));
+        renderer.submit(queue);
+        renderer.end();
+        REQUIRE(cmd.submitAndWait());
+        CHECK(renderer.drawCalls() > 9);
+        CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Hojas y flores
+
+        const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
+        // Tolerancia por defecto (1 %): entre Intel y lavapipe difieren ~0.3 % (bordes de texel y de
+        // triángulos)
+        const mge_test::GoldenResult result = mge_test::compareWithGolden(golden, image);
+        if (!result.message.empty()) MESSAGE(result.message);
+        CHECK(result.passed);
     }
-    queue.sort(eye, glm::normalize(glm::vec3(4.0f, static_cast<float>(ground) - 2.0f, 4.0f) - eye));
-    renderer.submit(queue);
-    renderer.end();
-    REQUIRE(cmd.submitAndWait());
-    CHECK(renderer.drawCalls() > 9);
-    CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Hojas y flores
+}
 
-    const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
-    // Tolerancia por defecto (1 %): entre Intel y lavapipe difieren ~0.3 % (bordes de texel y de triángulos)
-    const mge_test::GoldenResult result = mge_test::compareWithGolden("sandbox_scene", image);
-    if (!result.message.empty()) MESSAGE(result.message);
-    CHECK(result.passed);
+TEST_CASE("Render: escena del sandbox (SandboxTerrain + atlas PNG + MeshRenderer)") {
+    sandboxScene("sandbox_scene", false);
+}
+
+TEST_CASE("Render: escena del sandbox con el atlas procedural (sin imágenes, #34)") {
+    sandboxScene("sandbox_scene_procedural", true);
 }
 
 TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparente atrás→adelante") {
@@ -165,14 +186,14 @@ TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparen
     mesh.indexCount = 3;
     RenderQueue queue;
     const glm::vec3 near(0, 0, -2), mid(0, 0, -10), far(0, 0, -30);
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, near});
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, far});
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, mid});
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, far});
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near});
-    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, near});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, near, {}});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, far, {}});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, mid, {}});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Transparent, far, {}});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near, {}});
+    queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, near, {}});
     GpuMesh empty;
-    queue.add({&empty, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near}); // Vacía: no entra
+    queue.add({&empty, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near, {}}); // Vacía: no entra
     CHECK(queue.size() == 6);
 
     queue.sort(glm::vec3(0.0f), glm::vec3(0, 0, -1));
@@ -225,9 +246,9 @@ TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sob
 
     RenderQueue queue;
     // Orden de alta al revés a propósito: la cola lo corrige
-    queue.add({&transparent, glm::mat4(1.0f), &atlas, MeshPass::Transparent, glm::vec3(6, 1, 2)});
-    queue.add({&cutout, glm::mat4(1.0f), &atlas, MeshPass::Cutout, glm::vec3(5, 2, 5)});
-    queue.add({&opaque, glm::mat4(1.0f), &atlas, MeshPass::Opaque, glm::vec3(4, 0, 4)});
+    queue.add({&transparent, glm::mat4(1.0f), &atlas, MeshPass::Transparent, glm::vec3(6, 1, 2), {}});
+    queue.add({&cutout, glm::mat4(1.0f), &atlas, MeshPass::Cutout, glm::vec3(5, 2, 5), {}});
+    queue.add({&opaque, glm::mat4(1.0f), &atlas, MeshPass::Opaque, glm::vec3(4, 0, 4), {}});
     queue.sort(eye, glm::normalize(target - eye));
 
     constexpr std::uint32_t kSize = 160;
@@ -304,4 +325,45 @@ TEST_CASE("Lighting::unlit deja la textura × color tal cual") {
     CHECK(unlit.skyAmbient == glm::vec3(1.0f));
     CHECK(unlit.groundAmbient == glm::vec3(1.0f));
     CHECK_FALSE(unlit.fog);
+}
+
+TEST_CASE("Render: detalle procedural en bloques de solo color (MeshMaterial, #34)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+    BlockRegistry registry;
+    BlockDesc stone;
+    stone.name = "stone";
+    stone.color = {0.55f, 0.55f, 0.58f, 1.0f};
+    const BlockId s = registry.add(stone);
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    for (int x = 0; x < 8; x++)
+        for (int z = 0; z < 8; z++)
+            for (int y = 0; y <= (x + z) / 4; y++) world.setBlock({x, y, z}, s); // Escalones
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}); // Greedy: caras grandes y planas
+    const GpuMesh gpuMesh = device.uploadMesh(mesh.opaque);
+
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    renderer.setLighting(Lighting());
+    const glm::vec3 eye(-4.0f, 9.0f, 13.0f);
+    MeshMaterial material;
+    material.detailScale = 2.0f;
+    material.detailStrength = 0.25f;
+
+    constexpr std::uint32_t kSize = 128;
+    GpuTexture target = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, {0.5f, 0.7f, 1.0f, 1.0f}));
+    renderer.setCamera(glm::perspectiveRH_ZO(glm::radians(55.0f), 1.0f, 0.1f, 100.0f) *
+                           glm::lookAt(eye, glm::vec3(4.0f, 1.0f, 4.0f), glm::vec3(0, 1, 0)),
+                       eye);
+    renderer.draw(gpuMesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, material);
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("color_detail_material", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
 }
