@@ -17,3 +17,12 @@ mge_add_game(sandbox
     LIBRARIES sandbox_world
     MODULES platform gpu graphics audio
     SMOKE_FRAMES 120)
+
+# Smoke test con las ayudas de depuración (F3/F4) encendidas: las líneas pasan por la validación de Vulkan
+if(MGE_BUILD_TESTS)
+    add_test(NAME "smoke: sandbox offscreen 60 frames (debug draw)" COMMAND sandbox
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
+    set_tests_properties("smoke: sandbox offscreen 60 frames (debug draw)" PROPERTIES
+        TIMEOUT 120 LABELS gpu FAIL_REGULAR_EXPRESSION "Validation Error"
+        ENVIRONMENT "MGE_MAX_FRAMES=60;SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;SANDBOX_DEBUG=1;ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+endif()

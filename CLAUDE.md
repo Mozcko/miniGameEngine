@@ -89,6 +89,10 @@ all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale r
 Sandbox: `buildProceduralAtlas()` (same tiles as the PNG); `M` toggles, `SANDBOX_ATLAS=procedural` loads no image.
 Colour‑only meshes: `MeshMaterial{detailScale, detailStrength}` per draw (world‑space noise in the shader).
 
+## Debug draw (#38)
+`DebugDraw debug(device)`: `aabb/sphere/axes/line/frustum` then `debug.flush(renderer)` inside the render pass (after the queue).
+Sandbox: F3 chunk bounds + collision box, F4 freeze culling frustum; `SANDBOX_DEBUG=1` starts with both (smoke test).
+
 ## ECS
 `app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems
 per `SystemPhase` (Fixed in each fixed step, Update, Render). `Transform`/`Parent` → `TransformSystem` → `WorldTransform`.

@@ -33,7 +33,9 @@ namespace mge {
     public:
         MeshRenderer(GpuDevice& device, SDL_GPUTextureFormat colorFormat);
 
-        bool valid() const { return m_opaque && m_cutout && m_transparent && m_sampler && m_white; }
+        bool valid() const {
+            return m_opaque && m_cutout && m_transparent && m_lines && m_sampler && m_white;
+        }
 
         // Abre el render pass sobre target (limpia color y profundidad). El buffer de profundidad se
         // (re)crea si cambia el tamaño. false = no se pudo (no dibujar)
@@ -57,6 +59,9 @@ namespace mge {
                   MeshPass pass = MeshPass::Opaque, const MeshMaterial& material = {});
         // Dibuja una cola ya ordenada (RenderQueue::sort)
         void submit(const RenderQueue& queue);
+        // Lista de líneas (pares de GpuVertex, posición + color) con prueba de profundidad sin escribirla.
+        // Lo usa DebugDraw::flush
+        void drawLines(const GpuBuffer& vertices, std::uint32_t vertexCount);
         void end();
 
         // Del frame actual / último
@@ -69,6 +74,7 @@ namespace mge {
         GpuGraphicsPipeline m_opaque;
         GpuGraphicsPipeline m_cutout;
         GpuGraphicsPipeline m_transparent;
+        GpuGraphicsPipeline m_lines;
         GpuSampler m_sampler;
         Texture2D m_white;
         GpuTexture m_depth;

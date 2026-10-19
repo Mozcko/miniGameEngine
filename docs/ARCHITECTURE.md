@@ -147,7 +147,8 @@ read at runtime.
      plants).
    - **Transparent**, back‑to‑front: alpha blending, depth test without writes (water, lava,
      glass).
-5. Every 5 s the average FPS and per‑pass draw calls and triangles are written to the Debug log.
+5. Debug lines (F3/F4, `DebugDraw`, #38): depth‑tested, not depth‑writing, drawn after the queue.
+6. Every 5 s the average FPS and per‑pass draw calls and triangles are written to the Debug log.
 
 ### Textures
 `Texture2D::fromFile` (stb_image → RGBA8) stores the image flipped vertically, so the engine's
