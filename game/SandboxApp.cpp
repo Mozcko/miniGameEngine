@@ -42,6 +42,12 @@ public:
         m_gpu = getModule<GpuModule>();
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
+        // Sol, ambiente cielo/suelo y niebla del color del cielo, que termina en el borde de lo que se dibuja
+        Lighting lighting;
+        lighting.fogColor = kSkyColor;
+        lighting.fogStart = (kRenderDistance - 1.5f) * kChunkSize;
+        lighting.fogEnd = kRenderDistance * kChunkSize;
+        m_renderer->setLighting(lighting);
 
         // 2. Cámara
         // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
@@ -161,13 +167,13 @@ public:
         const GpuFrame* frame = m_gpu->frame();
         if (!frame) return; // Ventana minimizada
         if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
-                               {0.5f, 0.7f, 1.0f, 1.0f}))
+                               glm::vec4(kSkyColor, 1.0f)))
             return;
         // La cámara del ECS: el aspecto ya está ajustado al tamaño real del swapchain (CameraSystem)
         Registry& registry = world().registry();
         const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
                                                      registry.get<Camera>(m_cameraEntity), viewport());
-        m_renderer->setCamera(camera.viewProjection);
+        m_renderer->setCamera(camera.viewProjection, camera.position);
 
         // Cola de dibujo: opaco y cutout de adelante hacia atrás, transparente de atrás hacia adelante
         m_queue.clear();
@@ -198,7 +204,8 @@ public:
     }
 
 private:
-    static constexpr int kRenderDistance = 4; // Chunks alrededor de la cámara (9×9)
+    static constexpr int kRenderDistance = 4;               // Chunks alrededor de la cámara (9×9)
+    static constexpr glm::vec3 kSkyColor{0.5f, 0.7f, 1.0f}; // Fondo y niebla
 
     // Caja del chunk en el mundo
     static mge::Aabb chunkBounds(const ChunkCoord& coord) {
@@ -226,6 +233,7 @@ private:
 
         ChunkMeshOptions options;
         options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+        options.ambientOcclusion = true; // Rincones más oscuros (color de vértice, ahora visible)
         for (const ChunkCoord& coord : m_world.dirtyChunks()) {
             if (std::abs(coord.x - center.x) > kRenderDistance ||
                 std::abs(coord.z - center.z) > kRenderDistance)

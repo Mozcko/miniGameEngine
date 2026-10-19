@@ -12,9 +12,14 @@ layout(set = 1, binding = 0) uniform Transforms {
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outUv;
+layout(location = 2) out vec3 outWorldPosition;
+layout(location = 3) out vec3 outWorldNormal;
 
 void main() {
-    gl_Position = viewProjection * model * vec4(inPosition, 1.0);
+    vec4 world = model * vec4(inPosition, 1.0);
+    gl_Position = viewProjection * world;
     outColor = inColor;
     outUv = inUv;
+    outWorldPosition = world.xyz;
+    outWorldNormal = mat3(model) * inNormal; // Sin escala no uniforme (traslación/rotación/escala uniforme)
 }

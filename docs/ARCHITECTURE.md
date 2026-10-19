@@ -128,13 +128,15 @@ read at runtime.
 
 | Shader | Where | Inputs |
 |--------|-------|--------|
-| `mesh.vert/.frag` | `mge_graphics` | vertex UBO `{viewProjection, model}` (set 1); fragment sampler `albedo` (set 2); output `texture × vertexColor` |
+| `mesh.vert/.frag` | `mge_graphics` | vertex UBO `{viewProjection, model}` (set 1); fragment sampler `albedo` (set 2) and `Lighting` UBO (set 3); output `texture × vertexColor × (hemisphere ambient + sun)`, mixed with fog |
 | `mesh_cutout.frag` | `mge_graphics` | as `mesh.frag`, discards alpha < 0.5 (Cutout pass) |
 | `triangle.*` | `examples/gpu_triangle` | vertex UBO `{angle, aspect}` |
 
 ### Sandbox frame (`onRender`)
 1. `MeshRenderer::begin` clears to sky blue `(0.5, 0.7, 1.0)` and clears depth (D32 or D24).
-2. Camera: `cameraMatrices(transform, camera, viewport())` from the camera entity. Its aspect is
+2. Camera: `cameraMatrices(transform, camera, viewport())` from the camera entity, passed with its
+   position (for fog). The lighting (sun, sky/ground ambient, fog in the sky colour, ending at the
+   render distance) is set once in `onInit` (#33). Its aspect is
    set by `CameraSystem`; the projection uses SDL GPU's NDC (Y up, Z in [0, 1]).
 3. Every chunk inside the camera frustum (`CameraMatrices::frustum`) adds three items to the
    `RenderQueue` (#31), with `model = translate(chunkOrigin)` and the atlas.

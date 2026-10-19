@@ -13,13 +13,35 @@ namespace mge {
             glm::mat4 viewProjection;
             glm::mat4 model;
         };
+
+        // Igual que el bloque Lighting de mesh.frag (todo vec4: sin sorpresas de alineación std140)
+        struct LightingUniform {
+            glm::vec4 toSun;
+            glm::vec4 sunColor;
+            glm::vec4 skyAmbient;
+            glm::vec4 groundAmbient;
+            glm::vec4 fogColor;
+            glm::vec4 fogParams;
+            glm::vec4 cameraPosition;
+        };
+
+        LightingUniform toUniform(const Lighting& l, const glm::vec3& cameraPosition) {
+            return {glm::vec4(-glm::normalize(l.sunDirection), 0.0f),
+                    glm::vec4(l.sunColor, 0.0f),
+                    glm::vec4(l.skyAmbient, 0.0f),
+                    glm::vec4(l.groundAmbient, 0.0f),
+                    glm::vec4(l.fogColor, 0.0f),
+                    glm::vec4(l.fogStart, l.fogEnd, l.fog ? 1.0f : 0.0f, 0.0f),
+                    glm::vec4(cameraPosition, 1.0f)};
+        }
     }
 
     MeshRenderer::MeshRenderer(GpuDevice& device, SDL_GPUTextureFormat colorFormat) : m_device(device) {
         ShaderResources vertexResources;
         vertexResources.uniformBuffers = 1; // Transforms
         ShaderResources fragmentResources;
-        fragmentResources.samplers = 1; // albedo
+        fragmentResources.samplers = 1;       // albedo
+        fragmentResources.uniformBuffers = 1; // Lighting
         const GpuShader vertex = device.createShader(shaders::kMeshVert, vertexResources);
         const GpuShader fragment = device.createShader(shaders::kMeshFrag, fragmentResources);
         const GpuShader cutoutFragment = device.createShader(shaders::kMeshCutoutFrag, fragmentResources);
@@ -71,6 +93,7 @@ namespace mge {
         m_cmd = &cmd;
         m_boundPipeline = nullptr;
         m_stats = {};
+        m_lightingDirty = true; // Command buffer nuevo: hay que volver a subir la luz
         return static_cast<bool>(m_pass);
     }
 
@@ -86,6 +109,11 @@ namespace mge {
         }
         const Transforms transforms{m_viewProjection, model};
         SDL_PushGPUVertexUniformData(m_cmd->get(), 0, &transforms, sizeof(transforms));
+        if (m_lightingDirty) {
+            const LightingUniform lighting = toUniform(m_lighting, m_cameraPosition);
+            SDL_PushGPUFragmentUniformData(m_cmd->get(), 0, &lighting, sizeof(lighting));
+            m_lightingDirty = false;
+        }
 
         const Texture2D& albedo = texture && *texture ? *texture : m_white;
         SDL_GPUTextureSamplerBinding binding{albedo.gpu().get(), m_sampler.get()};

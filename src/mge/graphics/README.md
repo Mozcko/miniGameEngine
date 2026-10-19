@@ -9,10 +9,11 @@ by default (`MODULES platform gpu graphics audio`).
 |------|----------|
 | `Texture2D.h/.cpp` | `Texture2D`: RGBA8 texture from a file (stb_image) or from pixels, region updates, tile copies from the original image |
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
+| `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
-| `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`, `texture(albedo, uv) * color`; the cutout variant discards alpha < 0.5 |
+| `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`; `texture(albedo, uv) * color`, lit and fogged; the cutout variant discards alpha < 0.5 |
 
-Coming in M3: lighting
+Coming in M3:
 and fog (#33), procedural materials (#34) and debug drawing (#38).
 
 ## `Texture2D`
@@ -69,10 +70,11 @@ void onRender() override {
 | **Passes** (#31) | **`Opaque`**: depth test + write, no blending. **`Cutout`**: like opaque, but pixels with alpha < 0.5 are discarded (leaves, plants), so holes need no sorting. **`Transparent`**: alpha blending, depth test **without** write (water, glass). Draw in that order |
 | **`RenderQueue`** | `add({mesh, model, texture, pass, center})` skips empty meshes. `sort(cameraPosition, cameraForward)` orders by pass, then opaque/cutout **front‑to‑back** (early depth rejection) and transparent **back‑to‑front** (correct blending), by each item's centre. A single mesh's triangles are not sorted, so overlapping translucent surfaces inside one chunk can still blend in the wrong order |
 | **Culling** | Back faces culled in every pass, counter‑clockwise = front (MeshData's winding). Double‑sided things, like cross plants, carry both faces as separate quads |
-| **Shading** | `texture(albedo, uv) * vertexColor`. No texture → 1×1 white, so only the vertex colour shows (colour‑only meshes, AO) |
+| **Shading** | `base = texture(albedo, uv) * vertexColor`. No texture → 1×1 white, so only the vertex colour shows (colour‑only meshes, AO). Then lighting and fog (below) |
+| **Lighting** (#33) | `setLighting(Lighting)`. **Default `Lighting::unlit()`**: base as is. Lit: `base × (ambient(n) + sunColor × max(n·toSun, 0))`, where `ambient` mixes `groundAmbient` → `skyAmbient` by the normal's Y. **Fog**: linear from `fogStart` to `fogEnd` (distance to the camera passed in `setCamera(viewProjection, position)`), towards `fogColor`; use the sky/clear colour |
 | **Sampler** | Nearest filtering, clamp to edge (pixel‑art look, as the GL renderer) |
 | **Depth** | Owned by the renderer, `device.depthFormat()` (D32/D24), recreated when the target size changes (window resize) |
-| **Uniforms** | Vertex set 1 binding 0 `{viewProjection, model}`, pushed per draw. Fragment set 2 binding 0 `albedo` |
+| **Uniforms** | Vertex set 1 binding 0 `{viewProjection, model}`, pushed per draw. Fragment set 2 binding 0 `albedo`; set 3 binding 0 `Lighting` (all `vec4`, so std140 rules don't matter), pushed when it changes or the command buffer is new |
 | **Stats** | `stats()`: draw calls and triangles **per pass** (`RenderStats`, indexed by `MeshPass`), plus totals; `drawCalls()` and `triangles()` are shortcuts |
 
 `begin` also works on any colour target, not only the swapchain; the render tests draw into
@@ -90,5 +92,7 @@ produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md
 - **Sandbox scene golden:** `SandboxTerrain` + the PNG atlas + `MeshRenderer` through the queue.
   Intel and lavapipe differ on about 0.3 % of pixels.
 - **`RenderQueue` order** (CPU): passes, front‑to‑back and back‑to‑front, empty meshes skipped.
+- **Lit colour‑only voxels golden:** greedy + AO hills with sun, ambient and fog. The shape is
+  readable without textures; `Lighting::unlit()` keeps the older goldens identical.
 - **Cutout scene golden:** leaves in front of water, a rose and a flower over grass, added to the
   queue in reverse order on purpose.

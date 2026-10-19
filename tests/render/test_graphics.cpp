@@ -10,6 +10,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <cmath>
 #include <map>
 #include <memory>
 
@@ -243,4 +244,64 @@ TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sob
     const mge_test::GoldenResult result = mge_test::compareWithGolden("cutout_leaves_water", image);
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
+}
+
+TEST_CASE("Render: escena voxel de solo color, con luz, AO y niebla (#33)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    // Colinas de colores (sin texturas: solo luz y AO dan la forma)
+    BlockRegistry registry;
+    BlockDesc grass;
+    grass.name = "grass";
+    grass.color = {0.35f, 0.65f, 0.30f, 1.0f};
+    BlockDesc rock;
+    rock.name = "rock";
+    rock.color = {0.55f, 0.55f, 0.58f, 1.0f};
+    const BlockId g = registry.add(grass), r = registry.add(rock);
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    for (int x = 0; x < kChunkSize; x++)
+        for (int z = 0; z < kChunkSize; z++) {
+            const int h = 2 + static_cast<int>(3.0f + 3.0f * std::sin(x * 0.5f) * std::cos(z * 0.4f));
+            for (int y = 0; y <= h; y++) world.setBlock({x, y, z}, y == h ? g : r);
+        }
+
+    ChunkMeshOptions options;
+    options.ambientOcclusion = true; // Greedy activo: une las caras con AO uniforme
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, options);
+    const GpuMesh terrain = device.uploadMesh(mesh.opaque);
+
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    Lighting lighting;
+    lighting.fogColor = {0.6f, 0.75f, 0.9f};
+    lighting.fogStart = 12.0f;
+    lighting.fogEnd = 34.0f;
+    renderer.setLighting(lighting);
+    const glm::vec3 eye(-6.0f, 14.0f, 22.0f);
+    const glm::mat4 viewProjection = glm::perspectiveRH_ZO(glm::radians(55.0f), 1.0f, 0.1f, 100.0f) *
+                                     glm::lookAt(eye, glm::vec3(8.0f, 3.0f, 6.0f), glm::vec3(0, 1, 0));
+
+    constexpr std::uint32_t kSize = 160;
+    GpuTexture target = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, glm::vec4(lighting.fogColor, 1.0f)));
+    renderer.setCamera(viewProjection, eye);
+    renderer.draw(terrain, glm::mat4(1.0f));
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("lit_color_voxels", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
+}
+
+TEST_CASE("Lighting::unlit deja la textura × color tal cual") {
+    const Lighting unlit = Lighting::unlit();
+    CHECK(unlit.sunColor == glm::vec3(0.0f));
+    CHECK(unlit.skyAmbient == glm::vec3(1.0f));
+    CHECK(unlit.groundAmbient == glm::vec3(1.0f));
+    CHECK_FALSE(unlit.fog);
 }
