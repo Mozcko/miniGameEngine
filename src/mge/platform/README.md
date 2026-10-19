@@ -1,64 +1,43 @@
 # src/mge/platform/  →  target `mge_platform`
 
-Window + OpenGL context (GLEW) and the SDL3 → core input translation. Depends on `mge_core`, SDL3, GLEW, OpenGL.
+The SDL3 window and the SDL3 → core input translation. Depends on `mge_core` and SDL3. Drawing is
+done by the GPU modules ([`mge_gpu`](../gpu/README.md), [`mge_graphics`](../graphics/README.md)).
+The OpenGL context and GLEW were removed in #40.
 
 ## `PlatformModule`
 
-`#include <mge/platform/PlatformModule.h>` → `app.addModule<mge::PlatformModule>()`.
+`#include <mge/platform/PlatformModule.h>` → `addModule<mge::PlatformModule>()`. To draw, add a
+`GpuModule` **after** it, because the GPU claims the window.
 
 | Hook | Does |
 |------|------|
-| `onInit` | `SDL_InitSubSystem(SDL_INIT_VIDEO)`, then creates the `Window` from `ApplicationConfig` (title, size). Fails, and so stops startup, if the window, GL context or GLEW fails |
-| `onFrameBegin` | `input().beginFrame()`; re‑applies cursor lock if the OS dropped it; polls every SDL event: `SDL_EVENT_QUIT` → `app.requestStop()`, the raw event goes to the game's callback (window events), then `applySdlEvent(input, event)` |
-| `onFrameEnd` | `Window::swapBuffers()` |
-| `onShutdown` | Clears the input, destroys the window (GL context), `SDL_QuitSubSystem(SDL_INIT_VIDEO)`; if no SDL subsystem is left, `SDL_Quit()` |
+| `onInit` | `SDL_InitSubSystem(SDL_INIT_VIDEO)`, then creates the `Window` from `ApplicationConfig` (title, size). Startup stops if the window can't be created |
+| `onFrameBegin` | `input().beginFrame()`; re‑applies the cursor lock if the OS dropped it. Then it polls every SDL event: `SDL_EVENT_QUIT` → `app.requestStop()`, the raw event goes to the game's callback (window events), then `applySdlEvent(input, event)` |
+| `onShutdown` | Clears the input, destroys the window, then `SDL_QuitSubSystem(SDL_INIT_VIDEO)`. If no SDL subsystem is left, `SDL_Quit()` |
 
 | API | Use |
 |-----|-----|
 | `input()` | The frame's `mge::InputState` (core): keys, buttons, mouse position/delta, wheel, with edges |
 | `actions()` | The game's `mge::ActionMap` (bind in `onInit`) |
-| `isActionDown(a)`, `wasActionPressed(a)`, `axis(a)` | Shortcuts: action or axis evaluated on the current input |
+| `isActionDown(a)`, `wasActionPressed(a)`, `axis(a)` | Shortcuts: an action or axis evaluated on the current input |
 | `setCursorLocked(bool)`, `isCursorLocked()` | Relative mouse mode + grab (FPS cameras); re‑applied every frame while requested |
-| `setEventCallback(fn)` | Raw SDL events for **non‑input** needs (resize, focus). Called before the input update |
+| `setEventCallback(fn)` | Raw SDL events for **non‑input** needs (focus, …). Called before the input update |
 | `getWindow()` | Valid between init and shutdown |
 
-## Window
+## `mge::Window` (`Window.h/.cpp`)
 
-| File | Namespace | Purpose |
-|------|-----------|---------|
-| `Window.h/.cpp` | `mge` | Creates the SDL3 window, the OpenGL context, initialises GLEW and sets default GL state |
+A resizable SDL3 window with no graphics API of its own; `GpuModule` claims it for SDL GPU. It is
+non‑copyable and owned by `PlatformModule`.
 
-## `mge::Window`
-
-Owned by `mge::Application` (`std::unique_ptr<Window> m_window`). Created in the
-Application constructor with `("Mini Game Engine - Minecraft Cube", 1280, 720)`.
-
-### What `init()` does (called from the constructor)
-1. (SDL video is initialised by `PlatformModule` with `SDL_InitSubSystem` – `Window` doesn't init or quit SDL.)
-2. Requests **OpenGL 3.3 Core profile**, double buffering.
-3. `SDL_CreateWindow` – centered, flags `OPENGL | SHOWN | RESIZABLE`.
-4. `SDL_GL_CreateContext`.
-5. `glewExperimental = GL_TRUE; glewInit()`.
-6. Default GL state:
-   - `glEnable(GL_BLEND)`, `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)`
-   - `glDisable(GL_DEPTH_TEST)` – a 2D‑friendly default (a comment explains sprites were being
-     discarded by the depth test). **3D games must enable it** (SandboxApp does in `onInit`).
-7. Prints `OpenGL Version: …`.
-
-Any failure in steps 1–5 prints an error and calls `exit(1)`.
-
-### Public API
 | Member | Notes |
 |--------|-------|
-| `Window(title, width, height)` | Calls `init()`. |
-| `~Window()` | Deletes the GL context and destroys the window (logs it). Does **not** quit SDL. |
-| `swapBuffers()` | `SDL_GL_SwapWindow` – called by `Application::Run` each frame. |
-| `getWidth()/getHeight()` | The **initial** size; not updated on resize. |
-| `getSDLWindow()` | Raw `SDL_Window*` (used by `PlatformModule` for relative mouse mode / grab). |
-| `handleEvents()`, `isClosed()`, `close()` | Legacy self‑contained event loop; **unused** – `Application::Run` polls events itself. Don't call `handleEvents()` alongside Run: it would swallow events. |
+| `Window(title, width, height)` | `SDL_CreateWindow(…, SDL_WINDOW_RESIZABLE)`. SDL video is initialised by `PlatformModule`, not here. On failure it logs, and `isValid()` returns false |
+| `~Window()` | Destroys the window (logged). Does **not** quit SDL |
+| `getWidth()/getHeight()` | The **requested** size. The real size is the swapchain's (`GpuFrame::width/height`, `Application::viewport()`) |
+| `getSDLWindow()` | The raw `SDL_Window*`, used by `GpuModule` and for mouse grab |
 
 ### Resizing
-The window is resizable and `Window` does nothing on resize, and nothing else is needed:
+Nothing to do:
 - the SDL GPU swapchain follows the window;
 - `GpuModule` writes its size to `Application::viewport()`;
 - `CameraSystem` adjusts every `autoAspect` camera before the Render phase.
@@ -77,4 +56,3 @@ Pure functions, unit‑tested without a window (`tests/platform/test_sdl_input.c
 
 The input state and action maps themselves live in the core (`src/mge/core/Input.h`). Headless
 tests can inject input without SDL.
-

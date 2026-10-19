@@ -170,7 +170,7 @@ The `GpuModule` submits the frame for you.
 ```cpp
 MGE_LOG_INFO("space_shooter", "score: ", score);         // Trace/Debug are stripped in Release
 mge::Pcg32 rng(mge::hash2i(x, y, worldSeed), 1);        // deterministic; never rand()
-auto shader = mge::assetPath("shaders/basic3d.vert");    // works from any working directory
+auto atlas = mge::assetPath("textures/atlas.png");       // works from any working directory
 ```
 
 The engine is **procedural‑first, assets optional** ([ADR 0004](adr/0004-procedural-first-assets-optional.md)):

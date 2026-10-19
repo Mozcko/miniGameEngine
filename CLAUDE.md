@@ -14,8 +14,8 @@ and a `README.md` inside every folder of `src/` and `assets/`.
   0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state, pre-migration)
-- C++17 mini game engine: **SDL3** (window/input/events/audio), OpenGL 3.3 Core via GLEW (legacy
-  renderer until #40), GLM math, stb_image (textures). Linux/Fedora dev box, CMake build. SDL3 is
+- C++17 mini game engine: **SDL3** (window/input/events/audio), **SDL3 GPU API** (Vulkan today; Metal/D3D12 later) for
+  rendering, GLM math, stb_image (textures). OpenGL/GLEW were removed in #40. Linux/Fedora dev box, CMake build. SDL3 is
   used from the system (`SDL3-devel`) or built from source via FetchContent (pinned 3.4.18).
 - Demo client: `game/SandboxApp.cpp` – Minecraft‑like voxel world on `mge_voxel` (16³ chunks, 4 tall; noise terrain with
   biomes and caves, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
@@ -35,7 +35,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
   builds it with `-DMGE_BUILD_MODULES=OFF`, together with the headless `mge_procgen`/`mge_voxel`), `mge_platform` (PlatformModule),
-  `mge_gpu` (GpuModule, SDL3 GPU), `mge_render` (legacy GL), `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
+  `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/<module>/` → `mge_<module>_tests` (core, procgen, voxel, platform, gpu), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
@@ -52,10 +52,10 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
    Game stops with `requestStop()`. Input (#15): core `InputState`/`ActionMap` (`<mge/core/Input.h>`), owned by
    `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); camera controllers take a `CameraInput` struct.
    `setEventCallback` is only for window events (resize/focus).
-5. Static singletons left: `AudioManager`, `ResourceManager` (input and time are no longer static).
+5. Static singletons left: `AudioManager` (input and time are no longer static).
 6. Rendering = SDL3 GPU (`mge_gpu` + `mge_graphics`): `device.uploadMesh(MeshData)` → `GpuMesh` (`GpuVertex{pos, normal, color, uv}`),
-   `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent). Legacy GL `mge_render` is dead code until #40.
-7. `Sprite : Mesh` (2D quad from an atlas tile; rebuilds its whole mesh on any setter).
+   `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent).
+7. Shaders are GLSL compiled to SPIR‑V at build time and embedded (`mge_add_shaders`); no shader files at runtime.
 8. `Texture2D` (move‑only) from file or pixels; stored flipped so engine UVs stay GL‑style (v up, (0,0) = image bottom‑left).
 9. Cameras (core, #32): ECS `Camera` component + `Transform`; `cameraMatrices(world, camera, viewport())` (Z in [0,1], `.frustum` for culling);
    `CameraSystem` sets `autoAspect` from `Application::viewport()` (set by GpuModule) before the Render phase; `FlyController` = free fly + collisions.
@@ -104,7 +104,7 @@ cubes, optional AO). Generators must be stateless/order‑independent (sandbox t
 implements a generator.
 
 ## GPU (SDL3 GPU, M3 in progress)
-`mge_gpu`: `PlatformModule(PlatformOptions{openGl=false})` + `GpuModule` (added after it) → `frame()` {cmd, swapchain, w, h} each frame;
+`mge_gpu`: `PlatformModule` + `GpuModule` (added after it) → `frame()` {cmd, swapchain, w, h} each frame;
 `GpuDevice` factories return move‑only handles (`GpuBuffer`, `GpuTexture`, …; release before the device); `uploadMesh(MeshData)` →
 `GpuVertex{pos, normal, color, uv}`; `downloadTexture` for tests. GPU tests run offscreen (lavapipe in CI, `MGE_REQUIRE_GPU=1`; a "Validation Error" in a GPU test's output fails it, `MGE_REQUIRE_VALIDATION=1`).
 Shaders: GLSL → SPIR‑V at build time, `mge_add_shaders(target SHADERS x.vert y.frag)` → `#include <shaders/x_vert.h>` →
@@ -113,7 +113,7 @@ Pipelines: `GraphicsPipelineDesc` → `device.createGraphicsPipeline(desc)`. gls
 Render tests: `tests/render` golden PNGs (`MGE_UPDATE_GOLDEN=1` to regenerate, then look at them). SDL GPU NDC is Y‑up with Z in [0,1]:
 use `glm::perspectiveRH_ZO`; CCW front faces as in MeshData.
 `mge_graphics`: `Texture2D::fromFile/fromPixels`, `MeshRenderer` (README in src/mge/graphics). Default `mge_add_game` MODULES:
-`platform gpu graphics audio`; `PlatformOptions::openGl` defaults to false.
+`platform gpu graphics audio`.
 Vsync: `ApplicationConfig::vsync` (env `MGE_VSYNC`), `GpuModule::setVsync`; depth: `device.depthFormat()` (D32/D24) + `createDepthTarget`.
 
 ## Assets
@@ -127,15 +127,10 @@ defaults to `SandboxTerrain::kDefaultSeed` (1337).
 ## Logging
 `#include <mge/core/Log.h>` → `MGE_LOG_INFO/WARN/ERROR/FATAL("Category", "text ", value)`, `MGE_ASSERT`
 (Debug), `MGE_VERIFY` (always, returns bool). No `std::cout`/`cerr`/`printf`/`exit()` anywhere: log
-and return an error instead. `Window::isValid()`, `GLSLProgram::compileShaders/linkShaders` return
-success.
+and return an error instead. `Window::isValid()`, `GpuDevice::create` (nullptr), `Texture2D` (invalid) report failure.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
 - Chunks are never unloaded (#57). Frustum culling via `CameraMatrices::frustum` (`Frustum::fromViewProjection`, `DepthRange::ZeroToOne` by default), drawing only.
-- SDL3 + GLEW: on Wayland/EGL `glewInit` returns `GLEW_ERROR_NO_GLX_DISPLAY`; `Window` treats it as
-  success (functions are already loaded). Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy`.
-- `GLSLProgram::addAttribute` is effectively ignored (shaders use `layout(location=…)`).
-- `Window::init` disables depth test; SandboxApp re‑enables it in `onInit`.
-- `SDL_Quit()` is called by both `~Window` and `~Application`.
-- Unused code/assets: ResourceManager, Animation, AudioManager calls,
-  `color.*` shaders, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).
+- Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy` (Vulkan through `VK_EXT_headless_surface`).
+- GPU resources (`GpuMesh`, `Texture2D`, pipelines) must be released in `onShutdown`, before `GpuModule` destroys the device.
+- Unused code/assets: AudioManager calls, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).

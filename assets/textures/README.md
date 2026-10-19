@@ -7,11 +7,11 @@
 ## Atlas layout
 - 32×32 px tiles → **16 columns × 16 rows = 256 tiles**, indices `0..255`.
 - Index = `row * 16 + col`, counted from the **top‑left** of the image.
-- The texture is loaded with a vertical flip (stb_image), so code converts rows with
-  `v = 1 − row * 32 / 512`. This math is duplicated in `Block::getUVs` (hard‑coded 512/32),
-  `Sprite::initFromAtlas`, and `Texture::updateTile`.
-- Filtering is `GL_NEAREST` (crisp pixels); mipmaps are generated, but with `GL_NEAREST` as min
-  filter they are not sampled.
+- `Texture2D` stores the image flipped vertically so the engine's UVs are GL‑style (v up). Tile UVs
+  come from `mge::TextureAtlas{16, 16}.tileUv(tile)` (`mge_voxel`), with
+  `v = 1 − (row + 1) / 16 .. 1 − row / 16`.
+- Sampling is nearest (crisp pixels), clamped to the edge (`MeshRenderer`'s sampler).
+- Water and lava are animated by copying tiles from the original image (`Texture2D::copyFromOriginal`).
 
 ## Tiles referenced by code
 

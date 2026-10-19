@@ -16,11 +16,6 @@ namespace mge {
             MGE_LOG_FATAL("Gpu", "GpuModule necesita un PlatformModule agregado antes (la ventana)");
             return false;
         }
-        if (m_platform->hasGlContext()) {
-            MGE_LOG_FATAL("Gpu", "La ventana tiene un contexto OpenGL: crear el PlatformModule con "
-                                 "PlatformOptions::openGl = false");
-            return false;
-        }
         // MGE_GPU_DEBUG=0/1 pisa la opción (ej: validación en un build Release)
         GpuDeviceOptions options = m_options;
         if (const char* debug = std::getenv("MGE_GPU_DEBUG")) options.debug = std::string(debug) != "0";
