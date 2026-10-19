@@ -3,6 +3,7 @@
 #include <mge/gpu/CommandBuffer.h>
 #include <mge/gpu/GpuDevice.h>
 #include <mge/gpu/GpuMesh.h>
+#include <mge/graphics/Lighting.h>
 #include <mge/graphics/RenderQueue.h>
 #include <mge/graphics/Texture2D.h>
 
@@ -39,7 +40,18 @@ namespace mge {
         bool begin(CommandBuffer& cmd, SDL_GPUTexture* target, std::uint32_t width, std::uint32_t height,
                    const glm::vec4& clearColor);
         // Proyección con Z en [0, 1] (Camera del ECS: cameraMatrices, o glm::perspectiveRH_ZO)
-        void setCamera(const glm::mat4& viewProjection) { m_viewProjection = viewProjection; }
+        // cameraPosition: para la niebla (distancia a la cámara)
+        void setCamera(const glm::mat4& viewProjection, const glm::vec3& cameraPosition = glm::vec3(0.0f)) {
+            m_viewProjection = viewProjection;
+            m_cameraPosition = cameraPosition;
+            m_lightingDirty = true;
+        }
+        // Luz y niebla (#33). Por defecto Lighting::unlit(): la textura × color de vértice tal cual
+        void setLighting(const Lighting& lighting) {
+            m_lighting = lighting;
+            m_lightingDirty = true;
+        }
+        const Lighting& lighting() const { return m_lighting; }
         // texture == nullptr → blanca (solo el color de los vértices)
         void draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture = nullptr,
                   MeshPass pass = MeshPass::Opaque);
@@ -67,6 +79,9 @@ namespace mge {
         RenderPass m_pass;
         const SDL_GPUGraphicsPipeline* m_boundPipeline = nullptr;
         glm::mat4 m_viewProjection = glm::mat4(1.0f);
+        glm::vec3 m_cameraPosition = glm::vec3(0.0f);
+        Lighting m_lighting = Lighting::unlit();
+        bool m_lightingDirty = true;
         RenderStats m_stats;
     };
 }

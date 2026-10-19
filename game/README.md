@@ -49,7 +49,10 @@ CMake modules: `platform gpu graphics audio`.
 
 ### `onInit` (returns false → clean exit with code 1)
 0. Keep a pointer to `PlatformModule`, register `handleWindowEvent` (resize/focus) and bind the controls (`bindControls`).
-1. Create the `MeshRenderer` with the swapchain format; it fails cleanly if the pipelines can't be created.
+1. Create the `MeshRenderer` with the swapchain format; it fails cleanly if the pipelines can't be
+   created. Set its `Lighting`: default sun and ambient, fog in the sky colour from
+   `(kRenderDistance − 1.5) × 16` to `kRenderDistance × 16` blocks, so the world fades out before
+   its edge.
 2. Set the camera position (spawn above the terrain) and install the **collision callback**: convert
    the AABB corners to blocks with `blockAt` (`floor`) and return true if any block in range is
    solid (`m_world.isSolid`).
@@ -86,7 +89,8 @@ CMake modules: `platform gpu graphics audio`.
 3. `streamChunks()`:
    - load (generate) every chunk column (4 chunks tall) within `kRenderDistance + 1` = 5 of the camera chunk;
    - mesh every **dirty** chunk within `kRenderDistance` = 4 (9×9 = 81 chunks) with
-     `buildChunkMesh`, upload it (`device.uploadMesh`) and clear the dirty flag. Loading a chunk
+     `buildChunkMesh` (with **ambient occlusion**), upload it (`device.uploadMesh`) and clear the
+     dirty flag. Loading a chunk
      dirties its loaded neighbours, so meshes always match the data.
 
    The extra ring means borders are meshed against real neighbours. Everything is synchronous.
