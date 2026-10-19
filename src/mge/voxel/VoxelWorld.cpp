@@ -18,8 +18,9 @@ namespace mge {
     ChunkData& VoxelWorld::insertChunk(const ChunkCoord& coord, const ChunkData& data) {
         auto it = m_chunks.find(coord);
         if (it != m_chunks.end()) return it->second->data;
-        auto entry = std::make_unique<Entry>();
+        std::unique_ptr<Entry> entry = takeEntry();
         entry->data = data;
+        entry->dirty = true;
         ChunkData& stored = entry->data;
         m_chunks.emplace(coord, std::move(entry));
         markFaceNeighboursDirty(coord);
@@ -27,7 +28,18 @@ namespace mge {
     }
 
     void VoxelWorld::unloadChunk(const ChunkCoord& coord) {
-        m_chunks.erase(coord);
+        auto it = m_chunks.find(coord);
+        if (it == m_chunks.end()) return;
+        if (m_pool.size() < kMaxPooled) m_pool.push_back(std::move(it->second)); // La memoria se reutiliza
+        m_chunks.erase(it);
+    }
+
+    std::unique_ptr<VoxelWorld::Entry> VoxelWorld::takeEntry() {
+        if (m_pool.empty()) return std::make_unique<Entry>();
+        std::unique_ptr<Entry> entry = std::move(m_pool.back());
+        m_pool.pop_back();
+        m_reused++;
+        return entry;
     }
 
     ChunkData* VoxelWorld::chunk(const ChunkCoord& coord) {

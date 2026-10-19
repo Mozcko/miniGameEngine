@@ -188,11 +188,19 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
   - Neighbours across borders are read from the world. Loading a chunk dirties its loaded
     neighbours, so seams heal on the next re‑mesh.
   - Greedy meshing merges faces of colour‑only cubes. Optional per‑vertex AO is written into the colour.
-- **Streaming** (`SandboxApp::streamChunks`, every frame, synchronous):
-  - Load every chunk column (4 chunks tall) within 5 of the camera.
-  - Mesh the dirty ones within 4 (9×9), then upload with `device.uploadMesh`.
-  - The extra loaded ring means borders mesh against real data.
-  - Chunks are never unloaded (KI#4).
+- **Streaming** (`mge::ChunkStreamer`, #56/#57). Every frame `update(cameraChunk)`:
+  1. collects finished jobs: generated chunks are inserted into the world; meshes are handed to
+     the game if still current;
+  2. unloads columns beyond load radius + 2 (hysteresis) and frees their GPU meshes; storage goes
+     to `VoxelWorld`'s pool;
+  3. queues generation of missing chunks, nearest first, on `app.jobs()`;
+  4. queues meshing of dirty chunks whose neighbours have data, from a `ChunkSnapshot` taken on the
+     main thread.
+
+  Jobs in flight and results applied per frame are capped. A result for a chunk that was unloaded,
+  or edited after the request, is discarded. Memory is bounded by the unload ring (plus an optional
+  `maxLoadedChunks`), and main‑thread work stays at a few ms per frame (about 1.5 ms worst case in
+  Debug in `headless_smoke`).
 - **Collision:** `FlyController` (core) moves axis by axis (X, Z, Y) and asks a callback whether its AABB
   (±0.3 around the eye) overlaps any solid block. The sandbox converts the box corners with
   `blockAt` and asks `VoxelWorld::isSolid`.

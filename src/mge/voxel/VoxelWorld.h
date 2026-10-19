@@ -41,6 +41,10 @@ namespace mge {
         ChunkData* chunk(const ChunkCoord& coord);
         const ChunkData* chunk(const ChunkCoord& coord) const;
         std::size_t chunkCount() const { return m_chunks.size(); }
+        // Pool de chunks descargados (se reutiliza su memoria al cargar otros): cuántos hay y cuántas
+        // cargas lo aprovecharon
+        std::size_t pooledCount() const { return m_pool.size(); }
+        std::size_t reusedCount() const { return m_reused; }
         std::vector<ChunkCoord> loadedChunks() const;
 
         // Coordenadas de bloque del mundo. Chunk sin cargar → aire.
@@ -64,6 +68,11 @@ namespace mge {
         };
 
         void markFaceNeighboursDirty(const ChunkCoord& coord);
+        std::unique_ptr<Entry> takeEntry(); // Del pool si hay, si no uno nuevo
+
+        static constexpr std::size_t kMaxPooled = 256;
+        std::vector<std::unique_ptr<Entry>> m_pool;
+        std::size_t m_reused = 0;
 
         const BlockRegistry& m_registry;
         std::unique_ptr<TerrainGenerator> m_generator;

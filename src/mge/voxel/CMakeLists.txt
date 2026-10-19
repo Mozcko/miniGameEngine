@@ -5,6 +5,7 @@ add_library(mge_voxel STATIC
     VoxelWorld.h VoxelWorld.cpp
     ChunkMesher.h ChunkMesher.cpp
     ChunkSnapshot.h ChunkSnapshot.cpp
+    ChunkStreamer.h ChunkStreamer.cpp
 )
 target_link_libraries(mge_voxel PUBLIC mge_core mge_procgen)
 mge_set_warnings(mge_voxel)
