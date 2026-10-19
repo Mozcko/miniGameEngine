@@ -81,6 +81,9 @@ public:
             return false;
         }
 
+        // 4. Streaming del mundo en el pool de hilos del motor
+        m_streamer = std::make_unique<ChunkStreamer>(m_world, streamingSettings(), &jobs());
+
         // Configuración inicial del ratón
         m_platform->setCursorLocked(true);
 
@@ -93,6 +96,7 @@ public:
 
     void onShutdown() override {
         // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
+        m_streamer.reset(); // Los trabajos ya terminaron (run() los espera antes de onShutdown)
         m_gpuChunks.clear();
         m_atlas = {};
         m_renderer.reset();
@@ -198,6 +202,13 @@ public:
                           m_gpuChunks.size(), " chunks; dibujo: ", stats.totalDrawCalls(), " llamadas, ",
                           stats.totalTriangles(), " triángulos = opaco ", stats.triangles[0], " + cutout ",
                           stats.triangles[1], " + transparente ", stats.triangles[2], ")");
+            const StreamingStats streaming = m_streamer->stats();
+            MGE_LOG_DEBUG("Sandbox", "Streaming: ", streaming.loaded, " cargados (",
+                          streaming.cpuBytes() / 1024 / 1024, " MB CPU), ", m_gpuChunks.size(), " mallados (",
+                          gpuBytes() / 1024 / 1024, " MB GPU), ", streaming.pendingGenerate, " + ",
+                          streaming.pendingMesh, " trabajos, pool ", streaming.pooled, ", descartados ",
+                          streaming.discarded, "; hilo principal: máx ", m_streamWorstMs, " ms/frame");
+            m_streamWorstMs = 0.0;
             m_fpsFrames = 0;
             m_fpsElapsed = 0.0f;
         }
@@ -213,54 +224,47 @@ private:
         return mge::Aabb(origin, origin + glm::vec3(static_cast<float>(kChunkSize)));
     }
 
-    // Carga los chunks cercanos y (re)malla los sucios. Se carga un anillo más de lo que se dibuja:
-    // así un chunk se malla con sus vecinos reales ya presentes y no hay caras de más en los bordes.
-    // La carga es por distancia (no por frustum): girar la cámara no debe dejar huecos.
+    // Streaming (#56, #57): el ChunkStreamer genera y malla en el pool de hilos, de lo más cercano a lo más
+    // lejano, y descarga lo que queda lejos (con histéresis). Acá solo se suben las mallas listas a la GPU
+    // (como mucho maxResultsPerUpdate por frame) y se liberan las de los chunks descargados.
     void streamChunks() {
-        using Clock = std::chrono::steady_clock;
-        const auto start = Clock::now();
+        const auto start = std::chrono::steady_clock::now();
         const ChunkCoord center = chunkOf(blockAt(m_fly.position()));
-        const int load = kRenderDistance + 1;
-        const std::size_t before = m_world.chunkCount();
-        // Columnas enteras: todos los chunks verticales del mundo
-        for (int cx = center.x - load; cx <= center.x + load; cx++)
-            for (int cz = center.z - load; cz <= center.z + load; cz++)
-                for (int cy = 0; cy < sandbox::SandboxTerrain::kWorldChunksY; cy++)
-                    m_world.loadChunk({cx, cy, cz});
-        const std::size_t loaded = m_world.chunkCount() - before;
-        const auto generated = Clock::now();
-        int meshed = 0;
-
-        ChunkMeshOptions options;
-        options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
-        options.ambientOcclusion = true; // Rincones más oscuros (color de vértice, ahora visible)
-        for (const ChunkCoord& coord : m_world.dirtyChunks()) {
-            if (std::abs(coord.x - center.x) > kRenderDistance ||
-                std::abs(coord.z - center.z) > kRenderDistance)
-                continue; // Anillo exterior: solo datos, se malla cuando entre en rango
-            ChunkMesh mesh = buildChunkMesh(m_world, coord, options);
+        StreamUpdate update = m_streamer->update(center);
+        for (auto& [coord, mesh] : update.meshes) {
             GpuChunk& gpu = m_gpuChunks[coord];
             gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
             gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
             gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
-            m_world.clearDirty(coord);
-            meshed++;
         }
+        for (const ChunkCoord& coord : update.unloaded) m_gpuChunks.erase(coord);
+        // El peor frame del intervalo (debería ser de pocos ms: el trabajo pesado va en los hilos)
+        const double ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        m_streamWorstMs = std::max(m_streamWorstMs, ms);
+    }
 
-        // Tiempo de carga: la primera vez (arranque) en Info, después en Debug
-        if (loaded > 0) {
-            const auto ms = [](auto from, auto to) {
-                return std::chrono::duration<double, std::milli>(to - from).count();
-            };
-            const auto done = Clock::now();
-            if (m_firstLoad)
-                MGE_LOG_INFO("Sandbox", loaded, " chunks generados en ", ms(start, generated), " ms, ",
-                             meshed, " mallados en ", ms(generated, done), " ms");
-            else
-                MGE_LOG_DEBUG("Sandbox", loaded, " chunks generados en ", ms(start, generated), " ms, ",
-                              meshed, " mallados en ", ms(generated, done), " ms");
-            m_firstLoad = false;
-        }
+    StreamingSettings streamingSettings() const {
+        StreamingSettings settings;
+        settings.loadRadius = kRenderDistance + 1; // Un anillo más que lo que se malla
+        settings.meshRadius = kRenderDistance;
+        settings.unloadMargin = 2;
+        settings.minChunkY = 0;
+        settings.maxChunkY = sandbox::SandboxTerrain::kWorldChunksY - 1;
+        settings.maxJobsInFlight = 64;
+        settings.maxResultsPerUpdate = 12; // Subidas a la GPU por frame: acota el trabajo del hilo principal
+        settings.meshOptions.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+        settings.meshOptions.ambientOcclusion = true; // Rincones más oscuros (color de vértice)
+        return settings;
+    }
+
+    // Bytes aproximados de las mallas en la GPU (vértices de 48 B + índices de 4 B)
+    std::size_t gpuBytes() const {
+        std::size_t bytes = 0;
+        for (const auto& [coord, gpu] : m_gpuChunks)
+            for (const GpuMesh* mesh : {&gpu.opaque, &gpu.cutout, &gpu.transparent})
+                bytes += mesh->vertexCount * sizeof(GpuVertex) + mesh->indexCount * sizeof(std::uint32_t);
+        return bytes;
     }
 
     // El mundo es dueño del generador; el sandbox guarda un puntero para consultar alturas (spawn)
@@ -299,7 +303,8 @@ private:
     sandbox::SandboxBlocks m_blocks;
     const sandbox::SandboxTerrain* m_terrain = nullptr; // Lo posee m_world
     VoxelWorld m_world;
-    bool m_firstLoad = true;
+    std::unique_ptr<ChunkStreamer> m_streamer;
+    double m_streamWorstMs = 0.0; // Peor tiempo de streamChunks desde el último log
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     RenderQueue m_queue;
     Texture2D m_atlas;

@@ -13,6 +13,7 @@ them. The sandbox (`game/`) is the reference user.
 | `Block.h/.cpp` | `BlockId` (`kAir = 0`), `BlockFace`, `BlockShape`, `BlockDesc`, `BlockRegistry`, `TextureAtlas`/`UvRect` |
 | `Chunk.h/.cpp` | `kChunkSize = 16`, `ChunkCoord` (+ hash), coordinate helpers, `ChunkData` |
 | `VoxelWorld.h/.cpp` | `TerrainGenerator` interface, `VoxelWorld` (loaded chunks, world get/set, dirty flags) |
+| `ChunkStreamer.h/.cpp` | `ChunkStreamer`, `StreamingSettings`, `StreamingStats`, `StreamUpdate`: loads, meshes and unloads chunks around a moving centre, on a `JobSystem` |
 | `ChunkSnapshot.h/.cpp` | `ChunkSnapshot`: a copy of a chunk plus a 1‑block border of its neighbours (18³ ids), for meshing on another thread |
 | `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, cutout, transparent}` |
 
@@ -91,6 +92,34 @@ Generation and meshing can run on a `JobSystem` without touching `VoxelWorld` fr
   the meantime.
 - `buildChunkMesh(world, coord)` is now exactly snapshot + build. Tests check that the parallel
   results are identical to the sequential ones (`tests/voxel/test_parallel.cpp`).
+
+## Streaming – `<mge/voxel/ChunkStreamer.h>` (#57)
+
+```cpp
+mge::StreamingSettings settings;
+settings.loadRadius = 5;  settings.meshRadius = 4;  settings.unloadMargin = 2;  // columns (Chebyshev X/Z)
+settings.minChunkY = 0;   settings.maxChunkY = 3;                             // vertical chunk range
+settings.meshOptions = …;                                                     // atlas, AO, greedy
+mge::ChunkStreamer streamer(world, settings, &app.jobs());   // nullptr = same logic on the main thread
+
+mge::StreamUpdate u = streamer.update(cameraChunk);          // every frame
+for (auto& [coord, mesh] : u.meshes) uploadToGpu(coord, mesh);
+for (const auto& coord : u.unloaded) freeGpu(coord);
+```
+
+| Behaviour | Details |
+|-----------|---------|
+| Load | Missing chunks within `loadRadius` (all of `minChunkY..maxChunkY`), **nearest first**; generated on workers (`generator()->generate`), inserted on the main thread |
+| Mesh | Dirty chunks within `meshRadius` (< `loadRadius`) whose 4 horizontal neighbours, plus the vertical ones inside the range, have data; snapshot on the main thread, `buildChunkMesh` on a worker |
+| Unload | Columns beyond `loadRadius + unloadMargin` (**hysteresis**: crossing a border back and forth doesn't reload). Their storage goes to `VoxelWorld`'s pool (`pooledCount`, `reusedCount`) |
+| Budgets | `maxJobsInFlight`; `maxResultsPerUpdate` (generated chunks applied and meshes handed out per update); `maxLoadedChunks` (0 = no limit; evicts the farthest outside `meshRadius` and stops generating when full) |
+| Stale results | A generated chunk whose column is now too far, or a mesh for a chunk that was unloaded or edited after the request (the dirty flag is cleared when the job is queued), is **discarded** (`stats().discarded`) |
+| Without jobs | The same algorithm on the main thread, with `maxResultsPerUpdate` as the per‑update work limit (tests, headless) |
+| `idle()` | Nothing in flight and nothing left to do for the current centre |
+
+The world and its registry must outlive the streamer; its destructor waits for its jobs, and
+`Application::run` waits for all jobs before `onShutdown`. Memory stays bounded by
+`(2 × (loadRadius + unloadMargin) + 1)² × height` chunks.
 
 ## Meshing – `<mge/voxel/ChunkMesher.h>`
 

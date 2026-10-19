@@ -81,7 +81,8 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 `app.jobs()` = `JobSystem` (created on first use; hardware threads − 1): `submit(fn) -> std::future`, `waitIdle()`. `run()` waits for
 all jobs **before** `onShutdown`. Workers must not touch main-thread state: voxel generation runs `generator()->generate` (const,
 stateless) then `VoxelWorld::insertChunk` on the main thread; meshing runs on a `ChunkSnapshot::capture(world, coord)` copy
-(chunk + 1-block border) via `buildChunkMesh(snapshot, registry, options)`.
+(chunk + 1-block border) via `buildChunkMesh(snapshot, registry, options)`. `ChunkStreamer(world, StreamingSettings, &jobs())` does
+all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale results (unloaded / edited since) are discarded.
 
 ## ECS
 `app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems
@@ -139,7 +140,7 @@ defaults to `SandboxTerrain::kDefaultSeed` (1337).
 and return an error instead. `Window::isValid()`, `GpuDevice::create` (nullptr), `Texture2D` (invalid) report failure.
 
 ## Gotchas you will trip on (details in docs/KNOWN_ISSUES.md)
-- Chunks are never unloaded (#57). Frustum culling via `CameraMatrices::frustum` (`Frustum::fromViewProjection`, `DepthRange::ZeroToOne` by default), drawing only.
+- Chunks stream through `ChunkStreamer` (#57): load/mesh on worker threads, unload with hysteresis, pooled storage. Frustum culling via `CameraMatrices::frustum` (`Frustum::fromViewProjection`, `DepthRange::ZeroToOne` by default), drawing only.
 - Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy` (Vulkan through `VK_EXT_headless_surface`).
 - GPU resources (`GpuMesh`, `Texture2D`, pipelines) must be released in `onShutdown`, before `GpuModule` destroys the device.
 - Unused code/assets: AudioManager calls, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).
