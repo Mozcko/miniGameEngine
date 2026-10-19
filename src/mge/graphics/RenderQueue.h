@@ -19,6 +19,13 @@ namespace mge {
     };
     inline constexpr std::size_t kMeshPassCount = 3;
 
+    // Material procedural por malla (#34): ruido de brillo en el espacio del mundo, para mallas de solo color
+    // (bloques sin textura) que con greedy son caras grandes y planas
+    struct MeshMaterial {
+        float detailScale = 4.0f;    // Celdas del ruido por unidad del mundo
+        float detailStrength = 0.0f; // 0 = sin detalle; 0.1–0.3 = sutil
+    };
+
     // Una malla a dibujar en el frame
     struct DrawItem {
         const GpuMesh* mesh = nullptr;
@@ -26,6 +33,7 @@ namespace mge {
         const Texture2D* texture = nullptr; // nullptr = blanca
         MeshPass pass = MeshPass::Opaque;
         glm::vec3 center{0.0f}; // Centro en el mundo (para ordenar)
+        MeshMaterial material;
     };
 
     // Cola de dibujo del frame. sort() la ordena para dibujar bien y rápido:

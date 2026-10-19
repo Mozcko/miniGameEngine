@@ -1,5 +1,9 @@
 #include <doctest/doctest.h>
 #include <game/SandboxBlocks.h>
+#include <game/SandboxMaterials.h>
+
+#include <algorithm>
+#include <vector>
 
 #include <initializer_list>
 
@@ -79,4 +83,37 @@ TEST_CASE("Sandbox: hojas y plantas en la pasada cutout; agua, lava y vidrio tra
     for (BlockId id : {r.b.water, r.b.lava, r.b.glass})
         CHECK(r.registry.get(id).renderLayer() == RenderLayer::Translucent);
     CHECK(r.registry.get(r.b.stone).renderLayer() == RenderLayer::Opaque);
+}
+
+TEST_CASE("Atlas procedural: pinta todos los tiles que usan los bloques y los cuadros animados") {
+    Registered r;
+    const std::vector<int>& painted = sandbox::proceduralTiles();
+    auto paints = [&](int tile) { return std::find(painted.begin(), painted.end(), tile) != painted.end(); };
+    for (std::size_t i = 1; i < r.registry.size(); i++)
+        for (int tile : r.registry.get(static_cast<BlockId>(i)).tiles) {
+            CAPTURE(tile);
+            CHECK(paints(tile));
+        }
+    for (int frame : sandbox::kWaterFrames) CHECK(paints(frame));
+    for (int frame : sandbox::kLavaFrames) CHECK(paints(frame));
+
+    const mge::Image atlas = sandbox::buildProceduralAtlas(7);
+    CHECK(atlas.width() == 512);
+    CHECK(atlas.height() == 512);
+    CHECK(atlas.pixels() == sandbox::buildProceduralAtlas(7).pixels()); // Determinista
+    CHECK(atlas.pixels() != sandbox::buildProceduralAtlas(8).pixels());
+    // Ningún tile usado queda con el relleno magenta; las hojas tienen huecos
+    const glm::vec4 magenta(1, 0, 1, 1);
+    for (int tile : painted) {
+        const int x0 = (tile % 16) * 32, y0 = (tile / 16) * 32;
+        int filler = 0;
+        for (int y = 0; y < 32; y++)
+            for (int x = 0; x < 32; x++) filler += atlas.get(x0 + x, y0 + y) == magenta;
+        CAPTURE(tile);
+        CHECK(filler == 0);
+    }
+    int holes = 0;
+    for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++) holes += atlas.get((52 % 16) * 32 + x, (52 / 16) * 32 + y).a < 0.5f;
+    CHECK(holes > 0);
 }
