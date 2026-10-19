@@ -25,6 +25,7 @@ add_executable(mge_core_tests
     core/test_ecs.cpp
     core/test_geometry.cpp
     core/test_input.cpp
+    core/test_jobs.cpp
     core/test_log.cpp
     core/test_random.cpp
     core/test_log_stripped.cpp
@@ -53,6 +54,7 @@ add_executable(mge_voxel_tests
     voxel/test_block_registry.cpp
     voxel/test_chunk_coords.cpp
     voxel/test_chunk_mesher.cpp
+    voxel/test_parallel.cpp
     voxel/test_voxel_world.cpp
 )
 target_link_libraries(mge_voxel_tests PRIVATE mge_voxel doctest_header)

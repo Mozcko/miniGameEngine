@@ -90,7 +90,8 @@ use `time().unscaledDelta()`.
 
 ## 5. Shutdown sequence
 
-After the loop: the game's `onShutdown()` runs first. SandboxApp frees its GPU meshes, atlas and
+After the loop: if the game used `app.jobs()`, the run waits for every job to finish (they may
+use game data). Then the game's `onShutdown()` runs. SandboxApp frees its GPU meshes, atlas and
 renderer there, while the GPU device still exists. Then each **initialised** module's
 `onShutdown(app)` runs in **reverse order**: Audio closes the device, Gpu waits for the GPU,
 releases the window and destroys the device, then Platform destroys the window. Finally

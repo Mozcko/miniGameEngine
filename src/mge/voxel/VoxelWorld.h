@@ -26,10 +26,16 @@ namespace mge {
                             std::unique_ptr<TerrainGenerator> generator = nullptr);
 
         const BlockRegistry& registry() const { return m_registry; }
+        // El generador (nullptr si no hay). generate() es const y no debe tener estado: se puede llamar
+        // desde otros hilos para generar chunks en paralelo e insertarlos después con insertChunk.
+        const TerrainGenerator* generator() const { return m_generator.get(); }
 
         // Crea y genera el chunk si no existe; si ya existe lo devuelve tal cual. El chunk nuevo queda
         // sucio, y también sus 6 vecinos cargados: su malla veía aire en ese lado y ahora hay datos.
         ChunkData& loadChunk(const ChunkCoord& coord);
+        // Agrega un chunk ya generado (ej: en un JobSystem). Si ya existía, se conserva el existente.
+        // Igual que loadChunk: queda sucio y ensucia a sus vecinos cargados.
+        ChunkData& insertChunk(const ChunkCoord& coord, const ChunkData& data);
         void unloadChunk(const ChunkCoord& coord);
         bool isLoaded(const ChunkCoord& coord) const { return m_chunks.count(coord) != 0; }
         ChunkData* chunk(const ChunkCoord& coord);

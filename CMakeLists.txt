@@ -21,8 +21,18 @@ option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
 option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
 option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
+option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANITIZERS)" OFF)
 option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
+
+# --- ThreadSanitizer: carreras de datos (JobSystem y lo que corre en él) ---
+if(MGE_TSAN)
+    if(MGE_SANITIZERS)
+        message(FATAL_ERROR "MGE_TSAN y MGE_SANITIZERS (ASan) no se pueden combinar")
+    endif()
+    add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=thread)
+endif()
 
 # --- Sanitizers (todo el build, incluidas dependencias, para que ASan vea todas las asignaciones) ---
 if(MGE_SANITIZERS)

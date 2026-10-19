@@ -96,6 +96,14 @@ GCC needs its ASan/UBSan runtimes (Fedora: `sudo dnf install libasan libubsan`).
 `CC=clang CXX=clang++ cmake --preset asan`. The test preset sets `ASAN_OPTIONS=detect_leaks=1` and
 makes UBSan halt on the first error.
 
+**ThreadSanitizer** (data races in the `JobSystem` and the work it runs), headless modules only:
+
+```bash
+CC=clang CXX=clang++ cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan
+```
+
+`MGE_TSAN` can't be combined with `MGE_SANITIZERS` (ASan).
+
 ## Headless runs
 
 SDL3's offscreen video driver plus Vulkan's `VK_EXT_headless_surface` (Mesa drivers, including
@@ -194,14 +202,15 @@ superseded runs are cancelled):
 
 | Job | What it proves |
 |-----|----------------|
-| `gcc`, `clang` | `ci` preset (Debug, `-Werror`) builds; all tests pass headless, including both smoke tests (the sandbox runs 120 frames offscreen on Mesa llvmpipe) |
+| `gcc`, `clang` | `ci` preset (Debug, `-Werror`) builds; all tests pass headless, including GPU and render tests and the smoke runs on Mesa lavapipe (Vulkan) with validation enforced |
 | `sanitizers` | `asan` preset: the same tests and smoke runs under ASan + UBSan, with no display server |
-| `core-only` | `mge_core` builds and its tests pass on a machine **without** SDL/GL headers |
+| `tsan` | `tsan` preset (clang): core, procgen and voxel tests under ThreadSanitizer (job system, parallel generation/meshing) |
+| `core-only` | `mge_core`, `mge_procgen` and `mge_voxel` build and their tests pass on a machine **without** SDL/GL headers |
 | `lint` | `scripts/lint.sh`: clang-format and naming (22.1.8) |
 
 Dependencies come from `scripts/ci-install-deps.sh` (SDL3 build deps plus Mesa software drivers).
 
-A PR may only be merged when both jobs are green. To reproduce CI locally:
+A PR may only be merged when all jobs are green. To reproduce CI locally:
 `cmake --preset ci -G Ninja && cmake --build --preset ci && ctest --preset ci`.
 
 ## Run

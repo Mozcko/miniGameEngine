@@ -103,6 +103,29 @@ jobs:
           unset DISPLAY WAYLAND_DISPLAY
           ctest --preset asan
 
+  # ThreadSanitizer: carreras de datos en el JobSystem y en lo que corre en él (generar/mallar chunks).
+  # Solo los módulos headless (core, procgen, voxel): sin SDL ni drivers de GPU bajo TSan.
+  tsan:
+    name: thread sanitizer (headless)
+    runs-on: ubuntu-24.04
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools and GLM only
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build libglm-dev
+
+      - name: Configure (tsan preset)
+        run: cmake --preset tsan -G Ninja
+
+      - name: Build
+        run: cmake --build --preset tsan
+
+      - name: Test
+        run: ctest --preset tsan
+
   # Proves the headless core builds and runs with NO SDL/GPU installed (ADR 0003)
   core-only:
     name: core-only (no SDL/GPU)

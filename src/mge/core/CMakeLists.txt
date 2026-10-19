@@ -3,6 +3,7 @@ add_library(mge_core STATIC
     Application.h Application.cpp
     Assets.h Assets.cpp
     Input.h Input.cpp
+    Jobs.h Jobs.cpp
     Log.h Log.cpp
     Module.h
     Random.h
@@ -17,6 +18,9 @@ add_library(mge_core STATIC
     ecs/World.h ecs/World.cpp
 )
 target_include_directories(mge_core PUBLIC ${PROJECT_SOURCE_DIR}/src)
+# JobSystem (std::thread)
+find_package(Threads REQUIRED)
+target_link_libraries(mge_core PUBLIC Threads::Threads)
 target_compile_features(mge_core PUBLIC cxx_std_17)
 # Último recurso para encontrar assets/ desde cualquier directorio (ver Assets.h)
 target_compile_definitions(mge_core PRIVATE MGE_SOURCE_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets")
