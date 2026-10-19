@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mge/procgen/MeshData.h>
+#include <mge/voxel/ChunkSnapshot.h>
 #include <mge/voxel/VoxelWorld.h>
 
 namespace mge {
@@ -33,5 +34,9 @@ namespace mge {
     // (agua contra agua). Los vecinos se leen del mundo, también los de otros chunks; un chunk vecino
     // sin cargar cuenta como aire (VoxelWorld marca sucio al chunk cuando ese vecino se carga).
     ChunkMesh buildChunkMesh(const VoxelWorld& world, const ChunkCoord& coord,
+                             const ChunkMeshOptions& options = {});
+    // Igual, desde una copia (ChunkSnapshot::capture). Solo lee el snapshot y el registry (que no debe
+    // cambiar mientras tanto): se puede llamar desde otro hilo (JobSystem).
+    ChunkMesh buildChunkMesh(const ChunkSnapshot& snapshot, const BlockRegistry& registry,
                              const ChunkMeshOptions& options = {});
 }

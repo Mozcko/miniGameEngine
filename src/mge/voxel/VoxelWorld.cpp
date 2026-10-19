@@ -10,13 +10,20 @@ namespace mge {
     ChunkData& VoxelWorld::loadChunk(const ChunkCoord& coord) {
         auto it = m_chunks.find(coord);
         if (it != m_chunks.end()) return it->second->data;
+        ChunkData data;
+        if (m_generator) m_generator->generate(coord, data);
+        return insertChunk(coord, data);
+    }
 
+    ChunkData& VoxelWorld::insertChunk(const ChunkCoord& coord, const ChunkData& data) {
+        auto it = m_chunks.find(coord);
+        if (it != m_chunks.end()) return it->second->data;
         auto entry = std::make_unique<Entry>();
-        if (m_generator) m_generator->generate(coord, entry->data);
-        ChunkData& data = entry->data;
+        entry->data = data;
+        ChunkData& stored = entry->data;
         m_chunks.emplace(coord, std::move(entry));
         markFaceNeighboursDirty(coord);
-        return data;
+        return stored;
     }
 
     void VoxelWorld::unloadChunk(const ChunkCoord& coord) {

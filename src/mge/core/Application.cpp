@@ -40,6 +40,14 @@ namespace mge {
 
     Application::~Application() = default;
 
+    JobSystem& Application::jobs() {
+        if (!m_jobs) {
+            m_jobs = std::make_unique<JobSystem>();
+            MGE_LOG_INFO("App", "Pool de trabajos: ", m_jobs->threadCount(), " hilos");
+        }
+        return *m_jobs;
+    }
+
     bool Application::initModules() {
         for (const auto& module : m_modules) {
             MGE_LOG_DEBUG("App", "Inicializando módulo ", module->name());
@@ -136,6 +144,8 @@ namespace mge {
             if (m_config.maxFrames > 0 && m_time.m_frameCount >= m_config.maxFrames) m_running = false;
         }
 
+        // Los trabajos en curso pueden usar datos del juego: terminarlos antes de que el juego libere nada
+        if (m_jobs) m_jobs->waitIdle();
         onShutdown();
         shutdownModules();
         return m_exitCode;

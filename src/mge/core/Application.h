@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mge/core/Clock.h>
+#include <mge/core/Jobs.h>
 #include <mge/core/Module.h>
 #include <mge/core/Time.h>
 #include <mge/core/ecs/World.h>
@@ -78,6 +79,10 @@ namespace mge {
         const glm::uvec2& viewport() const { return m_viewport; }
         void setViewport(const glm::uvec2& viewport) { m_viewport = viewport; }
 
+        // Pool de hilos del motor (se crea la primera vez que se pide). Para trabajo pesado e independiente:
+        // generar/mallar chunks, etc. Se destruye con la Application, después de onShutdown.
+        JobSystem& jobs();
+
         // Reemplaza el reloj (antes de run()). Por defecto SteadyClock (tiempo real).
         // Tests/headless deterministas: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
         void setClock(std::unique_ptr<Clock> clock) { m_clock = std::move(clock); }
@@ -125,6 +130,7 @@ namespace mge {
         int m_exitCode = 0;
         Time m_time;
         World m_world;
+        std::unique_ptr<JobSystem> m_jobs;
         glm::uvec2 m_viewport{0, 0};
         double m_fixedDeltaSeconds = 1.0 / 60.0; // Precisión completa para el acumulador
         std::unique_ptr<Clock> m_clock;

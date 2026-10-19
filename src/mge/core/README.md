@@ -181,6 +181,30 @@ built OpenGL projections. Tests: `tests/core/test_camera.cpp`.
 
 ---
 
+## Jobs – `<mge/core/Jobs.h>` (#56)
+
+A simple thread pool for heavy, independent work, such as generating or meshing chunks:
+
+```cpp
+mge::JobSystem& jobs = app.jobs();                       // created on first use
+std::future<int> result = jobs.submit([] { return heavyWork(); });
+int value = result.get();                                // or poll: result.wait_for(0s) == ready
+jobs.waitIdle();                                         // block until the queue is empty
+```
+
+| Item | Notes |
+|------|-------|
+| Threads | `hardware_concurrency − 1` (at least 1); the main thread stays for the game. `JobSystem(n)` sets it explicitly |
+| Queue | One shared queue (mutex + condition variable), FIFO, no priorities or work stealing |
+| `submit(fn)` | Returns a `std::future` of `fn`'s result. Exceptions travel in the future |
+| Shutdown | `~JobSystem` lets running jobs finish, **drops** queued ones (their futures report `broken_promise`), and joins. `Application::run()` calls `waitIdle()` **before** `onShutdown`, so jobs never outlive the game data they use |
+| Rules | Jobs must not touch main‑thread state without synchronisation. Copy what they need (e.g. `ChunkSnapshot`) or use const, stateless data (e.g. `TerrainGenerator::generate`) |
+
+`mge_core` links `Threads::Threads`. Tests: `tests/core/test_jobs.cpp`, plus the `tsan` CI job
+(ThreadSanitizer).
+
+---
+
 ## Logging – `mge::Log` + macros
 
 ```cpp

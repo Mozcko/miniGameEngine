@@ -27,8 +27,8 @@ cmake --preset dev && cmake --build --preset dev   # Debug + warnings → build/
 scripts/run.sh               # build + run from anywhere (or ./build/sandbox, or --target run)
 ```
 Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. CI: GitHub Actions (`.github/workflows/ci.yml`, GCC + Clang, `ci` preset) must be green before merging.
-Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't installed here).
-Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames) and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`). CI jobs: gcc, clang, sanitizers, core-only, lint.
+Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't installed here); `tsan` preset (ThreadSanitizer, clang, headless modules).
+Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames) and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`). CI jobs: gcc, clang, sanitizers, tsan, core-only, lint.
 Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 
@@ -76,6 +76,12 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - Block face index: 0 Front(+Z), 1 Back(−Z), 2 Left(−X), 3 Right(+X), 4 Top(+Y), 5 Bottom(−Y).
 - Block (x,y,z) occupies [x, x+1)³ → world→block is `mge::blockAt(p)` (= floor).
 - Tileset: 512×512 px, 32 px tiles, 16 cols, tile index row‑major from the **top‑left**.
+
+## Jobs (#56)
+`app.jobs()` = `JobSystem` (created on first use; hardware threads − 1): `submit(fn) -> std::future`, `waitIdle()`. `run()` waits for
+all jobs **before** `onShutdown`. Workers must not touch main-thread state: voxel generation runs `generator()->generate` (const,
+stateless) then `VoxelWorld::insertChunk` on the main thread; meshing runs on a `ChunkSnapshot::capture(world, coord)` copy
+(chunk + 1-block border) via `buildChunkMesh(snapshot, registry, options)`.
 
 ## ECS
 `app.world()` = `Registry` (sparse sets; `create/destroy/add/get/tryGet/has/remove`, `each<A,B>(fn)`) + systems

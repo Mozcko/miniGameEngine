@@ -26,10 +26,9 @@ namespace mge {
 
         class Mesher {
         public:
-            Mesher(const VoxelWorld& world, const ChunkData& data, const ChunkCoord& coord,
+            Mesher(const ChunkSnapshot& snapshot, const BlockRegistry& registry,
                    const ChunkMeshOptions& options)
-                : m_world(world), m_registry(world.registry()), m_data(data), m_origin(chunkOrigin(coord)),
-                  m_options(options) {}
+                : m_registry(registry), m_snapshot(snapshot), m_options(options) {}
 
             ChunkMesh build() {
                 for (int f = 0; f < kBlockFaceCount; f++) buildFace(f);
@@ -44,10 +43,8 @@ namespace mge {
                 bool operator==(const MaskCell& o) const { return id == o.id && ao == o.ao; }
             };
 
-            BlockId blockAt(const glm::ivec3& local) const {
-                return ChunkData::inside(local.x, local.y, local.z) ? m_data.get(local)
-                                                                    : m_world.getBlock(m_origin + local);
-            }
+            // Local de -1 a 16: el snapshot ya trae el borde de los vecinos
+            BlockId blockAt(const glm::ivec3& local) const { return m_snapshot.get(local); }
 
             bool occludes(const glm::ivec3& local) const {
                 const BlockDesc& d = m_registry.get(blockAt(local));
@@ -139,7 +136,7 @@ namespace mge {
                             pos[face.axis] = slice;
                             pos[u] = i;
                             pos[v] = j;
-                            const BlockId id = m_data.get(pos);
+                            const BlockId id = m_snapshot.get(pos);
                             if (id == kAir) continue;
                             const BlockDesc& desc = m_registry.get(id);
                             if (desc.shape == BlockShape::Cross) {
@@ -217,19 +214,21 @@ namespace mge {
                 }
             }
 
-            const VoxelWorld& m_world;
             const BlockRegistry& m_registry;
-            const ChunkData& m_data;
-            glm::ivec3 m_origin;
+            const ChunkSnapshot& m_snapshot;
             const ChunkMeshOptions& m_options;
             ChunkMesh m_result;
         };
     }
 
+    ChunkMesh buildChunkMesh(const ChunkSnapshot& snapshot, const BlockRegistry& registry,
+                             const ChunkMeshOptions& options) {
+        if (!snapshot.valid()) return {};
+        return Mesher(snapshot, registry, options).build();
+    }
+
     ChunkMesh buildChunkMesh(const VoxelWorld& world, const ChunkCoord& coord,
                              const ChunkMeshOptions& options) {
-        const ChunkData* data = world.chunk(coord);
-        if (!data) return {};
-        return Mesher(world, *data, coord, options).build();
+        return buildChunkMesh(ChunkSnapshot::capture(world, coord), world.registry(), options);
     }
 }

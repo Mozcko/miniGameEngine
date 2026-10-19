@@ -13,6 +13,7 @@ them. The sandbox (`game/`) is the reference user.
 | `Block.h/.cpp` | `BlockId` (`kAir = 0`), `BlockFace`, `BlockShape`, `BlockDesc`, `BlockRegistry`, `TextureAtlas`/`UvRect` |
 | `Chunk.h/.cpp` | `kChunkSize = 16`, `ChunkCoord` (+ hash), coordinate helpers, `ChunkData` |
 | `VoxelWorld.h/.cpp` | `TerrainGenerator` interface, `VoxelWorld` (loaded chunks, world get/set, dirty flags) |
+| `ChunkSnapshot.h/.cpp` | `ChunkSnapshot`: a copy of a chunk plus a 1‑block border of its neighbours (18³ ids), for meshing on another thread |
 | `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, cutout, transparent}` |
 
 ## Blocks – `<mge/voxel/Block.h>`
@@ -80,6 +81,17 @@ bool solid = world.isSolid({3, 5, -2});
   - The game re‑meshes `dirtyChunks()` and then calls `clearDirty(coord)`.
 - **Other calls:** `unloadChunk`, `chunk(coord)` (nullptr if not loaded), `loadedChunks()`, `chunkCount()`.
 
+## Threads (#56)
+Generation and meshing can run on a `JobSystem` without touching `VoxelWorld` from workers:
+- **Generate:** `world.generator()->generate(coord, data)` on a worker. Generators must be `const`
+  and stateless, which is documented as a requirement. Then `world.insertChunk(coord, data)` on the
+  main thread; it dirties neighbours just like `loadChunk`.
+- **Mesh:** `ChunkSnapshot::capture(world, coord)` on the main thread (27 chunk lookups, ~11 KB),
+  then `buildChunkMesh(snapshot, registry, options)` on a worker. The registry must not change in
+  the meantime.
+- `buildChunkMesh(world, coord)` is now exactly snapshot + build. Tests check that the parallel
+  results are identical to the sequential ones (`tests/voxel/test_parallel.cpp`).
+
 ## Meshing – `<mge/voxel/ChunkMesher.h>`
 
 ```cpp
@@ -103,8 +115,8 @@ same transparent block (water against water).
   shows as is, unless `tintTextured`. AO darkens either;
 - UVs come from the face's tile, or are (0, 0) for untextured blocks.
 
-**Neighbours** across chunk borders are read from the world, and an unloaded neighbour counts as
-air. When that neighbour loads, `VoxelWorld` marks this chunk dirty, so re‑meshing the dirty chunks
+**Neighbours** across chunk borders are read from the snapshot's border, and an unloaded neighbour
+counts as air. When that neighbour loads, `VoxelWorld` marks this chunk dirty, so re‑meshing the dirty chunks
 removes any seam. A game can also load one ring of chunks more than it meshes, which avoids the
 re‑mesh; the sandbox does this.
 

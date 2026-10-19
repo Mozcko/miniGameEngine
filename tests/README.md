@@ -28,10 +28,12 @@ ctest --preset dev                      # all tests
 | `procgen/test_meshdata.cpp` | `mge_procgen_tests`: MeshData building, validation errors, bounds, OBJ output |
 | `core/test_umbrella.cpp` | `<mge/mge.h>` with only `mge_core`: compiles without SDL and doesn't see module headers (`#error` otherwise) |
 | `platform/test_umbrella_platform.cpp` | `<mge/mge.h>` with `mge_platform`: `PlatformModule` is available |
+| `core/test_jobs.cpp` | `JobSystem`: every job runs once and futures return values, `waitIdle`, exceptions through futures, clean destruction with pending jobs, `Application::jobs()` waited before `onShutdown` |
 | `core/test_input.cpp` | `InputState` edges, mouse delta/wheel, `clear`, `ActionMap` multi‑binding actions and axes |
 | `platform/test_sdl_input.cpp` | `mge_platform_tests`: scancode/button translation and `applySdlEvent` with hand‑built SDL events (no SDL init, no window) |
 | `voxel/test_block_registry.cpp` | `mge_voxel_tests`: air is id 0, ids/lookup by name, per‑face tiles, atlas UVs |
 | `voxel/test_chunk_coords.cpp` | floorDiv/floorMod, world → chunk → local incl. negatives and vertical, `blockAt`, `ChunkData`, hash |
+| `voxel/test_parallel.cpp` | Parallel generation (`generator()` + `insertChunk`) and snapshot meshing on a `JobSystem` give exactly the sequential results (incl. AO, greedy, all three layers); `ChunkSnapshot` border and unloaded neighbours |
 | `voxel/test_voxel_world.cpp` | Load/unload, get/set across chunks (negative, vertical), dirty flags + border propagation, generator determinism |
 | `voxel/test_chunk_mesher.cpp` | `tintTextured` (textured → white vertex colour unless tinted); render layers → opaque/cutout/transparent meshes; face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face; seams vs an independent whole‑world reference, re‑mesh after a neighbour loads, greedy (fewer triangles, same area per direction, textured not merged), AO (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
 | `gpu/test_gpu_device.cpp` | `mge_gpu_tests` (label `gpu`): handles are move‑only (compile time), `GpuVertex` interleaving/layout, clear + readback, mesh upload, cancelled command buffers. Offscreen; skipped without a GPU unless `MGE_REQUIRE_GPU=1` (CI, lavapipe). Helper: `gpu/GpuTestContext.h` |
