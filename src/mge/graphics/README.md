@@ -9,11 +9,13 @@ by default (`MODULES platform gpu graphics audio`).
 |------|----------|
 | `Texture2D.h/.cpp` | `Texture2D`: RGBA8 texture from a file (stb_image) or from pixels, region updates, tile copies from the original image |
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
+| `DebugDraw.h/.cpp` | `DebugLines` (CPU line builder: line, aabb, sphere, axes, frustum) and `DebugDraw` (+ GPU buffer, `flush(renderer)`) |
 | `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
+| `shaders/debug_lines.vert/.frag` | Line list: `viewProjection * position`, vertex colour |
 | `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`; `texture(albedo, uv) * color`, lit and fogged; the cutout variant discards alpha < 0.5 |
 
-Coming in M3:
+
 and fog (#33), procedural materials (#34) and debug drawing (#38).
 
 ## `Texture2D`
@@ -84,6 +86,31 @@ offscreen textures this way.
 **Cameras.** `MeshRenderer` expects projections with Z in [0, 1]. The core's `Camera` component
 produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md` → Cameras).
 
+## Debug draw – `<mge/graphics/DebugDraw.h>` (#38)
+
+```cpp
+m_debug = std::make_unique<mge::DebugDraw>(device);
+// every frame, between renderer.begin and end (after submit):
+m_debug->clear();
+m_debug->aabb(chunkBounds, {0.3f, 1, 0.4f, 0.5f});
+m_debug->frustum(frozenViewProjection, {1, 0.5f, 0.1f, 1});
+m_debug->axes(origin, 2.0f);
+m_debug->flush(*m_renderer);
+```
+
+- **`DebugLines`** builds the vertices on the CPU (testable without a GPU) as pairs of
+  `GpuVertex` (position + colour):
+  - `line`;
+  - `aabb`: 12 edges, nothing for an empty box;
+  - `sphere`: 3 circles;
+  - `axes`: X red, Y green, Z blue;
+  - `frustum(viewProjection)`: 12 edges from the inverse matrix, for Z in [0, 1].
+- **`DebugDraw::flush`** uploads to a buffer that grows as needed, with `uploadToBuffer(…, cycle =
+  true)` so the previous frame's data isn't overwritten while in use, then calls
+  `MeshRenderer::drawLines`.
+- **The line pipeline** is a line list, depth‑tested but not depth‑writing, with no culling and
+  alpha blending. Lines are hidden by the scene, and later mesh draws are unaffected.
+
 ## Tests
 `tests/render/test_graphics.cpp` (label `gpu`):
 - **Texture orientation:** a 2×2 image drawn full‑screen has its top‑left pixel at the top‑left.
@@ -98,5 +125,7 @@ produces them: `cameraMatrices(…).viewProjection` (see `src/mge/core/README.md
 - **Procedural sandbox golden:** the same sandbox scene drawn with `sandbox::buildProceduralAtlas()`,
   so no image is loaded. The test also writes `render_output/procedural_atlas.png` for review.
 - **Colour detail golden:** greedy colour‑only steps with `MeshMaterial` detail and lighting.
+- **Debug lines:** CPU counts per shape and frustum corners; a golden of a box, sphere and axes
+  around a cube (lines hidden by depth; Intel vs lavapipe ≈ 0.5 % different).
 - **Cutout scene golden:** leaves in front of water, a rose and a flower over grass, added to the
   queue in reverse order on purpose.

@@ -95,19 +95,19 @@ _Move rendering to SDL3 GPU (Vulkan/Metal/D3D12) with embedded shaders and proce
 
 | # | Issue | Labels |
 |---|---|---|
-| [#28](https://github.com/Mozcko/miniGameEngine/issues/28) | Thin RAII wrappers over the SDL3 GPU API | enhancement, priority:critical, size:M |
-| [#29](https://github.com/Mozcko/miniGameEngine/issues/29) | Shader toolchain: build-time compilation to embedded bytecode | chore, priority:critical, size:M |
-| [#30](https://github.com/Mozcko/miniGameEngine/issues/30) | Port mesh and chunk rendering to SDL GPU (parity with the OpenGL sandbox) | enhancement, priority:critical, size:L |
-| [#31](https://github.com/Mozcko/miniGameEngine/issues/31) | Render queue: opaque, cutout and transparent passes | enhancement, priority:high, size:M |
-| [#32](https://github.com/Mozcko/miniGameEngine/issues/32) | Camera rework: components, real frustum culling, pixel ortho, resize | enhancement, priority:high, size:M |
-| [#33](https://github.com/Mozcko/miniGameEngine/issues/33) | Lighting model: directional, hemisphere ambient, fog | enhancement, priority:medium, size:M |
-| [#34](https://github.com/Mozcko/miniGameEngine/issues/34) | Procedural materials alongside textures | enhancement, priority:high, size:L |
-| [#35](https://github.com/Mozcko/miniGameEngine/issues/35) | Procedural sky | enhancement, priority:low, size:M |
-| [#36](https://github.com/Mozcko/miniGameEngine/issues/36) | SDF raymarching render pass | enhancement, priority:low, size:L |
-| [#37](https://github.com/Mozcko/miniGameEngine/issues/37) | Swapchain and device configuration | chore, priority:medium, size:S |
-| [#38](https://github.com/Mozcko/miniGameEngine/issues/38) | Debug draw utilities | enhancement, priority:medium, size:S |
-| [#39](https://github.com/Mozcko/miniGameEngine/issues/39) | Offscreen render tests in CI (lavapipe) | testing, priority:medium, size:M |
-| [#40](https://github.com/Mozcko/miniGameEngine/issues/40) | Remove the legacy OpenGL / GLEW renderer | chore, priority:high, size:S |
+| [#28](https://github.com/Mozcko/miniGameEngine/issues/28) | ✅ Thin RAII wrappers over the SDL3 GPU API | enhancement, priority:critical, size:M |
+| [#29](https://github.com/Mozcko/miniGameEngine/issues/29) | ✅ Shader toolchain: build-time compilation to embedded bytecode | chore, priority:critical, size:M |
+| [#30](https://github.com/Mozcko/miniGameEngine/issues/30) | ✅ Port mesh and chunk rendering to SDL GPU (parity with the OpenGL sandbox) | enhancement, priority:critical, size:L |
+| [#31](https://github.com/Mozcko/miniGameEngine/issues/31) | ✅ Render queue: opaque, cutout and transparent passes | enhancement, priority:high, size:M |
+| [#32](https://github.com/Mozcko/miniGameEngine/issues/32) | ✅ Camera rework: components, real frustum culling, pixel ortho, resize | enhancement, priority:high, size:M |
+| [#33](https://github.com/Mozcko/miniGameEngine/issues/33) | ✅ Lighting model: directional, hemisphere ambient, fog | enhancement, priority:medium, size:M |
+| [#34](https://github.com/Mozcko/miniGameEngine/issues/34) | ✅ Procedural materials alongside textures | enhancement, priority:high, size:L |
+| [#35](https://github.com/Mozcko/miniGameEngine/issues/35) | ↪ moved to M8 · Procedural sky | enhancement, priority:low, size:M |
+| [#36](https://github.com/Mozcko/miniGameEngine/issues/36) | ↪ moved to M8 · SDF raymarching render pass | enhancement, priority:low, size:L |
+| [#37](https://github.com/Mozcko/miniGameEngine/issues/37) | ✅ Swapchain and device configuration | chore, priority:medium, size:S |
+| [#38](https://github.com/Mozcko/miniGameEngine/issues/38) | ✅ Debug draw utilities | enhancement, priority:medium, size:S |
+| [#39](https://github.com/Mozcko/miniGameEngine/issues/39) | ✅ Offscreen render tests in CI (lavapipe) | testing, priority:medium, size:M |
+| [#40](https://github.com/Mozcko/miniGameEngine/issues/40) | ✅ Remove the legacy OpenGL / GLEW renderer | chore, priority:high, size:S |
 
 ### M4 · Procedural UI & Text — [epic #72](https://github.com/Mozcko/miniGameEngine/issues/72)
 
@@ -151,8 +151,8 @@ _Measure, parallelise, stream and shrink._ Profiling, job system, chunk streamin
 | # | Issue | Labels |
 |---|---|---|
 | [#55](https://github.com/Mozcko/miniGameEngine/issues/55) | Profiling instrumentation | performance, priority:high, size:S |
-| [#56](https://github.com/Mozcko/miniGameEngine/issues/56) | Job system / thread pool | performance, priority:high, size:L |
-| [#57](https://github.com/Mozcko/miniGameEngine/issues/57) | Chunk streaming with unload and memory budget | performance, priority:high, size:M |
+| [#56](https://github.com/Mozcko/miniGameEngine/issues/56) | ✅ (done early, with M3) Job system / thread pool | performance, priority:high, size:L |
+| [#57](https://github.com/Mozcko/miniGameEngine/issues/57) | ✅ (done early, with M3) Chunk streaming with unload and memory budget | performance, priority:high, size:M |
 | [#58](https://github.com/Mozcko/miniGameEngine/issues/58) | GPU compute procedural generation | performance, priority:low, size:L |
 | [#59](https://github.com/Mozcko/miniGameEngine/issues/59) | Headless benchmarks in CI | performance, testing, priority:medium, size:M |
 | [#60](https://github.com/Mozcko/miniGameEngine/issues/60) | Binary size budget | performance, priority:medium, size:S |
@@ -186,4 +186,4 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100) and ✅ M2 (#19–#27) are done. Next: M3 (#28–#40, SDL3 GPU renderer), starting with #28 (GPU wrappers) and #29 (shader toolchain), which unblock the rest. Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27) and ✅ M3 (#28–#34, #37–#40; #35/#36 moved to M8) are done, plus #56/#57 from M7 (job system, chunk streaming). Next: M4 (procedural UI and text). Each issue's **Depends on** section on GitHub lists its prerequisites.

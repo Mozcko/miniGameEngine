@@ -62,6 +62,7 @@
 
 // --- Graphics: renderer sobre SDL3 GPU ---
 #ifdef MGE_HAS_GRAPHICS
+#include <mge/graphics/DebugDraw.h>
 #include <mge/graphics/Lighting.h>
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/RenderQueue.h>

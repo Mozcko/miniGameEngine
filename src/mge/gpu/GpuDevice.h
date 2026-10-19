@@ -57,7 +57,10 @@ namespace mge {
         // --- Trabajo ---
         CommandBuffer acquireCommandBuffer();
         // Copia bytes de la CPU a un buffer de la GPU (con su propio command buffer, sin esperar)
-        bool uploadToBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size);
+        // cycle = true para buffers que se reescriben cada frame (SDL no pisa los datos que la GPU todavía
+        // usa)
+        bool uploadToBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size,
+                            bool cycle = false);
         // Copia píxeles RGBA8 de la CPU a una región de una textura (filas en el orden de la textura)
         bool uploadToTexture(const GpuTexture& texture, std::uint32_t x, std::uint32_t y, std::uint32_t width,
                              std::uint32_t height, const void* rgba);

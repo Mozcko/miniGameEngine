@@ -5,12 +5,15 @@
 #include <game/SandboxBlocks.h>
 #include <game/SandboxMaterials.h>
 #include <game/SandboxTerrain.h>
+#include <mge/graphics/DebugDraw.h>
 #include <mge/graphics/MeshRenderer.h>
+#include <mge/procgen/Primitives.h>
 #include <mge/graphics/Texture2D.h>
 #include <mge/voxel/ChunkMesher.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <map>
@@ -364,6 +367,70 @@ TEST_CASE("Render: detalle procedural en bloques de solo color (MeshMaterial, #3
 
     const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
     const mge_test::GoldenResult result = mge_test::compareWithGolden("color_detail_material", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
+}
+
+TEST_CASE("DebugLines: cantidad de líneas por figura y esquinas del frustum") {
+    DebugLines lines;
+    lines.line({0, 0, 0}, {1, 0, 0}, {1, 1, 1, 1});
+    CHECK(lines.lineCount() == 1);
+    lines.aabb(Aabb({0, 0, 0}, {1, 2, 3}), {1, 0, 0, 1});
+    CHECK(lines.lineCount() == 1 + 12);
+    lines.aabb(Aabb(), {1, 0, 0, 1}); // Vacía: nada
+    CHECK(lines.lineCount() == 13);
+    lines.sphere({0, 0, 0}, 1.0f, {0, 1, 0, 1}, 16);
+    CHECK(lines.lineCount() == 13 + 3 * 16);
+    lines.axes({0, 0, 0}, 2.0f);
+    CHECK(lines.lineCount() == 13 + 48 + 3);
+    CHECK(lines.vertices().back().position == glm::vec3(0, 0, 2)); // Eje Z
+    lines.clear();
+
+    // El frustum de una cámara en el origen mirando a -Z: el plano lejano queda a -far
+    const glm::mat4 vp = glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 1.0f, 10.0f) *
+                         glm::lookAt(glm::vec3(0.0f), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+    lines.frustum(vp, {1, 1, 0, 1});
+    CHECK(lines.lineCount() == 12);
+    float minZ = 0.0f, maxZ = -100.0f;
+    for (const GpuVertex& v : lines.vertices()) {
+        minZ = std::min(minZ, v.position.z);
+        maxZ = std::max(maxZ, v.position.z);
+    }
+    CHECK(minZ == doctest::Approx(-10.0f).epsilon(1e-3));
+    CHECK(maxZ == doctest::Approx(-1.0f).epsilon(1e-3));
+}
+
+TEST_CASE("Render: líneas de depuración (caja, esfera, ejes) con prueba de profundidad (#38)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    REQUIRE(renderer.valid());
+    // Un cubo sólido que tapa parte de las líneas
+    const GpuMesh cube = device.uploadMesh(primitives::box(glm::vec3(1.0f), {0.6f, 0.6f, 0.65f, 1.0f}));
+    DebugDraw debug(device);
+    debug.aabb(Aabb({-1.2f, -1.2f, -1.2f}, {1.2f, 1.2f, 1.2f}), {1.0f, 0.9f, 0.1f, 1.0f});
+    debug.sphere({0, 0, 0}, 1.5f, {0.2f, 0.9f, 1.0f, 1.0f});
+    debug.axes({0, 0, 0}, 2.0f);
+
+    const glm::vec3 eye(3.0f, 2.5f, 4.0f);
+    constexpr std::uint32_t kSize = 128;
+    GpuTexture target = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, target.get(), kSize, kSize, {0.08f, 0.08f, 0.1f, 1.0f}));
+    renderer.setCamera(glm::perspectiveRH_ZO(glm::radians(50.0f), 1.0f, 0.1f, 50.0f) *
+                           glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0, 1, 0)),
+                       eye);
+    renderer.draw(cube, glm::mat4(1.0f));
+    debug.flush(renderer);
+    renderer.draw(cube,
+                  glm::translate(glm::mat4(1.0f), {0, -3, 0})); // Mallas después de las líneas: siguen bien
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
+    // Tolerancia por defecto: entre Intel y lavapipe las líneas difieren en ~0.5 % de los píxeles
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("debug_lines", image);
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }

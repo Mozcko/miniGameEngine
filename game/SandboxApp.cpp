@@ -45,6 +45,12 @@ public:
         m_gpu = getModule<GpuModule>();
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
+        m_debug = std::make_unique<DebugDraw>(m_gpu->device());
+        // SANDBOX_DEBUG=1: arrancar con F3 y F4 activos (lo usa un smoke test: dibuja las líneas en CI)
+        if (const char* debug = std::getenv("SANDBOX_DEBUG"); debug && std::string(debug) == "1") {
+            m_showDebug = true;
+            m_frustumFrozen = true;
+        }
         // Sol, ambiente cielo/suelo y niebla del color del cielo, que termina en el borde de lo que se dibuja
         Lighting lighting;
         lighting.fogColor = kSkyColor;
@@ -101,6 +107,7 @@ public:
         m_pngAtlas = {};
         m_proceduralAtlas = {};
         m_atlas = nullptr;
+        m_debug.reset();
         m_renderer.reset();
     }
 
@@ -112,6 +119,8 @@ public:
         actions.bind("Sprint", Key::LeftCtrl);
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
+        actions.bind("DebugDraw", Key::F3);
+        actions.bind("FreezeFrustum", Key::F4);
         actions.bind("Quit", Key::Escape);
         actions.bind("CaptureMouse", MouseButton::Left);
     }
@@ -125,6 +134,13 @@ public:
 
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
+        if (m_platform->wasActionPressed("DebugDraw")) m_showDebug = !m_showDebug;
+        if (m_platform->wasActionPressed("FreezeFrustum")) {
+            m_frustumFrozen = !m_frustumFrozen;
+            MGE_LOG_INFO("Sandbox", m_frustumFrozen
+                                        ? "Frustum congelado (F4): volá afuera para ver el culling"
+                                        : "Frustum libre");
+        }
         if (m_platform->wasActionPressed("ToggleAtlas")) {
             if (m_atlas == &m_pngAtlas)
                 useProceduralAtlas();
@@ -189,12 +205,16 @@ public:
         const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
                                                      registry.get<Camera>(m_cameraEntity), viewport());
         m_renderer->setCamera(camera.viewProjection, camera.position);
+        // F4: el culling usa el frustum congelado (se ve qué se descarta al salir de él)
+        if (!m_frustumFrozen) m_frozenViewProjection = camera.viewProjection;
+        const Frustum cullFrustum =
+            m_frustumFrozen ? Frustum::fromViewProjection(m_frozenViewProjection) : camera.frustum;
 
         // Cola de dibujo: opaco y cutout de adelante hacia atrás, transparente de atrás hacia adelante
         m_queue.clear();
         for (auto& [coord, gpu] : m_gpuChunks) {
             const Aabb bounds = chunkBounds(coord);
-            if (!camera.frustum.intersects(bounds)) continue;
+            if (!cullFrustum.intersects(bounds)) continue;
             const glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkOrigin(coord)));
             m_queue.add({&gpu.opaque, model, m_atlas, MeshPass::Opaque, bounds.center(), {}});
             m_queue.add({&gpu.cutout, model, m_atlas, MeshPass::Cutout, bounds.center(), {}});
@@ -202,6 +222,7 @@ public:
         }
         m_queue.sort(camera.position, m_fly.forward());
         m_renderer->submit(m_queue);
+        drawDebug();
         m_renderer->end();
 
         // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
@@ -285,6 +306,29 @@ private:
         return terrain;
     }
 
+    // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
+    // colisión de la cámara y, con F4, el frustum congelado
+    void drawDebug() {
+        if (!m_showDebug && !m_frustumFrozen) return;
+        m_debug->clear();
+        if (m_showDebug) {
+            const ChunkCoord center = chunkOf(blockAt(m_fly.position()));
+            for (const ChunkCoord& coord : m_world.loadedChunks()) {
+                if (std::abs(coord.x - center.x) > kRenderDistance ||
+                    std::abs(coord.z - center.z) > kRenderDistance)
+                    continue;
+                const glm::vec4 color = m_world.isDirty(coord)     ? glm::vec4(1.0f, 0.25f, 0.2f, 0.9f)
+                                        : m_gpuChunks.count(coord) ? glm::vec4(0.3f, 1.0f, 0.4f, 0.5f)
+                                                                   : glm::vec4(1.0f, 0.9f, 0.2f, 0.7f);
+                m_debug->aabb(chunkBounds(coord), color);
+            }
+            const glm::vec3 p = m_fly.position();
+            m_debug->aabb(Aabb(p - m_fly.halfExtents, p + m_fly.halfExtents), {1.0f, 1.0f, 1.0f, 1.0f});
+        }
+        if (m_frustumFrozen) m_debug->frustum(m_frozenViewProjection, {1.0f, 0.5f, 0.1f, 1.0f});
+        m_debug->flush(*m_renderer);
+    }
+
     bool usePngAtlas() {
         if (!m_pngAtlas) {
             m_pngAtlas = Texture2D::fromFile(m_gpu->device(),
@@ -350,6 +394,10 @@ private:
     double m_streamWorstMs = 0.0; // Peor tiempo de streamChunks desde el último log
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     RenderQueue m_queue;
+    std::unique_ptr<DebugDraw> m_debug;
+    bool m_showDebug = false;     // F3
+    bool m_frustumFrozen = false; // F4
+    glm::mat4 m_frozenViewProjection{1.0f};
     Texture2D m_pngAtlas;         // Minecraft-like_3d_tileset.png (se carga la primera vez que se usa)
     Texture2D m_proceduralAtlas;  // sandbox::buildProceduralAtlas (se genera la primera vez que se usa)
     Texture2D* m_atlas = nullptr; // El que se dibuja

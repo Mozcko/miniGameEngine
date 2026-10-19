@@ -76,6 +76,8 @@ CMake modules: `platform gpu graphics audio`.
 | `Quit` | Esc |
 | `CaptureMouse` | Left mouse button |
 | `ToggleAtlas` | M: switch live between the PNG and the procedural atlas (the other one is created on first use) |
+| `DebugDraw` | F3: chunk bounds (green = meshed, yellow = data but no mesh yet, red = dirty) and the camera's collision box |
+| `FreezeFrustum` | F4: freeze the culling frustum and draw it; fly out of it to see what gets culled |
 
 `handleActions()` (start of `onUpdate`) handles Quit, CaptureMouse and Pause with `wasActionPressed`.
 `cameraInput()` builds the `CameraInput` for `m_fly` from the axes, Sprint, and the mouse delta
@@ -118,7 +120,9 @@ Skips the frame if `GpuModule::frame()` is null (minimised window). Otherwise:
    cutout and transparent meshes to `m_queue`, with `model = translate(chunkOrigin)`, the atlas,
    and the chunk centre.
 4. `m_queue.sort(camera position, forward)`, then `submit`. Opaque and cutout go front‑to‑back,
-   transparent back‑to‑front (#31).
+   transparent back‑to‑front (#31). With F4, culling uses the frozen frustum.
+   `drawDebug()` then draws the F3/F4 lines through `DebugDraw` (#38). `SANDBOX_DEBUG=1` starts
+   with both on; a smoke test uses it.
 5. `end`, then the FPS log every 5 s, with draw calls and triangles per pass.
 
 See `docs/ARCHITECTURE.md` §6.

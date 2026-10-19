@@ -2,6 +2,8 @@
 
 #include <mge/core/Log.h>
 
+#include <shaders/debug_lines_frag.h>
+#include <shaders/debug_lines_vert.h>
 #include <shaders/mesh_cutout_frag.h>
 #include <shaders/mesh_frag.h>
 #include <shaders/mesh_vert.h>
@@ -63,6 +65,22 @@ namespace mge {
         desc.blend = BlendMode::Alpha;
         desc.depthWrite = false;
         m_transparent = device.createGraphicsPipeline(desc);
+
+        // Líneas de depuración: lista de líneas, sin culling, con prueba de profundidad pero sin escribirla
+        ShaderResources lineVertexResources;
+        lineVertexResources.uniformBuffers = 1;
+        const GpuShader lineVertex = device.createShader(shaders::kDebugLinesVert, lineVertexResources);
+        const GpuShader lineFragment = device.createShader(shaders::kDebugLinesFrag);
+        GraphicsPipelineDesc lines;
+        lines.vertexShader = &lineVertex;
+        lines.fragmentShader = &lineFragment;
+        lines.colorFormat = colorFormat;
+        lines.depthFormat = device.depthFormat();
+        lines.depthWrite = false;
+        lines.primitive = SDL_GPU_PRIMITIVETYPE_LINELIST;
+        lines.cullMode = SDL_GPU_CULLMODE_NONE;
+        lines.blend = BlendMode::Alpha;
+        m_lines = device.createGraphicsPipeline(lines);
 
         // Píxeles nítidos (texturas tipo pixel art) y sin repetir fuera de [0, 1], como el renderer GL
         SDL_GPUSamplerCreateInfo sampler{};
@@ -134,6 +152,18 @@ namespace mge {
     void MeshRenderer::submit(const RenderQueue& queue) {
         for (const DrawItem& item : queue.items())
             draw(*item.mesh, item.model, item.texture, item.pass, item.material);
+    }
+
+    void MeshRenderer::drawLines(const GpuBuffer& vertices, std::uint32_t vertexCount) {
+        if (!m_pass || !vertices || vertexCount == 0) return;
+        SDL_BindGPUGraphicsPipeline(m_pass.get(), m_lines.get());
+        m_boundPipeline = m_lines.get();
+        SDL_PushGPUVertexUniformData(m_cmd->get(), 0, &m_viewProjection, sizeof(m_viewProjection));
+        SDL_GPUBufferBinding binding{vertices.get(), 0};
+        SDL_BindGPUVertexBuffers(m_pass.get(), 0, &binding, 1);
+        SDL_DrawGPUPrimitives(m_pass.get(), vertexCount, 1, 0, 0);
+        // La próxima malla vuelve a subir sus uniforms (este pipeline usó el slot 0 del vértice con otro
+        // layout)
     }
 
     void MeshRenderer::end() {
