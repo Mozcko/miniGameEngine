@@ -33,14 +33,14 @@ ctest --preset dev                      # all tests
 | `voxel/test_block_registry.cpp` | `mge_voxel_tests`: air is id 0, ids/lookup by name, per‑face tiles, atlas UVs |
 | `voxel/test_chunk_coords.cpp` | floorDiv/floorMod, world → chunk → local incl. negatives and vertical, `blockAt`, `ChunkData`, hash |
 | `voxel/test_voxel_world.cpp` | Load/unload, get/set across chunks (negative, vertical), dirty flags + border propagation, generator determinism |
-| `voxel/test_chunk_mesher.cpp` | `tintTextured` (textured → white vertex colour unless tinted); face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face; seams vs an independent whole‑world reference, re‑mesh after a neighbour loads, greedy (fewer triangles, same area per direction, textured not merged), AO (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
+| `voxel/test_chunk_mesher.cpp` | `tintTextured` (textured → white vertex colour unless tinted); render layers → opaque/cutout/transparent meshes; face culling (watertight single cube, hidden shared faces, 3³ block), transparent split, water/glass rules, cross shapes, neighbours read from the world, atlas UVs per face; seams vs an independent whole‑world reference, re‑mesh after a neighbour loads, greedy (fewer triangles, same area per direction, textured not merged), AO (helpers: `voxel/VoxelTestWorld.h`, `procgen/MeshChecks.h`) |
 | `gpu/test_gpu_device.cpp` | `mge_gpu_tests` (label `gpu`): handles are move‑only (compile time), `GpuVertex` interleaving/layout, clear + readback, mesh upload, cancelled command buffers. Offscreen; skipped without a GPU unless `MGE_REQUIRE_GPU=1` (CI, lavapipe). Helper: `gpu/GpuTestContext.h` |
 | `render/test_render_scenes.cpp` | `render_tests` (label `gpu`): golden‑image scenes (clear, vertex‑colour triangle, lit boxes with depth), see "Render tests" below. Helpers: `render/RenderTest.h` |
 | `gpu/ValidationProbe.cpp` | `gpu_validation_probe` (CTest "gpu: la validación corta…"): triggers a real Vulkan validation error (UBO used but not declared) and passes only if its VUID appears in the output (`PASS_REGULAR_EXPRESSION`), proving that the `FAIL_REGULAR_EXPRESSION "Validation Error"` on every GPU test works. Skipped (77) without the layers unless `MGE_REQUIRE_VALIDATION=1` |
-| `render/test_graphics.cpp` | `mge_graphics`: `Texture2D` orientation (image row 0 on top with GL‑style UVs), `updateRegion` / `copyFromOriginal`, missing file; **sandbox scene golden** (`SandboxTerrain` + PNG atlas + `MeshRenderer`) |
+| `render/test_graphics.cpp` | `mge_graphics`: `Texture2D` orientation (image row 0 on top with GL‑style UVs), `updateRegion` / `copyFromOriginal`, missing file; `RenderQueue` order; **sandbox scene golden** (`SandboxTerrain` + PNG atlas + queue); **cutout golden** (leaves in front of water, plants over grass) |
 | `gpu/test_gpu_swapchain.cpp` | Vsync default, present‑mode choice (vsync / mailbox / immediate / fallback) and depth‑format choice with fake capabilities; the device's depth format is D24/D32 and works in a render pass |
 | `gpu/test_gpu_shaders.cpp` | Embedded SPIR‑V (magic number, stage, 4‑byte alignment); triangle with a fragment uniform drawn and read back (centre = uniform colour, corners = clear). Shaders: `gpu/shaders/test_triangle.*` |
-| `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, cross shapes, atlas tiles per face, every block has tiles and colour |
+| `game/test_sandbox_blocks.cpp` | Sandbox block registry: solid/opaque rules, render layers (cutout leaves/plants), cross shapes, atlas tiles per face, every block has tiles and colour |
 | `game/test_sandbox_terrain.cpp` | `SandboxTerrain` (noise): determinism and seed, stone below / nothing above the world, height range (seas + mountains), every biome > 2 %, block rules (floor never carved, water ≤ 20 and above the surface), caves rate and off switch, decoration rates 1–3 %, far coordinates, trees crossing chunk borders, load‑order independence |
 
 ## Render tests (golden images)
@@ -51,7 +51,8 @@ optional depth). `compareWithGolden(name, image)` compares the result with
 | Scene | Checks |
 |-------|--------|
 | `clear` | Clear colour |
-| `sandbox_scene` | The sandbox through `mge_graphics`: seeded terrain, PNG atlas, opaque + transparent passes (`render/test_graphics.cpp`) |
+| `sandbox_scene` | The sandbox through `mge_graphics`: seeded terrain, PNG atlas, the three passes via `RenderQueue` (`render/test_graphics.cpp`) |
+| `cutout_leaves_water` | Cutout leaves in front of blended water, a rose and a flower over grass, items added in reverse order (the queue sorts them) |
 | `vertex_colors_triangle` | Rasterisation, colour interpolation, back‑face culling of a CCW triangle, NDC Y up (red tip at the top) |
 | `lit_boxes_depth` | `MeshData` → `uploadMesh`, `GpuVertex` attributes, uniform matrices (`perspectiveRH_ZO`), depth test between two boxes, directional light |
 

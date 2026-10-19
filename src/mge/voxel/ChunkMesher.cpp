@@ -80,6 +80,15 @@ namespace mge {
                 return ao;
             }
 
+            MeshData& meshFor(const BlockDesc& desc) {
+                switch (desc.renderLayer()) {
+                case RenderLayer::Opaque: return m_result.opaque;
+                case RenderLayer::Cutout: return m_result.cutout;
+                case RenderLayer::Translucent: break;
+                }
+                return m_result.transparent;
+            }
+
             // Color de vértice base del bloque (ver ChunkMeshOptions::tintTextured)
             glm::vec4 baseColor(const BlockDesc& desc) const {
                 return desc.textured() && !m_options.tintTextured ? glm::vec4(1.0f) : desc.color;
@@ -88,7 +97,7 @@ namespace mge {
             // Quad de la cara `face` del bloque en `pos`, estirado `size` bloques en los ejes de la cara
             void emitQuad(const BlockDesc& desc, const FaceDef& face, int faceIndex, const glm::ivec3& pos,
                           const glm::vec3& size, const AoValues& ao) {
-                MeshData& mesh = desc.opaque ? m_result.opaque : m_result.transparent;
+                MeshData& mesh = meshFor(desc);
                 UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
                 const int tile = desc.tiles[faceIndex];
                 if (tile >= 0) uv = m_options.atlas.tileUv(tile);
@@ -186,7 +195,7 @@ namespace mge {
 
             // Dos planos diagonales, cada uno con sus dos caras (se ven desde ambos lados)
             void emitCross(const BlockDesc& desc, const glm::ivec3& pos) {
-                MeshData& mesh = desc.opaque ? m_result.opaque : m_result.transparent;
+                MeshData& mesh = meshFor(desc);
                 UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
                 if (desc.tile(BlockFace::Front) >= 0)
                     uv = m_options.atlas.tileUv(desc.tile(BlockFace::Front));

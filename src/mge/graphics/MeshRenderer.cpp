@@ -2,6 +2,7 @@
 
 #include <mge/core/Log.h>
 
+#include <shaders/mesh_cutout_frag.h>
 #include <shaders/mesh_frag.h>
 #include <shaders/mesh_vert.h>
 
@@ -21,6 +22,7 @@ namespace mge {
         fragmentResources.samplers = 1; // albedo
         const GpuShader vertex = device.createShader(shaders::kMeshVert, vertexResources);
         const GpuShader fragment = device.createShader(shaders::kMeshFrag, fragmentResources);
+        const GpuShader cutoutFragment = device.createShader(shaders::kMeshCutoutFrag, fragmentResources);
 
         GraphicsPipelineDesc desc;
         desc.vertexShader = &vertex;
@@ -28,6 +30,12 @@ namespace mge {
         desc.colorFormat = colorFormat;
         desc.depthFormat = device.depthFormat();
         m_opaque = device.createGraphicsPipeline(desc);
+
+        // Cutout: descarta alfa < 0.5 y escribe profundidad. Con back-face culling, como un cubo opaco con
+        // agujeros (las plantas en cruz ya traen sus dos caras como quads separados)
+        desc.fragmentShader = &cutoutFragment;
+        m_cutout = device.createGraphicsPipeline(desc);
+        desc.fragmentShader = &fragment;
 
         desc.blend = BlendMode::Alpha;
         desc.depthWrite = false;
@@ -62,15 +70,16 @@ namespace mge {
         m_pass = cmd.beginRenderPass(color, &depth);
         m_cmd = &cmd;
         m_boundPipeline = nullptr;
-        m_drawCalls = 0;
-        m_triangles = 0;
+        m_stats = {};
         return static_cast<bool>(m_pass);
     }
 
     void MeshRenderer::draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture,
                             MeshPass pass) {
         if (!m_pass || mesh.empty()) return;
-        SDL_GPUGraphicsPipeline* pipeline = pass == MeshPass::Opaque ? m_opaque.get() : m_transparent.get();
+        SDL_GPUGraphicsPipeline* pipeline = pass == MeshPass::Opaque   ? m_opaque.get()
+                                            : pass == MeshPass::Cutout ? m_cutout.get()
+                                                                       : m_transparent.get();
         if (pipeline != m_boundPipeline) {
             SDL_BindGPUGraphicsPipeline(m_pass.get(), pipeline);
             m_boundPipeline = pipeline;
@@ -87,8 +96,13 @@ namespace mge {
         SDL_BindGPUVertexBuffers(m_pass.get(), 0, &vertices, 1);
         SDL_BindGPUIndexBuffer(m_pass.get(), &indices, SDL_GPU_INDEXELEMENTSIZE_32BIT);
         SDL_DrawGPUIndexedPrimitives(m_pass.get(), mesh.indexCount, 1, 0, 0, 0);
-        m_drawCalls++;
-        m_triangles += mesh.indexCount / 3;
+        const auto index = static_cast<std::size_t>(pass);
+        m_stats.drawCalls[index]++;
+        m_stats.triangles[index] += mesh.indexCount / 3;
+    }
+
+    void MeshRenderer::submit(const RenderQueue& queue) {
+        for (const DrawItem& item : queue.items()) draw(*item.mesh, item.model, item.texture, item.pass);
     }
 
     void MeshRenderer::end() {

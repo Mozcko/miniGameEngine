@@ -59,7 +59,8 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 8. `Texture2D` (move‑only) from file or pixels; stored flipped so engine UVs stay GL‑style (v up, (0,0) = image bottom‑left).
 9. Cameras (core, #32): ECS `Camera` component + `Transform`; `cameraMatrices(world, camera, viewport())` (Z in [0,1], `.frustum` for culling);
    `CameraSystem` sets `autoAspect` from `Application::viewport()` (set by GpuModule) before the Render phase; `FlyController` = free fly + collisions.
-10. Game rendering: opaque chunk meshes, then transparent meshes with depth writes off.
+10. Game rendering: `RenderQueue` (#31) → passes Opaque, Cutout (alpha test, leaves/plants), Transparent (blend, no depth write);
+   opaque/cutout front‑to‑back, transparent back‑to‑front. Blocks choose their pass with `BlockDesc::layer` (`RenderLayer`).
 
 ## Conventions
 - **One engine namespace `mge`** (game code: `sandbox`). Naming, enforced by
