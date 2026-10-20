@@ -3,6 +3,7 @@ add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
     Image.h Image.cpp
     TextureGen.h TextureGen.cpp
+    Font.h Font.cpp BitmapFont8x8.cpp
     Primitives.h Primitives.cpp
     MeshOps.h MeshOps.cpp
     Noise.h Noise.cpp

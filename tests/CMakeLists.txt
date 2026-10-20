@@ -39,6 +39,7 @@ doctest_discover_tests(mge_core_tests TEST_PREFIX "core: ")
 # --- Tests de los módulos headless (sin SDL ni GPU): siempre ---
 add_executable(mge_procgen_tests
     test_main.cpp
+    procgen/test_font.cpp
     procgen/test_image.cpp
     procgen/test_meshdata.cpp
     procgen/test_primitives.cpp
@@ -102,6 +103,7 @@ if(MGE_BUILD_MODULES)
         render/RenderTest.h render/RenderTest.cpp
         render/test_render_scenes.cpp
         render/test_graphics.cpp
+        render/test_text.cpp
     )
     target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world doctest_header)
     target_compile_definitions(render_tests PRIVATE

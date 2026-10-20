@@ -24,6 +24,7 @@
 
 // --- Generación procedural (headless) ---
 #ifdef MGE_HAS_PROCGEN
+#include <mge/procgen/Font.h>
 #include <mge/procgen/Image.h>
 #include <mge/procgen/MeshData.h>
 #include <mge/procgen/MeshOps.h>
@@ -67,6 +68,7 @@
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/RenderQueue.h>
 #include <mge/graphics/Texture2D.h>
+#include <mge/graphics/TtfFont.h>
 #endif
 
 // --- Audio ---

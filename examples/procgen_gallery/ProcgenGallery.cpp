@@ -252,6 +252,18 @@ namespace {
         return mge::writePng(image, path);
     }
 
+    // Atlas de la fuente embebida (#41), ampliado ×4 sobre fondo oscuro para verlo en cualquier visor
+    bool writeFontSample(const std::filesystem::path& path) {
+        const mge::Font font = mge::Font::builtin();
+        const mge::Image& atlas = font.atlas();
+        constexpr int kZoom = 4;
+        mge::Image image(atlas.width() * kZoom, atlas.height() * kZoom, {0.1f, 0.1f, 0.12f, 1.0f});
+        for (int y = 0; y < int(image.height()); y++)
+            for (int x = 0; x < int(image.width()); x++)
+                if (atlas.get(x / kZoom, y / kZoom).a > 0.5f) image.set(x, y, {1.0f, 0.9f, 0.3f, 1.0f});
+        return mge::writePng(image, path);
+    }
+
     class ProcgenGallery : public mge::Application {
     public:
         ProcgenGallery() : mge::Application(makeConfig()) {}
@@ -294,8 +306,9 @@ namespace {
                 }
             }
             if (!writeTextureSamples(outDir / "texture_generators.png")) setExitCode(1);
-            MGE_LOG_INFO("Gallery", written, " mallas y texture_generators.png exportados a ",
-                         outDir.string());
+            if (!writeFontSample(outDir / "font_builtin.png")) setExitCode(1);
+            MGE_LOG_INFO("Gallery", written,
+                         " mallas, texture_generators.png y font_builtin.png exportados a ", outDir.string());
             requestStop();
             return true;
         }
