@@ -89,9 +89,12 @@ all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale r
 Sandbox: `buildProceduralAtlas()` (same tiles as the PNG); `M` toggles, `SANDBOX_ATLAS=procedural` loads no image.
 Colour‑only meshes: `MeshMaterial{detailScale, detailStrength}` per draw (world‑space noise in the shader).
 
-## Text (#41)
+## Text and 2D UI (#41, #42)
 `mge::Font` (procgen, headless): glyph atlas (`Image`) + metrics. `Font::builtin()` = embedded 8×8 font (no files, nearest, integer
 scales); `loadTtfFont/loadTtfFontFile` (mge_graphics, stb_truetype, optional). UTF‑8 in, unknown characters → `?`.
+2D UI (#42): `Renderer2D ui(device, format)`; per frame `ui.begin(w, h, round(frame->displayScale))`, `rect/rectOutline/line/image/
+text/pushClip`, then `ui.flush(cmd, swapchain)` after the 3D pass (loads, doesn't clear). Logical pixels, origin top‑left, y down.
+`Batch2D` = the CPU part (testable); untextured quads use `uv = kNoTexture`, so rects and text share one draw call.
 
 ## Debug draw (#38)
 `DebugDraw debug(device)`: `aabb/sphere/axes/line/frustum` then `debug.flush(renderer)` inside the render pass (after the queue).

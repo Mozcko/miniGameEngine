@@ -11,6 +11,9 @@ by default (`MODULES platform gpu graphics audio`).
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
 | `DebugDraw.h/.cpp` | `DebugLines` (CPU line builder: line, aabb, sphere, axes, frustum) and `DebugDraw` (+ GPU buffer, `flush(renderer)`) |
 | `TtfFont.h/.cpp` | `loadTtfFont(bytes, px)`, `loadTtfFontFile(path, px)`: optional TTF → `mge::Font` with stb_truetype (no SDL_ttf) |
+| `Batch2D.h/.cpp` | `Rect2D`, `Draw2DCommand`, `Batch2D`: CPU 2D batch (rects, outlines, lines, images, text, clip stack) |
+| `Renderer2D.h/.cpp` | `GpuFont` (font + atlas texture), `Renderer2D`: the batch on the GPU, pixel‑space UI drawn over the scene |
+| `shaders/ui.vert/.frag` | 2D: orthographic projection in logical pixels; `texture × colour`, white when `uv.x < 0` |
 | `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
 | `shaders/debug_lines.vert/.frag` | Line list: `viewProjection * position`, vertex colour |
@@ -112,6 +115,36 @@ m_debug->flush(*m_renderer);
 - **The line pipeline** is a line list, depth‑tested but not depth‑writing, with no culling and
   alpha blending. Lines are hidden by the scene, and later mesh draws are unaffected.
 
+## 2D UI – `<mge/graphics/Renderer2D.h>` (#42)
+An immediate‑mode 2D batch in **logical pixels**: origin top‑left, y down.
+
+```cpp
+mge::Renderer2D ui(device, gpu.swapchainFormat());      // once; release in onShutdown
+// each frame, after the 3D pass:
+ui.begin(frame->width, frame->height, std::round(frame->displayScale));
+ui.rect({8, 8}, {200, 40}, {0, 0, 0, 0.6f});
+ui.text({12, 12}, "FPS: 60", {1, 0.9f, 0.3f, 1}, 2.0f); // built-in 8x8 font, integer scale = crisp
+ui.flush(*frame->cmd, frame->swapchain);                 // draws on top, then clears the batch
+```
+
+- **`Batch2D`** (CPU, testable without a GPU) collects the vertices and draw commands:
+  - shapes: `rect`, `rectOutline` (inside the rect), `line` (a quad of any thickness);
+  - `image(texture, pos, size, uvMin, uvMax, tint, nearest)`;
+  - `text(font, atlasTexture, pos, string, colour, scale)` returns the size it took; `\n` starts a
+    new line;
+  - `pushClip/popClip` nest by intersection, and anything fully clipped adds no vertices.
+- **Batching:** every quad is 6 vertices in one buffer. A new draw command starts only when the
+  texture, filter or clip changes. Untextured quads carry `uv = kNoTexture` and the shader uses
+  white for them, so they never break a batch: rects and text of one font share a single draw call.
+- **`Renderer2D`** (the batch plus the GPU):
+  - one pipeline: alpha blend, no depth, no culling; nearest and linear samplers;
+  - the built‑in font is uploaded once; `text(pos, …)` uses it, and `text(gpuFont, pos, …)` uses a
+    `GpuFont::create(device, loadTtfFont(…))`;
+  - `flush` uploads the vertices once (a cycled buffer, like `DebugDraw`) and draws each command with
+    its scissor in physical pixels. `drawCalls()` and `vertexCount()` report the last flush.
+- **DPI:** `begin(width, height, scale)` takes the physical size; the UI works in `size()` = physical
+  / scale. Round the display scale for the pixel font to keep it crisp.
+
 ## TTF fonts – `<mge/graphics/TtfFont.h>` (#41)
 The default font is `Font::builtin()` (`mge_procgen`), which needs no file. To use a TrueType font
 instead, `loadTtfFontFile("fonts/x.ttf", 18.0f)` (a relative path goes through `mge::assetPath`) or
@@ -122,6 +155,13 @@ it logs an error and returns an invalid font.
 
 ## Tests
 `tests/render/test_graphics.cpp` (label `gpu`):
+- **2D batch** (`tests/render/test_text.cpp`, CPU):
+  - quads per primitive in pixels;
+  - text: one quad per visible glyph, the requested colour, and upright UVs;
+  - 1 000 rects + 50 text lines in one command; new commands on texture, filter and clip changes;
+  - nested clip intersection.
+- **2D golden `ui_batch`:** panel, outline, 1×/2× text, line, swatches and a clipped strip in 2 draw
+  calls. A DPI test checks that scale 2 doubles the size in physical pixels from the same origin.
 - **TTF fonts** (`tests/render/test_text.cpp`, no GPU): a system TTF bakes with coherent metrics
   (skipped if none is found; `MGE_TEST_TTF=path` picks one; CI installs `fonts-dejavu-core`), and
   invalid or missing files give an invalid font.

@@ -54,6 +54,8 @@ void onRender() override {
    reverse order, so this happens before the platform destroys the window.
 
 `frame()->width/height` is the real swapchain size, which follows window resizes.
+`frame()->displayScale` is `SDL_GetWindowDisplayScale` (DPI plus the user's scaling preference, 1 if
+unknown), for `Renderer2D::begin` (#42).
 
 ## Presentation, depth and device info (#37)
 - **Vsync:**
