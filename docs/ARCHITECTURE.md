@@ -115,7 +115,9 @@ renderer was deleted in #40. Cameras are core ECS components (#32).
 3. Game `onFixedUpdate` / `onUpdate`. Uploads, such as chunk meshes or atlas tiles, are copy passes
    on their own command buffers.
 4. Game `onRender`: `MeshRenderer::begin` opens a render pass (clear colour + depth), the game
-   issues `draw` calls, `end` closes it.
+   issues `draw` calls, `end` closes it. 2D UI on top (#42): `Renderer2D::begin`, then rects/text,
+   then `flush(cmd, swapchain)` opens a second render pass that loads the 3D image instead of
+   clearing it.
 5. `GpuModule::onFrameEnd`: submit; SDL presents.
 
 ### Vertex format

@@ -58,7 +58,8 @@ namespace mge {
             return;
         }
         // swapchain == nullptr es normal (ventana minimizada): el frame se saltea sin error
-        m_frame = {&m_cmd, swapchain, width, height};
+        const float scale = SDL_GetWindowDisplayScale(m_platform->getWindow().getSDLWindow());
+        m_frame = {&m_cmd, swapchain, width, height, scale > 0.0f ? scale : 1.0f};
         if (swapchain) app.setViewport({width, height}); // Las cámaras (CameraSystem) siguen al tamaño real
     }
 

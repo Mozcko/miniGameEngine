@@ -17,6 +17,9 @@ namespace mge {
         SDL_GPUTexture* swapchain = nullptr; // La imagen que se presenta en la ventana
         std::uint32_t width = 0;             // Tamaño real del swapchain (cambia al redimensionar)
         std::uint32_t height = 0;
+        // Escala de la pantalla (SDL_GetWindowDisplayScale: DPI y preferencia del usuario). Para la UI
+        // (Renderer2D::begin); con la fuente 8x8 conviene redondearla a un entero
+        float displayScale = 1.0f;
     };
 
     // Módulo de GPU: crea el device (SDL3 GPU), toma la ventana del PlatformModule y en cada frame
