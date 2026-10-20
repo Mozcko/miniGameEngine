@@ -344,3 +344,37 @@ TEST_CASE("Render: overlay de rendimiento con tiempos fijos (#43)") {
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }
+
+// --- #44: los síntomas del HUD viejo (labels invisibles, al revés y sin color) no vuelven ---
+
+TEST_CASE("Render: el texto del HUD se ve en píxeles, derecho, del color pedido y con cualquier sentido de "
+          "giro (#44)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    constexpr float kScale = 2.0f;
+    const glm::vec4 yellow(1.0f, 0.9f, 0.2f, 1.0f);
+    const mge_test::Image image = drawUi(gpu.device(), 64, 40, 1.0f, [&](Renderer2D& ui) {
+        ui.text({0, 0}, "F", yellow, kScale); // Arriba a la izquierda, en píxeles (KI#1)
+        ui.line({60, 36}, {20, 36}, yellow,
+                2.0f); // De derecha a izquierda: triángulos en el otro sentido (KI#2)
+    });
+    // Cada píxel de la 'F' de la tabla, ampliado ×2, tiene que estar en su lugar: derecha (KI#18) y amarilla
+    // (KI#19); los apagados, con el fondo
+    const unsigned char* bits = builtinFontGlyphBits(U'F');
+    REQUIRE(bits != nullptr);
+    for (int y = 0; y < 8; y++)
+        for (int x = 0; x < 8; x++) {
+            CAPTURE(x);
+            CAPTURE(y);
+            const std::uint8_t* p = image.pixel(std::uint32_t(x * 2 + 1), std::uint32_t(y * 2 + 1));
+            if (bits[y] >> x & 1u) {
+                CHECK(p[0] > 230);
+                CHECK(p[1] > 200);
+                CHECK(p[2] < 80);
+            } else {
+                CHECK(p[0] < 60);
+            }
+        }
+    const std::uint8_t* line = image.pixel(40, 36);
+    CHECK(line[0] > 230);
+}
