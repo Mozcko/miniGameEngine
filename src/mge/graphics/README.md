@@ -10,6 +10,7 @@ by default (`MODULES platform gpu graphics audio`).
 | `Texture2D.h/.cpp` | `Texture2D`: RGBA8 texture from a file (stb_image) or from pixels, region updates, tile copies from the original image |
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
 | `DebugDraw.h/.cpp` | `DebugLines` (CPU line builder: line, aabb, sphere, axes, frustum) and `DebugDraw` (+ GPU buffer, `flush(renderer)`) |
+| `TtfFont.h/.cpp` | `loadTtfFont(bytes, px)`, `loadTtfFontFile(path, px)`: optional TTF → `mge::Font` with stb_truetype (no SDL_ttf) |
 | `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
 | `shaders/debug_lines.vert/.frag` | Line list: `viewProjection * position`, vertex colour |
@@ -111,8 +112,19 @@ m_debug->flush(*m_renderer);
 - **The line pipeline** is a line list, depth‑tested but not depth‑writing, with no culling and
   alpha blending. Lines are hidden by the scene, and later mesh draws are unaffected.
 
+## TTF fonts – `<mge/graphics/TtfFont.h>` (#41)
+The default font is `Font::builtin()` (`mge_procgen`), which needs no file. To use a TrueType font
+instead, `loadTtfFontFile("fonts/x.ttf", 18.0f)` (a relative path goes through `mge::assetPath`) or
+`loadTtfFont(bytes, 18.0f)` bakes ASCII 32..126 with stb_truetype into the smallest power‑of‑two
+atlas that fits (up to 2048 px). The result is a regular `mge::Font`: white plus coverage alpha,
+proportional advances, glyph offsets from the top of the line, sampled with filtering. On failure
+it logs an error and returns an invalid font.
+
 ## Tests
 `tests/render/test_graphics.cpp` (label `gpu`):
+- **TTF fonts** (`tests/render/test_text.cpp`, no GPU): a system TTF bakes with coherent metrics
+  (skipped if none is found; `MGE_TEST_TTF=path` picks one; CI installs `fonts-dejavu-core`), and
+  invalid or missing files give an invalid font.
 - **Texture orientation:** a 2×2 image drawn full‑screen has its top‑left pixel at the top‑left.
 - **Regions:** `updateRegion` and `copyFromOriginal` land where expected; out‑of‑bounds updates
   are rejected.

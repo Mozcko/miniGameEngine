@@ -89,6 +89,10 @@ all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale r
 Sandbox: `buildProceduralAtlas()` (same tiles as the PNG); `M` toggles, `SANDBOX_ATLAS=procedural` loads no image.
 Colour‑only meshes: `MeshMaterial{detailScale, detailStrength}` per draw (world‑space noise in the shader).
 
+## Text (#41)
+`mge::Font` (procgen, headless): glyph atlas (`Image`) + metrics. `Font::builtin()` = embedded 8×8 font (no files, nearest, integer
+scales); `loadTtfFont/loadTtfFontFile` (mge_graphics, stb_truetype, optional). UTF‑8 in, unknown characters → `?`.
+
 ## Debug draw (#38)
 `DebugDraw debug(device)`: `aabb/sphere/axes/line/frustum` then `debug.flush(renderer)` inside the render pass (after the queue).
 Sandbox: F3 chunk bounds + collision box, F4 freeze culling frustum; `SANDBOX_DEBUG=1` starts with both (smoke test).

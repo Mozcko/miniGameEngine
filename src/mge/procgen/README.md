@@ -8,6 +8,7 @@ core‑only CI job. Programs that link it see `MGE_HAS_PROCGEN`, and `<mge/mge.h
 |------|----------|
 | `MeshData.h/.cpp` | `MeshData` (CPU mesh) and `writeObj` (Wavefront OBJ export) |
 | `Image.h/.cpp` | `Image` (RGBA8 CPU image) and `writePng` (dependency‑free PNG writer) |
+| `Font.h/.cpp`, `BitmapFont8x8.cpp` | `Font` (glyph atlas + metrics), `Font::builtin()` (embedded 8×8 font), `nextCodepoint` (UTF‑8) |
 | `TextureGen.h/.cpp` | `mge::texgen::`: palettes and texture generators (noise, speckle, bricks, planks, ore, stripes, rings, plant, leaves, frame), `tileRect` |
 | `MeshOps.h/.cpp` | transform, append/merge, weld, flip, recompute normals, polygon triangulation, extrude, lathe, sweep |
 | `Noise.h/.cpp` | `mge::Noise`: value, Perlin, simplex, Worley (2D/3D), fbm, ridged, billow, domain warp, batch sampling |
@@ -178,6 +179,23 @@ auto texture = mge::Texture2D::fromPixels(device, image.width(), image.height(),
 `examples/procgen_gallery` writes one sample of each generator to `texture_generators.png`, and
 the sandbox builds its whole atlas from them (`game/SandboxMaterials.cpp`).
 Tests: `tests/procgen/test_image.cpp`, which includes a PNG round trip with CRC checks.
+
+## Text: fonts – `<mge/procgen/Font.h>` (#41)
+A `Font` is a white‑with‑alpha `Image` atlas plus one `Glyph` per ASCII character 32..126
+(atlas position, size, offset from the pen and advance, all in font pixels). It is headless; the 2D
+renderer uploads the atlas to the GPU.
+
+| API | Notes |
+|-----|-------|
+| `Font::builtin()` | The embedded 8×8 font: public‑domain IBM VGA glyphs (the same set as `SDL_RenderDebugText`), stored as bits in `BitmapFont8x8.cpp`. Atlas 128×48 (16×6 glyphs), advance 8, line 10 px. `isPixelFont()` → sample it unfiltered and draw at integer scales |
+| `glyph(codepoint)` | Anything outside 32..126 (tabs, `ñ`, emoji) falls back to `?` |
+| `measure(text, scale)` | Widest line × number of lines, in pixels; `\n` starts a new line |
+| `lineHeight()`, `atlas()`, `valid()` | |
+| `nextCodepoint(text, i)` | Reads one UTF‑8 character and advances `i`; invalid bytes give U+FFFD |
+
+TTF fonts are optional and live in `mge_graphics` (`loadTtfFont`, stb_truetype), because the
+headless modules don't depend on stb. `procgen_gallery` writes the atlas, zoomed ×4, to
+`font_builtin.png`. Tests: `tests/procgen/test_font.cpp`.
 
 ## SDF + surface nets – `<mge/procgen/Sdf.h>`
 

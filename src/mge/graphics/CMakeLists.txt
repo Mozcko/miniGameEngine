@@ -6,6 +6,7 @@ add_library(mge_graphics STATIC
     RenderQueue.h RenderQueue.cpp
     Lighting.h
     DebugDraw.h DebugDraw.cpp
+    TtfFont.h TtfFont.cpp
 )
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)
