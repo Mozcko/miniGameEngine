@@ -5,6 +5,7 @@
 #include <mge/gpu/Swapchain.h>
 #include <mge/platform/PlatformModule.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <string>
 
@@ -52,14 +53,17 @@ namespace mge {
         if (!m_cmd) return;
         SDL_GPUTexture* swapchain = nullptr;
         std::uint32_t width = 0, height = 0;
+        const auto waitStart = std::chrono::steady_clock::now();
         if (!SDL_WaitAndAcquireGPUSwapchainTexture(m_cmd.get(), m_platform->getWindow().getSDLWindow(),
                                                    &swapchain, &width, &height)) {
             MGE_LOG_ERROR("Gpu", "No se pudo adquirir la imagen del swapchain: ", SDL_GetError());
             return;
         }
+        const float acquireMs =
+            std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - waitStart).count();
         // swapchain == nullptr es normal (ventana minimizada): el frame se saltea sin error
         const float scale = SDL_GetWindowDisplayScale(m_platform->getWindow().getSDLWindow());
-        m_frame = {&m_cmd, swapchain, width, height, scale > 0.0f ? scale : 1.0f};
+        m_frame = {&m_cmd, swapchain, width, height, scale > 0.0f ? scale : 1.0f, acquireMs};
         if (swapchain) app.setViewport({width, height}); // Las cámaras (CameraSystem) siguen al tamaño real
     }
 

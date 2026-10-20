@@ -18,7 +18,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
   rendering, GLM math, stb_image (textures). OpenGL/GLEW were removed in #40. Linux/Fedora dev box, CMake build. SDL3 is
   used from the system (`SDL3-devel`) or built from source via FetchContent (pinned 3.4.18).
 - Demo client: `game/SandboxApp.cpp` – Minecraft‑like voxel world on `mge_voxel` (16³ chunks, 4 tall; noise terrain with
-  biomes and caves, trees/flowers, animated water/lava; no HUD since #9 – FPS goes to the Debug log).
+  biomes and caves, trees/flowers, animated water/lava; F1 performance overlay, FPS also in the Debug log).
 - Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
 
 ## Build & run
@@ -89,12 +89,14 @@ all of that: `update(center)` → `{meshes to upload, unloaded coords}`; stale r
 Sandbox: `buildProceduralAtlas()` (same tiles as the PNG); `M` toggles, `SANDBOX_ATLAS=procedural` loads no image.
 Colour‑only meshes: `MeshMaterial{detailScale, detailStrength}` per draw (world‑space noise in the shader).
 
-## Text and 2D UI (#41, #42)
+## Text, 2D UI and overlay (#41–#43)
 `mge::Font` (procgen, headless): glyph atlas (`Image`) + metrics. `Font::builtin()` = embedded 8×8 font (no files, nearest, integer
 scales); `loadTtfFont/loadTtfFontFile` (mge_graphics, stb_truetype, optional). UTF‑8 in, unknown characters → `?`.
 2D UI (#42): `Renderer2D ui(device, format)`; per frame `ui.begin(w, h, round(frame->displayScale))`, `rect/rectOutline/line/image/
 text/pushClip`, then `ui.flush(cmd, swapchain)` after the 3D pass (loads, doesn't clear). Logical pixels, origin top‑left, y down.
 `Batch2D` = the CPU part (testable); untextured quads use `uv = kNoTexture`, so rects and text share one draw call.
+Overlay (#43): `DebugOverlay` (`addFrame(ms, frame->acquireMs)`, `setCounter(name, value)`, `draw(ui)`); no GPU timestamps in SDL GPU,
+so it shows CPU vs swapchain wait. Sandbox: F1 (on in Debug, off in Release; `SANDBOX_DEBUG=1` turns it on).
 
 ## Debug draw (#38)
 `DebugDraw debug(device)`: `aabb/sphere/axes/line/frustum` then `debug.flush(renderer)` inside the render pass (after the queue).

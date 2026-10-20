@@ -20,6 +20,9 @@ namespace mge {
         // Escala de la pantalla (SDL_GetWindowDisplayScale: DPI y preferencia del usuario). Para la UI
         // (Renderer2D::begin); con la fuente 8x8 conviene redondearla a un entero
         float displayScale = 1.0f;
+        // Milisegundos que este frame esperó la imagen del swapchain (vsync o GPU ocupada): el resto del
+        // frame es CPU. Para el overlay de rendimiento (#43)
+        float acquireMs = 0.0f;
     };
 
     // Módulo de GPU: crea el device (SDL3 GPU), toma la ventana del PlatformModule y en cada frame

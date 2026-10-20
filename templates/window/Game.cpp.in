@@ -1,9 +1,12 @@
 // @GAME_TITLE@: juego generado con scripts/new-game.sh (plantilla "window").
 // Una ventana cuyo color de fondo late. Muestra: módulos, acciones de input, una entidad del ECS
-// actualizada en el paso fijo y el log. Esc sale, Espacio (mantener) acelera.
+// actualizada en el paso fijo, texto 2D, el overlay de rendimiento y el log. Esc sale, Espacio (mantener)
+// acelera, F1 muestra FPS y tiempos.
 #include <mge/mge.h> // API del motor (core + los módulos que enlaza este juego)
 
+#include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace {
     // Componente del ECS: fase de una oscilación
@@ -26,6 +29,11 @@ namespace {
             m_gpu = getModule<mge::GpuModule>();
             m_platform->actions().bind("Quit", mge::Key::Escape);
             m_platform->actions().bind("Faster", mge::Key::Space);
+            m_platform->actions().bind("Overlay", mge::Key::F1);
+
+            // UI 2D en píxeles (texto con la fuente embebida: no hace falta ningún archivo)
+            m_ui = std::make_unique<mge::Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
+            if (!m_ui->valid()) return false;
 
             // Una entidad con su componente, y un sistema que la avanza en cada paso fijo
             mge::Registry& registry = world().registry();
@@ -36,12 +44,16 @@ namespace {
                     [dt](mge::Entity, Pulse& pulse) { pulse.phase += pulse.speed * dt; });
             });
 
-            MGE_LOG_INFO("@GAME_NAME@", "Esc: salir, Espacio (mantener): más rápido");
+            MGE_LOG_INFO("@GAME_NAME@", "Esc: salir, Espacio (mantener): más rápido, F1: rendimiento");
             return true;
         }
 
+        // Los recursos de la GPU se liberan antes que el device (el GpuModule se cierra después del juego)
+        void onShutdown() override { m_ui.reset(); }
+
         void onUpdate(float /*dt*/) override {
             if (m_platform->wasActionPressed("Quit")) requestStop();
+            if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
             world().registry().get<Pulse>(m_pulse).speed = m_platform->isActionDown("Faster") ? 6.0f : 1.5f;
         }
 
@@ -53,8 +65,17 @@ namespace {
             mge::ColorTarget target;
             target.texture = frame->swapchain;
             target.clearColor = {0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f};
-            mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Limpia la imagen; se cierra solo
-            // Para dibujar mallas: mge::MeshRenderer (src/mge/graphics/README.md)
+            {
+                mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Limpia la imagen
+                // Para dibujar mallas: mge::MeshRenderer (src/mge/graphics/README.md)
+            } // El pass se cierra al salir del bloque
+
+            // Encima: texto y overlay (píxeles lógicos, origen arriba a la izquierda; escala entera = nítido)
+            m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
+            m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));
+            m_ui->text({16.0f, m_ui->size().y - 40.0f}, "@GAME_TITLE@", {1.0f, 1.0f, 1.0f, 1.0f}, 3.0f);
+            m_overlay.draw(*m_ui);
+            m_ui->flush(*frame->cmd, frame->swapchain);
         }
 
     private:
@@ -69,6 +90,8 @@ namespace {
         mge::PlatformModule* m_platform = nullptr;
         mge::GpuModule* m_gpu = nullptr;
         mge::Entity m_pulse;
+        std::unique_ptr<mge::Renderer2D> m_ui;
+        mge::DebugOverlay m_overlay; // F1
     };
 }
 

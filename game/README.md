@@ -39,7 +39,8 @@ Include as `#include <game/SandboxTerrain.h>`.
 | `m_streamer` | `unique_ptr<ChunkStreamer>` | Loads, meshes and unloads chunks on the job pool (`streamingSettings()`), created in `onInit` |
 | `m_queue` | `RenderQueue` | The frame's draw list (three items per visible chunk), sorted before submitting |
 | `m_pngAtlas`, `m_proceduralAtlas`, `m_atlas` | `Texture2D`, `Texture2D`, `Texture2D*` | The PNG atlas and the generated one, each created on first use with a CPU copy for the water/lava animation; `m_atlas` is the one drawn |
-| `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s (the TTF HUD was removed in #9) |
+| `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s |
+| `m_ui`, `m_overlay`, `m_overlayUs` | `Renderer2D`, `DebugOverlay`, `int` | F1 overlay (#43) and what it cost to build, upload and record last frame |
 | `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
 | `m_isPaused`, `m_mouseCaptured` | `bool` | Pause state; `m_mouseCaptured` is always true |
@@ -76,6 +77,7 @@ CMake modules: `platform gpu graphics audio`.
 | `Quit` | Esc |
 | `CaptureMouse` | Left mouse button |
 | `ToggleAtlas` | M: switch live between the PNG and the procedural atlas (the other one is created on first use) |
+| `Overlay` | F1: performance overlay (FPS, frame‑time graph, CPU vs swapchain wait, draw calls, chunks, jobs, memory, position, atlas, its own cost). On by default in Debug, off in Release |
 | `DebugDraw` | F3: chunk bounds (green = meshed, yellow = data but no mesh yet, red = dirty) and the camera's collision box |
 | `FreezeFrustum` | F4: freeze the culling frustum and draw it; fly out of it to see what gets culled |
 
@@ -122,8 +124,10 @@ Skips the frame if `GpuModule::frame()` is null (minimised window). Otherwise:
 4. `m_queue.sort(camera position, forward)`, then `submit`. Opaque and cutout go front‑to‑back,
    transparent back‑to‑front (#31). With F4, culling uses the frozen frustum.
    `drawDebug()` then draws the F3/F4 lines through `DebugDraw` (#38). `SANDBOX_DEBUG=1` starts
-   with both on; a smoke test uses it.
-5. `end`, then the FPS log every 5 s, with draw calls and triangles per pass.
+   with F1, F3 and F4 on; a smoke test uses it.
+5. `end`; `drawOverlay()` adds the frame time, refreshes the counters and draws the F1 panel with
+   `Renderer2D` in a second render pass (about 0.09 ms in Release). Every 5 s the FPS, draw calls
+   and triangles per pass also go to the Debug log.
 
 See `docs/ARCHITECTURE.md` §6.
 
