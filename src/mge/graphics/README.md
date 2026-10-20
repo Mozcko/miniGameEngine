@@ -13,6 +13,7 @@ by default (`MODULES platform gpu graphics audio`).
 | `TtfFont.h/.cpp` | `loadTtfFont(bytes, px)`, `loadTtfFontFile(path, px)`: optional TTF → `mge::Font` with stb_truetype (no SDL_ttf) |
 | `Batch2D.h/.cpp` | `Rect2D`, `Draw2DCommand`, `Batch2D`: CPU 2D batch (rects, outlines, lines, images, text, clip stack) |
 | `Renderer2D.h/.cpp` | `GpuFont` (font + atlas texture), `Renderer2D`: the batch on the GPU, pixel‑space UI drawn over the scene |
+| `DebugOverlay.h/.cpp` | `DebugOverlay`: FPS, frame‑time graph and named counters, drawn with `Renderer2D` |
 | `shaders/ui.vert/.frag` | 2D: orthographic projection in logical pixels; `texture × colour`, white when `uv.x < 0` |
 | `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
@@ -145,6 +146,30 @@ ui.flush(*frame->cmd, frame->swapchain);                 // draws on top, then c
 - **DPI:** `begin(width, height, scale)` takes the physical size; the UI works in `size()` = physical
   / scale. Round the display scale for the pixel font to keep it crisp.
 
+## Performance overlay – `<mge/graphics/DebugOverlay.h>` (#43)
+A panel with FPS, average and worst frame time, a frame‑time graph and the game's own counters. It
+knows nothing about the game.
+
+```cpp
+mge::DebugOverlay overlay;                                    // F1 → overlay.toggle()
+overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);   // every frame
+overlay.setCounter("chunks", std::to_string(loaded));         // "name: value" lines, kept in order
+overlay.draw(ui);                                             // between ui.begin and ui.flush
+```
+
+- **History:** the last `kHistory` = 240 frames. `fps()` covers about the last 0.5 s; `averageMs`,
+  `maxMs` and `averageWaitMs` cover the whole history.
+- **Graph:** one bar per frame, newest on the right; green up to 16.7 ms, yellow up to 33.3 ms,
+  red above. White guides mark 60 and 30 FPS, and bars are clipped at 50 ms.
+- **CPU vs GPU:** SDL GPU has no timestamp queries, so GPU time can't be measured. The second line
+  shows **CPU** (frame minus wait) and **wait** (`GpuFrame::acquireMs`, time blocked acquiring the
+  swapchain image: vsync or a busy GPU).
+- **Counters:** `setCounter(name, value)` adds or updates a line; an empty name prints only the
+  value (hints). `removeCounter(name)`.
+- **Cost:** everything is one draw call. `build(batch, font, texture, pos, scale)` is the
+  CPU‑testable part. In the sandbox it costs about 0.09 ms per frame in Release, including the
+  upload.
+
 ## TTF fonts – `<mge/graphics/TtfFont.h>` (#41)
 The default font is `Font::builtin()` (`mge_procgen`), which needs no file. To use a TrueType font
 instead, `loadTtfFontFile("fonts/x.ttf", 18.0f)` (a relative path goes through `mge::assetPath`) or
@@ -162,6 +187,10 @@ it logs an error and returns an invalid font.
   - nested clip intersection.
 - **2D golden `ui_batch`:** panel, outline, 1×/2× text, line, swatches and a clipped strip in 2 draw
   calls. A DPI test checks that scale 2 doubles the size in physical pixels from the same origin.
+- **Overlay:**
+  - FPS window, average/max/wait, ring buffer, counter order and updates (CPU);
+  - one quad per graph bar, all in one draw call;
+  - golden `debug_overlay`, with fixed frame times and spikes in yellow and red.
 - **TTF fonts** (`tests/render/test_text.cpp`, no GPU): a system TTF bakes with coherent metrics
   (skipped if none is found; `MGE_TEST_TTF=path` picks one; CI installs `fonts-dejavu-core`), and
   invalid or missing files give an invalid font.

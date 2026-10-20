@@ -36,7 +36,7 @@ examples/space_shooter/
 ```cmake
 mge_add_game(space_shooter
     SOURCES SpaceShooter.cpp
-    MODULES platform gpu audio  # window + input, GPU, sound. Default: platform gpu graphics audio
+    MODULES platform gpu graphics audio  # window + input, GPU, renderer + 2D text, sound (the default)
     SMOKE_FRAMES 30)            # CTest runs the game 30 frames offscreen
 ```
 
@@ -142,7 +142,7 @@ For positions use the built‑in `mge::Transform` (and `mge::Parent` for hierarc
 ## 6. Drawing
 
 `GpuModule` gives you the frame each time `onRender` runs: a command buffer plus the window's image.
-The template only clears it:
+The template clears it, then draws its title and the performance overlay on top:
 
 ```cpp
 void onRender() override {
@@ -152,16 +152,29 @@ void onRender() override {
     mge::ColorTarget target;
     target.texture = frame->swapchain;
     target.clearColor = {0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f};
-    mge::RenderPass pass = frame->cmd->beginRenderPass(target);   // ends at scope exit
+    {
+        mge::RenderPass pass = frame->cmd->beginRenderPass(target);   // ends at scope exit
+    }
+
+    // 2D on top: logical pixels, origin top-left; the built-in font needs no file
+    m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);   // F1 toggles it
+    m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));
+    m_ui->text({16.0f, m_ui->size().y - 40.0f}, "My game", {1, 1, 1, 1}, 3.0f);
+    m_overlay.draw(*m_ui);                             // FPS, frame-time graph, your counters
+    m_ui->flush(*frame->cmd, frame->swapchain);
 }
 ```
 
-The `GpuModule` submits the frame for you.
+`m_ui` is a `std::unique_ptr<mge::Renderer2D>` created in `onInit` and reset in `onShutdown` (GPU
+resources go before the device). Add your own lines to the overlay with
+`m_overlay.setCounter("enemies", std::to_string(n))`. The `GpuModule` submits the frame for you.
 
 **Drawing meshes:**
 - **Engine renderer:** link `graphics` and use `mge::MeshRenderer`. Generated or loaded meshes
   (`MeshData` → `device.uploadMesh`), textures (`Texture2D`) and a camera; see
   `src/mge/graphics/README.md` and `game/SandboxApp.cpp`.
+- **2D (UI, HUD, simple 2D games):** `mge::Renderer2D`: rects, lines, images and text in pixels,
+  batched into a few draw calls; see `src/mge/graphics/README.md`.
 - **Your own shaders:** write GLSL and embed it with `mge_add_shaders`. See
   `examples/gpu_triangle` and `src/mge/gpu/README.md`.
 

@@ -9,6 +9,7 @@ add_library(mge_graphics STATIC
     TtfFont.h TtfFont.cpp
     Batch2D.h Batch2D.cpp
     Renderer2D.h Renderer2D.cpp
+    DebugOverlay.h DebugOverlay.cpp
 )
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)

@@ -46,10 +46,17 @@ public:
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
         m_debug = std::make_unique<DebugDraw>(m_gpu->device());
-        // SANDBOX_DEBUG=1: arrancar con F3 y F4 activos (lo usa un smoke test: dibuja las líneas en CI)
+        // UI 2D (#42) y overlay de rendimiento (F1, #43): visible de entrada en Debug
+        m_ui = std::make_unique<Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
+        if (!m_ui->valid()) return false;
+#ifdef NDEBUG
+        m_overlay.setVisible(false);
+#endif
+        // SANDBOX_DEBUG=1: arrancar con F1, F3 y F4 activos (lo usa un smoke test: dibuja todo en CI)
         if (const char* debug = std::getenv("SANDBOX_DEBUG"); debug && std::string(debug) == "1") {
             m_showDebug = true;
             m_frustumFrozen = true;
+            m_overlay.setVisible(true);
         }
         // Sol, ambiente cielo/suelo y niebla del color del cielo, que termina en el borde de lo que se dibuja
         Lighting lighting;
@@ -93,10 +100,9 @@ public:
         // Configuración inicial del ratón
         m_platform->setCursorLocked(true);
 
-        // El HUD de texto (SDL_ttf) se quitó en #9; vuelve con la fuente embebida en M4 (#41-#43).
-        // Mientras tanto los FPS se escriben en el log (nivel Debug) cada 5 segundos.
+        // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
         MGE_LOG_INFO("Sandbox", "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, M: atlas "
-                                "PNG/procedural, P: pausa, Esc: salir");
+                                "PNG/procedural, P: pausa, F1: rendimiento, F3/F4: depuración, Esc: salir");
         return true;
     }
 
@@ -108,6 +114,7 @@ public:
         m_proceduralAtlas = {};
         m_atlas = nullptr;
         m_debug.reset();
+        m_ui.reset();
         m_renderer.reset();
     }
 
@@ -119,6 +126,7 @@ public:
         actions.bind("Sprint", Key::LeftCtrl);
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
+        actions.bind("Overlay", Key::F1);
         actions.bind("DebugDraw", Key::F3);
         actions.bind("FreezeFrustum", Key::F4);
         actions.bind("Quit", Key::Escape);
@@ -134,6 +142,7 @@ public:
 
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
+        if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
         if (m_platform->wasActionPressed("DebugDraw")) m_showDebug = !m_showDebug;
         if (m_platform->wasActionPressed("FreezeFrustum")) {
             m_frustumFrozen = !m_frustumFrozen;
@@ -224,6 +233,7 @@ public:
         m_renderer->submit(m_queue);
         drawDebug();
         m_renderer->end();
+        drawOverlay(*frame);
 
         // FPS promedio cada 5 s (tiempo real: en pausa el escalado es 0)
         m_fpsFrames++;
@@ -304,6 +314,38 @@ private:
         auto terrain = std::make_unique<sandbox::SandboxTerrain>(m_blocks);
         m_terrain = terrain.get();
         return terrain;
+    }
+
+    // F1: FPS, gráfico de tiempos y contadores, encima de la escena (Renderer2D). Lo que cuesta (armarlo +
+    // subirlo + grabar el dibujo, en la CPU) se muestra en el frame siguiente ("overlay")
+    void drawOverlay(const GpuFrame& frame) {
+        m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame.acquireMs);
+        if (!m_overlay.visible()) return;
+        const auto start = std::chrono::steady_clock::now();
+        const RenderStats& render = m_renderer->stats();
+        const StreamingStats streaming = m_streamer->stats();
+        const glm::ivec3 block = blockAt(m_fly.position());
+        m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
+                                           std::to_string(render.totalTriangles() / 1000) + "k triangulos");
+        m_overlay.setCounter("chunks", std::to_string(streaming.loaded) + " cargados, " +
+                                           std::to_string(m_gpuChunks.size()) + " mallados, pool " +
+                                           std::to_string(streaming.pooled));
+        m_overlay.setCounter("trabajos", std::to_string(streaming.pendingGenerate) + " generar + " +
+                                             std::to_string(streaming.pendingMesh) + " mallar");
+        m_overlay.setCounter("memoria", std::to_string(streaming.cpuBytes() / 1024 / 1024) + " MB CPU, " +
+                                            std::to_string(gpuBytes() / 1024 / 1024) + " MB GPU");
+        m_overlay.setCounter("posicion", std::to_string(block.x) + " " + std::to_string(block.y) + " " +
+                                             std::to_string(block.z));
+        m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
+        m_overlay.setCounter("overlay", std::to_string(m_overlayUs) + " us");
+        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  M atlas  P pausa");
+
+        // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
+        m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
+        m_overlay.draw(*m_ui);
+        m_ui->flush(*frame.cmd, frame.swapchain);
+        m_overlayUs = static_cast<int>(
+            std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count());
     }
 
     // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
@@ -395,6 +437,9 @@ private:
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     RenderQueue m_queue;
     std::unique_ptr<DebugDraw> m_debug;
+    std::unique_ptr<Renderer2D> m_ui;
+    DebugOverlay m_overlay;       // F1
+    int m_overlayUs = 0;          // Lo que tardó armar el overlay el frame anterior
     bool m_showDebug = false;     // F3
     bool m_frustumFrozen = false; // F4
     glm::mat4 m_frozenViewProjection{1.0f};

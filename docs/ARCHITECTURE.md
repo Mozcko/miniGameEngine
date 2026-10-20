@@ -150,7 +150,9 @@ read at runtime.
    - **Transparent**, back‑to‑front: alpha blending, depth test without writes (water, lava,
      glass).
 5. Debug lines (F3/F4, `DebugDraw`, #38): depth‑tested, not depth‑writing, drawn after the queue.
-6. Every 5 s the average FPS and per‑pass draw calls and triangles are written to the Debug log.
+6. F1 overlay (`DebugOverlay` on `Renderer2D`, #43): FPS, frame‑time graph, CPU vs swapchain wait and
+   counters, in a second render pass over the scene.
+7. Every 5 s the average FPS and per‑pass draw calls and triangles are written to the Debug log.
 
 ### Textures
 `Texture2D::fromFile` (stb_image → RGBA8) stores the image flipped vertically, so the engine's

@@ -5,6 +5,7 @@
 #include <doctest/doctest.h>
 #include <mge/core/Log.h>
 #include <mge/graphics/Batch2D.h>
+#include <mge/graphics/DebugOverlay.h>
 #include <mge/graphics/Renderer2D.h>
 #include <mge/graphics/TtfFont.h>
 
@@ -272,4 +273,74 @@ TEST_CASE("Render: la escala (DPI) agranda la UI en píxeles físicos sin moverl
     CHECK(x2.pixel(20, 20)[0] > 200); // Rect de 4..24 px físicos
     CHECK(x2.pixel(26, 26)[0] < 100);
     CHECK(x2.pixel(3, 3)[0] < 100);
+}
+
+// --- DebugOverlay (#43) ---
+
+TEST_CASE("DebugOverlay: FPS de los últimos ~0.5 s, promedio, máximo y espera del historial") {
+    DebugOverlay overlay;
+    CHECK(overlay.fps() == doctest::Approx(0.0f));
+    CHECK(overlay.averageMs() == doctest::Approx(0.0f));
+    for (int i = 0; i < 100; i++) overlay.addFrame(10.0f, 4.0f); // 100 FPS
+    CHECK(overlay.fps() == doctest::Approx(100.0f));
+    for (int i = 0; i < 30; i++) overlay.addFrame(20.0f); // Los últimos 0.5 s, a 50 FPS
+    CHECK(overlay.fps() == doctest::Approx(50.0f).epsilon(0.05));
+    CHECK(overlay.maxMs() == doctest::Approx(20.0f));
+    CHECK(overlay.averageMs() == doctest::Approx((100 * 10.0f + 30 * 20.0f) / 130.0f));
+    CHECK(overlay.averageWaitMs() == doctest::Approx(100 * 4.0f / 130.0f));
+
+    // Historial circular: solo quedan los últimos kHistory frames
+    for (std::size_t i = 0; i < DebugOverlay::kHistory; i++) overlay.addFrame(5.0f, 50.0f);
+    CHECK(overlay.sampleCount() == DebugOverlay::kHistory);
+    CHECK(overlay.maxMs() == doctest::Approx(5.0f));
+    CHECK(overlay.averageWaitMs() == doctest::Approx(5.0f)); // La espera no pasa del frame
+}
+
+TEST_CASE("DebugOverlay: contadores en orden de alta, se actualizan en su lugar y se quitan") {
+    DebugOverlay overlay;
+    overlay.setCounter("chunks", "10");
+    overlay.setCounter("memoria", "3 MB");
+    overlay.setCounter("chunks", "12");
+    REQUIRE(overlay.counters().size() == 2);
+    CHECK(overlay.counters()[0].first == "chunks");
+    CHECK(overlay.counters()[0].second == "12");
+    overlay.removeCounter("chunks");
+    REQUIRE(overlay.counters().size() == 1);
+    CHECK(overlay.counters()[0].first == "memoria");
+}
+
+TEST_CASE("DebugOverlay: el panel es un lote con una barra por frame del gráfico") {
+    const Font font = Font::builtin();
+    const Texture2D atlas;
+    const auto quads = [&](int frames, bool counter) {
+        DebugOverlay overlay;
+        for (int i = 0; i < frames; i++) overlay.addFrame(16.0f);
+        if (counter) overlay.setCounter("chunks", "10");
+        Batch2D batch;
+        const glm::vec2 size = overlay.build(batch, font, &atlas, {8, 8});
+        CHECK(size.x >= float(DebugOverlay::kHistory));
+        CHECK(size.y > DebugOverlay::kGraphHeight + 2 * font.lineHeight());
+        CHECK(batch.commands().size() == 1); // Todo en un draw call
+        return batch.quadCount();
+    };
+    CHECK(quads(61, false) == quads(60, false) + 1); // Una barra más (mismo texto: 63 FPS, 16.0 ms)
+    CHECK(quads(60, true) == quads(60, false) + 9);  // "chunks: 10" = 9 glifos visibles
+}
+
+TEST_CASE("Render: overlay de rendimiento con tiempos fijos (#43)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    DebugOverlay overlay;
+    // 60 FPS con picos de 25 ms (amarillo) y 45 ms (rojo) cada tanto
+    for (std::size_t i = 0; i < DebugOverlay::kHistory; i++)
+        overlay.addFrame(i % 60 == 30 ? 45.0f : i % 20 == 10 ? 25.0f : 15.0f + float(i % 7) * 0.2f, 9.0f);
+    overlay.setCounter("dibujo", "312 llamadas, 845k triangulos");
+    overlay.setCounter("chunks", "248 cargados, 162 mallados");
+    overlay.setCounter("", "F1 panel  F3 chunks");
+    const mge_test::Image image =
+        drawUi(gpu.device(), 320, 180, 1.0f, [&](Renderer2D& ui) { overlay.draw(ui); });
+
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("debug_overlay", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
 }

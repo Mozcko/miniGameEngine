@@ -65,6 +65,7 @@
 #ifdef MGE_HAS_GRAPHICS
 #include <mge/graphics/Batch2D.h>
 #include <mge/graphics/DebugDraw.h>
+#include <mge/graphics/DebugOverlay.h>
 #include <mge/graphics/Lighting.h>
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/Renderer2D.h>

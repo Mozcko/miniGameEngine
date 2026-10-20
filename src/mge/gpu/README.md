@@ -55,7 +55,8 @@ void onRender() override {
 
 `frame()->width/height` is the real swapchain size, which follows window resizes.
 `frame()->displayScale` is `SDL_GetWindowDisplayScale` (DPI plus the user's scaling preference, 1 if
-unknown), for `Renderer2D::begin` (#42).
+unknown), for `Renderer2D::begin` (#42). `frame()->acquireMs` is how long this frame blocked in
+`SDL_WaitAndAcquireGPUSwapchainTexture` (vsync or a busy GPU), for the performance overlay (#43).
 
 ## Presentation, depth and device info (#37)
 - **Vsync:**
