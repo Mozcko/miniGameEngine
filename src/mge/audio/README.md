@@ -17,6 +17,8 @@ and mute ([ADR 0004](../../../docs/adr/0004-procedural-first-assets-optional.md)
 | `onInit` | `SDL_InitSubSystem(SDL_INIT_AUDIO)`, then `SDL_OpenAudioDeviceStream(default playback, float32 stereo 48 kHz, callback)` and resume it. **Never fails:** without a device the game runs silently (`hasDevice()` = false). `MGE_MUTE=1` starts muted |
 | `onShutdown` | Destroys the stream (closes the device; the callback stops), quits the audio subsystem (and `SDL_Quit()` if it was the last one) |
 | `playTone(ToneDesc{hz, seconds, gain, pan})` | A sine tone with no files |
+| `playNote(instrument, hz, velocity, duration, bus)` → `VoiceHandle`; `releaseNote`, `stopNote` | A synthesized note (#47) |
+| `setBusVolume(AudioBus, 0..1)`, `setDelay(DelaySettings)` | Effects/music volume; the shared echo |
 | `loadWav(path)` → `SampleId` | `SDL_LoadWAV` + `SDL_ConvertAudioSamples` to float32 at the mixer rate (mono stays mono). Relative paths go through `mge::assetPath`. `kInvalidSample` on failure (logged) |
 | `addSample(Sample)` → `SampleId` | Register a sound made by code |
 | `play(id, gain = 1, pan = 0)` | Plays a sample; pan −1..1 at constant power |

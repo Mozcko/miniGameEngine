@@ -46,7 +46,12 @@
 
 // --- Audio procedural (headless): mezclador, síntesis ---
 #ifdef MGE_HAS_SYNTH
+#include <mge/synth/Delay.h>
+#include <mge/synth/Envelope.h>
+#include <mge/synth/Filter.h>
+#include <mge/synth/Instrument.h>
 #include <mge/synth/Mixer.h>
+#include <mge/synth/Oscillator.h>
 #include <mge/synth/Sample.h>
 #endif
 

@@ -2,6 +2,11 @@
 # síntesis, efectos y música se prueban sin dispositivo de audio. mge_audio lo conecta a SDL3.
 add_library(mge_synth STATIC
     Sample.h
+    Oscillator.h Oscillator.cpp
+    Envelope.h Envelope.cpp
+    Filter.h Filter.cpp
+    Delay.h Delay.cpp
+    Instrument.h
     Mixer.h Mixer.cpp
 )
 target_link_libraries(mge_synth PUBLIC mge_core)
