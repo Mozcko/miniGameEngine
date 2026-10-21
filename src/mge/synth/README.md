@@ -14,6 +14,7 @@ core‑only and ThreadSanitizer CI jobs, so everything here is tested without a 
 | `Delay.h/.cpp` | `DelaySettings`, `Delay` (stereo echo, buffer reserved up front) |
 | `Instrument.h` | `Instrument`: how a note sounds (wave, ADSR, filter, gain, pan, vibrato, pitch slide, delay send) |
 | `Mixer.h/.cpp` | `Mixer`, `ToneDesc`, `AudioBus`, `VoiceHandle`, `MixerStats`, `panGains`, `softClip` |
+| `Sfx.h/.cpp` | `SfxParams`, `renderSfx`, `sfx::` presets (jump, coin, hurt, explosion, powerUp, click), `randomize`, `mutate` |
 | `Offline.h/.cpp` | `renderOffline`, `writeWav` (16‑bit PCM, no deps), `analysis::` (rms, peak, frequency, tone amplitude, spectral centroid, onsets) |
 
 ## Format
@@ -77,6 +78,44 @@ lead.vibratoDepth = 0.15f;                 // semitones
 audio->playNote(lead, mge::midiToHz(72), 0.8f, 0.3f);
 ```
 
+## Sound effects, sfxr‑style (#48)
+An effect is a **data struct** rendered once into a `Sample`, so playing it is as cheap as a WAV:
+
+```cpp
+const mge::SampleId jump = audio->addSfx(mge::sfx::jump());      // = addSample(renderSfx(params, rate))
+audio->play(jump);
+mge::SfxParams laser = mge::sfx::randomize(42);                  // or build one field by field
+```
+
+**`SfxParams`:**
+- **Wave and duty:** waveform, duty and duty sweep.
+- **Pitch:** base frequency, slide and delta slide (octaves/s and octaves/s²), a minimum frequency
+  that ends the sound, vibrato, an arpeggio (multiplier after a time), and a repeat that restarts
+  pitch and arpeggio.
+- **Envelope:** attack, sustain with punch, decay.
+- **Filters and phaser:** low‑pass (cutoff, sweep, resonance), high‑pass (cutoff, sweep), and a
+  phaser (offset, sweep in ms).
+- **Gain.**
+
+**`renderSfx(params, rate, seed)`:**
+- returns mono, `duration()` = attack + sustain + decay;
+- deterministic per seed (noise);
+- runs on the game thread, because it allocates.
+
+**Presets** (code equivalents of `assets/sounds/*.wav`):
+
+| Preset | Sound |
+|--------|-------|
+| `jump` | Square that rises ~7 octaves/s |
+| `coin` | B5 then E6 (arpeggio), with punch |
+| `hurt` | Saw falling fast, low‑passed |
+| `explosion` | Low pitched noise, falling, a low‑pass sweeping down and a phaser |
+| `powerUp` | Rising square that restarts every 0.11 s, with vibrato |
+| `click` | A 40 ms blip, high‑passed |
+
+**Variation:** `sfx::coin(seed)` with a seed other than 0 is a slight variation (`mutate(params, 0.1,
+seed)`). `mutate(params, amount, seed)` and `randomize(seed)` make new effects with sensible ranges.
+
 ## Offline rendering and analysis (#50)
 Audio can be produced and checked without a device:
 - `renderOffline(mixer, frames | seconds)` runs `render` on the calling thread and returns the
@@ -106,7 +145,8 @@ Audio can be produced and checked without a device:
 - every waveform (an arpeggio);
 - three ADSR shapes;
 - a resonant filter sweep;
-- echo + vibrato + a falling pitch slide.
+- echo + vibrato + a falling pitch slide;
+- `sfx_*`: every preset and three random effects (#48).
 
 ## Tests
 `tests/synth/test_mixer.cpp`:
@@ -130,6 +170,14 @@ Audio can be produced and checked without a device:
   the sine's exact level; the square's 1/3 third harmonic and no even harmonics;
 - the envelope over time and the note's end; a lower low‑pass cutoff gives a darker sound;
 - onsets of four notes.
+
+`tests/synth/test_sfx.cpp` (#48):
+- every preset: its duration, determinism, range, and a quiet ending;
+- jump rises, hurt falls, coin is B5 then E6;
+- the explosion is noise whose centroid falls;
+- power‑up rises, restarts and rises again;
+- click is under 60 ms;
+- seeded variations are slight and deterministic; 40 random effects are audible and finite.
 
 `tests/synth/test_no_alloc.cpp` (its own program, `mge_synth_alloc_tests`; not built with sanitizers,
 which replace `operator new` themselves) replaces global `operator new` and checks that

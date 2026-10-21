@@ -54,6 +54,7 @@
 #include <mge/synth/Offline.h>
 #include <mge/synth/Oscillator.h>
 #include <mge/synth/Sample.h>
+#include <mge/synth/Sfx.h>
 #endif
 
 // --- Plataforma: ventana e input de SDL ---

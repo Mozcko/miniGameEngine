@@ -2,7 +2,9 @@
 
 Short sound effects, loaded with `AudioModule::loadWav` (#46). All are RIFF WAV, PCM 8‑bit,
 mono, 44.1 kHz. They come from the earlier 2D platformer phase. The voxel sandbox doesn't use
-them; `examples/platformer2d` plays `jump`, `coin`, `hurt` and `power_up` (#45).
+them; `examples/platformer2d` plays `jump`, `coin`, `hurt` and `power_up` (#45) when `S` (or
+`PLATFORMER_SOUNDS=wav`) selects the WAVs. Every file has a code‑generated equivalent in `mge::sfx` (#48):
+`jump`, `coin`, `hurt`, `explosion`, `powerUp`, `click` (for `tap.wav`).
 
 | File | Intended use (by name) |
 |------|------------------------|

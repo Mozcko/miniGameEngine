@@ -21,6 +21,7 @@ and mute ([ADR 0004](../../../docs/adr/0004-procedural-first-assets-optional.md)
 | `setBusVolume(AudioBus, 0..1)`, `setDelay(DelaySettings)` | Effects/music volume; the shared echo |
 | `loadWav(path)` → `SampleId` | `SDL_LoadWAV` + `SDL_ConvertAudioSamples` to float32 at the mixer rate (mono stays mono). Relative paths go through `mge::assetPath`. `kInvalidSample` on failure (logged) |
 | `addSample(Sample)` → `SampleId` | Register a sound made by code |
+| `addSfx(SfxParams, seed)` → `SampleId` | Render an sfxr‑style effect (#48) at the mixer rate and register it: `addSfx(mge::sfx::coin())` |
 | `play(id, gain = 1, pan = 0)` | Plays a sample; pan −1..1 at constant power |
 | `stopAll()` | Silences every voice |
 | `setMasterVolume(0..1)`, `setMuted(bool)` | Smoothed per block (no clicks) |
