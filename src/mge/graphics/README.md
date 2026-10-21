@@ -187,6 +187,9 @@ it logs an error and returns an invalid font.
   - nested clip intersection.
 - **2D golden `ui_batch`:** panel, outline, 1×/2× text, line, swatches and a clipped strip in 2 draw
   calls. A DPI test checks that scale 2 doubles the size in physical pixels from the same origin.
+- **Old HUD bugs stay fixed (#44):** a 2× 'F' at (0, 0) matches the font bits pixel by pixel, so
+  the text is in pixel space, upright and in the requested colour. A line drawn right‑to‑left (the
+  opposite winding) is visible too.
 - **Overlay:**
   - FPS window, average/max/wait, ring buffer, counter order and updates (CPU);
   - one quad per graph bar, all in one draw call;
