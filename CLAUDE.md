@@ -35,7 +35,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 ## Layout & targets
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
   builds it with `-DMGE_BUILD_MODULES=OFF`, together with the headless `mge_procgen`/`mge_voxel`), `mge_platform` (PlatformModule),
-  `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_audio` (AudioModule), `mge_main` (main(), core‑only).
+  `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_synth` (headless audio: Mixer, samples), `mge_audio` (AudioModule: the mixer on the SDL audio device), `mge_main` (main(), core‑only).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/<module>/` → `mge_<module>_tests` (core, procgen, voxel, platform, gpu), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.
@@ -52,7 +52,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
    Game stops with `requestStop()`. Input (#15): core `InputState`/`ActionMap` (`<mge/core/Input.h>`), owned by
    `PlatformModule` (`actions()`, `wasActionPressed`, `axis`, `setCursorLocked`); camera controllers take a `CameraInput` struct.
    `setEventCallback` is only for window events (resize/focus).
-5. Static singletons left: `AudioManager` (input and time are no longer static).
+5. No static singletons left (input, time and audio are owned by the app/modules; `AudioManager` was removed in #46).
 6. Rendering = SDL3 GPU (`mge_gpu` + `mge_graphics`): `device.uploadMesh(MeshData)` → `GpuMesh` (`GpuVertex{pos, normal, color, uv}`),
    `MeshRenderer::begin/setCamera/draw/end` (opaque, then transparent).
 7. Shaders are GLSL compiled to SPIR‑V at build time and embedded (`mge_add_shaders`); no shader files at runtime.
@@ -97,6 +97,13 @@ text/pushClip`, then `ui.flush(cmd, swapchain)` after the 3D pass (loads, doesn'
 `Batch2D` = the CPU part (testable); untextured quads use `uv = kNoTexture`, so rects and text share one draw call.
 Overlay (#43): `DebugOverlay` (`addFrame(ms, frame->acquireMs)`, `setCounter(name, value)`, `draw(ui)`); no GPU timestamps in SDL GPU,
 so it shows CPU vs swapchain wait. Sandbox: F1 (on in Debug, off in Release; `SANDBOX_DEBUG=1` turns it on).
+
+## Audio (M5)
+`mge_synth` (headless, always built): `Mixer` — game thread enqueues POD commands in a lock‑free `SpscQueue` (`playTone`,
+`playSample`, `stopAll`; volume/mute are atomics); the audio thread runs `render(out, frames)`: **no allocations, locks or logging**,
+32 preallocated voices (oldest stolen), immutable samples in a fixed bank (never freed while playing). Float32 stereo 48 kHz.
+`AudioModule` (mge_audio): SDL3 device stream + callback; `loadWav` (→ `assetPath`, converted to float32), `play(id, gain, pan)`,
+`playTone`, `setMasterVolume`, `setMuted` (`MGE_MUTE=1`). No device / `SDL_AUDIODRIVER=dummy` → silent, never an error.
 
 ## Debug draw (#38)
 `DebugDraw debug(device)`: `aabb/sphere/axes/line/frustum` then `debug.flush(renderer)` inside the render pass (after the queue).

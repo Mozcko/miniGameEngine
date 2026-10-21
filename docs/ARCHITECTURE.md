@@ -12,9 +12,10 @@ per‑file reference, see the `README.md` in each folder under `src/`.
    SandboxApp : mge::Application           mge_platform  PlatformModule: Window, SDL events → InputState/ActionMap
      addModule<PlatformModule>()           mge_gpu       GpuModule: SDL3 GPU device + swapchain, RAII handles
      addModule<GpuModule>()                mge_graphics  MeshRenderer, Texture2D (embedded shaders)
-     addModule<AudioModule>()              mge_audio     AudioModule: AudioManager (SDL3 audio)
+     addModule<AudioModule>()              mge_audio     AudioModule: the Mixer on the audio device (SDL3 audio stream)
  sandbox_world (lib, headless) ─────────►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher
    SandboxBlocks, SandboxTerrain           mge_procgen   MeshData, primitives, noise, SDF
+                                           mge_synth     Mixer (lock-free commands), samples, tones (headless)
                                            mge_core      Application runner + Module, ECS, cameras, Input, Log, Time
                                                          (no SDL, no GPU)
  Third party: SDL3 (incl. SDL GPU → Vulkan) · glslang (build time) · GLM · stb_image (core: GLM only)
@@ -54,8 +55,8 @@ A game:
    - `PlatformModule` initialises SDL video and creates the resizable `Window` from the config.
    - `GpuModule` creates the SDL GPU device (Vulkan; validation in Debug), claims the window and
      sets the present mode from `config.vsync`.
-   - `AudioModule` calls `AudioManager::init()` (SDL3 audio, default device; failure → silent, not
-     fatal).
+   - `AudioModule` opens an SDL3 audio device stream (float32 stereo 48 kHz) whose callback renders
+     the `Mixer` on SDL's audio thread (no device → silent, not fatal).
 2. The game's `onInit()` runs, with modules ready (for example the GPU device exists). If it returns
    false, all modules are shut down and `run()` returns 1.
 
@@ -98,7 +99,7 @@ releases the window and destroys the device, then Platform destroys the window. 
 `main()` destroys the `Application`.
 
 SDL lifetime (#17): each module owns its SDL subsystem (`PlatformModule` → video,
-`AudioManager` → audio) via `SDL_InitSubSystem`/`SDL_QuitSubSystem`. Whichever module releases the
+`AudioModule` → audio) via `SDL_InitSubSystem`/`SDL_QuitSubSystem`. Whichever module releases the
 last subsystem calls `SDL_Quit()`, exactly once. The game's GPU resources are freed in
 `onShutdown`, before the device goes away. The full lifecycle runs clean under ASan/UBSan
 (`asan` preset).
@@ -216,10 +217,8 @@ The engine module [`mge_voxel`](../src/mge/voxel/README.md) owns the data and th
 
 ## 8. Static singletons
 
-| Class | Namespace | State | Lifetime |
-|-------|-----------|-------|----------|
-| `Time` | `mge` | last tick, dt, raw dt, time scale | `init()` called by the game |
-| `AudioManager` | `mge` | device id, WAV cache by path, active `SDL_AudioStream`s | `AudioModule` init/shutdown |
+None. Time is owned by the `Application` (#12), input by `PlatformModule` (#15), and audio by
+`AudioModule` and its `Mixer` (#46, which removed the static `AudioManager`).
 
 ## 9. Ownership summary
 

@@ -75,6 +75,8 @@ optional depth). `compareWithGolden(name, image)` compares the result with
 - Add `core/test_<topic>.cpp` (engine core) or `game/test_<topic>.cpp`, and list it in `tests/CMakeLists.txt`.
 - Link only what you test. `mge_core_tests` (`tests/core/`) links **only `mge_core`**, so it
   also builds with `-DMGE_BUILD_MODULES=OFF`, like `mge_procgen_tests` and `mge_voxel_tests`.
+  `mge_synth_tests` (`tests/synth/`, headless, also core‑only/TSan) and `mge_audio_tests` (`tests/audio/`,
+  SDL dummy audio driver).
   `game_tests` (`tests/game/`) links `sandbox_world` (headless). `platformer_tests` (`tests/examples/`)
   links `platformer2d_logic` (#45): level parsing, the four `assets/levels`, jump/collision/coins/deaths.
   CTest names are prefixed `core: ` / `sandbox: `.

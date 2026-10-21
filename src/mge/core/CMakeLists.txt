@@ -7,6 +7,7 @@ add_library(mge_core STATIC
     Log.h Log.cpp
     Module.h
     Random.h
+    SpscQueue.h
     Clock.h Clock.cpp
     FlyController.h FlyController.cpp
     Time.h

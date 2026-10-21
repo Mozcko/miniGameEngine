@@ -49,8 +49,8 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 
 - ~~Two namespaces (`Engine` and `MiniGameEngine`) and two naming styles coexist~~ – unified into `mge` with one convention in #10.
 - ~~Two delta‑time sources (`Application::m_DeltaTime` and `Time`)~~ – single app‑owned clock with a fixed timestep since #12.
-- ~~Unused code: `AudioManager`; `Chunk::getRadius`; `Block::getUVs`~~ – `AudioManager` is used by
-  `examples/platformer2d` (#45); the old `Chunk`/`Block` classes were replaced by `mge_voxel` (#25).
+- ~~Unused code: `AudioManager`; `Chunk::getRadius`; `Block::getUVs`~~ – `AudioManager` was replaced by
+  `AudioModule` + `mge_synth` (#46); the old `Chunk`/`Block` classes were replaced by `mge_voxel` (#25).
 - ~~Unused assets: `sounds/`, `music/`, `levels/`~~ – levels and sounds are 2D test data for
   `examples/platformer2d` (#45). `music/` waits for the M5 sequencer.
 - Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.

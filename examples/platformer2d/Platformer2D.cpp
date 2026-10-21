@@ -28,6 +28,12 @@ namespace {
     protected:
         bool onInit() override {
             m_platform = getModule<mge::PlatformModule>();
+            m_audio = getModule<mge::AudioModule>();
+            // Los WAV de assets/sounds, ya convertidos al formato del mezclador (#46)
+            m_sounds.jump = m_audio->loadWav("sounds/jump.wav");
+            m_sounds.coin = m_audio->loadWav("sounds/coin.wav");
+            m_sounds.hurt = m_audio->loadWav("sounds/hurt.wav");
+            m_sounds.powerUp = m_audio->loadWav("sounds/power_up.wav");
             m_gpu = getModule<mge::GpuModule>();
             mge::ActionMap& actions = m_platform->actions();
             actions.bindAxis("Move", mge::Key::D, mge::Key::A);
@@ -64,11 +70,11 @@ namespace {
             input.move = m_platform->axis("Move");
             input.jump = m_platform->isActionDown("Jump");
             const platformer::StepEvents events = m_game->step(input, dt);
-            if (events.jumped) playSound("jump.wav", 64);
-            if (events.coins > 0) playSound("coin.wav");
-            if (events.died) playSound("hurt.wav");
+            if (events.jumped) m_audio->play(m_sounds.jump, 0.5f);
+            if (events.coins > 0) m_audio->play(m_sounds.coin);
+            if (events.died) m_audio->play(m_sounds.hurt);
             if (events.finished) {
-                playSound("power_up.wav");
+                m_audio->play(m_sounds.powerUp);
                 loadLevel((m_levelIndex + 1) % kLevelCount);
             }
         }
@@ -99,10 +105,6 @@ namespace {
             return true;
         }
 
-        static void playSound(const std::string& name, int volume = 128) {
-            mge::AudioManager::playSound(mge::assetPath("sounds/" + name).string(), volume);
-        }
-
         static mge::ApplicationConfig makeConfig() {
             mge::ApplicationConfig config;
             config.title = "miniGameEngine - Plataformero 2D";
@@ -112,6 +114,13 @@ namespace {
         }
 
         mge::PlatformModule* m_platform = nullptr;
+        mge::AudioModule* m_audio = nullptr;
+        struct Sounds {
+            mge::SampleId jump = mge::kInvalidSample;
+            mge::SampleId coin = mge::kInvalidSample;
+            mge::SampleId hurt = mge::kInvalidSample;
+            mge::SampleId powerUp = mge::kInvalidSample;
+        } m_sounds;
         mge::GpuModule* m_gpu = nullptr;
         std::unique_ptr<mge::Renderer2D> m_ui;
         mge::DebugOverlay m_overlay;

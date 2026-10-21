@@ -28,6 +28,7 @@ add_executable(mge_core_tests
     core/test_jobs.cpp
     core/test_log.cpp
     core/test_random.cpp
+    core/test_spsc_queue.cpp
     core/test_log_stripped.cpp
     core/test_time.cpp
     core/test_umbrella.cpp
@@ -50,6 +51,14 @@ add_executable(mge_procgen_tests
 target_link_libraries(mge_procgen_tests PRIVATE mge_procgen doctest_header)
 mge_set_warnings(mge_procgen_tests)
 doctest_discover_tests(mge_procgen_tests TEST_PREFIX "procgen: ")
+
+add_executable(mge_synth_tests
+    test_main.cpp
+    synth/test_mixer.cpp
+)
+target_link_libraries(mge_synth_tests PRIVATE mge_synth doctest_header)
+mge_set_warnings(mge_synth_tests)
+doctest_discover_tests(mge_synth_tests TEST_PREFIX "synth: ")
 
 add_executable(mge_voxel_tests
     test_main.cpp
@@ -74,6 +83,13 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(mge_platform_tests PRIVATE mge_platform doctest_header)
     mge_set_warnings(mge_platform_tests)
     doctest_discover_tests(mge_platform_tests TEST_PREFIX "platform: ")
+
+    # Audio con el driver dummy de SDL (sin placa de sonido)
+    add_executable(mge_audio_tests test_main.cpp audio/test_audio_module.cpp)
+    target_link_libraries(mge_audio_tests PRIVATE mge_audio doctest_header)
+    mge_set_warnings(mge_audio_tests)
+    doctest_discover_tests(mge_audio_tests TEST_PREFIX "audio: "
+        PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy;ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
 
     # GPU (SDL3 GPU, Vulkan). Sin ventana: dibujan en texturas. Sin GPU se saltean (MGE_REQUIRE_GPU=1 → fallan).
     # Con sanitizers se apaga LeakSanitizer: los drivers de Mesa pierden memoria que LSan no puede atribuir.
