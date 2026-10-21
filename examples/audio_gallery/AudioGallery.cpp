@@ -118,6 +118,18 @@ namespace {
                 return false;
             });
 
+            // Efectos sfxr (#48): los equivalentes de assets/sounds y algunos al azar
+            const std::vector<std::pair<std::string, mge::SfxParams>> effects = {
+                {"jump", mge::sfx::jump()},           {"coin", mge::sfx::coin()},
+                {"hurt", mge::sfx::hurt()},           {"explosion", mge::sfx::explosion()},
+                {"power_up", mge::sfx::powerUp()},    {"click", mge::sfx::click()},
+                {"random_1", mge::sfx::randomize(1)}, {"random_2", mge::sfx::randomize(2)},
+                {"random_3", mge::sfx::randomize(3)}};
+            for (const auto& effect : effects) {
+                const mge::Sample sample = mge::renderSfx(effect.second, kRate);
+                writeMono("sfx_" + effect.first, sample.data);
+            }
+
             MGE_LOG_INFO("Gallery", m_written, " sonidos (.wav + espectrograma .png) en ", m_outDir.string());
             requestStop();
             return true;
@@ -137,19 +149,35 @@ namespace {
                 const std::vector<float> part = mge::renderOffline(mixer, block);
                 stereo.insert(stereo.end(), part.begin(), part.end());
             }
-            const std::vector<float> left = mge::analysis::channel(stereo, 2, 0);
-            if (mge::analysis::peak(left) < 0.01f) {
-                MGE_LOG_ERROR("Gallery", name, ": salió mudo");
-                setExitCode(1);
-                return;
-            }
+            if (!check(name, mge::analysis::channel(stereo, 2, 0))) return;
             if (!mge::writeWav(m_outDir / (name + ".wav"), stereo, 2, kRate) ||
-                !mge::writePng(spectrogram(left), m_outDir / (name + ".png"))) {
+                !mge::writePng(spectrogram(mge::analysis::channel(stereo, 2, 0)),
+                               m_outDir / (name + ".png"))) {
                 MGE_LOG_ERROR("Gallery", "No se pudo escribir ", name);
                 setExitCode(1);
                 return;
             }
             m_written++;
+        }
+
+        void writeMono(const std::string& name, const std::vector<float>& mono) {
+            if (!check(name, mono)) return;
+            if (!mge::writeWav(m_outDir / (name + ".wav"), mono, 1, kRate) ||
+                !mge::writePng(spectrogram(mono), m_outDir / (name + ".png"))) {
+                MGE_LOG_ERROR("Gallery", "No se pudo escribir ", name);
+                setExitCode(1);
+                return;
+            }
+            m_written++;
+        }
+
+        bool check(const std::string& name, const std::vector<float>& left) {
+            if (mge::analysis::peak(left) < 0.01f) {
+                MGE_LOG_ERROR("Gallery", name, ": salió mudo");
+                setExitCode(1);
+                return false;
+            }
+            return true;
         }
 
         std::filesystem::path m_outDir;

@@ -111,7 +111,7 @@ namespace platformer {
                 "Nivel " + std::to_string(levelNumber) + " (" + level.biome + ")   monedas " +
                     std::to_string(game.coins()) + "   caidas " + std::to_string(game.deaths()),
                 {1.0f, 1.0f, 1.0f, 1.0f});
-        ui.text({8.0f, view.y - 14.0f}, "A/D mover  Espacio saltar  1-4 nivel  F1 rendimiento",
+        ui.text({8.0f, view.y - 14.0f}, "A/D mover  Espacio saltar  1-4 nivel  S sonidos  F1 rendimiento",
                 {0.0f, 0.0f, 0.0f, 0.7f});
     }
 }

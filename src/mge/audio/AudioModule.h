@@ -2,6 +2,7 @@
 
 #include <mge/core/Module.h>
 #include <mge/synth/Mixer.h>
+#include <mge/synth/Sfx.h>
 
 #include <filesystem>
 #include <vector>
@@ -35,6 +36,10 @@ namespace mge {
         // WAV → Sample a la frecuencia del mezclador (relativo → mge::assetPath). kInvalidSample si falla
         SampleId loadWav(const std::filesystem::path& path);
         SampleId addSample(Sample sample) { return m_mixer.addSample(std::move(sample)); }
+        // Genera un efecto sfxr (#48) a la frecuencia del mezclador y lo registra: mge::sfx::jump(), coin()…
+        SampleId addSfx(const SfxParams& params, std::uint64_t seed = 0) {
+            return m_mixer.addSample(renderSfx(params, m_mixer.sampleRate(), seed));
+        }
 
         bool play(SampleId sample, float gain = 1.0f, float pan = 0.0f) {
             return m_mixer.playSample(sample, gain, pan);

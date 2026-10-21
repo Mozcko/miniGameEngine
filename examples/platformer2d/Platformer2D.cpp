@@ -1,7 +1,8 @@
 // Plataformero 2D mínimo (#45): carga los niveles ASCII de assets/levels, los dibuja con Renderer2D
 // (rectángulos de colores, sin texturas) y suena con los WAV de assets/sounds. Sirve para probar que el
 // camino 2D (UI en píxeles, input, audio, assets) sigue funcionando; no pretende ser un juego completo.
-// A/D o flechas: mover, Espacio/W/arriba: saltar, 1-4: nivel, F1: rendimiento, Esc: salir.
+// A/D o flechas: mover, Espacio/W/arriba: saltar, 1-4: nivel, S: sonidos generados/WAV, F1: rendimiento,
+// Esc: salir.
 #include <examples/platformer2d/PlatformerView.h>
 #include <mge/mge.h>
 
@@ -9,6 +10,7 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include <cstdlib>
 #include <string>
 
 namespace {
@@ -29,11 +31,14 @@ namespace {
         bool onInit() override {
             m_platform = getModule<mge::PlatformModule>();
             m_audio = getModule<mge::AudioModule>();
-            // Los WAV de assets/sounds, ya convertidos al formato del mezclador (#46)
-            m_sounds.jump = m_audio->loadWav("sounds/jump.wav");
-            m_sounds.coin = m_audio->loadWav("sounds/coin.wav");
-            m_sounds.hurt = m_audio->loadWav("sounds/hurt.wav");
-            m_sounds.powerUp = m_audio->loadWav("sounds/power_up.wav");
+            // Dos juegos de sonidos: generados por código (#48, por defecto) y los WAV de assets/sounds
+            // (#46). S alterna; PLATFORMER_SOUNDS=wav arranca con los WAV
+            m_synthSounds = {m_audio->addSfx(mge::sfx::jump()), m_audio->addSfx(mge::sfx::coin()),
+                             m_audio->addSfx(mge::sfx::hurt()), m_audio->addSfx(mge::sfx::powerUp())};
+            m_wavSounds = {m_audio->loadWav("sounds/jump.wav"), m_audio->loadWav("sounds/coin.wav"),
+                           m_audio->loadWav("sounds/hurt.wav"), m_audio->loadWav("sounds/power_up.wav")};
+            const char* soundMode = std::getenv("PLATFORMER_SOUNDS");
+            m_useWav = soundMode && std::string(soundMode) == "wav";
             m_gpu = getModule<mge::GpuModule>();
             mge::ActionMap& actions = m_platform->actions();
             actions.bindAxis("Move", mge::Key::D, mge::Key::A);
@@ -42,6 +47,7 @@ namespace {
             actions.bind("Jump", mge::Key::W);
             actions.bind("Jump", mge::Key::Up);
             actions.bind("Overlay", mge::Key::F1);
+            actions.bind("ToggleSounds", mge::Key::S);
             actions.bind("Quit", mge::Key::Escape);
             const std::array<mge::Key, kLevelCount> levelKeys = {mge::Key::Num1, mge::Key::Num2,
                                                                  mge::Key::Num3, mge::Key::Num4};
@@ -52,7 +58,7 @@ namespace {
             m_overlay.setVisible(false);
             if (!loadLevel(0)) return false;
             MGE_LOG_INFO("Platformer",
-                         "A/D: mover, Espacio: saltar, 1-4: nivel, F1: rendimiento, Esc: salir");
+                         "A/D: mover, Espacio: saltar, 1-4: nivel, S: sonidos, F1: rendimiento, Esc: salir");
             return true;
         }
 
@@ -61,6 +67,11 @@ namespace {
         void onUpdate(float /*dt*/) override {
             if (m_platform->wasActionPressed("Quit")) requestStop();
             if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+            if (m_platform->wasActionPressed("ToggleSounds")) {
+                m_useWav = !m_useWav;
+                MGE_LOG_INFO("Platformer",
+                             m_useWav ? "Sonidos: WAV (assets/sounds)" : "Sonidos: generados por código");
+            }
             for (int i = 0; i < kLevelCount; i++)
                 if (m_platform->wasActionPressed("Level" + std::to_string(i + 1))) loadLevel(i);
         }
@@ -70,11 +81,12 @@ namespace {
             input.move = m_platform->axis("Move");
             input.jump = m_platform->isActionDown("Jump");
             const platformer::StepEvents events = m_game->step(input, dt);
-            if (events.jumped) m_audio->play(m_sounds.jump, 0.5f);
-            if (events.coins > 0) m_audio->play(m_sounds.coin);
-            if (events.died) m_audio->play(m_sounds.hurt);
+            const Sounds& sounds = m_useWav ? m_wavSounds : m_synthSounds;
+            if (events.jumped) m_audio->play(sounds.jump, 0.5f);
+            if (events.coins > 0) m_audio->play(sounds.coin);
+            if (events.died) m_audio->play(sounds.hurt);
             if (events.finished) {
-                m_audio->play(m_sounds.powerUp);
+                m_audio->play(sounds.powerUp);
                 loadLevel((m_levelIndex + 1) % kLevelCount);
             }
         }
@@ -120,7 +132,10 @@ namespace {
             mge::SampleId coin = mge::kInvalidSample;
             mge::SampleId hurt = mge::kInvalidSample;
             mge::SampleId powerUp = mge::kInvalidSample;
-        } m_sounds;
+        };
+        Sounds m_synthSounds;
+        Sounds m_wavSounds;
+        bool m_useWav = false;
         mge::GpuModule* m_gpu = nullptr;
         std::unique_ptr<mge::Renderer2D> m_ui;
         mge::DebugOverlay m_overlay;
