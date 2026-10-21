@@ -15,11 +15,12 @@ SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.m
 | `platform/` | `mge_platform` | core, SDL3 | `PlatformModule` (window, SDL→core input), `Window`, `SdlInput` | [platform/README.md](platform/README.md) |
 | `gpu/` | `mge_gpu` | core, procgen, platform, SDL3 | `GpuModule` (device + swapchain), move‑only GPU handles, `CommandBuffer`/passes, `uploadMesh` (SDL3 GPU, Vulkan) | [gpu/README.md](gpu/README.md) |
 | `graphics/` | `mge_graphics` | gpu, procgen | `Texture2D` (file or pixels), `MeshRenderer` (texture × vertex colour, depth, opaque/transparent), embedded shaders | [graphics/README.md](graphics/README.md) |
-| `audio/` | `mge_audio` | core, SDL3 | `AudioModule`, `AudioManager` (WAV SFX) | [audio/README.md](audio/README.md) |
+| `synth/` | `mge_synth` | core (headless) | `Mixer` (lock‑free commands, voices, samples, master volume), tones | [synth/README.md](synth/README.md) |
+| `audio/` | `mge_audio` | core, synth, SDL3 | `AudioModule`: the mixer on the audio device, WAV loading | [audio/README.md](audio/README.md) |
 | `app/` | `mge_main` | core | `Main.cpp` (`main()`) | [app/README.md](app/README.md) |
 
 
-`-DMGE_BUILD_MODULES=OFF` builds only the headless modules (`mge_core`, `mge_procgen`, `mge_voxel`) and their tests, with no SDL or GPU needed.
+`-DMGE_BUILD_MODULES=OFF` builds only the headless modules (`mge_core`, `mge_procgen`, `mge_voxel`, `mge_synth`) and their tests, with no SDL or GPU needed.
 
 ## Writing a game on the engine (current API)
 

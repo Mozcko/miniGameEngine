@@ -14,6 +14,7 @@
 #include <mge/core/Log.h>
 #include <mge/core/Module.h>
 #include <mge/core/Random.h>
+#include <mge/core/SpscQueue.h>
 #include <mge/core/Time.h>
 #include <mge/core/ecs/Camera.h>
 #include <mge/core/ecs/Entity.h>
@@ -41,6 +42,12 @@
 #include <mge/voxel/ChunkMesher.h>
 #include <mge/voxel/ChunkStreamer.h>
 #include <mge/voxel/VoxelWorld.h>
+#endif
+
+// --- Audio procedural (headless): mezclador, síntesis ---
+#ifdef MGE_HAS_SYNTH
+#include <mge/synth/Mixer.h>
+#include <mge/synth/Sample.h>
 #endif
 
 // --- Plataforma: ventana e input de SDL ---
@@ -76,6 +83,5 @@
 
 // --- Audio ---
 #ifdef MGE_HAS_AUDIO
-#include <mge/audio/AudioManager.h>
 #include <mge/audio/AudioModule.h>
 #endif

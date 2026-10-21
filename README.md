@@ -78,7 +78,8 @@ miniGameEngine/
 │       ├── platform/       mge_platform: PlatformModule, SDL window, SDL→input
 │       ├── gpu/            mge_gpu: GpuModule + RAII wrappers over SDL3 GPU (Vulkan)
 │       ├── graphics/       mge_graphics: Texture2D, MeshRenderer (the renderer on SDL GPU)
-│       ├── audio/          mge_audio: WAV SFX on SDL3 audio streams
+│       ├── synth/          mge_synth: headless audio (mixer, synthesis)
+│       ├── audio/          mge_audio: AudioModule, the mixer on SDL3 audio
 │       └── app/            mge_main: main() (core-only)
 ├── game/                   The game (voxel sandbox)  → game/README.md
 ├── bench/                  Benchmarks (ecs_bench)
@@ -117,7 +118,8 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [src/mge/gpu/README.md](src/mge/gpu/README.md) | `mge_gpu`: SDL3 GPU device, swapchain, RAII handles, mesh upload |
 | [src/mge/graphics/README.md](src/mge/graphics/README.md) | `mge_graphics`: textures and mesh rendering on SDL GPU |
 | [src/mge/platform/README.md](src/mge/platform/README.md) | `mge_platform`: PlatformModule, Window, SDL input translation |
-| [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioManager |
+| [src/mge/synth/README.md](src/mge/synth/README.md) | `mge_synth`: mixer and procedural audio (headless) |
+| [src/mge/audio/README.md](src/mge/audio/README.md) | `mge_audio`: AudioModule (device, WAV loading) |
 | [src/mge/app/README.md](src/mge/app/README.md) | `mge_main`: main() |
 | [examples/README.md](examples/README.md) | Example programs (headless smoke test) |
 | [game/README.md](game/README.md) | SandboxApp, SandboxBlocks, SandboxTerrain (voxel world) |
