@@ -115,11 +115,11 @@ _UI and text without font files._ Embedded bitmap font, immediate-mode pixel-spa
 
 | # | Issue | Labels |
 |---|---|---|
-| [#41](https://github.com/Mozcko/miniGameEngine/issues/41) | Embedded bitmap font (default) + optional TTF loading | enhancement, priority:high, size:M |
-| [#42](https://github.com/Mozcko/miniGameEngine/issues/42) | Immediate-mode 2D batch renderer in pixel space | enhancement, priority:high, size:M |
-| [#43](https://github.com/Mozcko/miniGameEngine/issues/43) | Debug overlay: FPS, frame-time graph, counters | enhancement, priority:medium, size:S |
-| [#44](https://github.com/Mozcko/miniGameEngine/issues/44) | Bug: HUD labels invisible, upside down and wrongly colored | bug, priority:medium, size:S |
-| [#45](https://github.com/Mozcko/miniGameEngine/issues/45) | Remove legacy Sprite and Animation | refactor, priority:low, size:S |
+| [#41](https://github.com/Mozcko/miniGameEngine/issues/41) | ✅ Embedded bitmap font (default) + optional TTF loading | enhancement, priority:high, size:M |
+| [#42](https://github.com/Mozcko/miniGameEngine/issues/42) | ✅ Immediate-mode 2D batch renderer in pixel space | enhancement, priority:high, size:M |
+| [#43](https://github.com/Mozcko/miniGameEngine/issues/43) | ✅ Debug overlay: FPS, frame-time graph, counters | enhancement, priority:medium, size:S |
+| [#44](https://github.com/Mozcko/miniGameEngine/issues/44) | ✅ Bug: HUD labels invisible, upside down and wrongly colored | bug, priority:medium, size:S |
+| [#45](https://github.com/Mozcko/miniGameEngine/issues/45) | ✅ Remove legacy Sprite and Animation (2D levels/sounds kept as test data: `examples/platformer2d`) | refactor, priority:low, size:S |
 
 ### M5 · Procedural Audio — [epic #73](https://github.com/Mozcko/miniGameEngine/issues/73)
 
@@ -186,4 +186,4 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27) and ✅ M3 (#28–#34, #37–#40; #35/#36 moved to M8) are done, plus #56/#57 from M7 (job system, chunk streaming). Next: M4 (procedural UI and text). Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40; #35/#36 moved to M8) and ✅ M4 (#41–#45) are done, plus #56/#57 from M7 (job system, chunk streaming). Next: M5 (procedural audio) or M6 (physics and gameplay). Each issue's **Depends on** section on GitHub lists its prerequisites.
