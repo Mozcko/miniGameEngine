@@ -14,6 +14,7 @@ core‑only and ThreadSanitizer CI jobs, so everything here is tested without a 
 | `Delay.h/.cpp` | `DelaySettings`, `Delay` (stereo echo, buffer reserved up front) |
 | `Instrument.h` | `Instrument`: how a note sounds (wave, ADSR, filter, gain, pan, vibrato, pitch slide, delay send) |
 | `Mixer.h/.cpp` | `Mixer`, `ToneDesc`, `AudioBus`, `VoiceHandle`, `MixerStats`, `panGains`, `softClip` |
+| `Offline.h/.cpp` | `renderOffline`, `writeWav` (16‑bit PCM, no deps), `analysis::` (rms, peak, frequency, tone amplitude, spectral centroid, onsets) |
 
 ## Format
 Float32 in [−1, 1], stereo interleaved (L, R, L, R…), 48 kHz by default (a `Mixer` constructor
@@ -76,6 +77,37 @@ lead.vibratoDepth = 0.15f;                 // semitones
 audio->playNote(lead, mge::midiToHz(72), 0.8f, 0.3f);
 ```
 
+## Offline rendering and analysis (#50)
+Audio can be produced and checked without a device:
+- `renderOffline(mixer, frames | seconds)` runs `render` on the calling thread and returns the
+  interleaved stereo buffer.
+- `writeWav(path, samples, channels, rate)` writes 16‑bit PCM, with no dependencies (like
+  `writePng`).
+
+**`mge::analysis::`** measures mono signals (`channel(buffer, 2, 0)` extracts one):
+
+| Function | Measures |
+|----------|----------|
+| `rms`, `peak` | Level |
+| `zeroCrossingHz` | Pitch of a signal with one dominant tone |
+| `toneAmplitude(hz)` | Amplitude of one frequency (Goertzel) |
+| `spectralCentroid` | "Brightness": Hann‑windowed DFT over 2 048 samples |
+| `onsets(threshold)` | Note starts (5 ms RMS windows crossing the threshold) |
+| `lastAbove` | Where the sound ends |
+
+**Golden values, not golden files:**
+- Tests compare these *features*, with tolerances, so they hold across GCC/Clang and optimisation
+  levels.
+- Exact output is only checked for determinism: the same commands give byte‑identical buffers.
+
+**`examples/audio_gallery`** (headless, always built, smoke test) writes
+`<build>/gallery/audio/*.wav` plus a spectrogram `.png` of each. The spectrogram shows time on x,
+0–8 kHz on y, and −60..0 dB as brightness. It covers:
+- every waveform (an arpeggio);
+- three ADSR shapes;
+- a resonant filter sweep;
+- echo + vibrato + a falling pitch slide.
+
 ## Tests
 `tests/synth/test_mixer.cpp`:
 - tone frequency (zero crossings), amplitude, duration and the fade‑in;
@@ -90,6 +122,14 @@ audio->playNote(lead, mge::midiToHz(72), 0.8f, 0.3f);
 - ADSR timings; filter responses and stability at full resonance; echo timing and feedback;
 - notes ending after duration + release; held notes, release and stop; bus volume;
 - stealing a releasing voice first; the echo send; pitch slide; `softClip`.
+
+`tests/synth/test_offline.cpp` (#50):
+- `renderOffline` size and determinism;
+- `writeWav` header and sample values, including clipping;
+- per waveform: frequency, tone amplitude, centroid order sine < triangle < square < saw < noise;
+  the sine's exact level; the square's 1/3 third harmonic and no even harmonics;
+- the envelope over time and the note's end; a lower low‑pass cutoff gives a darker sound;
+- onsets of four notes.
 
 `tests/synth/test_no_alloc.cpp` (its own program, `mge_synth_alloc_tests`; not built with sanitizers,
 which replace `operator new` themselves) replaces global `operator new` and checks that

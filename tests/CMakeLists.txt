@@ -56,6 +56,7 @@ add_executable(mge_synth_tests
     test_main.cpp
     synth/test_mixer.cpp
     synth/test_synth.cpp
+    synth/test_offline.cpp
 )
 target_link_libraries(mge_synth_tests PRIVATE mge_synth doctest_header)
 mge_set_warnings(mge_synth_tests)
