@@ -86,7 +86,7 @@ TEST_CASE("Mixer: un sample suena una vez, entero, y se libera la voz") {
     // Mono al centro con ganancia 1 = el sample tal cual en los dos canales
     CHECK(out[500 * 2] == doctest::Approx(0.5f).epsilon(0.001));
     CHECK(out[500 * 2 + 1] == doctest::Approx(0.5f).epsilon(0.001));
-    CHECK(out[999 * 2] == doctest::Approx(0.999f).epsilon(0.001));
+    CHECK(out[700 * 2] == doctest::Approx(0.7f).epsilon(0.001)); // Debajo de la saturación suave (0.8)
     CHECK(out[1000 * 2] == doctest::Approx(0.0f));
     CHECK(mixer.stats().activeVoices == 0);
 }

@@ -55,10 +55,20 @@ doctest_discover_tests(mge_procgen_tests TEST_PREFIX "procgen: ")
 add_executable(mge_synth_tests
     test_main.cpp
     synth/test_mixer.cpp
+    synth/test_synth.cpp
 )
 target_link_libraries(mge_synth_tests PRIVATE mge_synth doctest_header)
 mge_set_warnings(mge_synth_tests)
 doctest_discover_tests(mge_synth_tests TEST_PREFIX "synth: ")
+
+# "El hilo de audio no reserva memoria": reemplaza operator new, así que va en su propio programa y no se
+# compila con sanitizers (ASan y TSan ya reemplazan new/delete)
+if(NOT MGE_SANITIZERS AND NOT MGE_TSAN)
+    add_executable(mge_synth_alloc_tests test_main.cpp synth/test_no_alloc.cpp)
+    target_link_libraries(mge_synth_alloc_tests PRIVATE mge_synth doctest_header)
+    mge_set_warnings(mge_synth_alloc_tests)
+    doctest_discover_tests(mge_synth_alloc_tests TEST_PREFIX "synth: ")
+endif()
 
 add_executable(mge_voxel_tests
     test_main.cpp

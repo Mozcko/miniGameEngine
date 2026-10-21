@@ -8,7 +8,12 @@ core‑only and ThreadSanitizer CI jobs, so everything here is tested without a 
 | File | Contents |
 |------|----------|
 | `Sample.h` | `Sample` (float frames, mono or stereo interleaved), `SampleId`, `kAudioChannels` = 2, `kDefaultSampleRate` = 48 000 |
-| `Mixer.h/.cpp` | `Mixer`, `ToneDesc`, `MixerStats`, `panGains` |
+| `Oscillator.h/.cpp` | `Waveform` (sine, square with pulse width, saw, triangle, noise, 8‑bit loop noise), `Oscillator`, `midiToHz` |
+| `Envelope.h/.cpp` | `Adsr`, `Envelope` (linear ADSR) |
+| `Filter.h/.cpp` | `FilterMode`, `Filter` (state‑variable low/high/band‑pass with resonance) |
+| `Delay.h/.cpp` | `DelaySettings`, `Delay` (stereo echo, buffer reserved up front) |
+| `Instrument.h` | `Instrument`: how a note sounds (wave, ADSR, filter, gain, pan, vibrato, pitch slide, delay send) |
+| `Mixer.h/.cpp` | `Mixer`, `ToneDesc`, `AudioBus`, `VoiceHandle`, `MixerStats`, `panGains`, `softClip` |
 
 ## Format
 Float32 in [−1, 1], stereo interleaved (L, R, L, R…), 48 kHz by default (a `Mixer` constructor
@@ -36,6 +41,41 @@ argument). Samples must already be at the mixer's rate (`AudioModule::loadWav` c
     centre).
 - **One game thread** may call the game‑side API (single producer).
 
+## Synthesizer (#47)
+Every building block runs per sample with **no allocations**, so it can live on the audio thread.
+
+| Block | Notes |
+|-------|-------|
+| `Oscillator` | Phase accumulator (`setFrequency(hz, rate)`, `next()` in [−1, 1]). Square and saw use **PolyBLEP** (less aliasing). Noise is "pitched" like sfxr: a new value 32 times per cycle; `NoiseLoop` is the NES short‑mode LFSR (periodic, metallic). `reset(seed)` makes noise deterministic |
+| `Envelope` | Linear attack → decay → sustain until `noteOff()` → release. `sustain = 0` makes it percussive (it finishes by itself) |
+| `Filter` | TPT state‑variable filter, 12 dB/oct; cutoff clamped to [10 Hz, 0.45 × rate], resonance 0..1 (Q 0.5–20). Stable at any setting |
+| `Delay` | Stereo echo; `time`, `feedback` (≤ 0.95) and `mix`. The mixer has one, fed by each note's `delaySend`; `mixer.setDelay(settings)` |
+
+**Notes:**
+- `playNote(instrument, hz, velocity, duration, bus)` returns a `VoiceHandle`.
+- `duration > 0`: the note releases by itself after that many seconds, then plays its release.
+- `duration <= 0`: the note holds until `releaseNote(handle)`. `stopNote(handle)` cuts it at once.
+- MIDI notes: `midiToHz(60)` = middle C.
+
+**Voice stealing:** with all 32 voices busy, a new sound takes the quietest voice that is already
+releasing, otherwise the oldest.
+
+**Buses:**
+- `AudioBus::Effects` (tones, notes and samples by default) and `AudioBus::Music`, each with
+  `setBusVolume`.
+- After the master gain, `softClip` keeps the output linear up to 0.8 and bends smoothly towards
+  ±1 instead of hard clipping.
+
+```cpp
+mge::Instrument lead;
+lead.wave = mge::Waveform::Square;
+lead.envelope = {0.005f, 0.08f, 0.6f, 0.15f};
+lead.filter = mge::FilterMode::LowPass;
+lead.cutoff = 2500.0f;
+lead.vibratoDepth = 0.15f;                 // semitones
+audio->playNote(lead, mge::midiToHz(72), 0.8f, 0.3f);
+```
+
 ## Tests
 `tests/synth/test_mixer.cpp`:
 - tone frequency (zero crossings), amplitude, duration and the fade‑in;
@@ -43,5 +83,16 @@ argument). Samples must already be at the mixer's rate (`AudioModule::loadWav` c
 - a sample plays once, exactly, across several blocks;
 - `stopAll`; queue overflow and voice stealing;
 - a game thread enqueuing while another thread renders (also under TSan).
+
+`tests/synth/test_synth.cpp` (#47):
+- every waveform's frequency, range and known RMS; pulse width; deterministic, centred noise; the
+  8‑bit loop's period;
+- ADSR timings; filter responses and stability at full resonance; echo timing and feedback;
+- notes ending after duration + release; held notes, release and stop; bus volume;
+- stealing a releasing voice first; the echo send; pitch slide; `softClip`.
+
+`tests/synth/test_no_alloc.cpp` (its own program, `mge_synth_alloc_tests`; not built with sanitizers,
+which replace `operator new` themselves) replaces global `operator new` and checks that
+`Mixer::render` allocates nothing with notes, samples, tones, the echo and voice stealing.
 
 `tests/core/test_spsc_queue.cpp` covers the queue, including a 200 000‑item two‑thread stress test.

@@ -40,6 +40,15 @@ namespace mge {
             return m_mixer.playSample(sample, gain, pan);
         }
         bool playTone(const ToneDesc& tone) { return m_mixer.playTone(tone); }
+        // Una nota de un instrumento sintetizado (#47); ver Mixer::playNote
+        VoiceHandle playNote(const Instrument& instrument, float frequency, float velocity = 1.0f,
+                             float duration = 0.25f, AudioBus bus = AudioBus::Effects) {
+            return m_mixer.playNote(instrument, frequency, velocity, duration, bus);
+        }
+        bool releaseNote(VoiceHandle note) { return m_mixer.releaseNote(note); }
+        bool stopNote(VoiceHandle note) { return m_mixer.stopNote(note); }
+        bool setDelay(const DelaySettings& settings) { return m_mixer.setDelay(settings); }
+        void setBusVolume(AudioBus bus, float volume) { m_mixer.setBusVolume(bus, volume); }
         bool stopAll() { return m_mixer.stopAll(); }
 
         void setMasterVolume(float volume) { m_mixer.setMasterVolume(volume); }

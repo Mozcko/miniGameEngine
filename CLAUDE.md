@@ -102,6 +102,8 @@ so it shows CPU vs swapchain wait. Sandbox: F1 (on in Debug, off in Release; `SA
 `mge_synth` (headless, always built): `Mixer` — game thread enqueues POD commands in a lock‑free `SpscQueue` (`playTone`,
 `playSample`, `stopAll`; volume/mute are atomics); the audio thread runs `render(out, frames)`: **no allocations, locks or logging**,
 32 preallocated voices (oldest stolen), immutable samples in a fixed bank (never freed while playing). Float32 stereo 48 kHz.
+Synth (#47): `Instrument` (wave, `Adsr`, `Filter`, vibrato, pitch slide, delay send) → `playNote(instrument, hz, velocity, duration, bus)` →
+`VoiceHandle` (`releaseNote`/`stopNote`); buses `Effects`/`Music`; shared `Delay`; `softClip` on the master; `midiToHz`.
 `AudioModule` (mge_audio): SDL3 device stream + callback; `loadWav` (→ `assetPath`, converted to float32), `play(id, gain, pan)`,
 `playTone`, `setMasterVolume`, `setMuted` (`MGE_MUTE=1`). No device / `SDL_AUDIODRIVER=dummy` → silent, never an error.
 
