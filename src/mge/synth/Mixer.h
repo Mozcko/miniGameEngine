@@ -3,6 +3,7 @@
 #include <mge/core/SpscQueue.h>
 #include <mge/synth/Delay.h>
 #include <mge/synth/Instrument.h>
+#include <mge/synth/Music.h>
 #include <mge/synth/Sample.h>
 
 #include <array>
@@ -10,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace mge {
 
@@ -34,6 +36,9 @@ namespace mge {
         explicit operator bool() const { return id != 0; }
     };
 
+    using SongId = std::uint32_t;
+    constexpr SongId kInvalidSong = 0xFFFFFFFFu;
+
     struct MixerStats {
         std::uint32_t activeVoices = 0;
         std::uint64_t droppedCommands = 0; // La cola estaba llena
@@ -54,6 +59,7 @@ namespace mge {
         static constexpr std::size_t kCommandCapacity = 256;
         static constexpr std::size_t kBlockFrames = 256; // render() trabaja en tramos de este tamaño
         static constexpr float kMaxDelaySeconds = 2.0f;
+        static constexpr std::size_t kMaxSongs = 16;
 
         explicit Mixer(int sampleRate = kDefaultSampleRate);
         ~Mixer();
@@ -77,8 +83,16 @@ namespace mge {
                              float duration = 0.25f, AudioBus bus = AudioBus::Effects);
         bool releaseNote(VoiceHandle note); // Pasa a release (se apaga con su envolvente)
         bool stopNote(VoiceHandle note);    // Corta ya
-        bool stopAll();
+        bool stopAll();                     // Voces y música
         bool setDelay(const DelaySettings& settings);
+
+        // Música (#49): registrar una canción (se compila acá; inválida → kInvalidSong) y tocarla en loop en
+        // el grupo Music. Cambiar de canción con fadeSeconds > 0 hace un fundido cruzado
+        SongId addSong(const Song& song);
+        bool playSong(SongId song, float fadeSeconds = 0.0f);
+        bool stopMusic(float fadeSeconds = 0.0f);
+        // Paso de la canción que está sonando (-1 = ninguna). Para tests y herramientas
+        int musicStep() const { return m_musicStep.load(std::memory_order_relaxed); }
 
         // Volumen general y por grupo 0..1 (el general se aplica suavizado, sin chasquidos) y silencio
         void setMasterVolume(float volume);
@@ -104,7 +118,9 @@ namespace mge {
             Release,
             Stop,
             StopAll,
-            SetDelay
+            SetDelay,
+            PlaySong,
+            StopMusic
         };
         struct Command {
             CommandType type = CommandType::StopAll;
@@ -112,12 +128,31 @@ namespace mge {
             ToneDesc tone;
             Instrument instrument;
             DelaySettings delay;
-            SampleId sample = kInvalidSample;
+            SampleId sample = kInvalidSample; // O la canción (PlaySong)
             std::uint32_t noteId = 0;
             float frequency = 0.0f;
             float gain = 1.0f; // Ganancia del sample o velocity de la nota
             float pan = 0.0f;
-            float duration = 0.0f;
+            float duration = 0.0f; // O el fundido (PlaySong/StopMusic)
+        };
+
+        // Canción lista para el hilo de audio: notas en orden de tiempo
+        struct CompiledSong {
+            std::vector<Song::Event> events;
+            std::vector<Instrument> instruments;
+            int lengthSteps = 0;
+            int loopStart = 0;
+            double framesPerStep = 0.0;
+        };
+        // Toca una canción; hay dos para el fundido cruzado
+        struct MusicPlayer {
+            const CompiledSong* song = nullptr;
+            double position = 0.0; // Frames desde el paso 0
+            std::size_t next = 0;  // Próxima nota
+            float gain = 0.0f;
+            float target = 0.0f;
+            float fadePerFrame = 0.0f;
+            bool active = false;
         };
 
         enum class VoiceKind : std::uint8_t {
@@ -131,6 +166,7 @@ namespace mge {
             AudioBus bus = AudioBus::Effects;
             std::uint64_t startOrder = 0; // Para robar la más vieja
             std::uint32_t noteId = 0;
+            int player = -1; // Nota de música: qué reproductor la tocó (su volumen de fundido)
             float gainLeft = 0.0f;
             float gainRight = 0.0f;
             std::size_t frame = 0;
@@ -155,7 +191,13 @@ namespace mge {
         bool enqueue(const Command& command);
         void applyCommands();
         Voice& allocateVoice();
-        void startNote(const Command& command);
+        void startVoice(const Instrument& instrument, float frequency, float velocity, float duration,
+                        AudioBus bus, std::uint32_t noteId, int player);
+        // Música: frames hasta la próxima nota (o el loop), disparar las que tocan, avanzar y fundir
+        std::size_t framesUntilMusicEvent() const;
+        void triggerMusic();
+        void advanceMusic(std::size_t frames);
+        void stopPlayer(MusicPlayer& player, float fadeSeconds);
         // Suma la voz en out (frames ≤ kBlockFrames) y su envío al eco en m_send
         void mixVoice(Voice& voice, float* out, std::size_t frames, float busGain);
         void renderBlock(float* out, std::size_t frames);
@@ -168,6 +210,8 @@ namespace mge {
         // Banco de samples: tamaño fijo, se escribe en el hilo del juego antes de publicar el id
         std::unique_ptr<Sample[]> m_samples;
         std::atomic<std::size_t> m_sampleCount{0};
+        std::unique_ptr<CompiledSong[]> m_songs; // Igual que los samples: fijo, se publica el id al final
+        std::atomic<std::size_t> m_songCount{0};
 
         // Estado del hilo de audio
         std::unique_ptr<std::array<Voice, kMaxVoices>> m_voices;
@@ -175,6 +219,8 @@ namespace mge {
         float m_currentGain = 1.0f; // Ganancia aplicada (persigue al objetivo de a poco)
         Delay m_delay;
         std::array<float, kBlockFrames * 2> m_send{}; // Lo que va al eco en el bloque actual
+        std::array<MusicPlayer, 2> m_players{};
+        std::atomic<int> m_musicStep{-1};
         std::atomic<std::uint32_t> m_activeVoices{0};
         std::atomic<std::uint64_t> m_stolen{0};
 

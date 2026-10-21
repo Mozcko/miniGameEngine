@@ -25,7 +25,7 @@ void operator delete(void* p, std::size_t) noexcept {
     std::free(p);
 }
 
-TEST_CASE("Mixer::render no reserva memoria (notas, samples, tonos, eco, robo de voces)") {
+TEST_CASE("Mixer::render no reserva memoria (notas, samples, tonos, eco, robo de voces, música)") {
     using namespace mge;
     Mixer mixer(48000);
     Sample s;
@@ -39,11 +39,22 @@ TEST_CASE("Mixer::render no reserva memoria (notas, samples, tonos, eco, robo de
     for (int i = 0; i < 40; i++) mixer.playNote(lead, 200.0f + float(i) * 10.0f, 1.0f, 0.1f);
     mixer.playSample(id);
     mixer.playTone({500.0f, 0.2f});
+    const SongId theme = mixer.addSong(songs::platformerTheme());
+    const SongId ambient = mixer.addSong(songs::sandboxAmbient());
+    mixer.playSong(theme);
     std::vector<float> out(4096 * 2);
 
     gAllocations = 0;
     tCounting = true;
     for (int i = 0; i < 20; i++) mixer.render(out.data(), 4096);
+    tCounting = false;
+    mixer.playSong(theme); // De nuevo desde el principio, y después el fundido a la otra
+    tCounting = true;
+    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: pasa por el loop del tema
+    tCounting = false;
+    mixer.playSong(ambient, 0.5f);
+    tCounting = true;
+    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: pasa por el loop del tema
     tCounting = false;
     CHECK(gAllocations.load() == 0);
 }

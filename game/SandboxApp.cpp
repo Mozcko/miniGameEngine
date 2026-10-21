@@ -43,6 +43,11 @@ public:
 
         // 1. Renderer (SDL3 GPU; los shaders vienen embebidos en el motor)
         m_gpu = getModule<GpuModule>();
+        // Música ambiente generada por código (#49): suave, con eco; N la silencia
+        m_audio = getModule<AudioModule>();
+        m_audio->setDelay({0.45f, 0.4f, 0.35f});
+        m_audio->setBusVolume(AudioBus::Music, kMusicVolume);
+        m_audio->playSong(m_audio->addSong(songs::sandboxAmbient()), 3.0f);
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
         m_debug = std::make_unique<DebugDraw>(m_gpu->device());
@@ -101,8 +106,9 @@ public:
         m_platform->setCursorLocked(true);
 
         // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
-        MGE_LOG_INFO("Sandbox", "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, M: atlas "
-                                "PNG/procedural, P: pausa, F1: rendimiento, F3/F4: depuración, Esc: salir");
+        MGE_LOG_INFO("Sandbox",
+                     "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, M: atlas "
+                     "PNG/procedural, N: música, P: pausa, F1: rendimiento, F3/F4: depuración, Esc: salir");
         return true;
     }
 
@@ -127,6 +133,7 @@ public:
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
         actions.bind("Overlay", Key::F1);
+        actions.bind("ToggleMusic", Key::N);
         actions.bind("DebugDraw", Key::F3);
         actions.bind("FreezeFrustum", Key::F4);
         actions.bind("Quit", Key::Escape);
@@ -143,6 +150,10 @@ public:
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
         if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+        if (m_platform->wasActionPressed("ToggleMusic")) {
+            m_musicOn = !m_musicOn;
+            m_audio->setBusVolume(AudioBus::Music, m_musicOn ? kMusicVolume : 0.0f);
+        }
         if (m_platform->wasActionPressed("DebugDraw")) m_showDebug = !m_showDebug;
         if (m_platform->wasActionPressed("FreezeFrustum")) {
             m_frustumFrozen = !m_frustumFrozen;
@@ -338,7 +349,7 @@ private:
                                              std::to_string(block.z));
         m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
         m_overlay.setCounter("overlay", std::to_string(m_overlayUs) + " us");
-        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  M atlas  P pausa");
+        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  M atlas  N musica  P pausa");
 
         // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
         m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
@@ -415,6 +426,9 @@ private:
 
     PlatformModule* m_platform = nullptr; // Válidos entre onInit y el cierre
     GpuModule* m_gpu = nullptr;
+    AudioModule* m_audio = nullptr;
+    static constexpr float kMusicVolume = 0.7f;
+    bool m_musicOn = true; // N
 
     static mge::ApplicationConfig makeConfig() {
         mge::ApplicationConfig config;

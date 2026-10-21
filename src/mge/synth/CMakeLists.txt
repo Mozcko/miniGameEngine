@@ -10,6 +10,7 @@ add_library(mge_synth STATIC
     Mixer.h Mixer.cpp
     Offline.h Offline.cpp
     Sfx.h Sfx.cpp
+    Music.h Music.cpp
 )
 target_link_libraries(mge_synth PUBLIC mge_core)
 mge_set_warnings(mge_synth)

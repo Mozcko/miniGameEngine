@@ -39,6 +39,12 @@ namespace {
                            m_audio->loadWav("sounds/hurt.wav"), m_audio->loadWav("sounds/power_up.wav")};
             const char* soundMode = std::getenv("PLATFORMER_SOUNDS");
             m_useWav = soundMode && std::string(soundMode) == "wav";
+            // Música hecha con el secuenciador (#49), con un poco de eco. Con los WAV no hay música (no hay
+            // MP3)
+            m_audio->setDelay({0.23f, 0.3f, 0.3f});
+            m_theme = m_audio->addSong(mge::songs::platformerTheme());
+            m_audio->setBusVolume(mge::AudioBus::Music, 0.8f);
+            if (!m_useWav) m_audio->playSong(m_theme, 1.0f);
             m_gpu = getModule<mge::GpuModule>();
             mge::ActionMap& actions = m_platform->actions();
             actions.bindAxis("Move", mge::Key::D, mge::Key::A);
@@ -69,6 +75,10 @@ namespace {
             if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
             if (m_platform->wasActionPressed("ToggleSounds")) {
                 m_useWav = !m_useWav;
+                if (m_useWav)
+                    m_audio->stopMusic(0.5f);
+                else
+                    m_audio->playSong(m_theme, 0.5f);
                 MGE_LOG_INFO("Platformer",
                              m_useWav ? "Sonidos: WAV (assets/sounds)" : "Sonidos: generados por código");
             }
@@ -136,6 +146,7 @@ namespace {
         Sounds m_synthSounds;
         Sounds m_wavSounds;
         bool m_useWav = false;
+        mge::SongId m_theme = mge::kInvalidSong;
         mge::GpuModule* m_gpu = nullptr;
         std::unique_ptr<mge::Renderer2D> m_ui;
         mge::DebugOverlay m_overlay;

@@ -130,6 +130,20 @@ namespace {
                 writeMono("sfx_" + effect.first, sample.data);
             }
 
+            // Música (#49): un loop de cada canción de ejemplo, con eco
+            for (const auto& [name, song] : std::vector<std::pair<std::string, mge::Song>>{
+                     {"song_platformer", mge::songs::platformerTheme()},
+                     {"song_sandbox_ambient", mge::songs::sandboxAmbient()}}) {
+                const float loopSeconds = float(song.lengthSteps()) * song.secondsPerStep();
+                const mge::Song copy = song;
+                write(name, loopSeconds + 2.0f, [copy](mge::Mixer& mixer, float, int step) {
+                    if (step > 0) return false;
+                    mixer.setDelay({0.3f, 0.35f, 0.35f});
+                    mixer.playSong(mixer.addSong(copy));
+                    return true;
+                });
+            }
+
             MGE_LOG_INFO("Gallery", m_written, " sonidos (.wav + espectrograma .png) en ", m_outDir.string());
             requestStop();
             return true;

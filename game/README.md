@@ -40,6 +40,7 @@ Include as `#include <game/SandboxTerrain.h>`.
 | `m_queue` | `RenderQueue` | The frame's draw list (three items per visible chunk), sorted before submitting |
 | `m_pngAtlas`, `m_proceduralAtlas`, `m_atlas` | `Texture2D`, `Texture2D`, `Texture2D*` | The PNG atlas and the generated one, each created on first use with a CPU copy for the water/lava animation; `m_atlas` is the one drawn |
 | `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s |
+| `m_audio`, `m_musicOn` | `AudioModule*`, `bool` | Plays `mge::songs::sandboxAmbient()` from `onInit` (3 s fade‑in, echo) on the Music bus at 0.7; N toggles it (#49) |
 | `m_ui`, `m_overlay`, `m_overlayUs` | `Renderer2D`, `DebugOverlay`, `int` | F1 overlay (#43) and what it cost to build, upload and record last frame |
 | `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
@@ -77,6 +78,7 @@ CMake modules: `platform gpu graphics audio`.
 | `Quit` | Esc |
 | `CaptureMouse` | Left mouse button |
 | `ToggleAtlas` | M: switch live between the PNG and the procedural atlas (the other one is created on first use) |
+| `ToggleMusic` | N: mute or restore the ambient music (`AudioBus::Music`) |
 | `Overlay` | F1: performance overlay (FPS, frame‑time graph, CPU vs swapchain wait, draw calls, chunks, jobs, memory, position, atlas, its own cost). On by default in Debug, off in Release |
 | `DebugDraw` | F3: chunk bounds (green = meshed, yellow = data but no mesh yet, red = dirty) and the camera's collision box |
 | `FreezeFrustum` | F4: freeze the culling frustum and draw it; fly out of it to see what gets culled |
