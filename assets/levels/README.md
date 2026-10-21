@@ -1,8 +1,8 @@
 # assets/levels/
 
-ASCII tile maps for a 2D side‑scrolling platformer. **No code in the repository loads or parses
-these files** – they are kept from an earlier 2D phase of the project. The legend below is
-**inferred from the file contents**, not from a parser, so treat it as a best guess.
+ASCII tile maps for a 2D side‑scrolling platformer, kept from the project's earlier 2D phase as
+**test data for the 2D path**. `examples/platformer2d` loads them (`platformer::loadLevel`, #45),
+and `tests/examples/test_platformer.cpp` checks that all four parse.
 
 | File | Header | Width × rows |
 |------|--------|--------------|
@@ -15,21 +15,21 @@ these files** – they are kept from an earlier 2D phase of the project. The leg
 - Line 1: `#BIOME <NAME>` – selects the visual theme for the level.
 - Following lines: one character per tile, top row first; the last two rows are the ground.
 
-## Probable legend
+## Legend (as implemented by `examples/platformer2d/Level.cpp`)
 
-| Char | Likely meaning |
-|------|----------------|
-| `.` | Empty / air |
-| `@` | Player spawn |
-| `?` | Item / question block (coin or power‑up) |
-| `!` | Special pickup or checkpoint |
-| `E` | Enemy spawn |
-| `G` | Ground surface tile (biome‑themed top) |
-| `D` | Dirt / underground tile |
-| `[` `-` `]` | Left end / middle / right end of a bridge or platform over a gap |
-| `1`, `2` | Numbered platforms or pillar markers in the pit section |
-| `~` | Water / liquid (level 2) |
-| `I` | Ice tile (level 4) |
-| `S` / `s` | Snow surface / snow underground (level 4) |
+| Char | Meaning in the loader |
+|------|----------------------|
+| `.` | Empty |
+| `@` | Player spawn (required) |
+| `?` | Coin (collected on touch, `coin.wav`) |
+| `!` | Special pickup (counts as a coin) |
+| `E` | Enemy: drops to the ground below it; touching it sends you back to the spawn |
+| `G` / `D` | Ground surface / dirt below it (solid) |
+| `[` `-` `]` | Bridge over a gap: left end, middle, right end (solid) |
+| `1`, `2` | Pillars in the pit section (solid) |
+| `~` | Water (level 2): not solid; falling in sends you back to the spawn |
+| `I` | Ice (level 4, solid) |
+| `S` / `s` | Snow surface / snow underground (level 4, solid) |
 
-If you implement a loader, document the definitive legend here.
+Any other character is a parse error. Shorter rows are padded with empty cells, and Windows line
+endings are accepted. Reaching the right edge loads the next level.

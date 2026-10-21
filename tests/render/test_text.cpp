@@ -4,6 +4,7 @@
 
 #include <doctest/doctest.h>
 #include <mge/core/Log.h>
+#include <examples/platformer2d/PlatformerView.h>
 #include <mge/graphics/Batch2D.h>
 #include <mge/graphics/DebugOverlay.h>
 #include <mge/graphics/Renderer2D.h>
@@ -377,4 +378,22 @@ TEST_CASE("Render: el texto del HUD se ve en píxeles, derecho, del color pedido
         }
     const std::uint8_t* line = image.pixel(40, 36);
     CHECK(line[0] > 230);
+}
+
+// --- Plataformero 2D (#45): el camino 2D completo (niveles de assets/levels + Renderer2D) ---
+
+TEST_CASE("Render: plataformero 2D, nivel 4 (hielo, nieve, agua, puente) (#45)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    std::string error;
+    auto level = platformer::loadLevel("levels/level4.txt", &error);
+    REQUIRE_MESSAGE(level.has_value(), error);
+    platformer::Platformer game(std::move(*level));
+    // Caminar un poco a la derecha y caer al piso: la cámara se mueve
+    for (int i = 0; i < 90; i++) game.step({0.6f, false}, 1.0f / 60.0f);
+    const mge_test::Image image =
+        drawUi(gpu.device(), 960, 384, 1.0f, [&](Renderer2D& ui) { platformer::drawScene(ui, game, 4); });
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("platformer_level4", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
 }

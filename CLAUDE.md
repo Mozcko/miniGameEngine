@@ -28,7 +28,7 @@ scripts/run.sh               # build + run from anywhere (or ./build/sandbox, or
 ```
 Must build **warning‑free** (`-Wall -Wextra -Wshadow`; CI uses `-Werror` via the `ci` preset). Default build type is Release. CI: GitHub Actions (`.github/workflows/ci.yml`, GCC + Clang, `ci` preset) must be green before merging.
 Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't installed here); `tsan` preset (ThreadSanitizer, clang, headless modules).
-Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames) and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`). CI jobs: gcc, clang, sanitizers, tsan, core-only, lint.
+Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames), `examples/platformer2d` (the 2D path, #45) and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`). CI jobs: gcc, clang, sanitizers, tsan, core-only, lint.
 Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` – new .cpp files need a CMake re‑configure.
 
@@ -161,4 +161,4 @@ and return an error instead. `Window::isValid()`, `GpuDevice::create` (nullptr),
 - Chunks stream through `ChunkStreamer` (#57): load/mesh on worker threads, unload with hysteresis, pooled storage. Frustum culling via `CameraMatrices::frustum` (`Frustum::fromViewProjection`, `DepthRange::ZeroToOne` by default), drawing only.
 - Headless runs: `SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy` (Vulkan through `VK_EXT_headless_surface`).
 - GPU resources (`GpuMesh`, `Texture2D`, pipelines) must be released in `onShutdown`, before `GpuModule` destroys the device.
-- Unused code/assets: AudioManager calls, sounds/, music/, levels/ (leftovers from an earlier 2D platformer).
+- `assets/levels` + `assets/sounds` are kept as 2D test data: `examples/platformer2d` (#45) loads them (`music/` waits for M5). Don't delete them.
