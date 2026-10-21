@@ -105,7 +105,7 @@ if(MGE_BUILD_MODULES)
         render/test_graphics.cpp
         render/test_text.cpp
     )
-    target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world doctest_header)
+    target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world platformer2d_view doctest_header)
     target_compile_definitions(render_tests PRIVATE
         MGE_TEST_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets"
         MGE_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/render/golden"
@@ -133,4 +133,10 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
     mge_set_warnings(game_tests)
     doctest_discover_tests(game_tests TEST_PREFIX "game: ")
+
+    # Plataformero 2D (#45): niveles ASCII y física, sin ventana
+    add_executable(platformer_tests test_main.cpp examples/test_platformer.cpp)
+    target_link_libraries(platformer_tests PRIVATE platformer2d_logic doctest_header)
+    mge_set_warnings(platformer_tests)
+    doctest_discover_tests(platformer_tests TEST_PREFIX "platformer: ")
 endif()

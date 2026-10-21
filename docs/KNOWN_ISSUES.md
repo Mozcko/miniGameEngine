@@ -49,11 +49,10 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 
 - ~~Two namespaces (`Engine` and `MiniGameEngine`) and two naming styles coexist~~ – unified into `mge` with one convention in #10.
 - ~~Two delta‑time sources (`Application::m_DeltaTime` and `Time`)~~ – single app‑owned clock with a fixed timestep since #12.
-- Unused code: `AudioManager` (initialised
-  but nothing is played),
-  `Chunk::getRadius` hard‑coded 14 (actual half‑diagonal of 16³ is ≈ 13.86, fine).
-- Unused assets: `sounds/`, `music/`, `levels/` (no level parser exists).
-- `Block::getUVs` hard‑codes atlas size 512 / tile 32.
+- ~~Unused code: `AudioManager`; `Chunk::getRadius`; `Block::getUVs`~~ – `AudioManager` is used by
+  `examples/platformer2d` (#45); the old `Chunk`/`Block` classes were replaced by `mge_voxel` (#25).
+- ~~Unused assets: `sounds/`, `music/`, `levels/`~~ – levels and sounds are 2D test data for
+  `examples/platformer2d` (#45). `music/` waits for the M5 sequencer.
 - Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.
 - ~~`build/` directory with binaries is committed~~ – fixed in #1.
 - `README.md` was a one‑liner before this documentation pass; no tests, no CI.

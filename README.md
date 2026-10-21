@@ -88,9 +88,9 @@ miniGameEngine/
 ├── tests/                  doctest unit tests (headless): core/, platform/, game/ → tests/README.md
 ├── assets/                 Runtime data              → assets/README.md
 │   ├── textures/           512×512 block tileset atlas
-│   ├── sounds/             WAV sound effects (unused by current game)
-│   ├── music/              MP3 music (unused by current game)
-│   └── levels/             ASCII 2D level files (legacy, no loader exists)
+│   ├── sounds/             WAV sound effects (used by examples/platformer2d)
+│   ├── music/              MP3 music (unused until M5)
+│   └── levels/             ASCII 2D levels (examples/platformer2d)
 ├── build/, build-*/        CMake build dirs (git-ignored)
 └── .vscode/                VS Code: build (Ctrl+Shift+B), run, F5 debug, tests, lint, new game
 ```
