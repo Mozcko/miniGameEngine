@@ -28,6 +28,7 @@ namespace mge {
     Mixer::Mixer(int sampleRate)
         : m_sampleRate(sampleRate > 0 ? sampleRate : kDefaultSampleRate),
           m_samples(std::make_unique<Sample[]>(kMaxSamples)),
+          m_songs(std::make_unique<CompiledSong[]>(kMaxSongs)),
           m_voices(std::make_unique<std::array<Voice, kMaxVoices>>()),
           m_delay(kMaxDelaySeconds, m_sampleRate) {
         for (auto& volume : m_busVolume) volume.store(1.0f, std::memory_order_relaxed);
@@ -145,34 +146,131 @@ namespace mge {
         return quietest ? *quietest : *oldest;
     }
 
-    void Mixer::startNote(const Command& command) {
-        const Instrument& in = command.instrument;
+    void Mixer::startVoice(const Instrument& in, float frequency, float velocity, float duration,
+                           AudioBus bus, std::uint32_t noteId, int player) {
         Voice& voice = allocateVoice();
         voice.kind = VoiceKind::Note;
-        voice.bus = command.bus;
-        voice.noteId = command.noteId;
+        voice.bus = bus;
+        voice.noteId = noteId;
+        voice.player = player;
         voice.frame = 0;
         voice.totalFrames =
-            command.duration > 0.0f
-                ? std::max<std::size_t>(1, std::size_t(command.duration * float(m_sampleRate)))
-                : 0;
+            duration > 0.0f ? std::max<std::size_t>(1, std::size_t(duration * float(m_sampleRate))) : 0;
         voice.oscillator.setWaveform(in.wave);
         voice.oscillator.setPulseWidth(in.pulseWidth);
-        voice.oscillator.reset(command.noteId);
-        voice.oscillator.setFrequency(command.frequency, m_sampleRate);
+        voice.oscillator.reset(m_nextOrder);
+        voice.oscillator.setFrequency(frequency, m_sampleRate);
         voice.envelope.start(in.envelope, m_sampleRate);
         voice.filter.set(in.filter, in.cutoff, in.resonance, m_sampleRate);
         voice.filter.reset();
-        voice.baseFrequency = command.frequency;
+        voice.baseFrequency = frequency;
         voice.vibratoDepth = in.vibratoDepth;
         voice.vibratoRate = in.vibratoRate;
         voice.pitchSlide = in.pitchSlide;
         voice.delaySend = std::clamp(in.delaySend, 0.0f, 1.0f);
         panGains(in.pan, voice.gainLeft, voice.gainRight);
-        const float gain = in.gain * command.gain * kSqrt2; // Centro = ganancia del instrumento
+        const float gain = in.gain * velocity * kSqrt2; // Centro = ganancia del instrumento
         voice.gainLeft *= gain;
         voice.gainRight *= gain;
         voice.startOrder = m_nextOrder++;
+    }
+
+    SongId Mixer::addSong(const Song& song) {
+        const std::size_t index = m_songCount.load(std::memory_order_relaxed);
+        if (!song.valid() || index >= kMaxSongs) return kInvalidSong;
+        CompiledSong& compiled = m_songs[index];
+        compiled.events = song.events();
+        compiled.instruments = song.instruments();
+        compiled.lengthSteps = song.lengthSteps();
+        compiled.loopStart = song.loopStart();
+        compiled.framesPerStep = double(song.secondsPerStep()) * double(m_sampleRate);
+        m_songCount.store(index + 1, std::memory_order_release);
+        return static_cast<SongId>(index);
+    }
+
+    bool Mixer::playSong(SongId song, float fadeSeconds) {
+        if (song >= m_songCount.load(std::memory_order_acquire)) return false;
+        Command command;
+        command.type = CommandType::PlaySong;
+        command.sample = song;
+        command.duration = fadeSeconds;
+        return enqueue(command);
+    }
+
+    bool Mixer::stopMusic(float fadeSeconds) {
+        Command command;
+        command.type = CommandType::StopMusic;
+        command.duration = fadeSeconds;
+        return enqueue(command);
+    }
+
+    void Mixer::stopPlayer(MusicPlayer& player, float fadeSeconds) {
+        if (!player.active) return;
+        player.target = 0.0f;
+        if (fadeSeconds > 0.0f) {
+            player.fadePerFrame = 1.0f / (fadeSeconds * float(m_sampleRate));
+            return;
+        }
+        player.active = false;
+        const int index = int(&player - m_players.data());
+        for (Voice& voice : *m_voices)
+            if (voice.player == index) voice.kind = VoiceKind::Free;
+    }
+
+    std::size_t Mixer::framesUntilMusicEvent() const {
+        double until = 1e18;
+        for (const MusicPlayer& player : m_players) {
+            if (!player.active || player.target == 0.0f) continue; // Uno que se funde ya no dispara notas
+            const CompiledSong& song = *player.song;
+            const double nextFrame = player.next < song.events.size()
+                                         ? double(song.events[player.next].step) * song.framesPerStep
+                                         : double(song.lengthSteps) * song.framesPerStep;
+            until = std::min(until, std::ceil(nextFrame - player.position));
+        }
+        return until <= 0.0 ? 0 : until >= 1e17 ? std::size_t(-1) : std::size_t(until);
+    }
+
+    void Mixer::triggerMusic() {
+        for (std::size_t p = 0; p < m_players.size(); p++) {
+            MusicPlayer& player = m_players[p];
+            if (!player.active || player.target == 0.0f) continue;
+            const CompiledSong& song = *player.song;
+            for (int guard = 0; guard < 2; guard++) {
+                while (player.next < song.events.size() &&
+                       double(song.events[player.next].step) * song.framesPerStep <= player.position + 0.5) {
+                    const Song::Event& e = song.events[player.next++];
+                    startVoice(song.instruments[std::size_t(e.instrument)], e.frequency, e.velocity,
+                               e.seconds, AudioBus::Music, 0, int(p));
+                }
+                // Fin de la canción: vuelve al inicio del loop (y dispara lo que toca ahí)
+                const double end = double(song.lengthSteps) * song.framesPerStep;
+                if (player.position + 0.5 < end) break;
+                player.position -= double(song.lengthSteps - song.loopStart) * song.framesPerStep;
+                player.next = 0;
+                while (player.next < song.events.size() && song.events[player.next].step < song.loopStart)
+                    player.next++;
+            }
+        }
+    }
+
+    void Mixer::advanceMusic(std::size_t frames) {
+        int step = -1;
+        for (std::size_t p = 0; p < m_players.size(); p++) {
+            MusicPlayer& player = m_players[p];
+            if (!player.active) continue;
+            player.position += double(frames);
+            if (player.gain != player.target) {
+                const float delta = player.fadePerFrame * float(frames);
+                player.gain = player.gain < player.target ? std::min(player.target, player.gain + delta)
+                                                          : std::max(player.target, player.gain - delta);
+            }
+            if (player.target == 0.0f && player.gain <= 0.0f) {
+                stopPlayer(player, 0.0f);
+                continue;
+            }
+            if (player.target > 0.0f) step = int(player.position / player.song->framesPerStep);
+        }
+        m_musicStep.store(step, std::memory_order_relaxed);
     }
 
     void Mixer::applyCommands() {
@@ -181,9 +279,37 @@ namespace mge {
             switch (command.type) {
             case CommandType::StopAll:
                 for (Voice& voice : *m_voices) voice.kind = VoiceKind::Free;
+                for (MusicPlayer& player : m_players) player.active = false;
+                break;
+            case CommandType::PlaySong: {
+                // La que suena se funde (o se corta); la nueva arranca desde el principio
+                const float fade = command.duration;
+                std::size_t slot = 0;
+                for (std::size_t p = 0; p < m_players.size(); p++) {
+                    if (m_players[p].active && m_players[p].target > 0.0f) {
+                        stopPlayer(m_players[p], fade);
+                        slot = 1 - p;
+                    }
+                }
+                if (m_players[slot].active) stopPlayer(m_players[slot], 0.0f); // Un fundido viejo a medias
+                MusicPlayer& player = m_players[slot];
+                player.song = &m_songs[command.sample];
+                player.position = 0.0;
+                player.next = 0;
+                player.target = 1.0f;
+                player.gain = fade > 0.0f ? 0.0f : 1.0f;
+                player.fadePerFrame = fade > 0.0f ? 1.0f / (fade * float(m_sampleRate)) : 0.0f;
+                player.active = true;
+                break;
+            }
+            case CommandType::StopMusic:
+                for (MusicPlayer& player : m_players) stopPlayer(player, command.duration);
                 break;
             case CommandType::SetDelay: m_delay.setSettings(command.delay); break;
-            case CommandType::PlayNote: startNote(command); break;
+            case CommandType::PlayNote:
+                startVoice(command.instrument, command.frequency, command.gain, command.duration, command.bus,
+                           command.noteId, -1);
+                break;
             case CommandType::Release:
             case CommandType::Stop:
                 for (Voice& voice : *m_voices) {
@@ -201,6 +327,7 @@ namespace mge {
                 voice.kind = VoiceKind::Tone;
                 voice.bus = AudioBus::Effects;
                 voice.noteId = 0;
+                voice.player = -1;
                 voice.frame = 0;
                 voice.phase = 0.0;
                 voice.phaseStep = kTwoPi * double(tone.frequency) / double(m_sampleRate);
@@ -221,6 +348,7 @@ namespace mge {
                 voice.kind = VoiceKind::Sample;
                 voice.bus = command.bus;
                 voice.noteId = 0;
+                voice.player = -1;
                 voice.frame = 0;
                 voice.sample = data;
                 voice.totalFrames = data->frameCount();
@@ -308,7 +436,10 @@ namespace mge {
         for (std::size_t b = 0; b < kAudioBusCount; b++)
             busGain[b] = m_busVolume[b].load(std::memory_order_relaxed);
         for (Voice& voice : *m_voices)
-            if (voice.kind != VoiceKind::Free) mixVoice(voice, out, frames, busGain[std::size_t(voice.bus)]);
+            if (voice.kind != VoiceKind::Free) {
+                const float fade = voice.player >= 0 ? m_players[std::size_t(voice.player)].gain : 1.0f;
+                mixVoice(voice, out, frames, busGain[std::size_t(voice.bus)] * fade);
+            }
 
         // Eco: entra el envío, sale la parte con eco (aunque no haya envío, la cola del eco sigue sonando)
         if (m_delay.settings().mix > 0.0f) {
@@ -334,9 +465,13 @@ namespace mge {
 
     void Mixer::render(float* out, std::size_t frames) {
         applyCommands();
+        // Bloques cortados en cada nota de la música: las notas empiezan en la muestra exacta
         for (std::size_t done = 0; done < frames;) {
-            const std::size_t block = std::min(kBlockFrames, frames - done);
+            triggerMusic();
+            const std::size_t block =
+                std::min({kBlockFrames, frames - done, std::max<std::size_t>(1, framesUntilMusicEvent())});
             renderBlock(out + done * kAudioChannels, block);
+            advanceMusic(block);
             done += block;
         }
         std::uint32_t active = 0;

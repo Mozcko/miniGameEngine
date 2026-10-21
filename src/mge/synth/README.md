@@ -15,6 +15,7 @@ core‑only and ThreadSanitizer CI jobs, so everything here is tested without a 
 | `Instrument.h` | `Instrument`: how a note sounds (wave, ADSR, filter, gain, pan, vibrato, pitch slide, delay send) |
 | `Mixer.h/.cpp` | `Mixer`, `ToneDesc`, `AudioBus`, `VoiceHandle`, `MixerStats`, `panGains`, `softClip` |
 | `Sfx.h/.cpp` | `SfxParams`, `renderSfx`, `sfx::` presets (jump, coin, hurt, explosion, powerUp, click), `randomize`, `mutate` |
+| `Music.h/.cpp` | `NoteEvent`, `Pattern`, `parsePattern`, `noteFromName`, `Song`, `songs::` (example songs) |
 | `Offline.h/.cpp` | `renderOffline`, `writeWav` (16‑bit PCM, no deps), `analysis::` (rms, peak, frequency, tone amplitude, spectral centroid, onsets) |
 
 ## Format
@@ -116,6 +117,51 @@ mge::SfxParams laser = mge::sfx::randomize(42);                  // or build one
 **Variation:** `sfx::coin(seed)` with a seed other than 0 is a slight variation (`mutate(params, 0.1,
 seed)`). `mutate(params, amount, seed)` and `randomize(seed)` make new effects with sensible ranges.
 
+## Music sequencer (#49)
+Music is C++ data: a `Song` has a tempo, instruments (the #47 `Instrument`), patterns and tracks.
+Patterns are written like a tracker, one step per word:
+
+| Token | Means |
+|-------|-------|
+| `C4`, `F#3`, `Bb2` | A note (MIDI: `C4` = 60, `A4` = 69) |
+| `.` | Rest |
+| `-` | Hold the previous note one more step |
+| `x` | The pattern's default note (drums) |
+| `|` | Ignored: a bar line, only for reading |
+
+```cpp
+mge::Song song(132.0f, 4);                                   // BPM, steps per beat
+const int lead = song.addInstrument(leadInstrument);
+const int verse = song.pattern("E5 . G5 . | C6 - B5 . | A5 . G5 . | E5 - - .");
+const int hats = song.pattern(". . x . | . . x .", 1.0f, 96.0f);   // velocity, default note
+song.addTrack(lead, {verse, verse});                        // patterns play back to back
+song.setLoopStart(0);
+const mge::SongId id = audio->addSong(song);                 // compiled once, then immutable
+audio->playSong(id, 1.0f);                                   // loops forever; 1 s fade-in
+```
+
+**Tracks and loop:**
+- A track plays its patterns in order.
+- The song lasts as long as its longest track; shorter tracks stay silent until the loop.
+- At the end, the song jumps to `loopStart` and continues.
+- Each note holds for 92 % of its length, then plays its instrument's release.
+- `Song::error()` explains why a song is invalid: a bad pattern text, a missing instrument or
+  pattern, the tempo, or the loop start.
+
+**Playback on the audio thread:**
+- Timing is **sample‑accurate**: `render` splits its blocks exactly at note starts.
+- Music notes go to `AudioBus::Music` (`setBusVolume`).
+- **Crossfade:** `playSong(other, fadeSeconds)` fades the current song out while the new one fades in
+  from its start. `stopMusic(fade)` fades everything out.
+- `musicStep()` reports the current step, or −1 when nothing plays.
+- Songs live in a fixed bank of 16, like samples: immutable once added, freed with the mixer.
+
+**Example songs** (`mge::songs::`), used by the platformer, the sandbox and the gallery:
+- `platformerTheme()`: 132 BPM chiptune, 64 steps. Pulse lead with vibrato and echo, triangle bass,
+  noise hats, and a sine kick with a pitch drop.
+- `sandboxAmbient()`: 64 BPM, ~15 s. Slow filtered triangle pads (C, Am, F, G) and sparse sine
+  bells with echo.
+
 ## Offline rendering and analysis (#50)
 Audio can be produced and checked without a device:
 - `renderOffline(mixer, frames | seconds)` runs `render` on the calling thread and returns the
@@ -146,7 +192,8 @@ Audio can be produced and checked without a device:
 - three ADSR shapes;
 - a resonant filter sweep;
 - echo + vibrato + a falling pitch slide;
-- `sfx_*`: every preset and three random effects (#48).
+- `sfx_*`: every preset and three random effects (#48);
+- `song_platformer`, `song_sandbox_ambient`: one loop of each example song plus 2 s (#49).
 
 ## Tests
 `tests/synth/test_mixer.cpp`:
@@ -179,7 +226,16 @@ Audio can be produced and checked without a device:
 - click is under 60 ms;
 - seeded variations are slight and deterministic; 40 random effects are audible and finite.
 
-`tests/synth/test_no_alloc.cpp` (its own program, `mge_synth_alloc_tests`; not built with sanitizers,
+`tests/synth/test_music.cpp` (#49):
+- `noteFromName` and `parsePattern`, including hold, `x`, velocity and errors;
+- `Song` length, event order and errors;
+- notes start at their exact step (onsets), and the loop restarts at `loopStart`;
+- `stopMusic`;
+- a crossfade that lowers one song and raises the other with no jump in level;
+- the Music bus;
+- the example songs are valid, audible and below clipping.
+
+`tests/synth/test_no_alloc.cpp` (now also with music: a song loop and a crossfade) (its own program, `mge_synth_alloc_tests`; not built with sanitizers,
 which replace `operator new` themselves) replaces global `operator new` and checks that
 `Mixer::render` allocates nothing with notes, samples, tones, the echo and voice stealing.
 

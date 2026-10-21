@@ -51,6 +51,7 @@
 #include <mge/synth/Filter.h>
 #include <mge/synth/Instrument.h>
 #include <mge/synth/Mixer.h>
+#include <mge/synth/Music.h>
 #include <mge/synth/Offline.h>
 #include <mge/synth/Oscillator.h>
 #include <mge/synth/Sample.h>

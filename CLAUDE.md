@@ -106,6 +106,9 @@ Synth (#47): `Instrument` (wave, `Adsr`, `Filter`, vibrato, pitch slide, delay s
 `VoiceHandle` (`releaseNote`/`stopNote`); buses `Effects`/`Music`; shared `Delay`; `softClip` on the master; `midiToHz`.
 SFX (#48): `SfxParams` (sfxr‑style) → `renderSfx` → Sample; `audio->addSfx(mge::sfx::jump())`; presets jump/coin/hurt/explosion/powerUp/click,
 `sfx::randomize(seed)`, `mutate`. Platformer: synthesized by default, `S` toggles the WAVs (`PLATFORMER_SOUNDS=wav`).
+Music (#49): `Song(bpm, stepsPerBeat)` + `addInstrument` + `pattern("C4 - . E4 | x .")` + `addTrack(instrument, {patterns})`,
+`audio->playSong(audio->addSong(song), fade)` (loops, sample‑accurate, crossfade, Music bus); `mge::songs::platformerTheme/sandboxAmbient`.
+Sandbox: ambient loop, **N** mutes music. Platformer: theme (off when `S` selects the WAVs).
 Offline (#50): `renderOffline(mixer, seconds)`, `writeWav`, `mge::analysis::` (rms, zeroCrossingHz, toneAmplitude, spectralCentroid, onsets)
 → audio tests compare features with tolerances, not samples. Listen: `examples/audio_gallery` → `<build>/gallery/audio/*.wav` (+ spectrogram PNGs).
 `AudioModule` (mge_audio): SDL3 device stream + callback; `loadWav` (→ `assetPath`, converted to float32), `play(id, gain, pan)`,

@@ -46,6 +46,7 @@ cmake --build --preset dev --target run   # build + run in one CMake command
 | `L‑Ctrl` (hold)      | Sprint (×2.5)                                       |
 | `P`                  | Pause / resume (time scale 0, releases the cursor)  |
 | `M`                  | Switch between the PNG and the procedural atlas     |
+| `N`                  | Music on / off (generated ambient loop)             |
 | `F1`                 | Performance overlay (FPS, frame times, counters)    |
 | `F3` / `F4`          | Chunk bounds / freeze the culling frustum           |
 | Mouse click          | Re‑capture the cursor (when not paused)             |

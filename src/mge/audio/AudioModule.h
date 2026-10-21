@@ -54,6 +54,10 @@ namespace mge {
         bool stopNote(VoiceHandle note) { return m_mixer.stopNote(note); }
         bool setDelay(const DelaySettings& settings) { return m_mixer.setDelay(settings); }
         void setBusVolume(AudioBus bus, float volume) { m_mixer.setBusVolume(bus, volume); }
+        // Música (#49): registrar una canción (mge::Song) y tocarla en loop; con fade, fundido cruzado
+        SongId addSong(const Song& song) { return m_mixer.addSong(song); }
+        bool playSong(SongId song, float fadeSeconds = 0.0f) { return m_mixer.playSong(song, fadeSeconds); }
+        bool stopMusic(float fadeSeconds = 0.0f) { return m_mixer.stopMusic(fadeSeconds); }
         bool stopAll() { return m_mixer.stopAll(); }
 
         void setMasterVolume(float volume) { m_mixer.setMasterVolume(volume); }
