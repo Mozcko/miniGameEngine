@@ -104,6 +104,8 @@ so it shows CPU vs swapchain wait. Sandbox: F1 (on in Debug, off in Release; `SA
 32 preallocated voices (oldest stolen), immutable samples in a fixed bank (never freed while playing). Float32 stereo 48 kHz.
 Synth (#47): `Instrument` (wave, `Adsr`, `Filter`, vibrato, pitch slide, delay send) → `playNote(instrument, hz, velocity, duration, bus)` →
 `VoiceHandle` (`releaseNote`/`stopNote`); buses `Effects`/`Music`; shared `Delay`; `softClip` on the master; `midiToHz`.
+Offline (#50): `renderOffline(mixer, seconds)`, `writeWav`, `mge::analysis::` (rms, zeroCrossingHz, toneAmplitude, spectralCentroid, onsets)
+→ audio tests compare features with tolerances, not samples. Listen: `examples/audio_gallery` → `<build>/gallery/audio/*.wav` (+ spectrogram PNGs).
 `AudioModule` (mge_audio): SDL3 device stream + callback; `loadWav` (→ `assetPath`, converted to float32), `play(id, gain, pan)`,
 `playTone`, `setMasterVolume`, `setMuted` (`MGE_MUTE=1`). No device / `SDL_AUDIODRIVER=dummy` → silent, never an error.
 

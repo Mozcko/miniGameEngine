@@ -8,6 +8,7 @@ add_library(mge_synth STATIC
     Delay.h Delay.cpp
     Instrument.h
     Mixer.h Mixer.cpp
+    Offline.h Offline.cpp
 )
 target_link_libraries(mge_synth PUBLIC mge_core)
 mge_set_warnings(mge_synth)

@@ -2,6 +2,7 @@
 
 # Headless: se compilan siempre (también con MGE_BUILD_MODULES=OFF)
 add_subdirectory(procgen_gallery)
+add_subdirectory(audio_gallery)
 
 # El resto necesita los módulos con SDL/GPU
 if(NOT MGE_BUILD_MODULES)
