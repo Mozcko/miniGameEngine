@@ -16,6 +16,7 @@ them. The sandbox (`game/`) is the reference user.
 | `ChunkStreamer.h/.cpp` | `ChunkStreamer`, `StreamingSettings`, `StreamingStats`, `StreamUpdate`: loads, meshes and unloads chunks around a moving centre, on a `JobSystem` |
 | `ChunkSnapshot.h/.cpp` | `ChunkSnapshot`: a copy of a chunk plus a 1‑block border of its neighbours (18³ ids), for meshing on another thread |
 | `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, cutout, transparent}` |
+| `VoxelRaycast.h/.cpp` | `raycastVoxels(world, ray, maxDistance)` → `optional<VoxelRaycastHit>` (Amanatides–Woo DDA) |
 
 ## Blocks – `<mge/voxel/Block.h>`
 
@@ -166,6 +167,28 @@ re‑mesh; the sandbox does this.
 - Diagonal neighbour chunks aren't re‑dirtied, so AO at a chunk corner can be stale until that
   chunk is re‑meshed.
 
+## Raycasting – `<mge/voxel/VoxelRaycast.h>` (#51)
+
+Fast voxel grid traversal (Amanatides–Woo DDA) for block picking and line-of-sight:
+
+```cpp
+mge::Ray ray(eyePosition, lookDirection);
+auto hit = mge::raycastVoxels(world, ray, /*maxDistance=*/ 8.0f);
+if (hit) {
+    // hit->block: coordinates of the hit block
+    // hit->normal: face normal pointing outward (+X, -X, +Y, -Y, +Z, -Z)
+    // hit->distance: parametric distance along the ray
+    // hit->blockId: BlockId of the hit block
+    // hit->point: world hit position (ray.at(hit->distance))
+    // hit->face: BlockFace hit
+    glm::ivec3 placeAt = hit->block + hit->normal;
+}
+```
+
+- Traverses unit voxel boundaries in world coordinates; handles chunk boundaries (including negative coordinates) seamlessly.
+- If the ray starts inside a solid block, it reports an immediate hit at distance 0 with normal `(0, 0, 0)`.
+- Unloaded chunks are treated as air. Returns `std::nullopt` if no solid block is encountered within `maxDistance`.
+
 Tests: `tests/voxel/` → `mge_voxel_tests` (registry, coordinates incl. negatives, world get/set
 across chunks, dirty propagation, generator determinism, mesher face rules, atlas UVs, seam‑free
-meshing against an independent reference, greedy vs naive area and count, AO).
+meshing against an independent reference, greedy vs naive area and count, AO, DDA raycasting).

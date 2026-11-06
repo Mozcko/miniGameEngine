@@ -41,6 +41,7 @@
 #include <mge/voxel/Chunk.h>
 #include <mge/voxel/ChunkMesher.h>
 #include <mge/voxel/ChunkStreamer.h>
+#include <mge/voxel/VoxelRaycast.h>
 #include <mge/voxel/VoxelWorld.h>
 #endif
 

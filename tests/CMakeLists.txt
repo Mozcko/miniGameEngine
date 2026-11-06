@@ -80,6 +80,7 @@ add_executable(mge_voxel_tests
     voxel/test_chunk_mesher.cpp
     voxel/test_parallel.cpp
     voxel/test_streaming.cpp
+    voxel/test_voxel_raycast.cpp
     voxel/test_voxel_world.cpp
 )
 target_link_libraries(mge_voxel_tests PRIVATE mge_voxel doctest_header)
