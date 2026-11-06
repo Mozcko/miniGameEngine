@@ -87,6 +87,14 @@ target_link_libraries(mge_voxel_tests PRIVATE mge_voxel doctest_header)
 mge_set_warnings(mge_voxel_tests)
 doctest_discover_tests(mge_voxel_tests TEST_PREFIX "voxel: ")
 
+add_executable(mge_physics_tests
+    test_main.cpp
+    physics/test_collision.cpp
+)
+target_link_libraries(mge_physics_tests PRIVATE mge_physics doctest_header)
+mge_set_warnings(mge_physics_tests)
+doctest_discover_tests(mge_physics_tests TEST_PREFIX "physics: ")
+
 # --- Tests de los módulos (necesitan SDL; no abren ventana) ---
 if(MGE_BUILD_MODULES)
     add_executable(mge_platform_tests

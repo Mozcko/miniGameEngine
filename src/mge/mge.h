@@ -59,6 +59,13 @@
 #include <mge/synth/Sfx.h>
 #endif
 
+// --- Física (headless) ---
+#ifdef MGE_HAS_PHYSICS
+#include <mge/physics/GridQuery.h>
+#include <mge/physics/VoxelCollision.h>
+#include <mge/physics/VoxelRaycast.h>
+#endif
+
 // --- Plataforma: ventana e input de SDL ---
 #ifdef MGE_HAS_PLATFORM
 #include <mge/platform/PlatformModule.h>

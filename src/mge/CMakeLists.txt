@@ -3,6 +3,7 @@
 #   mge_procgen   -> generación procedural en CPU (headless): MeshData, primitivas, ruido, SDF
 #   mge_voxel     -> mundos voxel (headless): bloques, chunks, VoxelWorld, mallado
 #   mge_synth     -> audio procedural (headless): mezclador, síntesis, efectos, música
+#   mge_physics   -> física (headless): colisiones barridas, consultas espaciales
 #   mge_main      -> el main() del motor (llama a createApplication del juego); solo core
 #   mge_platform  -> PlatformModule: ventana e input (SDL3)
 #   mge_gpu       -> GpuModule + wrappers RAII sobre SDL3 GPU (Vulkan/Metal/D3D12), ADR 0001
@@ -14,6 +15,7 @@ add_subdirectory(app)
 add_subdirectory(procgen)
 add_subdirectory(voxel)
 add_subdirectory(synth)
+add_subdirectory(physics)
 
 if(MGE_BUILD_MODULES)
     add_subdirectory(platform)
