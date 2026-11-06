@@ -8,7 +8,7 @@ add_library(sandbox_world STATIC
 )
 # Permite #include <game/SandboxTerrain.h>
 target_include_directories(sandbox_world PUBLIC ${PROJECT_SOURCE_DIR})
-target_link_libraries(sandbox_world PUBLIC mge_voxel)
+target_link_libraries(sandbox_world PUBLIC mge_voxel mge_physics)
 mge_set_warnings(sandbox_world)
 
 # Ejecutable del juego (+ targets run / run-sandbox y smoke test offscreen de 120 frames)

@@ -90,6 +90,7 @@ doctest_discover_tests(mge_voxel_tests TEST_PREFIX "voxel: ")
 add_executable(mge_physics_tests
     test_main.cpp
     physics/test_collision.cpp
+    physics/test_character.cpp
 )
 target_link_libraries(mge_physics_tests PRIVATE mge_physics doctest_header)
 mge_set_warnings(mge_physics_tests)

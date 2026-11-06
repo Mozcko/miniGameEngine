@@ -61,6 +61,7 @@
 
 // --- Física (headless) ---
 #ifdef MGE_HAS_PHYSICS
+#include <mge/physics/CharacterController.h>
 #include <mge/physics/GridQuery.h>
 #include <mge/physics/VoxelCollision.h>
 #include <mge/physics/VoxelRaycast.h>

@@ -70,27 +70,26 @@ public:
         lighting.fogEnd = kRenderDistance * kChunkSize;
         m_renderer->setLighting(lighting);
 
-        // 2. Cámara
+        // 2. Jugador y cámara
         // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
         const int ground = std::max(m_terrain->surfaceHeight(0, 0), sandbox::SandboxTerrain::kWaterLevel);
-        m_fly.setPosition(glm::vec3(0.5f, static_cast<float>(ground) + 2.5f, 0.5f));
-        // Entidad cámara: Transform (lo escribe el FlyController) + Camera (el aspecto lo ajusta el motor)
+        CharacterController playerController;
+        const glm::vec3 spawnFeet(0.5f, static_cast<float>(ground) + 2.0f, 0.5f);
+        playerController.previousPosition = spawnFeet;
+        playerController.enabled = m_world.isLoaded(chunkOf(blockAt(spawnFeet))) &&
+                                   m_world.isLoaded(chunkOf(blockAt(spawnFeet) - glm::ivec3(0, 1, 0)));
+
+        m_playerEntity = world().registry().create();
+        world().registry().add<Transform>(m_playerEntity, spawnFeet);
+        world().registry().add<CharacterController>(m_playerEntity, playerController);
+
         m_cameraEntity = world().registry().create();
         world().registry().add<Transform>(m_cameraEntity);
         world().registry().add<Camera>(m_cameraEntity);
-        m_fly.apply(world().registry().get<Transform>(m_cameraEntity));
+        world().registry().add<CharacterCamera>(m_cameraEntity, CharacterCamera{m_playerEntity});
 
-        // Configurar Colisiones
-        // Colisiones: ¿algún bloque sólido toca la caja? (el bloque (x,y,z) ocupa [x, x+1)³)
-        m_fly.setCollisionCallback([this](const glm::vec3& min, const glm::vec3& max) -> bool {
-            const glm::ivec3 lo = blockAt(min);
-            const glm::ivec3 hi = blockAt(max);
-            for (int x = lo.x; x <= hi.x; x++)
-                for (int y = lo.y; y <= hi.y; y++)
-                    for (int z = lo.z; z <= hi.z; z++)
-                        if (m_world.isSolid({x, y, z})) return true;
-            return false;
-        });
+        addCharacterSystem(world(), solidQuery(m_world));
+        addCharacterCameraSystem(world(), time());
 
         // 3. Atlas: el PNG (camino de los assets) o uno generado por código (camino procedural, #34). Los
         // dos con las mismas posiciones de tiles; M alterna en vivo. SANDBOX_ATLAS=procedural arranca sin
@@ -107,7 +106,8 @@ public:
 
         // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
         MGE_LOG_INFO("Sandbox",
-                     "WASD: mover, Espacio/Shift: subir/bajar, Ctrl: correr, M: atlas "
+                     "WASD: mover, Espacio: saltar, F: caminar/volar, Espacio/Shift: subir/bajar (vuelo), "
+                     "Ctrl: correr, M: atlas "
                      "PNG/procedural, N: música, P: pausa, F1: rendimiento, F3/F4: depuración, Esc: salir");
         return true;
     }
@@ -129,6 +129,8 @@ public:
         actions.bindAxis("MoveForward", Key::W, Key::S);
         actions.bindAxis("MoveRight", Key::D, Key::A);
         actions.bindAxis("MoveUp", Key::Space, Key::LeftShift);
+        actions.bind("Jump", Key::Space);
+        actions.bind("ToggleFly", Key::F);
         actions.bind("Sprint", Key::LeftCtrl);
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
@@ -150,6 +152,12 @@ public:
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
         if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+        if (m_platform->wasActionPressed("ToggleFly")) {
+            auto& controller = world().registry().get<CharacterController>(m_playerEntity);
+            controller.toggleMode();
+            MGE_LOG_INFO("Sandbox", controller.mode == CharacterMode::Fly ? "Modo de vuelo (Fly)"
+                                                                          : "Modo caminata (Walk)");
+        }
         if (m_platform->wasActionPressed("ToggleMusic")) {
             m_musicOn = !m_musicOn;
             m_audio->setBusVolume(AudioBus::Music, m_musicOn ? kMusicVolume : 0.0f);
@@ -177,26 +185,28 @@ public:
         }
     }
 
-    // Traduce acciones y ratón a la intención de movimiento de la cámara
-    mge::CameraInput cameraInput() const {
-        mge::CameraInput input;
-        input.moveForward = m_platform->axis("MoveForward");
-        input.moveRight = m_platform->axis("MoveRight");
-        input.moveUp = m_platform->axis("MoveUp");
-        input.sprint = m_platform->isActionDown("Sprint");
-        // Solo mirar con el ratón si está capturado
-        if (m_platform->isCursorLocked()) {
-            input.lookX = m_platform->input().mouseDelta().x;
-            input.lookY = m_platform->input().mouseDelta().y;
-        }
-        return input;
-    }
-
-    // dt es el tiempo escalado (0 en pausa). El sandbox todavía no tiene simulación de paso fijo:
-    // cámara y streaming de chunks corren una vez por frame.
-    void onUpdate(float dt) override {
-        float deltaTime = dt;
+    void onUpdate(float /*dt*/) override {
         handleActions();
+
+        // Control del personaje: mirar con el ratón cuando el cursor está capturado y no en pausa
+        auto& controller = world().registry().get<CharacterController>(m_playerEntity);
+        if (m_platform->isCursorLocked() && !m_isPaused) {
+            constexpr float kSensitivity = 0.1f;
+            controller.look(m_platform->input().mouseDelta().x * kSensitivity,
+                            -m_platform->input().mouseDelta().y * kSensitivity);
+        }
+
+        // Intención de movimiento
+        controller.input.moveForward = m_platform->axis("MoveForward");
+        controller.input.moveRight = m_platform->axis("MoveRight");
+        controller.input.moveUp = m_platform->axis("MoveUp");
+        controller.input.sprint = m_platform->isActionDown("Sprint");
+        controller.input.jump = m_platform->isActionDown("Jump");
+
+        // Seguridad de streaming: no simular hasta que el chunk bajo los pies y el inferior estén cargados
+        const glm::vec3 feet = world().registry().get<Transform>(m_playerEntity).position;
+        controller.enabled = m_world.isLoaded(chunkOf(blockAt(feet))) &&
+                             m_world.isLoaded(chunkOf(blockAt(feet) - glm::ivec3(0, 1, 0)));
 
         // Animaciones
         m_animTimer += time().unscaledDelta();
@@ -210,8 +220,6 @@ public:
         }
 
         streamChunks();
-        m_fly.update(deltaTime, cameraInput());
-        m_fly.apply(world().registry().get<Transform>(m_cameraEntity));
     }
 
     void onRender() override {
@@ -240,7 +248,8 @@ public:
             m_queue.add({&gpu.cutout, model, m_atlas, MeshPass::Cutout, bounds.center(), {}});
             m_queue.add({&gpu.transparent, model, m_atlas, MeshPass::Transparent, bounds.center(), {}});
         }
-        m_queue.sort(camera.position, m_fly.forward());
+        const auto& playerController = world().registry().get<CharacterController>(m_playerEntity);
+        m_queue.sort(camera.position, playerController.forward());
         m_renderer->submit(m_queue);
         drawDebug();
         m_renderer->end();
@@ -282,7 +291,8 @@ private:
     // (como mucho maxResultsPerUpdate por frame) y se liberan las de los chunks descargados.
     void streamChunks() {
         const auto start = std::chrono::steady_clock::now();
-        const ChunkCoord center = chunkOf(blockAt(m_fly.position()));
+        const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
+        const ChunkCoord center = chunkOf(blockAt(playerPos));
         StreamUpdate update = m_streamer->update(center);
         for (auto& [coord, mesh] : update.meshes) {
             GpuChunk& gpu = m_gpuChunks[coord];
@@ -335,7 +345,8 @@ private:
         const auto start = std::chrono::steady_clock::now();
         const RenderStats& render = m_renderer->stats();
         const StreamingStats streaming = m_streamer->stats();
-        const glm::ivec3 block = blockAt(m_fly.position());
+        const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
+        const glm::ivec3 block = blockAt(playerPos);
         m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
                                            std::to_string(render.totalTriangles() / 1000) + "k triangulos");
         m_overlay.setCounter("chunks", std::to_string(streaming.loaded) + " cargados, " +
@@ -349,7 +360,7 @@ private:
                                              std::to_string(block.z));
         m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
         m_overlay.setCounter("overlay", std::to_string(m_overlayUs) + " us");
-        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  M atlas  N musica  P pausa");
+        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  F volar  M atlas  N musica  P pausa");
 
         // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
         m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
@@ -365,7 +376,10 @@ private:
         if (!m_showDebug && !m_frustumFrozen) return;
         m_debug->clear();
         if (m_showDebug) {
-            const ChunkCoord center = chunkOf(blockAt(m_fly.position()));
+            const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
+            const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+            const glm::vec3 feet = playerTransform ? playerTransform->position : glm::vec3(0.0f);
+            const ChunkCoord center = chunkOf(blockAt(feet));
             for (const ChunkCoord& coord : m_world.loadedChunks()) {
                 if (std::abs(coord.x - center.x) > kRenderDistance ||
                     std::abs(coord.z - center.z) > kRenderDistance)
@@ -375,8 +389,9 @@ private:
                                                                    : glm::vec4(1.0f, 0.9f, 0.2f, 0.7f);
                 m_debug->aabb(chunkBounds(coord), color);
             }
-            const glm::vec3 p = m_fly.position();
-            m_debug->aabb(Aabb(p - m_fly.halfExtents, p + m_fly.halfExtents), {1.0f, 1.0f, 1.0f, 1.0f});
+            if (controller) {
+                m_debug->aabb(characterAabb(feet, controller->halfExtents), {1.0f, 1.0f, 1.0f, 1.0f});
+            }
         }
         if (m_frustumFrozen) m_debug->frustum(m_frozenViewProjection, {1.0f, 0.5f, 0.1f, 1.0f});
         m_debug->flush(*m_renderer);
@@ -439,8 +454,8 @@ private:
     }
 
     std::unique_ptr<MeshRenderer> m_renderer;
-    FlyController m_fly;   // Mueve la cámara (vuelo libre con colisiones)
-    Entity m_cameraEntity; // Transform + Camera
+    Entity m_playerEntity; // Transform + CharacterController
+    Entity m_cameraEntity; // Transform + Camera + CharacterCamera
     // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
     BlockRegistry m_registry;
     sandbox::SandboxBlocks m_blocks;
