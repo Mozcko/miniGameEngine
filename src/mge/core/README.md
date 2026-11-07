@@ -16,6 +16,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
+| `Profiler.h/.cpp` | `mge` | Per-frame CPU profiling instrumentation: `Profiler`, `ScopedTimer`, `MGE_PROFILE_SCOPE` |
 
 
 Tests: `tests/core/` → `mge_core_tests` (links only `mge_core`).
@@ -253,3 +254,27 @@ say, 4 × 1/240 s.
 
 Tests: `tests/core/test_time.cpp` (frame‑rate independence, accumulation and alpha, the step cap,
 pause, determinism).
+
+---
+
+## Profiling instrumentation – `mge::Profiler`
+
+CPU execution times aggregated per frame by scope name. Each `Application` owns a single `Profiler` instance (`app.profiler()`; no singletons).
+
+```cpp
+#include <mge/core/Profiler.h>
+
+void doWork() {
+    MGE_PROFILE_SCOPE(app.profiler(), "doWork");
+    // ...
+}
+```
+
+- **Thread safety:** Restricted to the main thread only (`MGE_ASSERT` asserts `std::this_thread::get_id() == mainThreadId`).
+- **Zero allocation per frame:** Scope names are interned on first encounter (`std::unordered_map<std::string, std::size_t>`). Subsequent frames record into flat preallocated vectors.
+- **Metrics:** Each `Entry` contains `name`, `lastMs` (last frame duration), `averageMs` (exponential moving average with $\alpha = 0.1$), `maxMs` (worst time over the last ~2 seconds / 120 frames), `calls` (call count in the last frame), and `depth` (nesting level).
+- **Options & Controls:**
+  - CMake option `MGE_PROFILING` (default `ON`): when `OFF`, `MGE_PROFILE_SCOPE` expands to nothing while preserving the `Profiler` class.
+  - Environment variable `MGE_PROFILE=0` disables profiling at runtime (`config.profiling = false`).
+  - CMake option `MGE_TRACY` (default `OFF`): when `ON`, fetches Tracy Profiler, enables `TRACY_ENABLE`, emits `ZoneScopedN(name)` in `MGE_PROFILE_SCOPE` (requiring string literals), and marks frame boundaries with `FrameMark` in `Profiler::endFrame()`.
+- **GPU timestamps:** SDL3 GPU does not support GPU timestamp queries. Therefore, no GPU timestamp queries are implemented in the engine; the engine continues monitoring and displaying swapchain acquire wait time (`DebugOverlay`), which reflects GPU / presentation synchronization cost.

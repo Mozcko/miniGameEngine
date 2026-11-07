@@ -1,5 +1,6 @@
 #include <mge/graphics/DebugOverlay.h>
 
+#include <mge/core/Profiler.h>
 #include <mge/graphics/Renderer2D.h>
 
 #include <algorithm>
@@ -81,6 +82,15 @@ namespace mge {
                          m_counters.end());
     }
 
+    void DebugOverlay::setProfile(const Profiler& profiler) {
+        m_profile.clear();
+        const auto& entries = profiler.entries();
+        m_profile.reserve(entries.size());
+        for (const auto& entry : entries) {
+            m_profile.push_back({entry.name, entry.averageMs, entry.maxMs, entry.depth});
+        }
+    }
+
     glm::vec2 DebugOverlay::build(Batch2D& batch, const Font& font, const Texture2D* atlasTexture,
                                   const glm::vec2& pos, float scale) const {
         if (!font.valid()) return glm::vec2(0.0f);
@@ -96,13 +106,22 @@ namespace mge {
         for (const auto& [name, value] : m_counters)
             lines.push_back(name.empty() ? value : name + ": " + value);
 
+        std::vector<std::string> profileLines;
+        profileLines.reserve(m_profile.size());
+        for (const auto& item : m_profile) {
+            const std::string indent(static_cast<std::size_t>(std::max(item.depth, 0)) * 2, ' ');
+            profileLines.push_back(indent + item.name + "  " + fixed1(item.averageMs) + " / " +
+                                   fixed1(item.maxMs) + " ms");
+        }
+
         const float pad = 4.0f * scale;
         const float lineHeight = font.lineHeight() * scale;
         const glm::vec2 graphSize(float(kHistory) * scale, kGraphHeight * scale);
         float width = graphSize.x;
-        for (const auto* group : {&header, &lines})
+        for (const auto* group : {&header, &lines, &profileLines})
             for (const std::string& line : *group) width = std::max(width, font.measure(line, scale).x);
-        const float height = float(header.size() + lines.size()) * lineHeight + graphSize.y + pad;
+        const float height =
+            float(header.size() + lines.size() + profileLines.size()) * lineHeight + graphSize.y + pad;
         const glm::vec2 size = glm::vec2(width, height) + 2.0f * pad;
 
         batch.rect(pos, size, {0.0f, 0.0f, 0.0f, 0.6f});
@@ -131,6 +150,12 @@ namespace mge {
 
         for (const std::string& line : lines) {
             batch.text(font, atlasTexture, pen, line, {0.9f, 0.9f, 0.9f, 1.0f}, scale);
+            pen.y += lineHeight;
+        }
+
+        const glm::vec4 profileColor(0.8f, 0.85f, 0.9f, 1.0f);
+        for (const std::string& line : profileLines) {
+            batch.text(font, atlasTexture, pen, line, profileColor, scale);
             pen.y += lineHeight;
         }
         return size;

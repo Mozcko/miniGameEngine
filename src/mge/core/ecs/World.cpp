@@ -1,6 +1,11 @@
 #include <mge/core/ecs/World.h>
+#include <mge/core/Profiler.h>
 
 namespace mge {
+
+    void World::setProfiler(Profiler* profiler) {
+        m_profiler = profiler;
+    }
 
     void World::addSystem(SystemPhase phase, std::string name, SystemFunction system) {
         m_systems[static_cast<std::size_t>(phase)].push_back({std::move(name), std::move(system)});
@@ -8,7 +13,12 @@ namespace mge {
 
     void World::run(SystemPhase phase, float dt) {
         for (System& system : m_systems[static_cast<std::size_t>(phase)]) {
-            system.function(*this, dt);
+            if (m_profiler) {
+                ScopedTimer timer(*m_profiler, system.name);
+                system.function(*this, dt);
+            } else {
+                system.function(*this, dt);
+            }
         }
     }
 
