@@ -77,6 +77,7 @@ add_executable(mge_voxel_tests
     test_main.cpp
     voxel/test_block_registry.cpp
     voxel/test_chunk_coords.cpp
+    voxel/test_chunk_lod.cpp
     voxel/test_chunk_mesher.cpp
     voxel/test_parallel.cpp
     voxel/test_streaming.cpp
