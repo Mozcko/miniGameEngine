@@ -11,6 +11,7 @@ and `<mge/mge.h>` exposes it automatically.
 | `VoxelRaycast.h` | Forwarding header for voxel raycasting (`mge::raycastVoxels`) |
 | `VoxelCollision.h/.cpp` | `MoveOptions`, `MoveResult`, `moveAabb(box, delta, isSolid/world, options)` |
 | `CharacterController.h/.cpp` | `CharacterMode`, `CharacterInput`, `CharacterController`, `CharacterCamera`, `stepCharacter`, ECS systems |
+| `SpatialHash.h/.cpp` | `SpatialHash`: 3D uniform-grid broadphase, `computePairs`, `query` |
 
 ## Swept AABB Collision – `<mge/physics/VoxelCollision.h>` (#52)
 
@@ -48,4 +49,14 @@ Decouples player movement and physics simulation from the camera:
   - `addCharacterSystem(world, isSolid)`: runs in `SystemPhase::Fixed`, applies `stepCharacter` to all entities with `Transform` and `CharacterController` when `controller.enabled` is true.
   - `CharacterCamera`: component placed on a camera entity referencing a player entity.
   - `addCharacterCameraSystem(world, time)`: runs in `SystemPhase::Render`, interpolates camera position between `previousPosition` and `currentPosition` using `time.alpha()` and adds `eyeHeight`, aligning camera rotation to `controller.forward()`.
+
+## Spatial-Hash Broadphase – `<mge/physics/SpatialHash.h>` (#54)
+
+Uniform 3D spatial grid broadphase for fast overlap detection and bounding box queries:
+
+- **Rebuilt every step**: `clear()` preserves allocated memory (vector capacities) to eliminate allocations in steady state; entities reinsert each frame via `insert(id, box)`.
+- **Touching and overlapping pairs**: `computePairs(outPairs)` finds all unique pairs `(a, b)` with `a < b` whose AABBs touch or overlap (`Aabb::intersects`). Results are sorted lexicographically `(a, b)` and deduplicated across cells.
+- **Volume queries**: `query(box, outIds)` returns all inserted IDs whose AABB touches or overlaps `box`, sorted ascending and deduplicated.
+- **Large box support**: Boxes spanning multiple cells (e.g. > 8 per axis) insert into all overlapping cells ($O(dx \cdot dy \cdot dz)$). Performance scales with box volume, but all overlap configurations are handled correctly without bounds restrictions.
+
 

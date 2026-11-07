@@ -4,6 +4,7 @@ add_library(mge_physics STATIC
     VoxelRaycast.h
     VoxelCollision.h VoxelCollision.cpp
     CharacterController.h CharacterController.cpp
+    SpatialHash.h SpatialHash.cpp
 )
 target_link_libraries(mge_physics PUBLIC mge_core mge_voxel)
 mge_set_warnings(mge_physics)
