@@ -279,9 +279,12 @@ public:
             m_queue.add({&gpu.cutout, model, m_atlas, MeshPass::Cutout, bounds.center(), {}});
             m_queue.add({&gpu.transparent, model, m_atlas, MeshPass::Transparent, bounds.center(), {}});
         }
-        const auto& playerController = world().registry().get<CharacterController>(m_playerEntity);
-        m_queue.sort(camera.position, playerController.forward());
-        m_renderer->submit(m_queue);
+        {
+            MGE_PROFILE_SCOPE(profiler(), "queue sort/submit");
+            const auto& playerController = world().registry().get<CharacterController>(m_playerEntity);
+            m_queue.sort(camera.position, playerController.forward());
+            m_renderer->submit(m_queue);
+        }
         drawDebug();
         m_renderer->end();
         drawOverlay(*frame);
@@ -300,8 +303,7 @@ public:
                           streaming.cpuBytes() / 1024 / 1024, " MB CPU), ", m_gpuChunks.size(), " mallados (",
                           gpuBytes() / 1024 / 1024, " MB GPU), ", streaming.pendingGenerate, " + ",
                           streaming.pendingMesh, " trabajos, pool ", streaming.pooled, ", descartados ",
-                          streaming.discarded, "; hilo principal: máx ", m_streamWorstMs, " ms/frame");
-            m_streamWorstMs = 0.0;
+                          streaming.discarded);
             m_fpsFrames = 0;
             m_fpsElapsed = 0.0f;
         }
@@ -321,21 +323,20 @@ private:
     // lejano, y descarga lo que queda lejos (con histéresis). Acá solo se suben las mallas listas a la GPU
     // (como mucho maxResultsPerUpdate por frame) y se liberan las de los chunks descargados.
     void streamChunks() {
-        const auto start = std::chrono::steady_clock::now();
+        MGE_PROFILE_SCOPE(profiler(), "streamChunks");
         const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
         const ChunkCoord center = chunkOf(blockAt(playerPos));
         StreamUpdate update = m_streamer->update(center);
-        for (auto& [coord, mesh] : update.meshes) {
-            GpuChunk& gpu = m_gpuChunks[coord];
-            gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
-            gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
-            gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
+        {
+            MGE_PROFILE_SCOPE(profiler(), "mesh upload");
+            for (auto& [coord, mesh] : update.meshes) {
+                GpuChunk& gpu = m_gpuChunks[coord];
+                gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
+                gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
+                gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
+            }
         }
         for (const ChunkCoord& coord : update.unloaded) m_gpuChunks.erase(coord);
-        // El peor frame del intervalo (debería ser de pocos ms: el trabajo pesado va en los hilos)
-        const double ms =
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-        m_streamWorstMs = std::max(m_streamWorstMs, ms);
     }
 
     StreamingSettings streamingSettings() const {
@@ -368,12 +369,10 @@ private:
         return terrain;
     }
 
-    // F1: FPS, gráfico de tiempos y contadores, encima de la escena (Renderer2D). Lo que cuesta (armarlo +
-    // subirlo + grabar el dibujo, en la CPU) se muestra en el frame siguiente ("overlay")
+    // F1: FPS, gráfico de tiempos y contadores, encima de la escena (Renderer2D)
     void drawOverlay(const GpuFrame& frame) {
         m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame.acquireMs);
         if (!m_overlay.visible()) return;
-        const auto start = std::chrono::steady_clock::now();
         const RenderStats& render = m_renderer->stats();
         const StreamingStats streaming = m_streamer->stats();
         const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
@@ -392,16 +391,18 @@ private:
         m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
         m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
                                             std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
-        m_overlay.setCounter("overlay", std::to_string(m_overlayUs) + " us");
         m_overlay.setCounter(
             "", "F1 panel  F3 chunks  F4 frustum  F volar  G lanzar  M atlas  N musica  P pausa");
 
+        m_overlay.setProfile(profiler());
+
         // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
-        m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
-        m_overlay.draw(*m_ui);
-        m_ui->flush(*frame.cmd, frame.swapchain);
-        m_overlayUs = static_cast<int>(
-            std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count());
+        {
+            MGE_PROFILE_SCOPE(profiler(), "UI");
+            m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
+            m_overlay.draw(*m_ui);
+            m_ui->flush(*frame.cmd, frame.swapchain);
+        }
     }
 
     // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
@@ -509,13 +510,11 @@ private:
     const sandbox::SandboxTerrain* m_terrain = nullptr; // Lo posee m_world
     VoxelWorld m_world;
     std::unique_ptr<ChunkStreamer> m_streamer;
-    double m_streamWorstMs = 0.0; // Peor tiempo de streamChunks desde el último log
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
     RenderQueue m_queue;
     std::unique_ptr<DebugDraw> m_debug;
     std::unique_ptr<Renderer2D> m_ui;
     DebugOverlay m_overlay;       // F1
-    int m_overlayUs = 0;          // Lo que tardó armar el overlay el frame anterior
     bool m_showDebug = false;     // F3
     bool m_frustumFrozen = false; // F4
     glm::mat4 m_frozenViewProjection{1.0f};

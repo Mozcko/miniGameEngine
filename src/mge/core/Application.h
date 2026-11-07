@@ -3,6 +3,7 @@
 #include <mge/core/Clock.h>
 #include <mge/core/Jobs.h>
 #include <mge/core/Module.h>
+#include <mge/core/Profiler.h>
 #include <mge/core/Time.h>
 #include <mge/core/ecs/World.h>
 
@@ -36,6 +37,8 @@ namespace mge {
         // Sincronizar la presentación con el monitor (sin tearing; limita los FPS a los Hz de la pantalla).
         // false = lo más rápido posible. La plataforma/GPU lo aplican si existen; el core no lo usa.
         bool vsync = true;
+        // Instrumentación de tiempos por frame (MGE_PROFILE=0 en el entorno lo desactiva)
+        bool profiling = true;
     };
 
     // Runner del motor: dueño del loop y de los módulos. Vive en el core (sin SDL ni GPU).
@@ -67,6 +70,10 @@ namespace mge {
         // Estado de tiempo (delta, paso fijo, alpha, escala). time().setTimeScale(0) = pausa.
         Time& time() { return m_time; }
         const Time& time() const { return m_time; }
+
+        // Profiler del frame (CPU). Mide los tiempos de fases y sistemas.
+        Profiler& profiler() { return m_profiler; }
+        const Profiler& profiler() const { return m_profiler; }
 
         // Entidades + sistemas. El loop corre las fases: Fixed en cada paso fijo (antes de
         // onFixedUpdate), Update antes de onUpdate y Render antes de onRender.
@@ -129,6 +136,7 @@ namespace mge {
         bool m_running = false;
         int m_exitCode = 0;
         Time m_time;
+        Profiler m_profiler;
         World m_world;
         std::unique_ptr<JobSystem> m_jobs;
         glm::uvec2 m_viewport{0, 0};

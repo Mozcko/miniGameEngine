@@ -24,6 +24,8 @@ option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitize
 option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANITIZERS)" OFF)
 option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
+option(MGE_PROFILING "Activar instrumentación del profiler (MGE_PROFILE_SCOPE)" ON)
+option(MGE_TRACY "Activar integración opcional con Tracy Profiler" OFF)
 
 # --- ThreadSanitizer: carreras de datos (JobSystem y lo que corre en él) ---
 if(MGE_TSAN)
@@ -81,6 +83,17 @@ if(MGE_BUILD_MODULES)
     else()
         message(STATUS "SDL3: compilado desde el código fuente (release-3.4.18)")
     endif()
+endif()
+
+# --- Tracy Profiler (opcional, -DMGE_TRACY=ON) ---
+if(MGE_TRACY)
+    include(FetchContent)
+    FetchContent_Declare(tracy
+        URL https://github.com/wolfpld/tracy/archive/refs/tags/v0.11.1.tar.gz
+        URL_HASH SHA256=2c11ca816f2b756be2730f86b0092920419f3dabc7a7173829ffd897d91888a1
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(tracy)
 endif()
 
 # mge_add_game(): una llamada por juego (ver cmake/MgeGame.cmake)
