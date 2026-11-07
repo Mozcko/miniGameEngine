@@ -328,8 +328,28 @@ namespace mge {
                 const float excess = std::max(contact.penetration - m_settings.penetrationSlop, 0.0f);
                 const float corrMagnitude = excess * posCorrFraction;
                 const glm::vec3 corrVector = contact.normal * (corrMagnitude / effSum);
-                transformA.position -= corrVector * effInvA;
-                transformB.position += corrVector * effInvB;
+
+                if (effInvA > 0.0f) {
+                    const glm::vec3 corrA = -corrVector * effInvA;
+                    if (m_voxels) {
+                        const MoveResult resA =
+                            moveAabb(bodyA.bounds(transformA.position), corrA, m_voxels, {0.0f, 1e-4f});
+                        transformA.position += resA.moved;
+                    } else {
+                        transformA.position += corrA;
+                    }
+                }
+
+                if (effInvB > 0.0f) {
+                    const glm::vec3 corrB = corrVector * effInvB;
+                    if (m_voxels) {
+                        const MoveResult resB =
+                            moveAabb(bodyB.bounds(transformB.position), corrB, m_voxels, {0.0f, 1e-4f});
+                        transformB.position += resB.moved;
+                    } else {
+                        transformB.position += corrB;
+                    }
+                }
 
                 // Impulso de velocidad normal
                 const glm::vec3 vRel = bodyB.velocity - bodyA.velocity;
@@ -347,19 +367,21 @@ namespace mge {
                 }
 
                 // Impulso de fricción tangencial (Coulomb)
-                const glm::vec3 currentVRel = bodyB.velocity - bodyA.velocity;
-                const glm::vec3 vTangent =
-                    currentVRel - glm::dot(currentVRel, contact.normal) * contact.normal;
-                const float tanSpeedSq = glm::dot(vTangent, vTangent);
-                if (tanSpeedSq > 1e-10f) {
-                    const float tanSpeed = std::sqrt(tanSpeedSq);
-                    const glm::vec3 t = vTangent / tanSpeed;
-                    const float mu = std::sqrt(bodyA.friction * bodyB.friction);
-                    float jt = -tanSpeed / effSum;
-                    const float maxFriction = mu * (jn > 0.0f ? jn : -vn / effSum);
-                    jt = std::max(jt, -maxFriction);
-                    bodyA.velocity -= t * (jt * effInvA);
-                    bodyB.velocity += t * (jt * effInvB);
+                if (jn > 0.0f) {
+                    const glm::vec3 currentVRel = bodyB.velocity - bodyA.velocity;
+                    const glm::vec3 vTangent =
+                        currentVRel - glm::dot(currentVRel, contact.normal) * contact.normal;
+                    const float tanSpeedSq = glm::dot(vTangent, vTangent);
+                    if (tanSpeedSq > 1e-10f) {
+                        const float tanSpeed = std::sqrt(tanSpeedSq);
+                        const glm::vec3 t = vTangent / tanSpeed;
+                        const float mu = std::sqrt(bodyA.friction * bodyB.friction);
+                        const float maxFriction = mu * jn;
+                        const float maxJt = tanSpeed / effSum;
+                        const float jt = -std::min(maxFriction, maxJt);
+                        bodyA.velocity -= t * (jt * effInvA);
+                        bodyB.velocity += t * (jt * effInvB);
+                    }
                 }
             }
         }

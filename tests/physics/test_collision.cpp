@@ -3,7 +3,9 @@
 #include <mge/physics/VoxelCollision.h>
 #include <mge/voxel/VoxelWorld.h>
 
+#include <thread>
 #include <unordered_set>
+#include <vector>
 
 using namespace mge;
 
@@ -222,4 +224,84 @@ TEST_CASE("moveAabb: sobrecarga con VoxelWorld (cruza borde de chunk y chunks si
         CHECK_FALSE(res.blocked.z);
         CHECK(res.moved.z == doctest::Approx(30.0f));
     }
+}
+
+TEST_CASE("moveAabb: clamping de delta concurrente es seguro en hilos (atomic warnedClamp)") {
+    auto isSolid = [](const glm::ivec3& b) { return b.y <= 0; };
+    Aabb box({0.0f, 10.0f, 0.0f}, {1.0f, 11.0f, 1.0f});
+
+    constexpr int kNumThreads = 8;
+    std::vector<std::thread> threads;
+    threads.reserve(kNumThreads);
+
+    for (int t = 0; t < kNumThreads; ++t) {
+        threads.emplace_back([&]() {
+            for (int i = 0; i < 50; ++i) {
+                const MoveResult res = moveAabb(box, {500.0f, 0.0f, 0.0f}, isSolid);
+                CHECK(res.moved.x <= 256.0f);
+            }
+        });
+    }
+
+    for (auto& th : threads) {
+        th.join();
+    }
+}
+
+TEST_CASE("VoxelCollision: deteccion de solapamiento y retroceso de spawn contra pared") {
+    TestBlockRegistry reg;
+    VoxelWorld world(reg.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Pared de piedra en x = 2 (bloque [2, 3])
+    world.setBlock({2, 1, 0}, reg.stone);
+
+    auto overlapsSolid = [&](const Aabb& aabb) {
+        constexpr float kTiny = 1e-4f;
+        const int minX = static_cast<int>(std::floor(aabb.min.x + kTiny));
+        const int maxX = static_cast<int>(std::floor(aabb.max.x - kTiny));
+        const int minY = static_cast<int>(std::floor(aabb.min.y + kTiny));
+        const int maxY = static_cast<int>(std::floor(aabb.max.y - kTiny));
+        const int minZ = static_cast<int>(std::floor(aabb.min.z + kTiny));
+        const int maxZ = static_cast<int>(std::floor(aabb.max.z - kTiny));
+        for (int y = minY; y <= maxY; ++y) {
+            for (int z = minZ; z <= maxZ; ++z) {
+                for (int x = minX; x <= maxX; ++x) {
+                    if (world.isSolid(glm::ivec3(x, y, z))) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    const glm::vec3 halfExtents(0.25f);
+    const glm::vec3 fwd(1.0f, 0.0f, 0.0f); // Mirando hacia la pared en x = 2
+
+    // Jugador parado muy cerca de la pared; spawn en (1.9, 1.5, 0.5)
+    // Box abarcaría x in [1.65, 2.15], que penetra el bloque en x = 2
+    const glm::vec3 eyePos(1.9f, 1.5f, 0.5f);
+    const Aabb initialBounds(eyePos - halfExtents, eyePos + halfExtents);
+    CHECK(overlapsSolid(initialBounds));
+
+    // Retroceso a lo largo de -forward() hasta 0.5 bloques
+    glm::vec3 spawnPos = eyePos;
+    constexpr float kMaxBacktrack = 0.5f;
+    constexpr int kSteps = 10;
+    bool foundFree = false;
+    for (int i = 1; i <= kSteps; ++i) {
+        const float backDist = (kMaxBacktrack / static_cast<float>(kSteps)) * static_cast<float>(i);
+        const glm::vec3 candidatePos = eyePos - fwd * backDist;
+        const Aabb candidateBounds(candidatePos - halfExtents, candidatePos + halfExtents);
+        if (!overlapsSolid(candidateBounds)) {
+            spawnPos = candidatePos;
+            foundFree = true;
+            break;
+        }
+    }
+
+    CHECK(foundFree);
+    CHECK(spawnPos.x <= 1.75f);
+    CHECK_FALSE(overlapsSolid(Aabb(spawnPos - halfExtents, spawnPos + halfExtents)));
 }
