@@ -24,6 +24,18 @@ option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitize
 option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANITIZERS)" OFF)
 option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
+option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
+
+# --- Optimización de tamaño (MGE_SIZE_OPTIMIZE) ---
+if(MGE_SIZE_OPTIMIZE)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT MGE_IPO_SUPPORTED OUTPUT MGE_IPO_ERROR)
+    if(MGE_IPO_SUPPORTED)
+        message(STATUS "IPO/LTO soportado y activado")
+    else()
+        message(WARNING "IPO no soportado: ${MGE_IPO_ERROR}")
+    endif()
+endif()
 
 # --- ThreadSanitizer: carreras de datos (JobSystem y lo que corre en él) ---
 if(MGE_TSAN)
@@ -44,8 +56,34 @@ if(MGE_SANITIZERS)
     endif()
 endif()
 
-# --- Warnings (solo para nuestros targets) ---
+# --- Flags de tamaño y warnings (solo para nuestros targets, no para SDL/glslang) ---
+function(mge_set_size_flags target)
+    if(NOT MGE_SIZE_OPTIMIZE)
+        return()
+    endif()
+
+    if(MGE_IPO_SUPPORTED)
+        set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+    endif()
+
+    get_target_property(target_type ${target} TYPE)
+
+    if(NOT MSVC)
+        target_compile_options(${target} PRIVATE -Os -ffunction-sections -fdata-sections)
+        if(target_type STREQUAL "STATIC_LIBRARY")
+            target_compile_options(${target} PRIVATE -fvisibility=hidden)
+        endif()
+    endif()
+
+    if(NOT MSVC AND NOT APPLE)
+        if(target_type STREQUAL "EXECUTABLE")
+            target_link_options(${target} PRIVATE -Wl,--gc-sections -s)
+        endif()
+    endif()
+endfunction()
+
 function(mge_set_warnings target)
+    mge_set_size_flags(${target})
     if(NOT MGE_WARNINGS)
         return()
     endif()
@@ -93,6 +131,10 @@ endif()
 # CTest antes de los subdirectorios: juegos y ejemplos también registran tests
 if(MGE_BUILD_TESTS)
     enable_testing()
+endif()
+
+if(MGE_SIZE_OPTIMIZE AND MGE_IPO_SUPPORTED)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
 # --- Motor (src/mge), juegos y ejemplos ---

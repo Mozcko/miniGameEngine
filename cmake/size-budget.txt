@@ -1,0 +1,13 @@
+# Binary size budgets for MinSizeRel builds (scripts/check-size.sh).
+# Format: <target> <max-bytes>
+#
+# SDL3 mode: static (built from source via FetchContent, as used in CI on Ubuntu 24.04).
+# Targets that link SDL3 (sandbox, platformer2d) include the static libSDL3.a.
+# Headless targets (audio_gallery, headless_smoke, procgen_gallery) do not link SDL3.
+#
+# Budgets are calculated as measured size + 10% rounded up to the nearest 4 KiB (4096 bytes).
+audio_gallery 81920
+headless_smoke 94208
+procgen_gallery 118784
+platformer2d 2576384
+sandbox 2781184

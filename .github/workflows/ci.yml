@@ -169,3 +169,16 @@ jobs:
 
       - name: clang-format + clang-tidy naming
         run: scripts/lint.sh
+
+  # Presupuesto de tamaño de binarios (#60)
+  size:
+    name: size budget
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (SDL3 is built from source)
+        run: scripts/ci-install-deps.sh
+
+      - name: Check binary size budget
+        run: cmake --preset minsize && cmake --build --preset minsize && scripts/check-size.sh build-minsize
