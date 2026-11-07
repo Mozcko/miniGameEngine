@@ -92,6 +92,7 @@ add_executable(mge_physics_tests
     physics/test_collision.cpp
     physics/test_character.cpp
     physics/test_spatial_hash.cpp
+    physics/test_rigid_body.cpp
 )
 target_link_libraries(mge_physics_tests PRIVATE mge_physics doctest_header)
 mge_set_warnings(mge_physics_tests)

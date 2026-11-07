@@ -12,6 +12,8 @@ and `<mge/mge.h>` exposes it automatically.
 | `VoxelCollision.h/.cpp` | `MoveOptions`, `MoveResult`, `moveAabb(box, delta, isSolid/world, options)` |
 | `CharacterController.h/.cpp` | `CharacterMode`, `CharacterInput`, `CharacterController`, `CharacterCamera`, `stepCharacter`, ECS systems |
 | `SpatialHash.h/.cpp` | `SpatialHash`: 3D uniform-grid broadphase, `computePairs`, `query` |
+| `RigidBody.h/.cpp` | `ShapeType` (Box, Sphere), `RigidBody` component |
+| `PhysicsWorld.h/.cpp` | `PhysicsSettings`, `PhysicsWorld`, `addPhysicsSystem` |
 
 ## Swept AABB Collision – `<mge/physics/VoxelCollision.h>` (#52)
 
@@ -58,5 +60,29 @@ Uniform 3D spatial grid broadphase for fast overlap detection and bounding box q
 - **Touching and overlapping pairs**: `computePairs(outPairs)` finds all unique pairs `(a, b)` with `a < b` whose AABBs touch or overlap (`Aabb::intersects`). Results are sorted lexicographically `(a, b)` and deduplicated across cells.
 - **Volume queries**: `query(box, outIds)` returns all inserted IDs whose AABB touches or overlaps `box`, sorted ascending and deduplicated.
 - **Large box support**: Boxes spanning multiple cells (e.g. > 8 per axis) insert into all overlapping cells ($O(dx \cdot dy \cdot dz)$). Performance scales with box volume, but all overlap configurations are handled correctly without bounds restrictions.
+
+## Basic Rigid Bodies – `<mge/physics/RigidBody.h>`, `<mge/physics/PhysicsWorld.h>` (#54)
+
+Basic rigid bodies without rotation, simulated against the voxel world and other bodies:
+
+- **Entity Transform convention**: `Transform::position` represents the **center** of the body.
+- **Shapes**:
+  - `ShapeType::Box`: axis-aligned box with `halfExtents`.
+  - `ShapeType::Sphere`: sphere with `radius`.
+- **Properties**: `mass` (0 = static / infinite mass), `restitution` (rebound factor $0..1$), `friction` (Coulomb friction $0..1$), `gravityScale`, `linearDamping`, `velocity`, `previousPosition` (for render interpolation via `time.alpha()`), and `grounded`.
+- **Simulation Pipeline (`PhysicsWorld::step`)**:
+  1. **Deterministic collection**: collects all `<RigidBody, Transform>` entities sorted by entity ID (`index`, then `generation`), storing `previousPosition = position`.
+  2. **Velocity integration**: semi-implicit Euler integration for dynamic bodies (`inverseMass() > 0`) using `settings.gravity * gravityScale` and `linearDamping`.
+  3. **Voxel world collision**: dynamic bodies sweep against voxels using `moveAabb(bounds, velocity * dt)`. Bounces on blocked axes according to `restitution` (micro-bounces below 0.5 m/s zero out); grounded bodies experience horizontal Coulomb friction deceleration.
+  4. **Broadphase**: `SpatialHash` rebuilt with all bodies' bounds finds sorted, deduplicated collision pairs (`lastPairCount()`).
+  5. **Narrowphase & Iterative Solver**:
+     - Contact detection for Box–Box (minimum penetration axis), Sphere–Sphere, and Sphere–Box (closest point).
+     - Coincident centers resolve along $+Y$ to prevent division by zero.
+     - Stack stability & floor support: if a body is grounded on voxels or static and supports another vertically ($n_y > 0.7$), it acts with infinite effective mass so dynamic stacks remain stable on the floor without sinking.
+     - Baumgarte positional correction split by inverse mass: $\max(\text{penetration} - \text{slop}, 0) \cdot (\text{positionCorrection} / \text{solverIterations})$.
+     - Restitution impulse along normal with $e = \min(e_A, e_B)$ (clamped to 0 for relative velocity $< 0.5$ m/s).
+     - Tangential friction impulse clamped to the Coulomb friction cone $\mu \cdot j_n$ ($\mu = \sqrt{\mu_A \cdot \mu_B}$).
+- **ECS Integration**: `addPhysicsSystem(world, physics)` registers the physics step in `SystemPhase::Fixed`.
+
 
 

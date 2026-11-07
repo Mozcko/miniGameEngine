@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <deque>
 #include <string>
 #include <map>
 #include <memory>
@@ -90,6 +91,8 @@ public:
 
         addCharacterSystem(world(), solidQuery(m_world));
         addCharacterCameraSystem(world(), time());
+        m_physicsWorld.setVoxels(solidQuery(m_world));
+        addPhysicsSystem(world(), m_physicsWorld);
 
         // 3. Atlas: el PNG (camino de los assets) o uno generado por código (camino procedural, #34). Los
         // dos con las mismas posiciones de tiles; M alterna en vivo. SANDBOX_ATLAS=procedural arranca sin
@@ -114,6 +117,7 @@ public:
 
     void onShutdown() override {
         // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
+        m_thrownBodies.clear();
         m_streamer.reset(); // Los trabajos ya terminaron (run() los espera antes de onShutdown)
         m_gpuChunks.clear();
         m_pngAtlas = {};
@@ -132,6 +136,7 @@ public:
         actions.bind("Jump", Key::Space);
         actions.bind("ToggleFly", Key::F);
         actions.bind("Sprint", Key::LeftCtrl);
+        actions.bind("Throw", Key::G);
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
         actions.bind("Overlay", Key::F1);
@@ -152,6 +157,7 @@ public:
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
         if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+        if (m_platform->wasActionPressed("Throw")) spawnThrownBody();
         if (m_platform->wasActionPressed("ToggleFly")) {
             auto& controller = world().registry().get<CharacterController>(m_playerEntity);
             controller.toggleMode();
@@ -183,6 +189,31 @@ public:
             time().setTimeScale(m_isPaused ? 0.0f : 1.0f);
             m_platform->setCursorLocked(!m_isPaused);
         }
+    }
+
+    void spawnThrownBody() {
+        const auto& controller = world().registry().get<CharacterController>(m_playerEntity);
+        const auto& transform = world().registry().get<Transform>(m_playerEntity);
+        const glm::vec3 eyePos = transform.position + glm::vec3(0.0f, controller.eyeHeight, 0.0f);
+
+        if (m_thrownBodies.size() >= 64) {
+            const Entity oldest = m_thrownBodies.front();
+            m_thrownBodies.pop_front();
+            world().registry().destroy(oldest);
+        }
+
+        const Entity bodyEntity = world().registry().create();
+        world().registry().add<Transform>(bodyEntity, eyePos);
+        RigidBody rb;
+        rb.shape = ShapeType::Box;
+        rb.halfExtents = glm::vec3(0.25f); // Tamaño total 0.5
+        rb.mass = 1.0f;
+        rb.restitution = 0.4f;
+        rb.friction = 0.5f;
+        rb.velocity = controller.forward() * 15.0f;
+        rb.previousPosition = eyePos;
+        world().registry().add<RigidBody>(bodyEntity, rb);
+        m_thrownBodies.push_back(bodyEntity);
     }
 
     void onUpdate(float /*dt*/) override {
@@ -359,8 +390,11 @@ private:
         m_overlay.setCounter("posicion", std::to_string(block.x) + " " + std::to_string(block.y) + " " +
                                              std::to_string(block.z));
         m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
+        m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
+                                            std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
         m_overlay.setCounter("overlay", std::to_string(m_overlayUs) + " us");
-        m_overlay.setCounter("", "F1 panel  F3 chunks  F4 frustum  F volar  M atlas  N musica  P pausa");
+        m_overlay.setCounter(
+            "", "F1 panel  F3 chunks  F4 frustum  F volar  G lanzar  M atlas  N musica  P pausa");
 
         // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
         m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
@@ -373,7 +407,7 @@ private:
     // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
     // colisión de la cámara y, con F4, el frustum congelado
     void drawDebug() {
-        if (!m_showDebug && !m_frustumFrozen) return;
+        if (!m_showDebug && !m_frustumFrozen && m_thrownBodies.empty()) return;
         m_debug->clear();
         if (m_showDebug) {
             const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
@@ -394,6 +428,17 @@ private:
             }
         }
         if (m_frustumFrozen) m_debug->frustum(m_frozenViewProjection, {1.0f, 0.5f, 0.1f, 1.0f});
+
+        for (const Entity e : m_thrownBodies) {
+            if (!world().registry().valid(e)) continue;
+            const auto* rb = world().registry().tryGet<RigidBody>(e);
+            const auto* tf = world().registry().tryGet<Transform>(e);
+            if (rb && tf) {
+                const glm::vec3 renderPos = glm::mix(rb->previousPosition, tf->position, time().alpha());
+                m_debug->aabb(rb->bounds(renderPos), glm::vec4(1.0f, 0.6f, 0.1f, 1.0f));
+            }
+        }
+
         m_debug->flush(*m_renderer);
     }
 
@@ -456,6 +501,8 @@ private:
     std::unique_ptr<MeshRenderer> m_renderer;
     Entity m_playerEntity; // Transform + CharacterController
     Entity m_cameraEntity; // Transform + Camera + CharacterCamera
+    PhysicsWorld m_physicsWorld;
+    std::deque<Entity> m_thrownBodies;
     // El mundo: catálogo de bloques del sandbox, chunks (CPU) y sus mallas (GPU)
     BlockRegistry m_registry;
     sandbox::SandboxBlocks m_blocks;

@@ -42,6 +42,8 @@ Include as `#include <game/SandboxTerrain.h>`.
 | `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s |
 | `m_audio`, `m_musicOn` | `AudioModule*`, `bool` | Plays `mge::songs::sandboxAmbient()` from `onInit` (3 s fade‑in, echo) on the Music bus at 0.7; N toggles it (#49) |
 | `m_ui`, `m_overlay`, `m_overlayUs` | `Renderer2D`, `DebugOverlay`, `int` | F1 overlay (#43) and what it cost to build, upload and record last frame |
+| `m_physicsWorld` | `PhysicsWorld` | Rigid body physics simulation against voxels and dynamic bodies (#54) |
+| `m_thrownBodies` | `std::deque<Entity>` | Thrown rigid bodies (max 64, drawn with DebugDraw) |
 | `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
 | `m_isPaused`, `m_mouseCaptured` | `bool` | Pause state; `m_mouseCaptured` is always true |
@@ -74,6 +76,7 @@ CMake modules: `platform gpu graphics audio`.
 | `Jump` | Space (walk mode) |
 | `ToggleFly` | F: toggle walk / fly mode |
 | `Sprint` | Left Ctrl |
+| `Throw` | G: spawn a 0.5-size box rigid body in front with forward velocity (capped at 64 bodies) |
 | `Pause` | P |
 | `Quit` | Esc |
 | `CaptureMouse` | Left mouse button |
