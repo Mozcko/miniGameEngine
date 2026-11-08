@@ -169,3 +169,68 @@ jobs:
 
       - name: clang-format + clang-tidy naming
         run: scripts/lint.sh
+
+  # Microbenchmarks de rendimiento (modo Release, headless: core, procgen, voxel, physics).
+  # En push a main guarda la línea base (bench-main). En PR compara contra la última línea base.
+  bench:
+    name: benchmarks (release, headless)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/ci-install-deps.sh
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: bench-release
+
+      - name: Configure (release preset)
+        run: >
+          cmake --preset release -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build mge_bench
+        run: cmake --build --preset release --target mge_bench
+
+      - name: Run benchmarks
+        run: ./build-release/bench/mge_bench --json bench-results.json
+
+      - name: Upload benchmark baseline artifact (main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-main
+          path: bench-results.json
+          retention-days: 90
+
+      - name: Print benchmark summary (main)
+        if: github.event_name == 'push'
+        run: scripts/bench-compare.sh bench-results.json
+
+      - name: Compare benchmarks against baseline (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use official GitHub CLI (preinstalled on the runner) with GITHUB_TOKEN
+          # to download the latest baseline artifact from main without third-party action supply-chain risk.
+          mkdir -p baseline
+          RUN_ID=$(gh run list --branch main --workflow CI --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --name bench-main --dir baseline 2>/dev/null || true
+          fi
+          if [ ! -f baseline/bench-results.json ] && [ ! -f baseline/bench-main/bench-results.json ]; then
+            gh run download --name bench-main --dir baseline 2>/dev/null || true
+          fi
+          BASELINE="baseline/bench-results.json"
+          if [ ! -f "$BASELINE" ] && [ -f "baseline/bench-main/bench-results.json" ]; then
+            BASELINE="baseline/bench-main/bench-results.json"
+          fi
+          scripts/bench-compare.sh bench-results.json "$BASELINE"
+
