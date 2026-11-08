@@ -5,9 +5,11 @@
 #include <mge/core/Profiler.h>
 #include <mge/core/ecs/World.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <thread>
+#include <vector>
 
 using namespace mge;
 
@@ -95,17 +97,25 @@ TEST_CASE("Profiler: desactivado no registra entradas ni mediciones") {
 
 TEST_CASE("Profiler: averageMs converge hacia lastMs") {
     Profiler profiler;
+    std::vector<float> lastMsValues;
+    lastMsValues.reserve(30);
     for (int frame = 0; frame < 30; ++frame) {
         profiler.beginFrame();
         profiler.begin("task");
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         profiler.end();
         profiler.endFrame();
+
+        const auto& entries = profiler.entries();
+        REQUIRE(entries.size() == 1);
+        lastMsValues.push_back(entries[0].lastMs);
     }
     const auto& e = profiler.entries();
     REQUIRE(e.size() == 1);
     CHECK(e[0].averageMs > 0.0f);
-    CHECK(std::abs(e[0].averageMs - e[0].lastMs) < 0.5f);
+    const auto [minIt, maxIt] = std::minmax_element(lastMsValues.begin(), lastMsValues.end());
+    CHECK(e[0].averageMs >= *minIt);
+    CHECK(e[0].averageMs <= *maxIt);
 }
 
 TEST_CASE("Profiler: Application con World y dos sistemas produce entradas con los nombres de los sistemas") {

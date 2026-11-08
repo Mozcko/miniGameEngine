@@ -85,22 +85,23 @@ namespace mge {
         MGE_ASSERT(std::this_thread::get_id() == m_mainThreadId,
                    "Profiler solo debe usarse desde el hilo principal");
 
-        std::size_t index = 0;
-        const std::string nameStr(name);
-        auto it = m_nameToIndex.find(nameStr);
-        if (it == m_nameToIndex.end()) {
-            index = m_entries.size();
+        std::size_t index = m_entries.size();
+        for (std::size_t i = 0; i < m_entries.size(); ++i) {
+            if (m_entries[i].name == name) {
+                index = i;
+                break;
+            }
+        }
+
+        if (index == m_entries.size()) {
             Entry entry;
-            entry.name = nameStr;
+            entry.name = std::string(name);
             entry.depth = static_cast<int>(m_openStack.size());
             m_entries.push_back(std::move(entry));
-            m_nameToIndex.emplace(m_entries.back().name, index);
             m_accumulators.push_back(Accumulator{});
             EntryHistory hist;
             hist.samples.resize(kWindowFrames, 0.0f);
             m_history.push_back(std::move(hist));
-        } else {
-            index = it->second;
         }
 
         m_accumulators[index].calls++;

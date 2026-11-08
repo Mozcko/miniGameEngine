@@ -5,7 +5,6 @@
 #include <string>
 #include <string_view>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #ifndef MGE_PROFILING
@@ -70,7 +69,6 @@ namespace mge {
         bool m_enabled = true;
 
         std::vector<Entry> m_entries;
-        std::unordered_map<std::string, std::size_t> m_nameToIndex;
         std::vector<Accumulator> m_accumulators;
         std::vector<EntryHistory> m_history;
         std::vector<OpenScope> m_openStack;
