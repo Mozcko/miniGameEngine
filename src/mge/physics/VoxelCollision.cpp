@@ -3,6 +3,7 @@
 #include <mge/core/Log.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 namespace mge {
@@ -156,10 +157,9 @@ namespace mge {
         glm::vec3 clampedDelta = delta;
         for (int i = 0; i < 3; ++i) {
             if (std::abs(clampedDelta[i]) > kMaxDelta) {
-                static bool warnedClamp = false;
-                if (!warnedClamp) {
+                static std::atomic<bool> warnedClamp{false};
+                if (!warnedClamp.exchange(true, std::memory_order_relaxed)) {
                     MGE_LOG_WARN("Physics", "moveAabb: delta clamped to ±256 blocks");
-                    warnedClamp = true;
                 }
                 clampedDelta[i] = std::clamp(clampedDelta[i], -kMaxDelta, kMaxDelta);
             }

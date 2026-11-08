@@ -216,3 +216,39 @@ TEST_CASE("raycastVoxels: parámetros inválidos devuelven nullopt") {
     CHECK_FALSE(raycastVoxels(world, ray, std::numeric_limits<float>::quiet_NaN()).has_value());
     CHECK_FALSE(raycastVoxels(world, ray, 0.0f).has_value());
 }
+
+TEST_CASE("raycastVoxels: desempate determinista en esquinas/aristas prefiere X sobre Y sobre Z") {
+    TestBlocks b;
+    VoxelWorld world(b.registry);
+    world.loadChunk({0, 0, 0});
+    world.loadChunk({1, 0, 0});
+
+    // Bloques sólidos en (1, 0, 0) y (1, 1, 0)
+    world.setBlock({1, 0, 0}, b.stone);
+    world.setBlock({1, 1, 0}, b.stone);
+
+    // Rayo desde el centro de (0,0,0) en diagonal exacta (1, 1, 0) hacia la arista
+    const Ray ray({0.5f, 0.5f, 0.5f}, {1.0f, 1.0f, 0.0f});
+    const auto hit = raycastVoxels(world, ray, 10.0f);
+    REQUIRE(hit.has_value());
+    // El desempate debe elegir X primero, impactando el bloque (1, 0, 0) en su cara izquierda (-X)
+    CHECK(hit->block == glm::ivec3(1, 0, 0));
+    CHECK(hit->normal == glm::ivec3(-1, 0, 0));
+    CHECK(hit->face == BlockFace::Left);
+}
+
+TEST_CASE("raycastVoxels: maxDistance infinita no crashea y encuentra bloque a distancia 50") {
+    TestBlocks b;
+    VoxelWorld world(b.registry);
+    for (int cx = 0; cx <= 3; ++cx) {
+        world.loadChunk({cx, 0, 0});
+    }
+
+    world.setBlock({50, 0, 0}, b.stone);
+    const Ray ray({0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f});
+
+    const auto hit = raycastVoxels(world, ray, std::numeric_limits<float>::infinity());
+    REQUIRE(hit.has_value());
+    CHECK(hit->block == glm::ivec3(50, 0, 0));
+    CHECK(hit->distance == doctest::Approx(49.5f));
+}

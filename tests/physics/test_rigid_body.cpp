@@ -422,3 +422,71 @@ TEST_CASE("RigidBody: sin NaN ni Inf en ningun paso") {
         }
     }
 }
+
+TEST_CASE("RigidBody: friccion no acelera cuerpos que se separan (conservacion de energia)") {
+    Registry registry;
+    PhysicsWorld physics;
+    physics.settings().gravity = glm::vec3(0.0f);
+    physics.settings().solverIterations = 1;
+
+    // Caja estática en el origen
+    const Entity staticBox = registry.create();
+    registry.add<Transform>(staticBox, glm::vec3(0.0f, 0.0f, 0.0f));
+    RigidBody rbStatic;
+    rbStatic.mass = 0.0f;
+    rbStatic.friction = 1.0f;
+    rbStatic.linearDamping = 0.0f;
+    registry.add<RigidBody>(staticBox, rbStatic);
+
+    // Caja dinámica en (0, 0.95, 0) alejándose con velocidad (5, 2, 0)
+    const Entity dynamicBox = registry.create();
+    registry.add<Transform>(dynamicBox, glm::vec3(0.0f, 0.95f, 0.0f));
+    RigidBody rbDynamic;
+    rbDynamic.mass = 1.0f;
+    rbDynamic.friction = 1.0f;
+    rbDynamic.linearDamping = 0.0f;
+    rbDynamic.velocity = glm::vec3(5.0f, 2.0f, 0.0f);
+    registry.add<RigidBody>(dynamicBox, rbDynamic);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    physics.step(registry, kDt);
+
+    const auto& b = registry.get<RigidBody>(dynamicBox);
+    CHECK(b.velocity.x <= 5.0f);
+    CHECK(b.velocity.x >= 0.0f);
+}
+
+TEST_CASE("RigidBody: correccion posicional no atraviesa paredes de voxeles") {
+    Registry registry;
+    SolidQuery wallQuery = [](const glm::ivec3& p) { return p.x == 2; };
+    PhysicsWorld physics(PhysicsSettings{}, wallQuery);
+    physics.settings().gravity = glm::vec3(0.0f);
+
+    // Caja estática en (1.0, 0.5, 0.5) con halfExtents 0.45
+    const Entity staticBox = registry.create();
+    registry.add<Transform>(staticBox, glm::vec3(1.0f, 0.5f, 0.5f));
+    RigidBody rbStatic;
+    rbStatic.shape = ShapeType::Box;
+    rbStatic.halfExtents = glm::vec3(0.45f);
+    rbStatic.mass = 0.0f;
+    registry.add<RigidBody>(staticBox, rbStatic);
+
+    // Caja dinámica en (1.54, 0.5, 0.5) con halfExtents 0.45
+    const Entity dynamicBox = registry.create();
+    registry.add<Transform>(dynamicBox, glm::vec3(1.54f, 0.5f, 0.5f));
+    RigidBody rbDynamic;
+    rbDynamic.shape = ShapeType::Box;
+    rbDynamic.halfExtents = glm::vec3(0.45f);
+    rbDynamic.mass = 1.0f;
+    registry.add<RigidBody>(dynamicBox, rbDynamic);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int step = 0; step < 120; ++step) {
+        physics.step(registry, kDt);
+    }
+
+    const auto& tfDynamic = registry.get<Transform>(dynamicBox);
+    const auto& rb = registry.get<RigidBody>(dynamicBox);
+    const Aabb bounds = rb.bounds(tfDynamic.position);
+    CHECK(bounds.max.x <= 2.0f);
+}
