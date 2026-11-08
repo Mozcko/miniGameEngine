@@ -296,3 +296,39 @@ TEST_CASE("character: sistemas ECS addCharacterSystem y addCharacterCameraSystem
     CHECK(eyeHalf.y == doctest::Approx(15.0f + 1.62f));
     CHECK(eyeHalf.z == doctest::Approx(25.0f));
 }
+
+TEST_CASE("character: deshabilitado actualiza previousPosition al mover Transform a mano") {
+    World world;
+    auto player = world.registry().create();
+    world.registry().add<Transform>(player, glm::vec3(0.0f, 0.0f, 0.0f));
+    CharacterController ctrl;
+    ctrl.enabled = false;
+    ctrl.previousPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    world.registry().add<CharacterController>(player, ctrl);
+
+    addCharacterSystem(world, [](const glm::ivec3&) { return false; });
+
+    // Teletransportar / mover a mano el transform mientras está deshabilitado
+    const glm::vec3 teleportPos(15.0f, 25.0f, 35.0f);
+    world.registry().get<Transform>(player).position = teleportPos;
+
+    constexpr float kDt = 1.0f / 60.0f;
+    world.run(SystemPhase::Fixed, kDt);
+
+    const auto& updatedCtrl = world.registry().get<CharacterController>(player);
+    const auto& updatedTransform = world.registry().get<Transform>(player);
+
+    CHECK(updatedTransform.position == teleportPos);
+    CHECK(updatedCtrl.previousPosition == teleportPos);
+
+    // También probando directamente stepCharacter
+    CharacterController directCtrl;
+    directCtrl.enabled = false;
+    directCtrl.previousPosition = glm::vec3(0.0f);
+    const glm::vec3 newFeet(100.0f, 200.0f, 300.0f);
+    const glm::vec3 steppedFeet =
+        stepCharacter(directCtrl, newFeet, kDt, [](const glm::ivec3&) { return false; });
+
+    CHECK(steppedFeet == newFeet);
+    CHECK(directCtrl.previousPosition == newFeet);
+}

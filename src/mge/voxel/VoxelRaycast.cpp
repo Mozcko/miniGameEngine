@@ -19,8 +19,11 @@ namespace mge {
     } // namespace
 
     std::optional<VoxelRaycastHit> raycastVoxels(const VoxelWorld& world, const Ray& ray, float maxDistance) {
-        if (maxDistance < 0.0f || std::isnan(maxDistance)) {
+        if (std::isnan(maxDistance) || maxDistance < 0.0f) {
             return std::nullopt;
+        }
+        if (std::isinf(maxDistance) || maxDistance > kMaxRaycastDistance) {
+            maxDistance = kMaxRaycastDistance;
         }
 
         glm::ivec3 currentBlock = blockAt(ray.origin);
@@ -73,16 +76,17 @@ namespace mge {
         int lastStepAxis = -1;
 
         for (int s = 0; s < maxSteps; ++s) {
-            // Identificar el eje por el cual el rayo cruza antes al siguiente bloque
+            // Identificar el eje por el cual el rayo cruza antes al siguiente bloque.
+            // Los desempates prefieren X, luego Y, luego Z (<= determinista).
             int hitAxis = 0;
-            if (tMax.x < tMax.y) {
-                if (tMax.x < tMax.z) {
+            if (tMax.x <= tMax.y) {
+                if (tMax.x <= tMax.z) {
                     hitAxis = 0;
                 } else {
                     hitAxis = 2;
                 }
             } else {
-                if (tMax.y < tMax.z) {
+                if (tMax.y <= tMax.z) {
                     hitAxis = 1;
                 } else {
                     hitAxis = 2;

@@ -122,12 +122,18 @@ if(MGE_BUILD_MODULES)
     # Con sanitizers se apaga LeakSanitizer: los drivers de Mesa pierden memoria que LSan no puede atribuir.
     add_executable(mge_gpu_tests
         test_main.cpp
+        gpu/test_gpu_compute.cpp
         gpu/test_gpu_device.cpp
+        gpu/test_gpu_noise.cpp
         gpu/test_gpu_shaders.cpp
         gpu/test_gpu_swapchain.cpp
     )
     target_link_libraries(mge_gpu_tests PRIVATE mge_gpu doctest_header)
-    mge_add_shaders(mge_gpu_tests SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
+    mge_add_shaders(mge_gpu_tests SHADERS
+        gpu/shaders/test_triangle.vert
+        gpu/shaders/test_triangle.frag
+        gpu/shaders/test_square.comp
+        gpu/shaders/test_multiply.comp)
 
     # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
     # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.

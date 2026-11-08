@@ -58,13 +58,20 @@ function(mge_add_shaders target)
         if(NOT file_name MATCHES "\\.(vert|frag|comp)$")
             message(FATAL_ERROR "mge_add_shaders(${target}): ${file_name} debe terminar en .vert, .frag o .comp")
         endif()
+        if(file_name MATCHES "\\.vert$")
+            set(stage_flag "-S" "vert")
+        elseif(file_name MATCHES "\\.frag$")
+            set(stage_flag "-S" "frag")
+        else()
+            set(stage_flag "-S" "comp")
+        endif()
         string(REGEX REPLACE "[^A-Za-z0-9]" "_" stem "${file_name}") # triangle.vert → triangle_vert
         set(spirv "${out_dir}/${file_name}.spv")
         set(header "${out_dir}/${stem}.h")
         add_custom_command(
             OUTPUT "${header}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${out_dir}"
-            COMMAND ${MGE_GLSLANG_COMMAND} -V --target-env vulkan1.0 --quiet -o "${spirv}" "${source}"
+            COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet -o "${spirv}" "${source}"
             COMMAND ${CMAKE_COMMAND} -DINPUT=${spirv} -DOUTPUT=${header} -DSOURCE_NAME=${file_name}
                     -P "${MGE_EMBED_SPIRV_SCRIPT}"
             DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}

@@ -103,13 +103,20 @@ m_pipeline = device.createGraphicsPipeline(desc);     // the shaders can be rele
 Uniforms are pushed per draw with `SDL_PushGPUVertexUniformData` / `SDL_PushGPUFragmentUniformData`
 (slot = binding). The **binding convention** is in `Shader.h`:
 
-| Stage | Textures and buffers | Uniform buffers |
-|-------|----------------------|-----------------|
-| vertex | set 0 | set 1 |
-| fragment | set 2 | set 3 |
+| Stage | Read-only resources (sampled textures, storage) | Read-write storage (textures, buffers) | Uniform buffers |
+|-------|------------------------------------------------|---------------------------------------|-----------------|
+| vertex | set 0 | — | set 1 |
+| fragment | set 2 | — | set 3 |
+| compute | set 0 | set 1 | set 2 |
 
-`ShaderResources` must declare how many of each a shader uses. SDL doesn't read them from the
-SPIR‑V, so a mismatch is reported by the validation layers.
+For compute (SPIR-V):
+- **Set 0:** Sampled textures, followed by read-only storage textures, followed by read-only storage buffers.
+- **Set 1:** Read-write storage textures, followed by read-write storage buffers.
+- **Set 2:** Uniform buffers.
+
+`ShaderResources` (for graphics shaders) and `ComputePipelineDesc` (for compute pipelines) must declare
+how many of each resource the shader uses. SDL doesn't deduce them from the SPIR‑V, so a mismatch is
+reported by the validation layers.
 
 ## Resources and ownership
 - **Handles are move‑only.** Copying a `GpuBuffer` doesn't compile, and moving it transfers
@@ -133,11 +140,16 @@ SPIR‑V, so a mismatch is reported by the validation layers.
   - an empty mesh gives an empty `GpuMesh`.
 - **`downloadTexture(texture, w, h)`:** reads RGBA8 back to the CPU. It blocks, and is meant for
   tests and screenshots.
+- **`downloadBuffer(buffer, bytes)`:** reads buffer bytes back to the CPU via a transfer buffer and fence.
+  It blocks, and is meant for tests and tools.
 - **`CommandBuffer`:**
   - `submit()`, or `submitAndWait()` (fence);
   - destroyed without submitting, it is cancelled. When a swapchain image was acquired, SDL
     doesn't allow cancelling, so it's submitted empty.
-  - `beginRenderPass(color, depth*)` and `beginCopyPass()` return passes that end at scope exit.
+  - `beginRenderPass(color, depth*)`, `beginCopyPass()` and `beginComputePass(...)` return passes
+    that end at scope exit.
+  - Compute operations: `beginComputePass`, `bindComputePipeline`, `bindStorageBuffers`,
+    `pushComputeUniform`, `dispatch`, `endComputePass`.
 
 ## Coordinate conventions
 SDL GPU uses the same conventions on every backend, converting for Vulkan internally:

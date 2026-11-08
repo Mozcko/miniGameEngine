@@ -220,6 +220,49 @@ public:
         const auto& controller = world().registry().get<CharacterController>(m_playerEntity);
         const auto& transform = world().registry().get<Transform>(m_playerEntity);
         const glm::vec3 eyePos = transform.position + glm::vec3(0.0f, controller.eyeHeight, 0.0f);
+        const glm::vec3 halfExtents(0.25f); // Tamaño total 0.5
+        const glm::vec3 fwd = controller.forward();
+
+        auto overlapsSolid = [this](const Aabb& aabb) {
+            constexpr float kTiny = 1e-4f;
+            const int minX = static_cast<int>(std::floor(aabb.min.x + kTiny));
+            const int maxX = static_cast<int>(std::floor(aabb.max.x - kTiny));
+            const int minY = static_cast<int>(std::floor(aabb.min.y + kTiny));
+            const int maxY = static_cast<int>(std::floor(aabb.max.y - kTiny));
+            const int minZ = static_cast<int>(std::floor(aabb.min.z + kTiny));
+            const int maxZ = static_cast<int>(std::floor(aabb.max.z - kTiny));
+            for (int y = minY; y <= maxY; ++y) {
+                for (int z = minZ; z <= maxZ; ++z) {
+                    for (int x = minX; x <= maxX; ++x) {
+                        if (m_world.isSolid(glm::ivec3(x, y, z))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        };
+
+        glm::vec3 spawnPos = eyePos;
+        const Aabb initialBounds(spawnPos - halfExtents, spawnPos + halfExtents);
+        if (overlapsSolid(initialBounds)) {
+            constexpr float kMaxBacktrack = 0.5f;
+            constexpr int kSteps = 10;
+            bool foundFree = false;
+            for (int i = 1; i <= kSteps; ++i) {
+                const float backDist = (kMaxBacktrack / static_cast<float>(kSteps)) * static_cast<float>(i);
+                const glm::vec3 candidatePos = eyePos - fwd * backDist;
+                const Aabb candidateBounds(candidatePos - halfExtents, candidatePos + halfExtents);
+                if (!overlapsSolid(candidateBounds)) {
+                    spawnPos = candidatePos;
+                    foundFree = true;
+                    break;
+                }
+            }
+            if (!foundFree) {
+                return; // Omitir el lanzamiento si el cuerpo nace superpuesto y no hay espacio retrocediendo
+            }
+        }
 
         if (m_thrownBodies.size() >= 64) {
             const Entity oldest = m_thrownBodies.front();
@@ -228,15 +271,15 @@ public:
         }
 
         const Entity bodyEntity = world().registry().create();
-        world().registry().add<Transform>(bodyEntity, eyePos);
+        world().registry().add<Transform>(bodyEntity, spawnPos);
         RigidBody rb;
         rb.shape = ShapeType::Box;
-        rb.halfExtents = glm::vec3(0.25f); // Tamaño total 0.5
+        rb.halfExtents = halfExtents;
         rb.mass = 1.0f;
         rb.restitution = 0.4f;
         rb.friction = 0.5f;
-        rb.velocity = controller.forward() * 15.0f;
-        rb.previousPosition = eyePos;
+        rb.velocity = fwd * 15.0f;
+        rb.previousPosition = spawnPos;
         world().registry().add<RigidBody>(bodyEntity, rb);
         m_thrownBodies.push_back(bodyEntity);
     }
