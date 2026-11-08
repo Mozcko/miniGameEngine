@@ -264,6 +264,91 @@ namespace mge {
             }
         }
 
+        // 3. Caras superiores de líquidos transparentes (agua) para LOD > 0
+        const int topFaceIndex = static_cast<int>(BlockFace::Top);
+        const FaceDef& topFace = kFaces[topFaceIndex];
+        constexpr AoValues kLiquidAo = {3, 3, 3, 3};
+
+        for (int sz = 0; sz < dim; ++sz) {
+            const int startZ = sz * factor;
+            const int endZ = startZ + factor;
+            for (int sx = 0; sx < dim; ++sx) {
+                const int startX = sx * factor;
+                const int endX = startX + factor;
+                for (int sy = 0; sy < dim; ++sy) {
+                    const int startY = sy * factor;
+                    const int endY = startY + factor;
+
+                    // Buscar el bloque no-aire más alto dentro del super-bloque
+                    BlockId topBlockId = kAir;
+                    int highestNonAirY = -1;
+                    bool hasNonLiquidAtHighest = false;
+
+                    for (int y = endY - 1; y >= startY; --y) {
+                        for (int z = startZ; z < endZ; ++z) {
+                            for (int x = startX; x < endX; ++x) {
+                                const BlockId id = snapshot.get(x, y, z);
+                                if (id == kAir) continue;
+                                if (highestNonAirY == -1) {
+                                    highestNonAirY = y;
+                                    topBlockId = id;
+                                }
+                                if (y == highestNonAirY) {
+                                    const BlockDesc& d = registry.get(id);
+                                    if (d.renderLayer() != RenderLayer::Translucent || d.solid) {
+                                        hasNonLiquidAtHighest = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (highestNonAirY != -1) break;
+                    }
+
+                    if (highestNonAirY == -1 || topBlockId == kAir || hasNonLiquidAtHighest) {
+                        continue;
+                    }
+
+                    const BlockDesc& topDesc = registry.get(topBlockId);
+                    if (topDesc.renderLayer() != RenderLayer::Translucent || topDesc.solid) {
+                        continue;
+                    }
+
+                    // Verificar que la celda de arriba sea aire
+                    int aboveStartY;
+                    int aboveEndY;
+                    if (sy + 1 < dim) {
+                        aboveStartY = (sy + 1) * factor;
+                        aboveEndY = aboveStartY + factor;
+                    } else {
+                        aboveStartY = kChunkSize;
+                        aboveEndY = kChunkSize + 1;
+                    }
+
+                    bool cellAboveIsAir = true;
+                    for (int y = aboveStartY; y < aboveEndY && cellAboveIsAir; ++y) {
+                        for (int z = startZ; z < endZ && cellAboveIsAir; ++z) {
+                            for (int x = startX; x < endX && cellAboveIsAir; ++x) {
+                                if (snapshot.get(x, y, z) != kAir) {
+                                    cellAboveIsAir = false;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!cellAboveIsAir) continue;
+
+                    // Emitir un quad plano de f × f a la altura del bloque líquido más alto
+                    const float waterHeight = static_cast<float>(highestNonAirY + 1);
+                    const glm::vec3 worldPos(static_cast<float>(startX), waterHeight,
+                                             static_cast<float>(startZ));
+                    const glm::vec3 worldSize(static_cast<float>(factor), 0.0f, static_cast<float>(factor));
+
+                    emitQuad(result.transparent, topDesc, topFace, topFaceIndex, worldPos, worldSize,
+                             kLiquidAo, options);
+                }
+            }
+        }
+
         return result;
     }
 

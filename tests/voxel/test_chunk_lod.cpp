@@ -193,7 +193,7 @@ TEST_CASE("voxel:ChunkLod: validacion de malla (validate pasa sin errores)") {
     // Agregar algunos bloques variados
     world.setBlock({3, 9, 3}, tb.stone);
     world.setBlock({4, 9, 3}, tb.stone);
-    world.setBlock({5, 8, 5}, tb.water); // agua se descarta en LOD > 0
+    world.setBlock({5, 8, 5}, tb.water); // agua genera cara superior transparente en LOD > 0
 
     const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
 
@@ -205,13 +205,13 @@ TEST_CASE("voxel:ChunkLod: validacion de malla (validate pasa sin errores)") {
     const ChunkMesh mesh1 = buildLodChunkMesh(snap, tb.registry, 1);
     CHECK(mesh1.opaque.validate().empty());
     CHECK(mesh1.cutout.empty());
-    CHECK(mesh1.transparent.empty());
+    CHECK(mesh1.transparent.validate().empty());
 
     // LOD 2
     const ChunkMesh mesh2 = buildLodChunkMesh(snap, tb.registry, 2);
     CHECK(mesh2.opaque.validate().empty());
     CHECK(mesh2.cutout.empty());
-    CHECK(mesh2.transparent.empty());
+    CHECK(mesh2.transparent.validate().empty());
 }
 
 TEST_CASE("voxel:ChunkLod: costuras: dos chunks vecinos al mismo LOD no tienen caras internas") {
@@ -279,5 +279,38 @@ TEST_CASE("voxel:ChunkLod: faldas presentes en los bordes expuestos") {
 
     for (const auto& pos : meshNoSkirts.opaque.positions) {
         CHECK(pos.y >= -0.01f);
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: agua en LOD > 0 genera malla transparente en la superficie") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Piedra hasta y = 4, agua en y = 5..7
+    for (int y = 0; y <= 4; ++y) {
+        for (int z = 0; z < kChunkSize; ++z) {
+            for (int x = 0; x < kChunkSize; ++x) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+        }
+    }
+    for (int y = 5; y <= 7; ++y) {
+        for (int z = 0; z < kChunkSize; ++z) {
+            for (int x = 0; x < kChunkSize; ++x) {
+                world.setBlock({x, y, z}, tb.water);
+            }
+        }
+    }
+
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    const ChunkMesh meshLod1 = buildLodChunkMesh(snap, tb.registry, 1);
+    CHECK_FALSE(meshLod1.transparent.empty());
+    CHECK(meshLod1.transparent.vertexCount() > 0);
+
+    for (const auto& pos : meshLod1.transparent.positions) {
+        CHECK(pos.y == doctest::Approx(8.0f));
     }
 }

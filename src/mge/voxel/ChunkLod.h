@@ -45,7 +45,8 @@ namespace mge {
     // Construye la malla LOD de un chunk en coordenadas locales (0..16).
     // - LOD 0: devuelve la malla completa normal generada por buildChunkMesh.
     // - LOD n (1, 2): submuestrea el chunk y el borde de sus vecinos a factor f = 2^lod,
-    //   emitiendo únicamente la malla opaca (ChunkMesh::opaque).
+    //   emitiendo la malla opaca (ChunkMesh::opaque) y las caras superiores de líquidos
+    //   transparentes (ChunkMesh::transparent).
     // - Caras vecinas: utiliza el borde del snapshot submuestreado de la misma forma, por lo que las
     //   caras entre dos chunks del MISMO LOD se ocultan exactamente igual que en LOD 0.
     // - Grietas entre distintos LODs: agrega faldas (skirts) en los 4 bordes laterales (±X, ±Z),
