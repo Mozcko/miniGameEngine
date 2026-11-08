@@ -151,7 +151,9 @@ namespace {
             registry->add<Velocity>(e, Velocity{1.0f, 0.5f, 0.25f});
         }
 
-        runner.add("ecs: iterate 100k entities with 2 components", "ns/entidad", count, [registry] {
+        const std::string ecsBenchName =
+            "ecs: iterate " + std::to_string(count) + " entities with 2 components";
+        runner.add(ecsBenchName, "ns/entidad", count, [registry] {
             registry->each<Position, Velocity>([](Entity, Position& p, Velocity& v) {
                 p.x += v.x * 0.016f;
                 p.y += v.y * 0.016f;
@@ -312,23 +314,25 @@ namespace {
 
     // --- 4) Physics benchmarks ---
     void registerPhysicsBenchmarks(BenchRunner& runner) {
-        // a) moveAabb 10k calls on a heightmap
+        // a) moveAabb calls on a heightmap
         const int moveCalls = runner.isQuick() ? 1000 : 10000;
         const SolidQuery heightmap = [](const glm::ivec3& p) { return p.y <= 10 + (p.x % 3); };
+        const std::string moveBenchName =
+            "physics: moveAabb " + std::to_string(moveCalls) + " calls on heightmap";
 
-        runner.add("physics: moveAabb 10k calls on heightmap", "ns/call", moveCalls, [=] {
+        runner.add(moveBenchName, "ns/call", moveCalls, [=] {
             MoveResult lastRes;
             for (int i = 0; i < moveCalls; ++i) {
-                const Aabb box{
-                    glm::vec3(static_cast<float>(i % 100), 12.0f, static_cast<float>((i / 100) % 100)),
-                    glm::vec3(0.45f)};
+                const glm::vec3 center(static_cast<float>(i % 100), 12.0f,
+                                       static_cast<float>((i / 100) % 100));
+                const Aabb box = Aabb::fromCenterExtents(center, glm::vec3(0.3f, 0.9f, 0.3f));
                 const glm::vec3 delta(0.2f, -2.5f, 0.1f);
                 lastRes = moveAabb(box, delta, heightmap);
             }
             doNotOptimize(lastRes);
         });
 
-        // b) raycastVoxels 10k rays
+        // b) raycastVoxels
         const int rayCount = runner.isQuick() ? 1000 : 10000;
         auto rayReg = std::make_shared<BlockRegistry>();
         BlockDesc stone;
@@ -350,7 +354,8 @@ namespace {
             }
         }
 
-        runner.add("physics: raycastVoxels 10k rays", "ns/ray", rayCount, [rayReg, rayWorld, rayCount] {
+        const std::string rayBenchName = "physics: raycastVoxels " + std::to_string(rayCount) + " rays";
+        runner.add(rayBenchName, "ns/ray", rayCount, [rayReg, rayWorld, rayCount] {
             std::optional<VoxelRaycastHit> lastHit;
             for (int i = 0; i < rayCount; ++i) {
                 const float ox = static_cast<float>((i * 7) % 30) - 15.0f;
@@ -361,40 +366,56 @@ namespace {
             doNotOptimize(lastHit);
         });
 
-        // c) PhysicsWorld::step with 500 bodies on a floor
+        // c) PhysicsWorld::step with bodies on a floor
         const int bodyCount = runner.isQuick() ? 50 : 500;
         const SolidQuery floorQuery = [](const glm::ivec3& p) { return p.y <= 0; };
+        auto world = std::make_shared<PhysicsWorld>(PhysicsSettings{}, floorQuery);
+        auto reg = std::make_shared<Registry>();
+        for (int i = 0; i < bodyCount; ++i) {
+            Entity e = reg->create();
+            const float x = static_cast<float>(i % 25) * 1.5f - 18.0f;
+            const float z = static_cast<float>(i / 25) * 1.5f - 15.0f;
+            const float y = 2.0f + static_cast<float>(i % 5) * 1.0f;
+            reg->add<Transform>(e, Transform{glm::vec3(x, y, z)});
+            RigidBody rb;
+            rb.shape = ShapeType::Box;
+            rb.halfExtents = glm::vec3(0.45f);
+            rb.mass = 1.0f;
+            reg->add<RigidBody>(e, rb);
+        }
 
-        runner.add("physics: PhysicsWorld::step 500 bodies on floor", "ns/cuerpo", bodyCount, [=] {
-            PhysicsWorld world({}, floorQuery);
-            Registry reg;
-            for (int i = 0; i < bodyCount; ++i) {
-                Entity e = reg.create();
-                const float x = static_cast<float>(i % 25) * 1.5f - 18.0f;
-                const float z = static_cast<float>(i / 25) * 1.5f - 15.0f;
-                const float y = 2.0f + static_cast<float>(i % 5) * 1.0f;
-                reg.add<Transform>(e, Transform{glm::vec3(x, y, z)});
-                RigidBody rb;
-                rb.shape = ShapeType::Box;
-                rb.halfExtents = glm::vec3(0.45f);
-                rb.mass = 1.0f;
-                reg.add<RigidBody>(e, rb);
+        const std::string pwBenchName =
+            "physics: PhysicsWorld::step " + std::to_string(bodyCount) + " bodies x60";
+        constexpr int kSteps = 60;
+        const std::uint64_t pwItemsPerRun = static_cast<std::uint64_t>(bodyCount) * kSteps;
+
+        runner.add(pwBenchName, "ns/cuerpo", pwItemsPerRun, [world, reg] {
+            for (int s = 0; s < kSteps; ++s) {
+                world->step(*reg, 1.0f / 60.0f);
             }
-            world.step(reg, 1.0f / 60.0f);
-            doNotOptimize(reg);
+            doNotOptimize(*reg);
         });
 
-        // d) SpatialHash computePairs with 2000 boxes
+        // d) SpatialHash computePairs with boxes
         const int boxCount = runner.isQuick() ? 200 : 2000;
         auto hash = std::make_shared<SpatialHash>(2.0f);
+        auto boxes = std::make_shared<std::vector<Aabb>>(static_cast<std::size_t>(boxCount));
         for (int i = 0; i < boxCount; ++i) {
             const float x = static_cast<float>(i % 40) * 1.5f;
             const float y = static_cast<float>((i / 40) % 10) * 1.5f;
             const float z = static_cast<float>(i / 400) * 1.5f;
-            hash->insert(static_cast<std::uint32_t>(i), Aabb{glm::vec3(x, y, z), glm::vec3(1.0f)});
+            (*boxes)[static_cast<std::size_t>(i)] =
+                Aabb::fromCenterExtents(glm::vec3(x, y, z), glm::vec3(0.5f));
         }
 
-        runner.add("physics: SpatialHash computePairs 2000 boxes", "ns/caja", boxCount, [=] {
+        const std::string shBenchName =
+            "physics: SpatialHash computePairs " + std::to_string(boxCount) + " boxes";
+
+        runner.add(shBenchName, "ns/caja", boxCount, [hash, boxes, boxCount] {
+            hash->clear();
+            for (int i = 0; i < boxCount; ++i) {
+                hash->insert(static_cast<std::uint32_t>(i), (*boxes)[static_cast<std::size_t>(i)]);
+            }
             std::vector<std::pair<std::uint32_t, std::uint32_t>> pairs;
             hash->computePairs(pairs);
             doNotOptimize(pairs);

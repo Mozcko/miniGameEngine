@@ -34,6 +34,9 @@ TEST_CASE("GPU noise: simplex 3D en rejilla 32^3 coincide con CPU mge::Noise (< 
     REQUIRE(gpuValues.size() == kSize * kSize * kSize);
 
     float maxDiff = 0.0f;
+    glm::uvec3 worstCoord{0};
+    float worstExpected = 0.0f;
+    float worstActual = 0.0f;
     for (std::uint32_t z = 0; z < kSize; ++z) {
         for (std::uint32_t y = 0; y < kSize; ++y) {
             for (std::uint32_t x = 0; x < kSize; ++x) {
@@ -41,11 +44,17 @@ TEST_CASE("GPU noise: simplex 3D en rejilla 32^3 coincide con CPU mge::Noise (< 
                 const float expected = cpuNoise.simplex(pos.x, pos.y, pos.z);
                 const float actual = gpuValues[field.index(x, y, z)];
                 const float diff = std::abs(actual - expected);
-                maxDiff = std::max(maxDiff, diff);
-                CHECK(diff < 1e-4f);
+                if (diff > maxDiff) {
+                    maxDiff = diff;
+                    worstCoord = {x, y, z};
+                    worstExpected = expected;
+                    worstActual = actual;
+                }
             }
         }
     }
+    INFO("Worst diff at (", worstCoord.x, ", ", worstCoord.y, ", ", worstCoord.z,
+         "): expected=", worstExpected, ", actual=", worstActual, ", diff=", maxDiff);
     CHECK(maxDiff < 1e-4f);
 }
 
@@ -75,6 +84,9 @@ TEST_CASE("GPU noise: fBm 3D (5 octavas) en rejilla 32^3 coincide con CPU mge::N
     REQUIRE(gpuValues.size() == kSize * kSize * kSize);
 
     float maxDiff = 0.0f;
+    glm::uvec3 worstCoord{0};
+    float worstExpected = 0.0f;
+    float worstActual = 0.0f;
     for (std::uint32_t z = 0; z < kSize; ++z) {
         for (std::uint32_t y = 0; y < kSize; ++y) {
             for (std::uint32_t x = 0; x < kSize; ++x) {
@@ -82,11 +94,17 @@ TEST_CASE("GPU noise: fBm 3D (5 octavas) en rejilla 32^3 coincide con CPU mge::N
                 const float expected = cpuNoise.fbm(NoiseType::Simplex, pos.x, pos.y, pos.z, desc.fractal);
                 const float actual = gpuValues[field.index(x, y, z)];
                 const float diff = std::abs(actual - expected);
-                maxDiff = std::max(maxDiff, diff);
-                CHECK(diff < 1e-4f);
+                if (diff > maxDiff) {
+                    maxDiff = diff;
+                    worstCoord = {x, y, z};
+                    worstExpected = expected;
+                    worstActual = actual;
+                }
             }
         }
     }
+    INFO("Worst diff at (", worstCoord.x, ", ", worstCoord.y, ", ", worstCoord.z,
+         "): expected=", worstExpected, ", actual=", worstActual, ", diff=", maxDiff);
     CHECK(maxDiff < 1e-4f);
 }
 
@@ -124,15 +142,26 @@ TEST_CASE("GPU noise: cambio de semilla y regeneración") {
     // Comparar v2 con CPU Noise(222)
     const Noise cpuNoise(222);
     float maxDiff = 0.0f;
+    glm::uvec3 worstCoord{0};
+    float worstExpected = 0.0f;
+    float worstActual = 0.0f;
     for (std::uint32_t z = 0; z < 16; ++z) {
         for (std::uint32_t y = 0; y < 16; ++y) {
             for (std::uint32_t x = 0; x < 16; ++x) {
                 const glm::vec3 pos = desc.origin + glm::vec3(x, y, z) * desc.scale;
                 const float expected = cpuNoise.fbm(NoiseType::Simplex, pos.x, pos.y, pos.z, desc.fractal);
                 const float actual = v2[field.index(x, y, z)];
-                maxDiff = std::max(maxDiff, std::abs(actual - expected));
+                const float diff = std::abs(actual - expected);
+                if (diff > maxDiff) {
+                    maxDiff = diff;
+                    worstCoord = {x, y, z};
+                    worstExpected = expected;
+                    worstActual = actual;
+                }
             }
         }
     }
+    INFO("Worst diff at (", worstCoord.x, ", ", worstCoord.y, ", ", worstCoord.z,
+         "): expected=", worstExpected, ", actual=", worstActual, ", diff=", maxDiff);
     CHECK(maxDiff < 1e-4f);
 }

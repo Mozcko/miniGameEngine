@@ -4,6 +4,7 @@
 #include <mge/gpu/Swapchain.h>
 
 #include <cstring>
+#include <limits>
 
 namespace mge {
 
@@ -318,9 +319,14 @@ namespace mge {
         return pixels;
     }
 
-    std::vector<std::uint8_t> GpuDevice::downloadBuffer(const GpuBuffer& buffer, std::uint32_t size) {
+    std::vector<std::uint8_t> GpuDevice::downloadBuffer(const GpuBuffer& buffer, std::size_t size) {
         if (!buffer || size == 0) return {};
-        GpuTransferBuffer readback = createTransferBuffer(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size);
+        if (size > std::numeric_limits<std::uint32_t>::max()) {
+            MGE_LOG_ERROR("Gpu", "downloadBuffer: el tamaño excede UINT32_MAX: ", size);
+            return {};
+        }
+        const auto byteSize = static_cast<std::uint32_t>(size);
+        GpuTransferBuffer readback = createTransferBuffer(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, byteSize);
         CommandBuffer cmd = acquireCommandBuffer();
         if (!readback || !cmd) return {};
         {
@@ -328,7 +334,7 @@ namespace mge {
             SDL_GPUBufferRegion source{};
             source.buffer = buffer.get();
             source.offset = 0;
-            source.size = size;
+            source.size = byteSize;
             SDL_GPUTransferBufferLocation destination{};
             destination.transfer_buffer = readback.get();
             destination.offset = 0;
