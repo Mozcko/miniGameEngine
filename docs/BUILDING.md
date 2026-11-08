@@ -25,6 +25,7 @@ cmake --preset dev && cmake --build --preset dev        # Debug + warnings      
 cmake --preset release && cmake --build --preset release # Release              → build-release/
 cmake --preset ci && cmake --build --preset ci          # Debug + -Werror (CI)  → build-ci/
 cmake --preset asan && cmake --build --preset asan      # Debug + ASan/UBSan    → build-asan/
+cmake --preset minsize && cmake --build --preset minsize # MinSizeRel + size flags → build-minsize/
 ```
 
 A plain `cmake -S . -B build && cmake --build build` also works and defaults to **Release**.
@@ -38,6 +39,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `MGE_SANITIZERS` | `OFF` | AddressSanitizer + UndefinedBehaviorSanitizer for the whole build (`asan` preset). UB aborts (`-fno-sanitize-recover`) |
 | `MGE_BUILD_BENCHMARKS` | `ON` | Build `bench/` (e.g. `ecs_bench`; run from a Release build) |
 | `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
+| `MGE_SIZE_OPTIMIZE` | `OFF` | Optimize binaries for minimum size (`-Os`, LTO/IPO, gc-sections, strip). `ON` in the `minsize` preset |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
   from any of them. `build/` and `build-*/` are git‑ignored.
@@ -103,6 +105,46 @@ CC=clang CXX=clang++ cmake --preset tsan && cmake --build --preset tsan && ctest
 ```
 
 `MGE_TSAN` can't be combined with `MGE_SANITIZERS` (ASan).
+
+## Small builds
+
+To compile compact distribution binaries with minimum executable size:
+
+```bash
+cmake --preset minsize && cmake --build --preset minsize
+scripts/check-size.sh build-minsize
+```
+
+### What the size optimization flags do
+
+When `MGE_SIZE_OPTIMIZE=ON` (configured automatically by the `minsize` preset):
+- **Compilation flags:**
+  - `-Os`: optimizes for small code size instead of speed.
+  - `-ffunction-sections -fdata-sections`: places each function and global variable into its own ELF section so unused functions can be removed at link time.
+  - `-fvisibility=hidden` on internal static libraries: marks engine library symbols as hidden, allowing the linker and compiler to eliminate unreferenced code across object boundaries.
+  - Exceptions and stack unwinding tables are **preserved** (`std::future` in `JobSystem` can rethrow exceptions).
+- **Linking flags (`NOT MSVC AND NOT APPLE`):**
+  - `-Wl,--gc-sections`: enables garbage collection of unreferenced sections, stripping dead code and data.
+  - `-s`: strips symbol tables and debug information from the final ELF binaries.
+- **Interprocedural Optimization (IPO / LTO):**
+  - Checked via `check_ipo_supported()` and enabled (`CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`) on our engine and game targets (not on third-party dependencies such as SDL3 or glslang).
+
+### Checking and updating the size budget
+
+Binary sizes are tracked and validated in CI against budgets defined in `cmake/size-budget.txt`:
+
+```bash
+scripts/check-size.sh build-minsize
+```
+
+The script prints a markdown table comparing the size of each binary (`headless_smoke`, `platformer2d`, `sandbox`, `procgen_gallery`, `audio_gallery`) against its budget, and exits with code 1 if any binary exceeds its budget. In GitHub Actions, the table is automatically appended to `$GITHUB_STEP_SUMMARY`.
+
+**How to update budgets:**
+When adding new engine features that legitimately increase binary size:
+1. Build locally with `cmake --preset minsize && cmake --build --preset minsize` (or with static SDL3 as in CI).
+2. Note the measured size in bytes.
+3. Calculate the new budget: `measured size + 10%`, rounded up to the nearest 4 KiB (`4096` bytes).
+4. Update the corresponding lines in `cmake/size-budget.txt` and document the change in your PR description.
 
 ## Headless runs
 

@@ -62,6 +62,18 @@
         "MGE_BUILD_MODULES": "OFF",
         "MGE_BUILD_BENCHMARKS": "OFF"
       }
+    },
+    {
+      "name": "minsize",
+      "displayName": "MinSize (optimizado para tamaño)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build-minsize",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "MGE_BUILD_TESTS": "OFF",
+        "MGE_BUILD_BENCHMARKS": "OFF",
+        "MGE_SIZE_OPTIMIZE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -84,6 +96,10 @@
     {
       "name": "tsan",
       "configurePreset": "tsan"
+    },
+    {
+      "name": "minsize",
+      "configurePreset": "minsize"
     }
   ],
   "testPresets": [

@@ -40,6 +40,7 @@ namespace mge::bench {
         double minNs = 0.0;
         std::uint64_t iterations = 0;
         std::string unit;
+        bool suspicious = false;
     };
 
     class BenchRunner {
@@ -103,7 +104,8 @@ namespace mge::bench {
                     medianNs = 0.5 * (samples[samples.size() / 2 - 1] + samples[samples.size() / 2]);
                 }
 
-                m_results.push_back({b.name, medianNs, minNs, b.itemsPerRun, b.unitLabel});
+                const bool suspicious = (medianNs < 1.0);
+                m_results.push_back({b.name, medianNs, minNs, b.itemsPerRun, b.unitLabel, suspicious});
             }
         }
 
@@ -119,8 +121,14 @@ namespace mge::bench {
             std::printf("------------------------------------------------------------------------------------"
                         "-------------\n");
             for (const auto& r : m_results) {
-                std::printf("%-42s %14.2f %14.2f %12llu  %-12s\n", r.name.c_str(), r.medianNs, r.minNs,
-                            static_cast<unsigned long long>(r.iterations), r.unit.c_str());
+                if (r.suspicious) {
+                    std::printf("%-42s %14.2f %14.2f %12llu  %-12s  ⚠️  suspiciously fast\n", r.name.c_str(),
+                                r.medianNs, r.minNs, static_cast<unsigned long long>(r.iterations),
+                                r.unit.c_str());
+                } else {
+                    std::printf("%-42s %14.2f %14.2f %12llu  %-12s\n", r.name.c_str(), r.medianNs, r.minNs,
+                                static_cast<unsigned long long>(r.iterations), r.unit.c_str());
+                }
             }
             std::printf("===================================================================================="
                         "=============\n\n");
@@ -144,7 +152,8 @@ namespace mge::bench {
                 out << "      \"medianNs\": " << std::fixed << std::setprecision(2) << r.medianNs << ",\n";
                 out << "      \"minNs\": " << std::fixed << std::setprecision(2) << r.minNs << ",\n";
                 out << "      \"iterations\": " << r.iterations << ",\n";
-                out << "      \"unit\": \"" << escapeJson(r.unit) << "\"\n";
+                out << "      \"unit\": \"" << escapeJson(r.unit) << "\",\n";
+                out << "      \"suspicious\": " << (r.suspicious ? "true" : "false") << "\n";
                 out << "    }" << (i + 1 < m_results.size() ? "," : "") << "\n";
             }
             out << "  ]\n}\n";
