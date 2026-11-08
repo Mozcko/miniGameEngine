@@ -18,6 +18,9 @@ namespace mge {
         // Bloques con textura: false (por defecto) = color de vértice blanco (la textura tal cual, más el
         // AO); true = la textura se tiñe con BlockDesc::color. Los bloques sin textura usan siempre su color.
         bool tintTextured = false;
+        // Faldas en los 4 bordes laterales (±X, ±Z) para chunks LOD > 0 (#61). Oculta grietas entre LODs
+        // distintos.
+        bool lodSkirts = true;
     };
 
     // Malla de un chunk en coordenadas locales (0..16): dibujar con model = translate(chunkOrigin).

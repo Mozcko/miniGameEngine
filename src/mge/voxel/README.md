@@ -16,6 +16,7 @@ them. The sandbox (`game/`) is the reference user.
 | `ChunkStreamer.h/.cpp` | `ChunkStreamer`, `StreamingSettings`, `StreamingStats`, `StreamUpdate`: loads, meshes and unloads chunks around a moving centre, on a `JobSystem` |
 | `ChunkSnapshot.h/.cpp` | `ChunkSnapshot`: a copy of a chunk plus a 1‑block border of its neighbours (18³ ids), for meshing on another thread |
 | `ChunkMesher.h/.cpp` | `buildChunkMesh(world, coord, options)` → `ChunkMesh {opaque, cutout, transparent}` |
+| `ChunkLod.h/.cpp` | `LodChunk`, `downsample(snapshot, registry, lod)`, `buildLodChunkMesh(snapshot, registry, lod, options)` |
 | `VoxelRaycast.h/.cpp` | `raycastVoxels(world, ray, maxDistance)` → `optional<VoxelRaycastHit>` (Amanatides–Woo DDA) |
 
 ## Blocks – `<mge/voxel/Block.h>`
@@ -166,6 +167,38 @@ re‑mesh; the sandbox does this.
   unchanged.
 - Diagonal neighbour chunks aren't re‑dirtied, so AO at a chunk corner can be stale until that
   chunk is re‑meshed.
+
+## Terrain LOD – `<mge/voxel/ChunkLod.h>` (#61)
+
+Mallas simplificadas para chunks distantes, reduciendo drásticamente la cantidad de triángulos
+y la carga de dibujo.
+
+- **Niveles de detalle:**
+  - **LOD 0**: Malla completa original sin simplificación (`buildChunkMesh`).
+  - **LOD n (1, 2)**: Chunk submuestreado por un factor $f = 2^n$ ($16^3 \to 8^3 \to 4^3$ super-bloques de $f^3$ bloques).
+- **Regla de visibilidad cenital (submuestreo):**
+  Para cada celda de $f^3$ bloques, se escoge el bloque que vería un observador desde arriba: se escanea
+  la celda de arriba hacia abajo (en el eje Y) y se toma el primer bloque **opaco** que no sea aire. Si la celda
+  no contiene ningún bloque opaco, se toma aire (`kAir`). Los bloques recortados (cutout: flores) y
+  translúcidos (agua, vidrio) se descartan a LOD > 0.
+- **Malla generada:**
+  - En coordenadas locales del chunk (0..16), con el mismo formato de vértices y colores que `buildChunkMesh`.
+  - Solo genera la pasada opaca (`mesh.opaque`).
+- **Costuras entre chunks del mismo LOD:**
+  El borde del `ChunkSnapshot` vecino se submuestrea con la misma regla cenital, por lo que las caras entre
+  dos chunks vecinos del mismo LOD se ocultan de forma idéntica a LOD 0 (sin caras internas).
+- **Faldas contra grietas entre distintos LODs (`lodSkirts`):**
+  En los 4 bordes laterales del chunk ($\pm X, \pm Z$), las caras exteriores visibles se extruyen hacia abajo
+  $f$ bloques (quads verticales del mismo color) para cubrir cualquier hueco vertical con chunks vecinos que
+  estén a otro nivel de LOD. Activado por defecto en `ChunkMeshOptions::lodSkirts`.
+
+```cpp
+mge::ChunkMeshOptions options;
+options.greedy = true;
+options.lodSkirts = true;
+mge::ChunkMesh lodMesh = mge::buildLodChunkMesh(snapshot, registry, /*lod=*/ 1, options);
+// lodMesh.opaque contiene la malla LOD en espacio local 0..16
+```
 
 ## Raycasting – `<mge/voxel/VoxelRaycast.h>` (#51)
 
