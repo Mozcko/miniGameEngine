@@ -42,10 +42,10 @@ namespace mge {
 
     glm::vec3 stepCharacter(CharacterController& controller, const glm::vec3& feet, float dt,
                             const SolidQuery& isSolid) {
+        controller.previousPosition = feet;
         if (dt <= 0.0f || !controller.enabled) {
             return feet;
         }
-        controller.previousPosition = feet;
 
         if (controller.mode == CharacterMode::Walk) {
             // Velocidad horizontal deseada en el plano XZ

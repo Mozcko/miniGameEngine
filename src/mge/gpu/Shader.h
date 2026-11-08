@@ -23,6 +23,9 @@ namespace mge {
     // Convención de bindings para GLSL → SPIR-V (la que exige SDL GPU):
     //   vertex:   set 0 = texturas con sampler, storage textures, storage buffers; set 1 = uniform buffers
     //   fragment: set 2 = texturas con sampler, storage textures, storage buffers; set 3 = uniform buffers
+    //   compute:  set 0 = texturas con sampler, storage textures y storage buffers de solo lectura;
+    //             set 1 = storage textures y storage buffers de lectura/escritura (read-write);
+    //             set 2 = uniform buffers
     // Dentro de cada set los bindings van en ese orden, desde 0.
     struct ShaderResources {
         std::uint32_t samplers = 0;

@@ -82,6 +82,7 @@
 #include <mge/gpu/GpuDevice.h>
 #include <mge/gpu/GpuMesh.h>
 #include <mge/gpu/GpuModule.h>
+#include <mge/gpu/GpuNoiseField.h>
 #include <mge/gpu/Handles.h>
 #include <mge/gpu/Pipeline.h>
 #include <mge/gpu/Shader.h>

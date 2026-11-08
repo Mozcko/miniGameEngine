@@ -35,6 +35,7 @@ namespace mge {
         explicit Noise(std::uint32_t seed = 0);
 
         std::uint32_t seed() const { return m_seed; }
+        const std::array<std::uint8_t, 256>& permutationTable() const { return m_perm; }
 
         float value(float x, float y) const;
         float value(float x, float y, float z) const;
