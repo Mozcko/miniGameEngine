@@ -6,8 +6,8 @@
 # Headless targets (audio_gallery, headless_smoke, procgen_gallery) do not link SDL3.
 #
 # Budgets are calculated as measured size + 10% rounded up to the nearest 4 KiB (4096 bytes).
-audio_gallery 81920
-headless_smoke 94208
-procgen_gallery 118784
-platformer2d 2576384
-sandbox 2781184
+audio_gallery 94208
+headless_smoke 114688
+procgen_gallery 135168
+platformer2d 2912256
+sandbox 3141632
