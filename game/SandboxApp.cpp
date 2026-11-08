@@ -22,6 +22,7 @@ struct GpuChunk {
     GpuMesh opaque;
     GpuMesh cutout; // Hojas y plantas (prueba alfa)
     GpuMesh transparent;
+    int lod = 0;
 };
 
 class SandboxApp : public mge::Application {
@@ -64,12 +65,11 @@ public:
             m_frustumFrozen = true;
             m_overlay.setVisible(true);
         }
+        if (const char* lodEnv = std::getenv("MGE_LOD"); lodEnv && std::string_view(lodEnv) == "0") {
+            m_lodEnabled = false;
+        }
         // Sol, ambiente cielo/suelo y niebla del color del cielo, que termina en el borde de lo que se dibuja
-        Lighting lighting;
-        lighting.fogColor = kSkyColor;
-        lighting.fogStart = (kRenderDistance - 1.5f) * kChunkSize;
-        lighting.fogEnd = kRenderDistance * kChunkSize;
-        m_renderer->setLighting(lighting);
+        updateFog();
 
         // 2. Jugador y cámara
         // Aparecer sobre el terreno (o sobre el agua) en el centro de la columna (0, 0)
@@ -108,14 +108,19 @@ public:
         m_platform->setCursorLocked(true);
 
         // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
-        MGE_LOG_INFO("Sandbox",
-                     "WASD: mover, Espacio: saltar, F: caminar/volar, Espacio/Shift: subir/bajar (vuelo), "
-                     "Ctrl: correr, M: atlas "
-                     "PNG/procedural, N: música, P: pausa, F1: rendimiento, F3/F4: depuración, Esc: salir");
+        MGE_LOG_INFO(
+            "Sandbox",
+            "WASD: mover, Espacio: saltar, F: caminar/volar, Espacio/Shift: subir/bajar (vuelo), "
+            "Ctrl: correr, M: atlas "
+            "PNG/procedural, N: música, P: pausa, F1: rendimiento, F2: LOD, F3/F4: depuración, Esc: salir");
         return true;
     }
 
     void onShutdown() override {
+        for (const auto& entry : profiler().entries()) {
+            MGE_LOG_INFO("Profiler", entry.name, ": avg ", entry.averageMs, " ms, last ", entry.lastMs,
+                         " ms, max ", entry.maxMs, " ms");
+        }
         // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
         m_thrownBodies.clear();
         m_streamer.reset(); // Los trabajos ya terminaron (run() los espera antes de onShutdown)
@@ -140,6 +145,7 @@ public:
         actions.bind("Pause", Key::P);
         actions.bind("ToggleAtlas", Key::M);
         actions.bind("Overlay", Key::F1);
+        actions.bind("ToggleLod", Key::F2);
         actions.bind("ToggleMusic", Key::N);
         actions.bind("DebugDraw", Key::F3);
         actions.bind("FreezeFrustum", Key::F4);
@@ -157,6 +163,25 @@ public:
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
         if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+        if (m_platform->wasActionPressed("ToggleLod")) {
+            m_lodEnabled = !m_lodEnabled;
+            m_streamer->setSettings(streamingSettings());
+            updateFog();
+            if (!m_lodEnabled) {
+                const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
+                const ChunkCoord center = chunkOf(blockAt(playerPos));
+                for (auto it = m_gpuChunks.begin(); it != m_gpuChunks.end();) {
+                    if (std::max(std::abs(it->first.x - center.x), std::abs(it->first.z - center.z)) >
+                        kBaseRenderDistance) {
+                        it = m_gpuChunks.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+            MGE_LOG_INFO("Sandbox", m_lodEnabled ? "LOD: activado (doble distancia, 17x17 chunks)"
+                                                 : "LOD: desactivado (distancia base, 9x9 chunks)");
+        }
         if (m_platform->wasActionPressed("Throw")) spawnThrownBody();
         if (m_platform->wasActionPressed("ToggleFly")) {
             auto& controller = world().registry().get<CharacterController>(m_playerEntity);
@@ -353,8 +378,18 @@ public:
     }
 
 private:
-    static constexpr int kRenderDistance = 4;               // Chunks alrededor de la cámara (9×9)
+    static constexpr int kBaseRenderDistance = 4;           // Distancia base sin LOD (9×9 chunks)
+    static constexpr int kDoubleRenderDistance = 8;         // Distancia doblada con LOD (17×17 chunks)
     static constexpr glm::vec3 kSkyColor{0.5f, 0.7f, 1.0f}; // Fondo y niebla
+
+    void updateFog() {
+        const int renderDist = m_lodEnabled ? kDoubleRenderDistance : kBaseRenderDistance;
+        Lighting lighting;
+        lighting.fogColor = kSkyColor;
+        lighting.fogStart = (renderDist - 1.5f) * kChunkSize;
+        lighting.fogEnd = renderDist * kChunkSize;
+        if (m_renderer) m_renderer->setLighting(lighting);
+    }
 
     // Caja del chunk en el mundo
     static mge::Aabb chunkBounds(const ChunkCoord& coord) {
@@ -362,21 +397,22 @@ private:
         return mge::Aabb(origin, origin + glm::vec3(static_cast<float>(kChunkSize)));
     }
 
-    // Streaming (#56, #57): el ChunkStreamer genera y malla en el pool de hilos, de lo más cercano a lo más
-    // lejano, y descarga lo que queda lejos (con histéresis). Acá solo se suben las mallas listas a la GPU
-    // (como mucho maxResultsPerUpdate por frame) y se liberan las de los chunks descargados.
+    // Streaming (#56, #57, #61): el ChunkStreamer genera y malla en el pool de hilos, de lo más cercano a lo
+    // más lejano, y descarga lo que queda lejos (con histéresis). Acá solo se suben las mallas listas a la
+    // GPU (como mucho maxResultsPerUpdate por frame) y se liberan las de los chunks descargados.
     void streamChunks() {
-        MGE_PROFILE_SCOPE(profiler(), "streamChunks");
+        MGE_PROFILE_SCOPE(profiler(), "streaming");
         const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
         const ChunkCoord center = chunkOf(blockAt(playerPos));
         StreamUpdate update = m_streamer->update(center);
         {
             MGE_PROFILE_SCOPE(profiler(), "mesh upload");
-            for (auto& [coord, mesh] : update.meshes) {
+            for (auto& [coord, mesh, lod] : update.meshes) {
                 GpuChunk& gpu = m_gpuChunks[coord];
                 gpu.opaque = m_gpu->device().uploadMesh(mesh.opaque);
                 gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
                 gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
+                gpu.lod = lod;
             }
         }
         for (const ChunkCoord& coord : update.unloaded) m_gpuChunks.erase(coord);
@@ -384,8 +420,15 @@ private:
 
     StreamingSettings streamingSettings() const {
         StreamingSettings settings;
-        settings.loadRadius = kRenderDistance + 1; // Un anillo más que lo que se malla
-        settings.meshRadius = kRenderDistance;
+        if (m_lodEnabled) {
+            settings.lodRadius = {kBaseRenderDistance, kDoubleRenderDistance, 0};
+            settings.meshRadius = kDoubleRenderDistance;
+            settings.loadRadius = kDoubleRenderDistance + 1;
+        } else {
+            settings.lodRadius = {0, 0, 0};
+            settings.meshRadius = kBaseRenderDistance;
+            settings.loadRadius = kBaseRenderDistance + 1;
+        }
         settings.unloadMargin = 2;
         settings.minChunkY = 0;
         settings.maxChunkY = sandbox::SandboxTerrain::kWorldChunksY - 1;
@@ -393,6 +436,7 @@ private:
         settings.maxResultsPerUpdate = 12; // Subidas a la GPU por frame: acota el trabajo del hilo principal
         settings.meshOptions.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
         settings.meshOptions.ambientOcclusion = true; // Rincones más oscuros (color de vértice)
+        settings.meshOptions.lodSkirts = true;
         return settings;
     }
 
@@ -422,6 +466,18 @@ private:
         const glm::ivec3 block = blockAt(playerPos);
         m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
                                            std::to_string(render.totalTriangles() / 1000) + "k triangulos");
+        std::array<int, 3> lodChunks = {0, 0, 0};
+        std::array<std::size_t, 3> lodTris = {0, 0, 0};
+        for (const auto& [coord, gpu] : m_gpuChunks) {
+            const int l = std::clamp(gpu.lod, 0, 2);
+            lodChunks[l]++;
+            lodTris[l] += (gpu.opaque.indexCount + gpu.cutout.indexCount + gpu.transparent.indexCount) / 3;
+        }
+        m_overlay.setCounter(
+            "lod", (m_lodEnabled ? "ON" : "OFF") + std::string(" (L0: ") + std::to_string(lodChunks[0]) +
+                       "c/" + std::to_string(lodTris[0] / 1000) + "k, L1: " + std::to_string(lodChunks[1]) +
+                       "c/" + std::to_string(lodTris[1] / 1000) + "k, L2: " + std::to_string(lodChunks[2]) +
+                       "c/" + std::to_string(lodTris[2] / 1000) + "k)");
         m_overlay.setCounter("chunks", std::to_string(streaming.loaded) + " cargados, " +
                                            std::to_string(m_gpuChunks.size()) + " mallados, pool " +
                                            std::to_string(streaming.pooled));
@@ -435,7 +491,7 @@ private:
         m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
                                             std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
         m_overlay.setCounter(
-            "", "F1 panel  F3 chunks  F4 frustum  F volar  G lanzar  M atlas  N musica  P pausa");
+            "", "F1 panel  F2 LOD  F3 chunks  F4 frustum  F volar  G lanzar  M atlas  N musica  P pausa");
 
         m_overlay.setProfile(profiler());
 
@@ -458,9 +514,9 @@ private:
             const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
             const glm::vec3 feet = playerTransform ? playerTransform->position : glm::vec3(0.0f);
             const ChunkCoord center = chunkOf(blockAt(feet));
+            const int renderDist = m_lodEnabled ? kDoubleRenderDistance : kBaseRenderDistance;
             for (const ChunkCoord& coord : m_world.loadedChunks()) {
-                if (std::abs(coord.x - center.x) > kRenderDistance ||
-                    std::abs(coord.z - center.z) > kRenderDistance)
+                if (std::abs(coord.x - center.x) > renderDist || std::abs(coord.z - center.z) > renderDist)
                     continue;
                 const glm::vec4 color = m_world.isDirty(coord)     ? glm::vec4(1.0f, 0.25f, 0.2f, 0.9f)
                                         : m_gpuChunks.count(coord) ? glm::vec4(0.3f, 1.0f, 0.4f, 0.5f)
@@ -574,6 +630,7 @@ private:
 
     bool m_mouseCaptured = true;
     bool m_isPaused = false;
+    bool m_lodEnabled = true; // F2
 };
 
 // Definición de la función de entrada del motor

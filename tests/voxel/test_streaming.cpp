@@ -42,15 +42,22 @@ namespace {
     }
 
     // update hasta que no quede nada por hacer (con hilos, esperando a que terminen los trabajos);
-    // acumula las mallas entregadas por chunk
+    // acumula las mallas entregadas por chunk y opcionalmente su nivel de LOD
     void converge(ChunkStreamer& streamer, const ChunkCoord& center,
-                  std::map<ChunkCoord, ChunkMesh>* meshes = nullptr) {
+                  std::map<ChunkCoord, ChunkMesh>* meshes = nullptr,
+                  std::map<ChunkCoord, int>* lods = nullptr) {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
         while (std::chrono::steady_clock::now() < deadline) {
             StreamUpdate u = streamer.update(center);
-            if (meshes) {
-                for (auto& [c, m] : u.meshes) (*meshes)[c] = std::move(m);
-                for (const ChunkCoord& c : u.unloaded) meshes->erase(c);
+            if (meshes || lods) {
+                for (auto& [c, m, lod] : u.meshes) {
+                    if (meshes) (*meshes)[c] = std::move(m);
+                    if (lods) (*lods)[c] = lod;
+                }
+                for (const ChunkCoord& c : u.unloaded) {
+                    if (meshes) meshes->erase(c);
+                    if (lods) lods->erase(c);
+                }
             }
             if (streamer.idle()) return;
             const StreamingStats stats = streamer.stats();
@@ -170,4 +177,226 @@ TEST_CASE("Streamer: una malla pedida antes de editar el chunk se descarta y lle
     CHECK(streamer.stats().discarded >= 1);
     // La malla final incluye los dos bloques nuevos (cada uno suma caras)
     CHECK(meshes.at({0, 1, 0}).opaque.triangleCount() > before + 12);
+}
+
+TEST_CASE("Streamer LOD: asigna anillos de LOD según la distancia horizontal de Chebyshev") {
+    TestBlocks b;
+    std::atomic<int> generated{0};
+    VoxelWorld world(b.registry, std::make_unique<CountingGenerator>(b.stone, generated));
+    StreamingSettings s;
+    s.lodRadius = {2, 4, 6};
+    s.loadRadius = 7;
+    s.meshRadius = 6;
+    s.minChunkY = 0;
+    s.maxChunkY = 0;
+    s.maxResultsPerUpdate = 128;
+    ChunkStreamer streamer(world, s);
+
+    std::map<ChunkCoord, ChunkMesh> meshes;
+    std::map<ChunkCoord, int> lods;
+    converge(streamer, {0, 0, 0}, &meshes, &lods);
+
+    CHECK(meshes.size() == 13 * 13); // Radio 6 -> (2*6+1)^2 = 169 chunks
+    for (const auto& [coord, lod] : lods) {
+        const int d = std::max(std::abs(coord.x), std::abs(coord.z));
+        if (d <= 2) {
+            CHECK(lod == 0);
+        } else if (d <= 4) {
+            CHECK(lod == 1);
+        } else if (d <= 6) {
+            CHECK(lod == 2);
+        } else {
+            FAIL("Chunk fuera del radio maximo");
+        }
+        CHECK(streamer.chunkLod(coord) == lod);
+    }
+}
+
+TEST_CASE("Streamer LOD: histeresis de 1 chunk en cambios de anillo evita parpadeo") {
+    TestBlocks b;
+    std::atomic<int> generated{0};
+    VoxelWorld world(b.registry, std::make_unique<CountingGenerator>(b.stone, generated));
+    StreamingSettings s;
+    s.lodRadius = {2, 4, 0};
+    s.loadRadius = 6;
+    s.meshRadius = 4;
+    s.minChunkY = 0;
+    s.maxChunkY = 0;
+    s.maxResultsPerUpdate = 128;
+    ChunkStreamer streamer(world, s);
+
+    std::map<ChunkCoord, ChunkMesh> meshes;
+    std::map<ChunkCoord, int> lods;
+    converge(streamer, {0, 0, 0}, &meshes, &lods);
+
+    const ChunkCoord testChunk{2, 0, 0}; // d=2 al centro (0,0) -> LOD 0
+    REQUIRE(lods.count(testChunk) == 1);
+    CHECK(lods.at(testChunk) == 0);
+
+    // Mover centro a (-1, 0, 0): d = 3 = r0 + 1 -> gracias a la histéresis permanece en LOD 0
+    converge(streamer, {-1, 0, 0}, &meshes, &lods);
+    CHECK(streamer.chunkLod(testChunk) == 0);
+    CHECK(lods.at(testChunk) == 0);
+
+    // Mover centro a (-2, 0, 0): d = 4 > r0 + 1 -> cambia a LOD 1
+    converge(streamer, {-2, 0, 0}, &meshes, &lods);
+    CHECK(streamer.chunkLod(testChunk) == 1);
+    CHECK(lods.at(testChunk) == 1);
+
+    // Mover centro a (-1, 0, 0): d = 3 > r0 -> permanece en LOD 1 (histéresis hacia adentro)
+    converge(streamer, {-1, 0, 0}, &meshes, &lods);
+    CHECK(streamer.chunkLod(testChunk) == 1);
+    CHECK(lods.at(testChunk) == 1);
+
+    // Mover centro a (0, 0, 0): d = 2 <= r0 -> vuelve a LOD 0
+    converge(streamer, {0, 0, 0}, &meshes, &lods);
+    CHECK(streamer.chunkLod(testChunk) == 0);
+    CHECK(lods.at(testChunk) == 0);
+}
+
+TEST_CASE("Streamer LOD: re-mallado al cambiar de anillo de LOD") {
+    TestBlocks b;
+    std::atomic<int> count{0};
+    VoxelWorld world(b.registry, std::make_unique<CountingGenerator>(b.stone, count));
+    StreamingSettings s;
+    s.lodRadius = {1, 3, 0};
+    s.loadRadius = 5;
+    s.meshRadius = 3;
+    s.minChunkY = 0;
+    s.maxChunkY = 0;
+    s.maxResultsPerUpdate = 128;
+    ChunkStreamer streamer(world, s);
+
+    std::map<ChunkCoord, ChunkMesh> meshes;
+    std::map<ChunkCoord, int> lods;
+    converge(streamer, {0, 0, 0}, &meshes, &lods);
+
+    const ChunkCoord c{2, 0, 0}; // d=2 -> LOD 1
+    CHECK(lods.at(c) == 1);
+
+    // Mover centro a (2, 0, 0) -> ahora d=0 <= r0 -> se re-malla a LOD 0
+    converge(streamer, {2, 0, 0}, &meshes, &lods);
+    CHECK(lods.at(c) == 0);
+    CHECK(streamer.chunkLod(c) == 0);
+}
+
+TEST_CASE("Streamer LOD: descartar mallas con LOD viejo si el centro se mueve mientras se malla") {
+    TestBlocks b;
+    std::atomic<int> count{0};
+    VoxelWorld world(b.registry, std::make_unique<CountingGenerator>(b.stone, count));
+    JobSystem jobs(2);
+    StreamingSettings s;
+    s.lodRadius = {1, 3, 0};
+    s.loadRadius = 6;
+    s.meshRadius = 3;
+    s.minChunkY = 0;
+    s.maxChunkY = 0;
+    s.maxResultsPerUpdate = 128;
+    ChunkStreamer streamer(world, s, &jobs);
+
+    std::map<ChunkCoord, ChunkMesh> meshes;
+    std::map<ChunkCoord, int> lods;
+    converge(streamer, {0, 0, 0}, &meshes, &lods);
+
+    // Ensuciar un chunk en LOD 0 para que empiece a mallarse
+    const ChunkCoord c{0, 0, 0};
+    world.setBlock(chunkOrigin(c) + glm::ivec3(2, 5, 2), b.stone);
+    streamer.update(c); // Se pide la malla a LOD 0
+
+    // Antes de converger, mover el centro muy lejos (por ej. a (10, 0, 0))
+    // El chunk {0,0,0} ahora queda fuera de radio o en otro LOD
+    converge(streamer, {10, 0, 0}, &meshes, &lods);
+    CHECK(streamer.stats().discarded >= 1);
+}
+
+namespace {
+    StreamingSettings lodHoleSettings() {
+        StreamingSettings s;
+        s.lodRadius = {1, 3, 0};
+        s.meshRadius = 3;
+        s.loadRadius = 6;
+        s.unloadMargin = 2;
+        s.minChunkY = 0;
+        s.maxChunkY = 0;
+        s.maxResultsPerUpdate = 512;
+        s.maxJobsInFlight = 512;
+        return s;
+    }
+
+    void convergeJobs(ChunkStreamer& st, JobSystem& jobs, const ChunkCoord& c) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+        while (std::chrono::steady_clock::now() < deadline) {
+            st.update(c);
+            jobs.waitIdle();
+            if (st.idle()) return;
+        }
+    }
+} // namespace
+
+TEST_CASE("Streamer LOD: un primer mallado descartado por cambio de anillo se vuelve a pedir") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, b{1, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, b); // X cargado (d = 4) pero fuera del radio de malla (3)
+    REQUIRE(world.isLoaded(x));
+    REQUIRE(st.chunkLod(x) == -1);
+    st.update(a);
+    jobs.waitIdle(); // Pide la malla de X (LOD 1)
+    st.update(b);    // Llega con el centro en B: se descarta
+    convergeJobs(st, jobs, a);
+    CHECK(st.chunkLod(x) == 1);
+}
+
+TEST_CASE("Streamer LOD: una edición cuya malla se descartó por cambio de anillo se vuelve a mallar") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, b{1, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, a);
+    REQUIRE(st.chunkLod(x) == 1);
+    world.setBlock({-40, 10, 5}, blocks.stone); // Dentro de X
+    st.update(a);
+    jobs.waitIdle();
+    st.update(b);
+    bool remeshed = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline) {
+        StreamUpdate u = st.update(a);
+        for (auto& m : u.meshes) {
+            if (m.coord == x) remeshed = true;
+        }
+        jobs.waitIdle();
+        if (st.idle()) break;
+    }
+    CHECK(remeshed);
+}
+
+TEST_CASE("Streamer LOD: setSettings (LOD off → on) vuelve a mallar los anillos") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, a);
+    REQUIRE(st.chunkLod(x) == 1);
+    StreamingSettings off = lodHoleSettings();
+    off.lodRadius = {0, 0, 0};
+    off.meshRadius = 1;
+    st.setSettings(off);
+    convergeJobs(st, jobs, a);
+    st.setSettings(lodHoleSettings());
+    bool delivered = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline) {
+        StreamUpdate u = st.update(a);
+        for (auto& m : u.meshes) {
+            if (m.coord == x) delivered = true;
+        }
+        jobs.waitIdle();
+        if (st.idle()) break;
+    }
+    CHECK(delivered);
 }
