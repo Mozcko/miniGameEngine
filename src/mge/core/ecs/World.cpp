@@ -13,12 +13,8 @@ namespace mge {
 
     void World::run(SystemPhase phase, float dt) {
         for (System& system : m_systems[static_cast<std::size_t>(phase)]) {
-            if (m_profiler) {
-                ScopedTimer timer(*m_profiler, system.name);
-                system.function(*this, dt);
-            } else {
-                system.function(*this, dt);
-            }
+            MGE_PROFILE_SCOPE(m_profiler, system.name);
+            system.function(*this, dt);
         }
     }
 

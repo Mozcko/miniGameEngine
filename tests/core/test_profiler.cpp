@@ -119,16 +119,16 @@ TEST_CASE("Profiler: Application con World y dos sistemas produce entradas con l
     TestProfilerApp app(config);
     app.setClock(std::make_unique<ManualClock>(1.0 / 60.0));
 
-    bool sysA_ran = false;
-    bool sysB_ran = false;
+    bool sysARan = false;
+    bool sysBRan = false;
 
-    app.world().addSystem(SystemPhase::Update, "SystemAlpha", [&](World&, float) { sysA_ran = true; });
-    app.world().addSystem(SystemPhase::Update, "SystemBeta", [&](World&, float) { sysB_ran = true; });
+    app.world().addSystem(SystemPhase::Update, "SystemAlpha", [&](World&, float) { sysARan = true; });
+    app.world().addSystem(SystemPhase::Update, "SystemBeta", [&](World&, float) { sysBRan = true; });
 
     const int exitCode = app.run();
     CHECK(exitCode == 0);
-    CHECK(sysA_ran);
-    CHECK(sysB_ran);
+    CHECK(sysARan);
+    CHECK(sysBRan);
 
     const auto& entries = app.profiler().entries();
     bool foundAlpha = false;
