@@ -30,6 +30,8 @@ namespace mge {
         // Radios de los anillos de LOD (distancia horizontal de Chebyshev donde termina cada LOD).
         // Por ejemplo {6, 12, 24} -> LOD 0 hasta radio 6, LOD 1 hasta radio 12, LOD 2 hasta radio 24.
         // 0 (o lodRadius[0] == 0) desactiva LOD (comportamiento anterior: todo LOD 0 hasta meshRadius).
+        // Nota: la histéresis de LOD 0 puede mantener un chunk en LOD 0 un anillo más lejos que
+        // lodRadius[0] (hasta lodRadius[0] + 1) para evitar oscilaciones de re-mallado en la frontera.
         std::array<int, 3> lodRadius = {0, 0, 0};
 
         bool lodEnabled() const { return lodRadius[0] > 0; }
@@ -87,6 +89,9 @@ namespace mge {
         StreamingStats stats() const;
         const StreamingSettings& settings() const { return m_settings; }
         void setSettings(StreamingSettings settings);
+
+        // Limpia el registro de LODs y marca como sucios todos los chunks cargados para forzar su re-mallado
+        void remeshAll();
 
         // Nivel de LOD actual asignado al chunk (-1 si no está mallado)
         int chunkLod(const ChunkCoord& coord) const;

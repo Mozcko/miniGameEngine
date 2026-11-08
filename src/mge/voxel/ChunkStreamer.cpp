@@ -38,6 +38,14 @@ namespace mge {
         } else {
             m_settings.meshRadius = std::min(m_settings.meshRadius, m_settings.loadRadius - 1);
         }
+        remeshAll();
+    }
+
+    void ChunkStreamer::remeshAll() {
+        m_chunkLod.clear();
+        for (const ChunkCoord& c : m_world.loadedChunks()) {
+            m_world.markDirty(c);
+        }
     }
 
     int ChunkStreamer::columnDistance(const ChunkCoord& a, const ChunkCoord& b) {
@@ -154,6 +162,9 @@ namespace mge {
                 budget--;
             } else {
                 m_discarded++;
+                if (m_world.isLoaded(coord) && (curLod != requestedLod || curLod < 0)) {
+                    m_world.markDirty(coord);
+                }
             }
             it = m_meshing.erase(it);
         }

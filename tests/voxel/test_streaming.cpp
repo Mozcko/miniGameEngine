@@ -308,3 +308,95 @@ TEST_CASE("Streamer LOD: descartar mallas con LOD viejo si el centro se mueve mi
     converge(streamer, {10, 0, 0}, &meshes, &lods);
     CHECK(streamer.stats().discarded >= 1);
 }
+
+namespace {
+    StreamingSettings lodHoleSettings() {
+        StreamingSettings s;
+        s.lodRadius = {1, 3, 0};
+        s.meshRadius = 3;
+        s.loadRadius = 6;
+        s.unloadMargin = 2;
+        s.minChunkY = 0;
+        s.maxChunkY = 0;
+        s.maxResultsPerUpdate = 512;
+        s.maxJobsInFlight = 512;
+        return s;
+    }
+
+    void convergeJobs(ChunkStreamer& st, JobSystem& jobs, const ChunkCoord& c) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+        while (std::chrono::steady_clock::now() < deadline) {
+            st.update(c);
+            jobs.waitIdle();
+            if (st.idle()) return;
+        }
+    }
+} // namespace
+
+TEST_CASE("Streamer LOD: un primer mallado descartado por cambio de anillo se vuelve a pedir") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, b{1, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, b); // X cargado (d = 4) pero fuera del radio de malla (3)
+    REQUIRE(world.isLoaded(x));
+    REQUIRE(st.chunkLod(x) == -1);
+    st.update(a);
+    jobs.waitIdle(); // Pide la malla de X (LOD 1)
+    st.update(b);    // Llega con el centro en B: se descarta
+    convergeJobs(st, jobs, a);
+    CHECK(st.chunkLod(x) == 1);
+}
+
+TEST_CASE("Streamer LOD: una edición cuya malla se descartó por cambio de anillo se vuelve a mallar") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, b{1, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, a);
+    REQUIRE(st.chunkLod(x) == 1);
+    world.setBlock({-40, 10, 5}, blocks.stone); // Dentro de X
+    st.update(a);
+    jobs.waitIdle();
+    st.update(b);
+    bool remeshed = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline) {
+        StreamUpdate u = st.update(a);
+        for (auto& m : u.meshes) {
+            if (m.coord == x) remeshed = true;
+        }
+        jobs.waitIdle();
+        if (st.idle()) break;
+    }
+    CHECK(remeshed);
+}
+
+TEST_CASE("Streamer LOD: setSettings (LOD off → on) vuelve a mallar los anillos") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+    JobSystem jobs;
+    ChunkStreamer st(world, lodHoleSettings(), &jobs);
+    const ChunkCoord a{0, 0, 0}, x{-3, 0, 0};
+    convergeJobs(st, jobs, a);
+    REQUIRE(st.chunkLod(x) == 1);
+    StreamingSettings off = lodHoleSettings();
+    off.lodRadius = {0, 0, 0};
+    off.meshRadius = 1;
+    st.setSettings(off);
+    convergeJobs(st, jobs, a);
+    st.setSettings(lodHoleSettings());
+    bool delivered = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline) {
+        StreamUpdate u = st.update(a);
+        for (auto& m : u.meshes) {
+            if (m.coord == x) delivered = true;
+        }
+        jobs.waitIdle();
+        if (st.idle()) break;
+    }
+    CHECK(delivered);
+}
