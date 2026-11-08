@@ -1,8 +1,11 @@
 #pragma once
 
 #include <mge/gpu/Handles.h>
+#include <mge/gpu/Shader.h>
 
 #include <SDL3/SDL_gpu.h>
+
+#include <cstdint>
 
 namespace mge {
 
@@ -28,5 +31,20 @@ namespace mge {
         SDL_GPUCullMode cullMode = SDL_GPU_CULLMODE_BACK;
         SDL_GPUFrontFace frontFace = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
         BlendMode blend = BlendMode::None;
+    };
+
+    // Descripción simplificada de un pipeline de cómputo.
+    struct ComputePipelineDesc {
+        ShaderCode bytecode;
+        const char* entrypoint = "main";
+        std::uint32_t threadcountX = 1;
+        std::uint32_t threadcountY = 1;
+        std::uint32_t threadcountZ = 1;
+        std::uint32_t samplers = 0;
+        std::uint32_t readonlyStorageTextures = 0;
+        std::uint32_t readonlyStorageBuffers = 0;
+        std::uint32_t readwriteStorageTextures = 0;
+        std::uint32_t readwriteStorageBuffers = 0;
+        std::uint32_t uniformBuffers = 0;
     };
 }

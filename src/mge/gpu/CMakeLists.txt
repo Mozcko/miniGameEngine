@@ -8,8 +8,10 @@ add_library(mge_gpu STATIC
     CommandBuffer.h CommandBuffer.cpp
     GpuMesh.h GpuMesh.cpp
     GpuModule.h GpuModule.cpp
+    GpuNoiseField.h GpuNoiseField.cpp
     Swapchain.h Swapchain.cpp
 )
+mge_add_shaders(mge_gpu SHADERS shaders/noise.comp)
 target_link_libraries(mge_gpu PUBLIC mge_core mge_procgen mge_platform SDL3::SDL3)
 # Validación de la GPU (capas de Vulkan) por defecto en Debug
 target_compile_definitions(mge_gpu PRIVATE $<$<CONFIG:Debug>:MGE_GPU_DEBUG_DEFAULT=1>)
