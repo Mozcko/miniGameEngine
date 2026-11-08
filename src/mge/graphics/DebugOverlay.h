@@ -14,6 +14,7 @@
 namespace mge {
 
     class Renderer2D;
+    class Profiler;
 
     // Overlay de rendimiento (#43): FPS, gráfico de tiempos de frame y contadores con nombre. No sabe nada
     // del juego: el juego le pasa los tiempos y los contadores que quiera mostrar. Uso por frame:
@@ -46,6 +47,17 @@ namespace mge {
         void removeCounter(std::string_view name);
         const std::vector<std::pair<std::string, std::string>>& counters() const { return m_counters; }
 
+        struct ProfileEntry {
+            std::string name;
+            float averageMs = 0.0f;
+            float maxMs = 0.0f;
+            int depth = 0;
+        };
+
+        // Copia las entradas del Profiler para dibujarlas bajo los contadores
+        void setProfile(const Profiler& profiler);
+        const std::vector<ProfileEntry>& profileEntries() const { return m_profile; }
+
         // Arma el panel en batch con la fuente dada (su atlas ya en la GPU como atlasTexture). Devuelve el
         // tamaño. Testeable sin GPU
         glm::vec2 build(Batch2D& batch, const Font& font, const Texture2D* atlasTexture,
@@ -62,6 +74,7 @@ namespace mge {
         std::size_t m_head = 0; // Próxima posición a escribir
         std::size_t m_count = 0;
         std::vector<std::pair<std::string, std::string>> m_counters;
+        std::vector<ProfileEntry> m_profile;
         bool m_visible = true;
     };
 }

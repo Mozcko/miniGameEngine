@@ -36,6 +36,21 @@ namespace mge {
                 MGE_LOG_WARN("App", "MGE_VSYNC inválido ('", env, "'): usar 0 o 1; se ignora");
             }
         }
+        // Profiling desde el entorno (MGE_PROFILE=0 desactiva el profiler en tiempo de ejecución)
+        if (const char* env = std::getenv("MGE_PROFILE")) {
+            const std::string value = env;
+            if (value == "0") {
+                m_config.profiling = false;
+                MGE_LOG_INFO("App", "MGE_PROFILE=0: profiler desactivado");
+            } else if (value == "1") {
+                m_config.profiling = true;
+                MGE_LOG_INFO("App", "MGE_PROFILE=1: profiler activado");
+            } else {
+                MGE_LOG_WARN("App", "MGE_PROFILE inválido ('", env, "'): usar 0 o 1; se ignora");
+            }
+        }
+        m_profiler.setEnabled(m_config.profiling);
+        m_world.setProfiler(&m_profiler);
     }
 
     Application::~Application() = default;
@@ -86,12 +101,15 @@ namespace mge {
         const double fixedDelta = m_fixedDeltaSeconds;
         m_time.m_accumulator += scaled;
         int steps = 0;
-        while (m_time.m_accumulator + kEpsilon >= fixedDelta && steps < m_config.maxFixedStepsPerFrame) {
-            m_world.run(SystemPhase::Fixed, m_time.m_fixedDelta);
-            onFixedUpdate(m_time.m_fixedDelta);
-            m_time.m_accumulator -= fixedDelta;
-            m_time.m_fixedStepCount++;
-            steps++;
+        {
+            MGE_PROFILE_SCOPE(m_profiler, "fixed");
+            while (m_time.m_accumulator + kEpsilon >= fixedDelta && steps < m_config.maxFixedStepsPerFrame) {
+                m_world.run(SystemPhase::Fixed, m_time.m_fixedDelta);
+                onFixedUpdate(m_time.m_fixedDelta);
+                m_time.m_accumulator -= fixedDelta;
+                m_time.m_fixedStepCount++;
+                steps++;
+            }
         }
         // Se llegó al tope: descartar el atraso entero (queda solo la fracción del paso actual)
         if (m_time.m_accumulator + kEpsilon >= fixedDelta) {
@@ -124,21 +142,45 @@ namespace mge {
         double lastTime = m_clock->now();
 
         while (m_running) {
-            for (const auto& module : m_modules) module->onFrameBegin(*this);
-            // Un módulo pudo pedir salir (ej: se cerró la ventana)
-            if (!m_running) break;
+            m_profiler.beginFrame();
+            bool frameAborted = false;
+            {
+                MGE_PROFILE_SCOPE(m_profiler, "frame");
 
-            const double now = m_clock->now();
-            advanceTime(now - lastTime); // onFixedUpdate 0..N veces
-            lastTime = now;
+                {
+                    MGE_PROFILE_SCOPE(m_profiler, "modules.begin");
+                    for (const auto& module : m_modules) module->onFrameBegin(*this);
+                }
+                // Un módulo pudo pedir salir (ej: se cerró la ventana)
+                if (!m_running) {
+                    frameAborted = true;
+                } else {
+                    const double now = m_clock->now();
+                    advanceTime(now - lastTime); // onFixedUpdate 0..N veces
+                    lastTime = now;
 
-            m_world.run(SystemPhase::Update, m_time.m_delta);
-            onUpdate(m_time.m_delta);
-            CameraSystem::update(m_world.registry(), m_viewport);
-            m_world.run(SystemPhase::Render, m_time.m_delta);
-            onRender();
+                    {
+                        MGE_PROFILE_SCOPE(m_profiler, "update");
+                        m_world.run(SystemPhase::Update, m_time.m_delta);
+                        onUpdate(m_time.m_delta);
+                    }
 
-            for (const auto& module : m_modules) module->onFrameEnd(*this);
+                    CameraSystem::update(m_world.registry(), m_viewport);
+
+                    {
+                        MGE_PROFILE_SCOPE(m_profiler, "render");
+                        m_world.run(SystemPhase::Render, m_time.m_delta);
+                        onRender();
+                    }
+
+                    {
+                        MGE_PROFILE_SCOPE(m_profiler, "modules.end");
+                        for (const auto& module : m_modules) module->onFrameEnd(*this);
+                    }
+                }
+            }
+            m_profiler.endFrame();
+            if (frameAborted) break;
 
             m_time.m_frameCount++;
             if (m_config.maxFrames > 0 && m_time.m_frameCount >= m_config.maxFrames) m_running = false;

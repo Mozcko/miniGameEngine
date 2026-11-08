@@ -4,6 +4,7 @@
 
 #include <doctest/doctest.h>
 #include <mge/core/Log.h>
+#include <mge/core/Profiler.h>
 #include <examples/platformer2d/PlatformerView.h>
 #include <mge/graphics/Batch2D.h>
 #include <mge/graphics/DebugOverlay.h>
@@ -326,6 +327,36 @@ TEST_CASE("DebugOverlay: el panel es un lote con una barra por frame del gráfic
     };
     CHECK(quads(61, false) == quads(60, false) + 1); // Una barra más (mismo texto: 63 FPS, 16.0 ms)
     CHECK(quads(60, true) == quads(60, false) + 9);  // "chunks: 10" = 9 glifos visibles
+}
+
+TEST_CASE("DebugOverlay: setProfile copia las entradas e indenta en build()") {
+    Profiler profiler;
+    profiler.beginFrame();
+    {
+        MGE_PROFILE_SCOPE(profiler, "frame");
+        { MGE_PROFILE_SCOPE(profiler, "update"); }
+    }
+    profiler.endFrame();
+
+    DebugOverlay overlay;
+    overlay.setProfile(profiler);
+
+    REQUIRE(overlay.profileEntries().size() == 2);
+    CHECK(overlay.profileEntries()[0].name == "frame");
+    CHECK(overlay.profileEntries()[0].depth == 0);
+    CHECK(overlay.profileEntries()[1].name == "update");
+    CHECK(overlay.profileEntries()[1].depth == 1);
+
+    const Font font = Font::builtin();
+    Batch2D batchWithoutProfile;
+    DebugOverlay overlayWithoutProfile;
+    const glm::vec2 sizeWithout = overlayWithoutProfile.build(batchWithoutProfile, font, nullptr);
+
+    Batch2D batchWithProfile;
+    const glm::vec2 sizeWith = overlay.build(batchWithProfile, font, nullptr);
+
+    CHECK(sizeWith.y > sizeWithout.y);
+    CHECK(batchWithProfile.vertices().size() > batchWithoutProfile.vertices().size());
 }
 
 TEST_CASE("Render: overlay de rendimiento con tiempos fijos (#43)") {

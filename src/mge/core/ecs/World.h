@@ -18,6 +18,7 @@ namespace mge {
     };
 
     class World;
+    class Profiler;
     using SystemFunction = std::function<void(World& world, float dt)>;
 
     // Registro de entidades + sistemas ordenados por fase. La Application tiene uno (app.world())
@@ -31,6 +32,9 @@ namespace mge {
         void run(SystemPhase phase, float dt);
         std::size_t systemCount(SystemPhase phase) const;
 
+        void setProfiler(Profiler* profiler);
+        Profiler* profiler() const { return m_profiler; }
+
     private:
         struct System {
             std::string name;
@@ -39,5 +43,6 @@ namespace mge {
 
         Registry m_registry;
         std::array<std::vector<System>, static_cast<std::size_t>(SystemPhase::Count)> m_systems;
+        Profiler* m_profiler = nullptr;
     };
 }

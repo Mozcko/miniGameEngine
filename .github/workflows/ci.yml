@@ -170,7 +170,6 @@ jobs:
       - name: clang-format + clang-tidy naming
         run: scripts/lint.sh
 
-<<<<<<< HEAD
   # Presupuesto de tamaño de binarios (#60)
   size:
     name: size budget
@@ -183,7 +182,7 @@ jobs:
 
       - name: Check binary size budget
         run: cmake --preset minsize && cmake --build --preset minsize && scripts/check-size.sh build-minsize
-=======
+
   # Microbenchmarks de rendimiento (modo Release, headless: core, procgen, voxel, physics).
   # En push a main guarda la línea base (bench-main). En PR compara contra la última línea base.
   bench:
@@ -248,4 +247,3 @@ jobs:
           fi
           scripts/bench-compare.sh bench-results.json "$BASELINE"
 
->>>>>>> origin/main

@@ -1,6 +1,7 @@
 #include "Bench.h"
 
 #include <mge/core/Jobs.h>
+#include <mge/core/Profiler.h>
 #include <mge/core/ecs/Registry.h>
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/math/Geometry.h>
@@ -35,6 +36,29 @@ using namespace mge;
 using namespace mge::bench;
 
 namespace {
+
+    // --- 0) Core benchmarks ---
+    void registerCoreBenchmarks(BenchRunner& runner) {
+        const int count = runner.isQuick() ? 10000 : 100000;
+        auto profiler = std::make_shared<Profiler>();
+        profiler->beginFrame();
+
+        // Registrar nombres típicos para poblar m_entries con un frame realista
+        const char* const kWarmupScopes[] = {"frame",     "modules.begin", "fixed",      "update",
+                                             "streaming", "render",        "modules.end"};
+        for (const char* name : kWarmupScopes) {
+            profiler->begin(name);
+            profiler->end();
+        }
+
+        runner.add("core: profiler scope", "ns/scope", count, [profiler, count] {
+            for (int i = 0; i < count; ++i) {
+                profiler->begin("update");
+                profiler->end();
+            }
+            doNotOptimize(profiler);
+        });
+    }
 
     // --- 1) Noise benchmarks ---
     void registerNoiseBenchmarks(BenchRunner& runner) {
@@ -427,6 +451,7 @@ namespace {
 int main(int argc, char** argv) {
     BenchRunner runner(argc, argv);
 
+    registerCoreBenchmarks(runner);
     registerNoiseBenchmarks(runner);
     registerEcsBenchmarks(runner);
     registerVoxelBenchmarks(runner);
