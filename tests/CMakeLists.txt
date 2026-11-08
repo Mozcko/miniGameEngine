@@ -122,6 +122,7 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         gpu/test_gpu_compute.cpp
         gpu/test_gpu_device.cpp
+        gpu/test_gpu_noise.cpp
         gpu/test_gpu_shaders.cpp
         gpu/test_gpu_swapchain.cpp
     )

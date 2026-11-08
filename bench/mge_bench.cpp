@@ -17,6 +17,12 @@
 #include <mge/voxel/ChunkStreamer.h>
 #include <mge/voxel/VoxelWorld.h>
 
+#if defined(MGE_BENCH_HAS_GPU)
+#include <mge/gpu/GpuDevice.h>
+#include <mge/gpu/GpuNoiseField.h>
+#include <SDL3/SDL.h>
+#endif
+
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -80,6 +86,52 @@ namespace {
             }
             doNotOptimize(sum);
         });
+
+        // CPU fbm 64³ vs GPU fbm 64³
+        constexpr int kDim = 64;
+        constexpr int kTotalSamples = kDim * kDim * kDim;
+        const glm::vec3 origin(0.0f);
+        const glm::vec3 scale(0.05f);
+
+        runner.add("noise: CPU fbm 64^3", "ns/campo", 1, [=] {
+            std::vector<float> data(static_cast<std::size_t>(kTotalSamples));
+            for (int z = 0; z < kDim; ++z) {
+                for (int y = 0; y < kDim; ++y) {
+                    for (int x = 0; x < kDim; ++x) {
+                        const glm::vec3 pos = origin + glm::vec3(x, y, z) * scale;
+                        data[static_cast<std::size_t>(x + y * kDim + z * (kDim * kDim))] =
+                            noise.fbm(NoiseType::Simplex, pos.x, pos.y, pos.z, fractal);
+                    }
+                }
+            }
+            doNotOptimize(data.data());
+        });
+
+#if defined(MGE_BENCH_HAS_GPU)
+        if (!std::getenv("SDL_VIDEODRIVER")) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
+        if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+            GpuDeviceOptions options;
+            options.debug = false;
+            std::unique_ptr<GpuDevice> devicePtr = GpuDevice::create(options);
+            if (devicePtr) {
+                auto device = std::shared_ptr<GpuDevice>(std::move(devicePtr));
+                auto field = std::make_shared<GpuNoiseField>(*device, noise);
+                GpuNoiseFieldDesc desc;
+                desc.width = kDim;
+                desc.height = kDim;
+                desc.depth = kDim;
+                desc.origin = origin;
+                desc.scale = scale;
+                desc.fractal = fractal;
+
+                runner.add("noise: GPU fbm 64^3 incl. download", "ns/campo", 1, [device, field, desc] {
+                    field->generate(desc);
+                    const std::vector<float> data = field->download();
+                    doNotOptimize(data.data());
+                });
+            }
+        }
+#endif
     }
 
     // --- 2) ECS benchmarks ---
