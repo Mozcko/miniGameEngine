@@ -185,6 +185,33 @@ namespace mge {
                                         "un pipeline de cómputo");
     }
 
+    GpuComputePipeline GpuDevice::createComputePipeline(const ComputePipelineDesc& desc) {
+        if (!desc.bytecode.code || desc.bytecode.size == 0) {
+            MGE_LOG_ERROR("Gpu", "createComputePipeline: código vacío");
+            return GpuComputePipeline{};
+        }
+        if (desc.bytecode.stage != ShaderStage::Compute) {
+            MGE_LOG_ERROR("Gpu",
+                          "createComputePipeline: el shader debe ser de cómputo (ShaderStage::Compute)");
+            return GpuComputePipeline{};
+        }
+        SDL_GPUComputePipelineCreateInfo info{};
+        info.code = desc.bytecode.code;
+        info.code_size = desc.bytecode.size;
+        info.entrypoint = desc.entrypoint ? desc.entrypoint : "main";
+        info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        info.num_samplers = desc.samplers;
+        info.num_readonly_storage_textures = desc.readonlyStorageTextures;
+        info.num_readonly_storage_buffers = desc.readonlyStorageBuffers;
+        info.num_readwrite_storage_textures = desc.readwriteStorageTextures;
+        info.num_readwrite_storage_buffers = desc.readwriteStorageBuffers;
+        info.num_uniform_buffers = desc.uniformBuffers;
+        info.threadcount_x = desc.threadcountX;
+        info.threadcount_y = desc.threadcountY;
+        info.threadcount_z = desc.threadcountZ;
+        return createComputePipeline(info);
+    }
+
     CommandBuffer GpuDevice::acquireCommandBuffer() {
         SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(m_device);
         if (!cmd) MGE_LOG_ERROR("Gpu", "No se pudo obtener un command buffer: ", SDL_GetError());
@@ -289,6 +316,32 @@ namespace mge {
         std::memcpy(pixels.data(), mapped, size);
         SDL_UnmapGPUTransferBuffer(m_device, readback.get());
         return pixels;
+    }
+
+    std::vector<std::uint8_t> GpuDevice::downloadBuffer(const GpuBuffer& buffer, std::uint32_t size) {
+        if (!buffer || size == 0) return {};
+        GpuTransferBuffer readback = createTransferBuffer(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size);
+        CommandBuffer cmd = acquireCommandBuffer();
+        if (!readback || !cmd) return {};
+        {
+            CopyPass copy = cmd.beginCopyPass();
+            SDL_GPUBufferRegion source{};
+            source.buffer = buffer.get();
+            source.offset = 0;
+            source.size = size;
+            SDL_GPUTransferBufferLocation destination{};
+            destination.transfer_buffer = readback.get();
+            destination.offset = 0;
+            SDL_DownloadFromGPUBuffer(copy.get(), &source, &destination);
+        }
+        if (!cmd.submitAndWait()) return {};
+
+        std::vector<std::uint8_t> data(size);
+        const void* mapped = SDL_MapGPUTransferBuffer(m_device, readback.get(), false);
+        if (!mapped) return {};
+        std::memcpy(data.data(), mapped, size);
+        SDL_UnmapGPUTransferBuffer(m_device, readback.get());
+        return data;
     }
 
     void GpuDevice::waitIdle() {

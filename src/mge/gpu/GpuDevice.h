@@ -53,6 +53,7 @@ namespace mge {
         GpuGraphicsPipeline createGraphicsPipeline(const SDL_GPUGraphicsPipelineCreateInfo& info);
         GpuGraphicsPipeline createGraphicsPipeline(const GraphicsPipelineDesc& desc);
         GpuComputePipeline createComputePipeline(const SDL_GPUComputePipelineCreateInfo& info);
+        GpuComputePipeline createComputePipeline(const ComputePipelineDesc& desc);
 
         // --- Trabajo ---
         CommandBuffer acquireCommandBuffer();
@@ -69,6 +70,12 @@ namespace mge {
         // Lee una textura RGBA8 a la CPU (bloquea hasta que la GPU termine). Para tests y capturas.
         std::vector<std::uint8_t> downloadTexture(const GpuTexture& texture, std::uint32_t width,
                                                   std::uint32_t height);
+        // Lee bytes de un buffer de la GPU a la CPU (bloquea hasta que la GPU termine). Para tests y
+        // herramientas.
+        std::vector<std::uint8_t> downloadBuffer(const GpuBuffer& buffer, std::uint32_t size);
+        std::vector<std::uint8_t> downloadBuffer(const GpuBuffer& buffer, std::size_t size) {
+            return downloadBuffer(buffer, static_cast<std::uint32_t>(size));
+        }
         void waitIdle();
 
     private:
