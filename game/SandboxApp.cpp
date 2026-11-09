@@ -52,6 +52,9 @@ public:
         m_audio->playSong(m_audio->addSong(songs::sandboxAmbient()), 3.0f);
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
+        m_skyRenderer = std::make_unique<SkyRenderer>(m_gpu->device(), m_gpu->swapchainFormat(),
+                                                      m_gpu->device().depthFormat());
+        if (!m_skyRenderer->valid()) return false;
         m_debug = std::make_unique<DebugDraw>(m_gpu->device());
         // UI 2D (#42) y overlay de rendimiento (F1, #43): visible de entrada en Debug
         m_ui = std::make_unique<Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
@@ -130,6 +133,7 @@ public:
         m_atlas = nullptr;
         m_debug.reset();
         m_ui.reset();
+        m_skyRenderer.reset();
         m_renderer.reset();
     }
 
@@ -149,6 +153,7 @@ public:
         actions.bind("ToggleMusic", Key::N);
         actions.bind("DebugDraw", Key::F3);
         actions.bind("FreezeFrustum", Key::F4);
+        actions.bind("FastTime", Key::T);
         actions.bind("Quit", Key::Escape);
         actions.bind("CaptureMouse", MouseButton::Left);
     }
@@ -318,20 +323,33 @@ public:
                      sandbox::kLavaTile);
         }
 
+        // Ciclo día/noche (#35): T avanza el tiempo rápido (x60) mientras se mantenga presionada
+        const float timeSpeed = m_platform->isActionDown("FastTime") ? 60.0f : 1.0f;
+        const float timeDelta =
+            m_isPaused ? (m_platform->isActionDown("FastTime") ? time().unscaledDelta() * 60.0f : 0.0f)
+                       : (time().delta() * timeSpeed);
+        m_dayNight.advance(timeDelta);
+        updateFog();
+
         streamChunks();
     }
 
     void onRender() override {
         const GpuFrame* frame = m_gpu->frame();
         if (!frame) return; // Ventana minimizada
+        const glm::vec3 horizon = m_dayNight.sky().horizonColor;
         if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
-                               glm::vec4(kSkyColor, 1.0f)))
+                               glm::vec4(horizon, 1.0f)))
             return;
         // La cámara del ECS: el aspecto ya está ajustado al tamaño real del swapchain (CameraSystem)
         Registry& registry = world().registry();
         const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
                                                      registry.get<Camera>(m_cameraEntity), viewport());
         m_renderer->setCamera(camera.viewProjection, camera.position);
+        if (m_skyRenderer) {
+            m_skyRenderer->draw(*m_renderer, glm::inverse(camera.viewProjection), camera.position,
+                                m_dayNight.sky());
+        }
         // F4: el culling usa el frustum congelado (se ve qué se descarta al salir de él)
         if (!m_frustumFrozen) m_frozenViewProjection = camera.viewProjection;
         const Frustum cullFrustum =
@@ -378,16 +396,16 @@ public:
     }
 
 private:
-    static constexpr int kBaseRenderDistance = 4;           // Distancia base sin LOD (9×9 chunks)
-    static constexpr int kDoubleRenderDistance = 8;         // Distancia doblada con LOD (17×17 chunks)
-    static constexpr glm::vec3 kSkyColor{0.5f, 0.7f, 1.0f}; // Fondo y niebla
+    static constexpr int kBaseRenderDistance = 4;   // Distancia base sin LOD (9×9 chunks)
+    static constexpr int kDoubleRenderDistance = 8; // Distancia doblada con LOD (17×17 chunks)
 
     void updateFog() {
         const int renderDist = m_lodEnabled ? kDoubleRenderDistance : kBaseRenderDistance;
-        Lighting lighting;
-        lighting.fogColor = kSkyColor;
-        lighting.fogStart = (renderDist - 1.5f) * kChunkSize;
-        lighting.fogEnd = renderDist * kChunkSize;
+        Lighting base;
+        base.fog = true;
+        base.fogStart = (renderDist - 1.5f) * kChunkSize;
+        base.fogEnd = renderDist * kChunkSize;
+        const Lighting lighting = m_dayNight.lighting(base);
         if (m_renderer) m_renderer->setLighting(lighting);
     }
 
@@ -464,6 +482,11 @@ private:
         const StreamingStats streaming = m_streamer->stats();
         const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
         const glm::ivec3 block = blockAt(playerPos);
+        const int hourInt = static_cast<int>(m_dayNight.hour);
+        const int minuteInt = static_cast<int>((m_dayNight.hour - static_cast<float>(hourInt)) * 60.0f);
+        char hourBuf[32];
+        std::snprintf(hourBuf, sizeof(hourBuf), "%02d:%02d", hourInt, minuteInt);
+        m_overlay.setCounter("hora", hourBuf);
         m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
                                            std::to_string(render.totalTriangles() / 1000) + "k triangulos");
         std::array<int, 3> lodChunks = {0, 0, 0};
@@ -599,6 +622,8 @@ private:
     }
 
     std::unique_ptr<MeshRenderer> m_renderer;
+    std::unique_ptr<SkyRenderer> m_skyRenderer;
+    DayNight m_dayNight;
     Entity m_playerEntity; // Transform + CharacterController
     Entity m_cameraEntity; // Transform + Camera + CharacterCamera
     PhysicsWorld m_physicsWorld;

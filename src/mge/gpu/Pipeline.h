@@ -25,6 +25,7 @@ namespace mge {
         SDL_GPUTextureFormat depthFormat = SDL_GPU_TEXTUREFORMAT_INVALID;
         bool depthTest = true; // Solo si hay depthFormat
         bool depthWrite = true;
+        SDL_GPUCompareOp compareOp = SDL_GPU_COMPAREOP_LESS;
         // true: vértices GpuVertex en el slot 0 (mallas). false: sin buffers (el shader usa gl_VertexIndex)
         bool gpuVertexInput = true;
         SDL_GPUPrimitiveType primitive = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
