@@ -171,7 +171,7 @@ namespace mge {
             info.target_info.depth_stencil_format = desc.depthFormat;
             info.depth_stencil_state.enable_depth_test = desc.depthTest;
             info.depth_stencil_state.enable_depth_write = desc.depthWrite;
-            info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
+            info.depth_stencil_state.compare_op = desc.compareOp;
         }
         return createGraphicsPipeline(info);
     }

@@ -64,6 +64,14 @@ namespace mge {
         void drawLines(const GpuBuffer& vertices, std::uint32_t vertexCount);
         void end();
 
+        // Render pass y command buffer activos para pases complementarios (SkyRenderer)
+        SDL_GPURenderPass* currentPass() const { return m_pass.get(); }
+        CommandBuffer* currentCommandBuffer() const { return m_cmd; }
+        void resetBoundPipeline() {
+            m_boundPipeline = nullptr;
+            m_lightingDirty = true;
+        }
+
         // Del frame actual / último
         const RenderStats& stats() const { return m_stats; }
         std::uint32_t drawCalls() const { return m_stats.totalDrawCalls(); }

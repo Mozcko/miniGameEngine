@@ -10,11 +10,14 @@ add_library(mge_graphics STATIC
     Batch2D.h Batch2D.cpp
     Renderer2D.h Renderer2D.cpp
     DebugOverlay.h DebugOverlay.cpp
+    DayNight.h DayNight.cpp
+    Sky.h Sky.cpp
 )
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)
 mge_add_shaders(mge_graphics SHADERS shaders/mesh.vert shaders/mesh.frag shaders/mesh_cutout.frag
-    shaders/debug_lines.vert shaders/debug_lines.frag shaders/ui.vert shaders/ui.frag)
+    shaders/debug_lines.vert shaders/debug_lines.frag shaders/ui.vert shaders/ui.frag
+    shaders/sky.vert shaders/sky.frag)
 
 # Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_GRAPHICS
 target_compile_definitions(mge_graphics INTERFACE MGE_HAS_GRAPHICS=1)
