@@ -164,7 +164,8 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(render_tests)
     mge_add_shaders(render_tests SHADERS
         render/shaders/vertex_colors.vert render/shaders/vertex_colors.frag
-        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag)
+        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag
+        render/shaders/sdf_clipped_sphere.frag)
     doctest_discover_tests(render_tests TEST_PREFIX "render: "
         PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
                    FAIL_REGULAR_EXPRESSION "Validation Error")

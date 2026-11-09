@@ -7,9 +7,13 @@
 #include <game/SandboxTerrain.h>
 #include <mge/graphics/DebugDraw.h>
 #include <mge/graphics/MeshRenderer.h>
-#include <mge/procgen/Primitives.h>
+#include <mge/graphics/SdfRenderer.h>
 #include <mge/graphics/Texture2D.h>
+#include <mge/procgen/Primitives.h>
+#include <mge/procgen/Sdf.h>
 #include <mge/voxel/ChunkMesher.h>
+
+#include <shaders/sdf_clipped_sphere_frag.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -431,6 +435,123 @@ TEST_CASE("Render: líneas de depuración (caja, esfera, ejes) con prueba de pro
     const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
     // Tolerancia por defecto: entre Intel y lavapipe las líneas difieren en ~0.5 % de los píxeles
     const mge_test::GoldenResult result = mge_test::compareWithGolden("debug_lines", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
+}
+
+TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada (#36)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    REQUIRE(renderer.valid());
+
+    SdfRenderer sdfRenderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, device.depthFormat(),
+                            shaders::kSdfClippedSphereFrag);
+    REQUIRE(sdfRenderer.valid());
+
+    // Caja rasterizada azul grisácea centrada en (0, 0, 0) de tamaño 2x2x2 (tapa en y = 1.0)
+    const GpuMesh box =
+        device.uploadMesh(primitives::box(glm::vec3(2.0f), glm::vec4(0.35f, 0.45f, 0.70f, 1.0f)));
+
+    constexpr std::uint32_t kSize = 128;
+    const glm::vec3 eye(2.2f, 3.2f, 3.8f);
+    const glm::vec3 target(0.0f, 0.8f, 0.0f);
+    const glm::mat4 proj = glm::perspectiveRH_ZO(glm::radians(50.0f), 1.0f, 0.1f, 50.0f);
+    const glm::mat4 view = glm::lookAt(eye, target, glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 viewProj = proj * view;
+    const glm::mat4 invViewProj = glm::inverse(viewProj);
+
+    Lighting lighting;
+    lighting.sunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
+    lighting.sunColor = glm::vec3(0.9f, 0.85f, 0.8f);
+    lighting.skyAmbient = glm::vec3(0.5f, 0.55f, 0.65f);
+    lighting.groundAmbient = glm::vec3(0.3f, 0.28f, 0.25f);
+    lighting.fog = false;
+
+    GpuTexture colorTarget = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, colorTarget.get(), kSize, kSize, {0.15f, 0.18f, 0.25f, 1.0f}));
+    renderer.setCamera(viewProj, eye);
+    renderer.setLighting(lighting);
+
+    // 1. Dibujar caja opaca rasterizada
+    renderer.draw(box, glm::mat4(1.0f));
+
+    // 2. Dibujar esfera SDF (DESPUÉS de lo opaco)
+    SdfFrame frame;
+    frame.viewProjection = viewProj;
+    frame.inverseViewProjection = invViewProj;
+    frame.cameraPosition = eye;
+    frame.time = 0.0f;
+    sdfRenderer.draw(renderer, frame, lighting);
+
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(colorTarget, kSize, kSize)};
+
+    // Verificación en CPU: raymarching analítico y con mge::sdf::sphere para varios píxeles en la cúpula
+    for (auto [px, py] : {std::pair{64u, 42u}, std::pair{58u, 48u}, std::pair{70u, 45u}}) {
+        // En estos píxeles debe verse el color naranja de la esfera (R alto, B bajo)
+        const std::uint8_t* p = image.pixel(px, py);
+        CHECK(p[0] > 140);
+        CHECK(p[2] < 100);
+
+        // Comprobación de profundidad CPU con mge::sdf::sphere vs analítica
+        const float u = (float(px) + 0.5f) / float(kSize);
+        const float v = 1.0f - (float(py) + 0.5f) / float(kSize);
+        const glm::vec2 ndc(u * 2.0f - 1.0f, v * 2.0f - 1.0f);
+        const glm::vec4 farTarget = invViewProj * glm::vec4(ndc, 1.0f, 1.0f);
+        const glm::vec3 worldFar = glm::vec3(farTarget) / farTarget.w;
+        const glm::vec3 ro = eye;
+        const glm::vec3 rd = glm::normalize(worldFar - ro);
+
+        // Raymarching CPU con mge::sdf
+        const glm::vec3 sphereCenter(0.0f, 1.0f, 0.0f);
+        constexpr float kSphereRadius = 1.0f;
+        auto sphereSdf = mge::sdf::opTranslate(mge::sdf::sphere(kSphereRadius), sphereCenter);
+
+        float tCpu = 0.0f;
+        bool hitCpu = false;
+        for (int step = 0; step < 128 && tCpu < 20.0f; ++step) {
+            float d = sphereSdf(ro + rd * tCpu);
+            if (d < 0.001f) {
+                hitCpu = true;
+                break;
+            }
+            tCpu += d;
+        }
+        REQUIRE(hitCpu);
+
+        // Intersección analítica rayo-esfera
+        const glm::vec3 oc = ro - sphereCenter;
+        const float b = glm::dot(rd, oc);
+        const float c = glm::dot(oc, oc) - kSphereRadius * kSphereRadius;
+        const float disc = b * b - c;
+        REQUIRE(disc >= 0.0f);
+        const float tExact = -b - std::sqrt(disc);
+
+        CHECK(tCpu == doctest::Approx(tExact).epsilon(0.002f));
+
+        // Profundidad en clip space calculada por la GPU (gl_FragDepth)
+        const glm::vec3 hitPoint = ro + rd * tCpu;
+        const glm::vec4 clipPos = viewProj * glm::vec4(hitPoint, 1.0f);
+        const float depthCpu = clipPos.z / clipPos.w;
+        const glm::vec3 hitExact = ro + rd * tExact;
+        const glm::vec4 clipExact = viewProj * glm::vec4(hitExact, 1.0f);
+        const float depthExact = clipExact.z / clipExact.w;
+
+        CHECK(depthCpu == doctest::Approx(depthExact).epsilon(0.002f));
+    }
+
+    // Píxel donde la esfera está sumergida dentro de la caja (ej: x=64, y=75):
+    // La caja debe haber ocluido la esfera (se ve el color de la caja: R bajo/medio, B más alto)
+    const std::uint8_t* submergedPixel = image.pixel(64, 75);
+    CHECK(submergedPixel[2] > submergedPixel[0]);
+
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("sdf_clipped_sphere", image);
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }

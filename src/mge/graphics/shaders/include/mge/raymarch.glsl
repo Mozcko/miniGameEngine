@@ -19,12 +19,12 @@
 // Declaración previa de la función de escena (debe implementarse en el shader)
 float map(vec3 p);
 
-// Marcha un rayo desde ro en dirección unitaria rd dentro del rango [tMin, tMax].
+// Marcha un rayo desde ro en dirección unitaria rd dentro del rango [tMin, tMax] con un máximo de pasos dado.
 // Retorna la distancia t a la superficie, o -1.0 si no hubo impacto.
-float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, out int steps) {
+float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, int maxSteps, out int steps) {
     float t = tMin;
     steps = 0;
-    for (int i = 0; i < MGE_RAYMARCH_MAX_STEPS && t < tMax; ++i) {
+    for (int i = 0; i < maxSteps && t < tMax; ++i) {
         steps = i + 1;
         vec3 p = ro + rd * t;
         float d = map(p);
@@ -34,6 +34,12 @@ float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, out int steps) {
         t += d;
     }
     return -1.0;
+}
+
+// Marcha un rayo desde ro en dirección unitaria rd dentro del rango [tMin, tMax].
+// Retorna la distancia t a la superficie, o -1.0 si no hubo impacto.
+float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, out int steps) {
+    return raymarch(ro, rd, tMin, tMax, MGE_RAYMARCH_MAX_STEPS, steps);
 }
 
 // Marcha un rayo desde t = 0.0 hasta tMax, reportando el número de pasos ejecutados

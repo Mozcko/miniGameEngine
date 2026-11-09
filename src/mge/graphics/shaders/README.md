@@ -103,3 +103,28 @@ Utilities for distance field raymarching, normal estimation, ambient occlusion, 
   - `MGE_RAYMARCH_MAX_STEPS` (default: 128): Maximum iteration steps during raymarching.
   - `MGE_RAYMARCH_SURF_DIST` (default: 0.001): Surface hit threshold.
   - `MGE_RAYMARCH_SHADOW_STEPS` (default: 64): Maximum iterations for soft shadow rays.
+
+---
+
+### 4. `mge/sdf_pass.glsl`
+Main shader template for the `SdfRenderer` render pass. It defines `void main()`, reconstructs the camera ray from `inverseViewProjection`, executes raymarching, discards on miss, evaluates lighting and ambient occlusion, and writes `gl_FragDepth` for correct raster intersection.
+
+- **Uniform block** (`set = 3, binding = 1`):
+  ```glsl
+  layout(set = 3, binding = 1) uniform SdfUniforms {
+      mat4 viewProjection;
+      mat4 inverseViewProjection;
+      vec4 cameraPositionAndTime; // xyz: cameraPosition, w: time
+      vec4 renderSettings;        // x: maxDistance, y: maxSteps
+      vec4 params[4];             // Custom game parameters
+  };
+  ```
+- **Convenience Macros**:
+  - `sdfTime`: Evaluates to `cameraPositionAndTime.w`.
+  - `sdfCameraPosition`: Evaluates to `cameraPositionAndTime.xyz`.
+- **Required Game Callbacks**:
+  Game shaders must define the scene geometry and color:
+  ```glsl
+  float map(vec3 p);
+  vec3 material(vec3 p);
+  ```
