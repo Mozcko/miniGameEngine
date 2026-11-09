@@ -31,6 +31,7 @@ Include as `#include <game/SandboxTerrain.h>`.
 |--------|------|------|
 | `m_gpu` | `GpuModule*` | Device and frame (SDL3 GPU, Vulkan) |
 | `m_renderer` | `unique_ptr<MeshRenderer>` | Draws the chunks (engine shaders, embedded) |
+| `m_skyRenderer`, `m_dayNight` | `unique_ptr<SkyRenderer>`, `DayNight` | Procedural sky and day/night cycle (#35): starts at 9:00 with 10-minute days; updates sky, lighting and fog every frame |
 | `m_playerEntity` | `mge::Entity` | ECS player: `Transform` (feet position) + `CharacterController` (walk/fly mode, physics) |
 | `m_cameraEntity` | `mge::Entity` | ECS camera: `Transform` + `Camera` (45°, aspect kept up to date by the engine) + `CharacterCamera` (follows player with interpolation) |
 | `m_registry`, `m_blocks` | `BlockRegistry`, `SandboxBlocks` | Block catalogue and the sandbox's ids |
@@ -38,15 +39,16 @@ Include as `#include <game/SandboxTerrain.h>`.
 | `m_gpuChunks` | `std::map<ChunkCoord, GpuChunk>` | GPU meshes per chunk (`GpuMesh` opaque / cutout / transparent, empty when the chunk has no such faces), cleared in `onShutdown` |
 | `m_streamer` | `unique_ptr<ChunkStreamer>` | Loads, meshes and unloads chunks on the job pool (`streamingSettings()`), created in `onInit` |
 | `m_queue` | `RenderQueue` | The frame's draw list (three items per visible chunk), sorted before submitting |
-| `m_pngAtlas`, `m_proceduralAtlas`, `m_atlas` | `Texture2D`, `Texture2D`, `Texture2D*` | The PNG atlas and the generated one, each created on first use with a CPU copy for the water/lava animation; `m_atlas` is the one drawn |
+| `m_pngAtlas`, `m_proceduralAtlas`, `m_atlas` | `Texture2D`, `Texture2D`, `Texture2D*` | Procedural atlas by default, PNG atlas opt-in; `m_atlas` points to the active one |
 | `m_fpsFrames`, `m_fpsElapsed` | `int`, `float` | Average FPS written to the Debug log every 5 s |
 | `m_audio`, `m_musicOn` | `AudioModule*`, `bool` | Plays `mge::songs::sandboxAmbient()` from `onInit` (3 s fade‑in, echo) on the Music bus at 0.7; N toggles it (#49) |
-| `m_ui`, `m_overlay`, `m_overlayUs` | `Renderer2D`, `DebugOverlay`, `int` | F1 overlay (#43) and what it cost to build, upload and record last frame |
+| `m_ui`, `m_overlay` | `Renderer2D`, `DebugOverlay` | 2D immediate renderer: HUD (crosshair, hotbar, mode/hour) and F1 performance overlay (#43) |
+| `m_showHud`, `m_selectedSlot`, `m_hotbarBlocks` | `bool`, `int`, `array<BlockId, 9>` | HUD state: F11 toggle, active slot (1–9), top block tiles |
 | `m_physicsWorld` | `PhysicsWorld` | Rigid body physics simulation against voxels and dynamic bodies (#54) |
 | `m_thrownBodies` | `std::deque<Entity>` | Thrown rigid bodies (max 64, drawn with DebugDraw) |
 | `m_waterFrames` / `m_lavaFrames` | `vector<int>` | `{205,206,207,222,223}` / `{237,238,239,254,255}` atlas tiles |
 | `m_animTimer`, `m_currentAnimFrame` | | 0.2 s per animation frame, on unscaled time |
-| `m_isPaused`, `m_mouseCaptured` | `bool` | Pause state; `m_mouseCaptured` is always true |
+| `m_isPaused`, `m_mouseCaptured`, `m_lodEnabled` | `bool` | Pause, mouse capture, and F2 LOD toggle |
 
 ### Construction
 `SandboxApp()` passes an `ApplicationConfig` (title "miniGameEngine - Sandbox", 1280×720) and adds
@@ -55,15 +57,12 @@ CMake modules: `platform gpu graphics audio`.
 
 ### `onInit` (returns false → clean exit with code 1)
 0. Keep a pointer to `PlatformModule`, register `handleWindowEvent` (resize/focus) and bind the controls (`bindControls`).
-1. Create the `MeshRenderer` with the swapchain format; it fails cleanly if the pipelines can't be
-   created. Set its `Lighting`: default sun and ambient, fog in the sky colour from
-   `(kRenderDistance − 1.5) × 16` to `kRenderDistance × 16` blocks, so the world fades out before
-   its edge.
+1. Create `MeshRenderer` and `SkyRenderer` with the swapchain format; fail cleanly if pipelines can't be
+   created. Day/night starts at 9:00 with a 10-minute cycle, updating `Lighting` (sun, sky/ground ambient, fog matching horizon) and procedural sky every frame.
 2. Create the player entity (`Transform` + `CharacterController`) and camera entity (`Transform` + `Camera` + `CharacterCamera`), then register `addCharacterSystem(world(), solidQuery(m_world))` and `addCharacterCameraSystem(world(), time())`.
 3. Choose the atlas:
-   - by default the PNG (`Texture2D::fromFile(…, keepCpuCopy)`; asset paths go through `mge::assetPath`);
-   - with **`SANDBOX_ATLAS=procedural`** the generated one (`buildProceduralAtlas`, about 20 ms). No
-     image is read at all in that mode.
+   - by default the procedural atlas (`buildProceduralAtlas`, about 20 ms). No file access at runtime;
+   - with **`SANDBOX_ATLAS=png`** or key **M** the PNG atlas (`Texture2D::fromFile(…, keepCpuCopy)`; asset paths go through `mge::assetPath`). If missing, it logs once and stays procedural.
 4. Lock the cursor.
 5. Log the controls (Info).
 
@@ -77,14 +76,18 @@ CMake modules: `platform gpu graphics audio`.
 | `ToggleFly` | F: toggle walk / fly mode |
 | `Sprint` | Left Ctrl |
 | `Throw` | G: spawn a 0.5-size box rigid body in front with forward velocity (capped at 64 bodies) |
+| `Slot1` .. `Slot9` | 1 .. 9: select hotbar slot (highlighted selection) |
 | `Pause` | P |
 | `Quit` | Esc |
 | `CaptureMouse` | Left mouse button |
-| `ToggleAtlas` | M: switch live between the PNG and the procedural atlas (the other one is created on first use) |
+| `ToggleAtlas` | M: switch live between the procedural atlas and PNG atlas |
 | `ToggleMusic` | N: mute or restore the ambient music (`AudioBus::Music`) |
+| `FastTime` | T: advance day/night time at 60× speed while held |
 | `Overlay` | F1: performance overlay (FPS, frame‑time graph, CPU vs swapchain wait, draw calls, chunks, jobs, memory, position, atlas, its own cost). On by default in Debug, off in Release |
+| `ToggleLod` | F2: toggle chunk LOD (double render distance, 17×17 chunks) |
 | `DebugDraw` | F3: chunk bounds (green = meshed, yellow = data but no mesh yet, red = dirty) and the player's collision box |
 | `FreezeFrustum` | F4: freeze the culling frustum and draw it; fly out of it to see what gets culled |
+| `ToggleHud` | F11: toggle HUD visibility (crosshair, 9-slot hotbar, mode indicator, hour) |
 
 `handleActions()` (start of `onUpdate`) handles Quit, CaptureMouse, Pause and ToggleFly with `wasActionPressed`.
 Mouse look updates `CharacterController::look()` (only while the cursor is locked).
