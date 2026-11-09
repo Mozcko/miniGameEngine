@@ -70,3 +70,19 @@ TEST_CASE("setAssetRoot fija la raíz a mano y vacío vuelve a buscar") {
     setAssetRoot({});
     CHECK(assetRoot().filename() == "assets");
 }
+
+TEST_CASE("Sin carpeta assets ni MGE_ASSET_DIR no se emiten avisos WARN ni ERROR") {
+    bool hasWarnOrError = false;
+    Log::setSink([&](const LogRecord& record) {
+        if (record.category == "Assets" &&
+            (record.level == LogLevel::Warn || record.level == LogLevel::Error)) {
+            hasWarnOrError = true;
+        }
+    });
+    setAssetRoot(fs::path("/directorio/inexistente/assets"));
+    const fs::path p = assetPath("archivo.png");
+    CHECK(p == fs::path("/directorio/inexistente/assets/archivo.png"));
+    CHECK_FALSE(hasWarnOrError);
+    setAssetRoot({});
+    Log::setSink(nullptr);
+}

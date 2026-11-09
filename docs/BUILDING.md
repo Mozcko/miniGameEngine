@@ -40,6 +40,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `MGE_BUILD_BENCHMARKS` | `ON` | Build `bench/` (e.g. `ecs_bench`; run from a Release build) |
 | `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
 | `MGE_SIZE_OPTIMIZE` | `OFF` | Optimize binaries for minimum size (`-Os`, LTO/IPO, gc-sections, strip). `ON` in the `minsize` preset |
+| `MGE_SOURCE_ASSET_FALLBACK` | `ON` | Use the repository's source `assets/` folder as a last-resort fallback in `assetPath()` (`OFF` in CI zero-asset check) |
 
 - Every preset's build dir is a sibling of `assets/`, so the game's `../assets/...` paths work
   from any of them. `build/` and `build-*/` are git‑ignored.
