@@ -110,6 +110,7 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | [CLAUDE.md](CLAUDE.md) | Short "everything you need to know" summary and conventions |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together at runtime |
 | [docs/BUILDING.md](docs/BUILDING.md) | Toolchain, dependencies, running, troubleshooting |
+| [docs/ASSETS.md](docs/ASSETS.md) | Asset architecture: procedural code paths vs optional file loaders |
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Bugs and debt, with file references |
 | [src/README.md](src/README.md) | Source tree overview, include/namespace conventions |
 | [src/mge/README.md](src/mge/README.md) | Engine module map |
