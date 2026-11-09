@@ -19,6 +19,7 @@ by default (`MODULES platform gpu graphics audio`).
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
 | `shaders/debug_lines.vert/.frag` | Line list: `viewProjection * position`, vertex colour |
 | `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`; `texture(albedo, uv) * color`, lit and fogged; the cutout variant discards alpha < 0.5 |
+| `shaders/include/mge/` | Shared GLSL libraries (`lighting.glsl`, `sdf.glsl`, `raymarch.glsl`, see [`shaders/README.md`](shaders/README.md)) |
 
 
 and fog (#33), procedural materials (#34) and debug drawing (#38).

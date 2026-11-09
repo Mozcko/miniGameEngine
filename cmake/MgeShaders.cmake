@@ -45,12 +45,18 @@ set(MGE_EMBED_SPIRV_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
 add_custom_target(mge_generated_shaders)
 
 function(mge_add_shaders target)
-    cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "SHADERS")
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "SHADERS;INCLUDE_DIRS")
     if(NOT ARG_SHADERS)
         message(FATAL_ERROR "mge_add_shaders(${target}): falta SHADERS")
     endif()
     set(out_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
     set(headers "")
+
+    set(include_args "-I${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
+    foreach(inc_dir IN LISTS ARG_INCLUDE_DIRS)
+        get_filename_component(abs_inc "${inc_dir}" ABSOLUTE)
+        list(APPEND include_args "-I${abs_inc}")
+    endforeach()
 
     foreach(shader IN LISTS ARG_SHADERS)
         get_filename_component(source "${shader}" ABSOLUTE)
@@ -68,12 +74,15 @@ function(mge_add_shaders target)
         string(REGEX REPLACE "[^A-Za-z0-9]" "_" stem "${file_name}") # triangle.vert → triangle_vert
         set(spirv "${out_dir}/${file_name}.spv")
         set(header "${out_dir}/${stem}.h")
+        set(depfile "${spirv}.d")
         add_custom_command(
-            OUTPUT "${header}"
+            OUTPUT "${spirv}" "${header}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${out_dir}"
-            COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet -o "${spirv}" "${source}"
+            COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet
+                    ${include_args} --depfile "${depfile}" -o "${spirv}" "${source}"
             COMMAND ${CMAKE_COMMAND} -DINPUT=${spirv} -DOUTPUT=${header} -DSOURCE_NAME=${file_name}
                     -P "${MGE_EMBED_SPIRV_SCRIPT}"
+            DEPFILE "${depfile}"
             DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}
             COMMENT "Shader ${file_name} → SPIR-V embebido"
             VERBATIM)

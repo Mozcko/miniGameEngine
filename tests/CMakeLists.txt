@@ -133,7 +133,8 @@ if(MGE_BUILD_MODULES)
         gpu/shaders/test_triangle.vert
         gpu/shaders/test_triangle.frag
         gpu/shaders/test_square.comp
-        gpu/shaders/test_multiply.comp)
+        gpu/shaders/test_multiply.comp
+        gpu/shaders/test_sdf_raymarch.comp)
 
     # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
     # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.

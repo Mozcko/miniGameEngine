@@ -1,0 +1,63 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "mge/sdf.glsl"
+#include "mge/raymarch.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+// Salida de resultados en buffer de almacenamiento
+layout(set = 1, binding = 0, std430) buffer OutputBuffer {
+    float results[];
+};
+
+// Escena con esfera en (0, 1, 0) radio 1, caja en (4, 1, 0) extents (1, 1, 1), plano y = 0
+float map(vec3 p) {
+    float sphere = sdSphere(p - vec3(0.0, 1.0, 0.0), 1.0);
+    float box = sdBox(p - vec3(4.0, 1.0, 0.0), vec3(1.0));
+    float plane = sdPlane(p, vec3(0.0, 1.0, 0.0), 0.0);
+    return opUnion(opUnion(sphere, box), plane);
+}
+
+void main() {
+    // 0..6: Distancias exactas de primitivas
+    results[0] = sdSphere(vec3(2.0, 0.0, 0.0), 1.0);
+    results[1] = sdSphere(vec3(0.0, 0.0, 0.0), 1.0);
+    results[2] = sdBox(vec3(3.0, 0.0, 0.0), vec3(1.0));
+    results[3] = sdTorus(vec3(2.0, 0.0, 0.0), 2.0, 0.5);
+    results[4] = sdCapsule(vec3(0.0, 3.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 1.0, 0.0), 0.5);
+    results[5] = sdCylinder(vec3(0.0, 3.0, 0.0), 1.0, 2.0);
+    results[6] = sdPlane(vec3(0.0, 4.0, 0.0), vec3(0.0, 2.0, 0.0), -1.0);
+
+    // 7..11: Operaciones booleanas
+    results[7] = opUnion(1.0, 2.0);
+    results[8] = opSubtract(2.0, 1.0);
+    results[9] = opIntersect(1.0, 2.0);
+    results[10] = opRound(1.5, 0.5);
+    results[11] = opSmoothUnion(1.0, 2.0, 0.0);
+
+    // 12..13: Raymarching hacia la esfera en (0, 1, 0)
+    vec3 ro = vec3(0.0, 1.0, -5.0);
+    vec3 rd = vec3(0.0, 0.0, 1.0);
+    int steps = 0;
+    float t = raymarch(ro, rd, 20.0, steps);
+    results[12] = t;
+    results[13] = float(steps);
+
+    // 14..16: Normal calculada con tetraedro en el impacto (0, 1, -1) -> debe ser (0, 0, -1)
+    vec3 hitP = ro + rd * t;
+    vec3 n = calcNormal(hitP);
+    results[14] = n.x;
+    results[15] = n.y;
+    results[16] = n.z;
+
+    // 17: Oclusión ambiental en el plano despejado
+    vec3 planeP = vec3(10.0, 0.0, 10.0);
+    vec3 planeN = vec3(0.0, 1.0, 0.0);
+    results[17] = calcAO(planeP, planeN);
+
+    // 18: Sombra suave sin obstáculo hacia arriba
+    results[18] = softShadow(planeP + planeN * 0.05, vec3(0.0, 1.0, 0.0), 0.1, 10.0, 16.0);
+
+    // 19: Sombra detrás de la esfera orientada hacia z negativo (oclusión completa por la esfera)
+    results[19] = softShadow(vec3(0.0, 1.0, 5.0), vec3(0.0, 0.0, -1.0), 0.1, 10.0, 16.0);
+}
