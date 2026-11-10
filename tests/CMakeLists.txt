@@ -179,6 +179,7 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         game/test_sandbox_blocks.cpp
         game/test_sandbox_terrain.cpp
+        game/test_sandbox_audio.cpp
     )
     target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
     mge_set_warnings(game_tests)

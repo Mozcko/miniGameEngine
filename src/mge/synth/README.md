@@ -161,6 +161,8 @@ audio->playSong(id, 1.0f);                                   // loops forever; 1
   noise hats, and a sine kick with a pitch drop.
 - `sandboxAmbient()`: 64 BPM, ~15 s. Slow filtered triangle pads (C, Am, F, G) and sparse sine
   bells with echo.
+- `sandboxNight()`: 52 BPM, ~18 s. Slower, calmer nocturnal pads (Am, F, C, Em) and gentle sine
+  chimes with echo.
 
 ## Offline rendering and analysis (#50)
 Audio can be produced and checked without a device:

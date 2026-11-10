@@ -2,6 +2,7 @@
 
 #include <game/SandboxBlocks.h>
 #include <game/SandboxMaterials.h>
+#include <game/SandboxSounds.h>
 #include <game/SandboxTerrain.h>
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -51,7 +52,11 @@ public:
         m_audio = getModule<AudioModule>();
         m_audio->setDelay({0.45f, 0.4f, 0.35f});
         m_audio->setBusVolume(AudioBus::Music, kMusicVolume);
-        m_audio->playSong(m_audio->addSong(songs::sandboxAmbient()), 3.0f);
+        m_daySongId = m_audio->addSong(songs::sandboxAmbient());
+        m_nightSongId = m_audio->addSong(songs::sandboxNight());
+        m_isNightMusic = (m_dayNight.hour >= 19.5f || m_dayNight.hour < 5.5f);
+        m_audio->playSong(m_isNightMusic ? m_nightSongId : m_daySongId, 3.0f);
+        m_soundIds = sandbox::registerSandboxSounds(*m_audio, m_sounds);
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
         m_skyRenderer = std::make_unique<SkyRenderer>(m_gpu->device(), m_gpu->swapchainFormat(),
@@ -84,6 +89,8 @@ public:
         playerController.previousPosition = spawnFeet;
         playerController.enabled = m_world.isLoaded(chunkOf(blockAt(spawnFeet))) &&
                                    m_world.isLoaded(chunkOf(blockAt(spawnFeet) - glm::ivec3(0, 1, 0)));
+        m_prevFeet = spawnFeet;
+        m_wasGrounded = playerController.grounded;
 
         m_playerEntity = world().registry().create();
         world().registry().add<Transform>(m_playerEntity, spawnFeet);
@@ -366,6 +373,9 @@ public:
         rb.previousPosition = spawnPos;
         world().registry().add<RigidBody>(bodyEntity, rb);
         m_thrownBodies.push_back(bodyEntity);
+
+        const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+        m_audio->play(m_soundIds.throwSound, 0.4f, pan);
     }
 
     void recordEdit(const glm::ivec3& block, BlockId blockId) {
@@ -409,6 +419,13 @@ public:
     void breakBlock() {
         if (!m_selectionHit) return;
         const glm::ivec3 block = m_selectionHit->block;
+        const BlockId brokenId = m_world.getBlock(block);
+        if (brokenId != kAir) {
+            const auto mat = static_cast<std::size_t>(sandbox::soundMaterialForBlock(brokenId, m_registry));
+            const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kBreakVariants);
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+            m_audio->play(m_soundIds.materials[mat].breakVariants[variant], 0.45f, pan);
+        }
         m_world.setBlock(block, kAir);
         recordEdit(block, kAir);
         updateSelection();
@@ -443,6 +460,10 @@ public:
 
         if (m_world.setBlock(placePos, toPlace)) {
             recordEdit(placePos, toPlace);
+            const auto mat = static_cast<std::size_t>(sandbox::soundMaterialForBlock(toPlace, m_registry));
+            const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kPlaceVariants);
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+            m_audio->play(m_soundIds.materials[mat].placeVariants[variant], 0.4f, pan);
             updateSelection();
         }
     }
@@ -466,10 +487,71 @@ public:
         controller.input.sprint = m_platform->isActionDown("Sprint");
         controller.input.jump = m_platform->isActionDown("Jump");
 
+        // Salto: sonido al impulsarse en modo caminata estando apoyado
+        if (m_platform->wasActionPressed("Jump") && controller.mode == CharacterMode::Walk &&
+            controller.grounded && !m_isPaused) {
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+            m_audio->play(m_soundIds.jump, 0.35f, pan);
+        }
+
+        // Aterrizaje: transición false -> true con caída rápida (|velocity.y| > 6)
+        if (!controller.grounded) {
+            if (controller.velocity.y < 0.0f) {
+                m_lastFallSpeed = std::max(m_lastFallSpeed, -controller.velocity.y);
+            }
+        } else {
+            if (!m_wasGrounded && m_lastFallSpeed > 6.0f && !m_isPaused) {
+                const float gain = std::clamp((m_lastFallSpeed - 6.0f) / 12.0f + 0.3f, 0.3f, 1.0f);
+                const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+                m_audio->play(m_soundIds.land, gain, pan);
+            }
+            m_lastFallSpeed = 0.0f;
+        }
+        m_wasGrounded = controller.grounded;
+
         // Seguridad de streaming: no simular hasta que el chunk bajo los pies y el inferior estén cargados
         const glm::vec3 feet = world().registry().get<Transform>(m_playerEntity).position;
         controller.enabled = m_world.isLoaded(chunkOf(blockAt(feet))) &&
                              m_world.isLoaded(chunkOf(blockAt(feet) - glm::ivec3(0, 1, 0)));
+
+        // Pasos: cada 0.45 bloques caminando (0.3 al correr) sobre el bloque bajo los pies
+        if (controller.mode == CharacterMode::Walk && controller.grounded && !m_isPaused) {
+            const float dx = feet.x - m_prevFeet.x;
+            const float dz = feet.z - m_prevFeet.z;
+            const float dist = std::sqrt(dx * dx + dz * dz);
+            if (dist < 2.0f) {
+                m_stepAccumulator += dist;
+            }
+            const float stepInterval = controller.input.sprint ? 0.3f : 0.45f;
+            if (m_stepAccumulator >= stepInterval) {
+                m_stepAccumulator = std::fmod(m_stepAccumulator, stepInterval);
+
+                glm::ivec3 blockPos = blockAt(feet - glm::vec3(0.0f, 0.1f, 0.0f));
+                BlockId blockId = m_world.getBlock(blockPos);
+                if (blockId == kAir) {
+                    blockPos = blockAt(feet - glm::vec3(0.0f, 0.5f, 0.0f));
+                    blockId = m_world.getBlock(blockPos);
+                }
+                const auto mat =
+                    static_cast<std::size_t>(sandbox::soundMaterialForBlock(blockId, m_registry));
+                const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kFootstepVariants);
+                const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+                const float gain = controller.input.sprint ? 0.35f : 0.25f;
+                m_audio->play(m_soundIds.materials[mat].footsteps[variant], gain, pan);
+            }
+        } else {
+            m_stepAccumulator = 0.0f;
+        }
+        m_prevFeet = feet;
+
+        // Chapuzón al ingresar en agua
+        const BlockId feetBlock = m_world.getBlock(blockAt(feet + glm::vec3(0.0f, 0.2f, 0.0f)));
+        const bool inWater = (feetBlock == m_blocks.water);
+        if (inWater && !m_wasInWater && !m_isPaused) {
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+            m_audio->play(m_soundIds.splash, 0.5f, pan);
+        }
+        m_wasInWater = inWater;
 
         // Animaciones
         m_animTimer += time().unscaledDelta();
@@ -489,6 +571,13 @@ public:
                        : (time().delta() * timeSpeed);
         m_dayNight.advance(timeDelta);
         updateFog();
+
+        // Música día / noche con fundido cruzado de 4 s (#64)
+        const bool isNight = (m_dayNight.hour >= 19.5f || m_dayNight.hour < 5.5f);
+        if (isNight != m_isNightMusic) {
+            m_isNightMusic = isNight;
+            m_audio->playSong(m_isNightMusic ? m_nightSongId : m_daySongId, 4.0f);
+        }
 
         streamChunks();
     }
@@ -864,6 +953,18 @@ private:
     AudioModule* m_audio = nullptr;
     static constexpr float kMusicVolume = 0.7f;
     bool m_musicOn = true; // N
+    sandbox::SandboxSounds m_sounds;
+    sandbox::RegisteredSounds m_soundIds;
+    Pcg32 m_audioRng{1337, 7};
+    SongId m_daySongId = kInvalidSong;
+    SongId m_nightSongId = kInvalidSong;
+    bool m_isNightMusic = false;
+
+    float m_stepAccumulator = 0.0f;
+    glm::vec3 m_prevFeet{0.0f};
+    bool m_wasGrounded = false;
+    float m_lastFallSpeed = 0.0f;
+    bool m_wasInWater = false;
 
     static mge::ApplicationConfig makeConfig() {
         mge::ApplicationConfig config;

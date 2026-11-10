@@ -89,5 +89,6 @@ namespace mge {
     namespace songs {
         Song platformerTheme(); // Chiptune alegre: cuadrada, bajo triangular, batería de ruido
         Song sandboxAmbient();  // Tranquila: pads suaves con filtro y eco, notas sueltas
+        Song sandboxNight();    // Nocturna: pads lentos y calmados con campanillas/chimes suaves
     }
 }
