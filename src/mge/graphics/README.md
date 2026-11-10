@@ -18,7 +18,11 @@ by default (`MODULES platform gpu graphics audio`).
 | `Lighting.h` | `Lighting`: sun, hemisphere ambient, linear fog; `Lighting::unlit()` |
 | `RenderQueue.h/.cpp` | `MeshPass`, `DrawItem`, `RenderQueue`: per‑frame draw list, sorted by pass and depth |
 | `shaders/debug_lines.vert/.frag` | Line list: `viewProjection * position`, vertex colour |
+| `DayNight.h/.cpp` | `DayNight`, `SkySettings`: procedural day/night cycle, sun position and sky/lighting keyframe interpolation (#35) |
+| `Sky.h/.cpp` | `SkyRenderer`: procedural sky pass, fullscreen triangle before opaque geometry (#35) |
+| `SdfRenderer.h/.cpp` | `SdfRenderer`, `SdfFrame`: SDF raymarching pass, fullscreen triangle with depth test and write, intersecting meshes (#36) |
 | `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`; `texture(albedo, uv) * color`, lit and fogged; the cutout variant discards alpha < 0.5 |
+| `shaders/include/mge/` | Shared GLSL libraries (`lighting.glsl`, `sdf.glsl`, `raymarch.glsl`, see [`shaders/README.md`](shaders/README.md)) |
 
 
 and fog (#33), procedural materials (#34) and debug drawing (#38).
@@ -177,6 +181,33 @@ instead, `loadTtfFontFile("fonts/x.ttf", 18.0f)` (a relative path goes through `
 atlas that fits (up to 2048 px). The result is a regular `mge::Font`: white plus coverage alpha,
 proportional advances, glyph offsets from the top of the line, sampled with filtering. On failure
 it logs an error and returns an invalid font.
+
+## SDF raymarching – `<mge/graphics/SdfRenderer.h>` (#36)
+
+Renders signed distance field procedural shapes inside `MeshRenderer`'s render pass after opaque geometry and before transparent geometry.
+
+```cpp
+mge::SdfRenderer sdf(device, colorFormat, depthFormat, shaders::kMySdfFrag);
+
+// Inside onRender:
+m_renderer->begin(...);
+m_renderer->draw(groundMesh, ...); // Opaque
+m_renderer->draw(boxMesh, ...);    // Opaque
+
+mge::SdfFrame frame;
+frame.viewProjection = viewProj;
+frame.inverseViewProjection = invViewProj;
+frame.cameraPosition = cameraPosition;
+frame.time = time;
+sdf.draw(*m_renderer, frame, lighting);
+
+// Transparent meshes (water, etc.) drawn after
+m_renderer->end();
+```
+
+- **Pipeline:** Fullscreen triangle (reusing `sky.vert`), depth test `LESS`, depth write `true`, no blending.
+- **Shader:** Game shaders define `map(vec3 p)` and `material(vec3 p)` and include `mge/sdf_pass.glsl`.
+- **Depth & Shading:** `sdf_pass.glsl` reconstructs the camera ray from `inverseViewProjection`, raymarches, discards on miss, shades with `lighting.glsl` + `calcAO`, and outputs `gl_FragDepth` in clip space `[0, 1]` so SDF objects and rasterized geometry occlude and intersect each other seamlessly.
 
 ## Tests
 `tests/render/test_graphics.cpp` (label `gpu`):

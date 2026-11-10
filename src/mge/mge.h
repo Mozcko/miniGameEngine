@@ -99,6 +99,7 @@
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/Renderer2D.h>
 #include <mge/graphics/RenderQueue.h>
+#include <mge/graphics/SdfRenderer.h>
 #include <mge/graphics/Sky.h>
 #include <mge/graphics/Texture2D.h>
 #include <mge/graphics/TtfFont.h>

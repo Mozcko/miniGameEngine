@@ -12,6 +12,7 @@ add_library(mge_graphics STATIC
     DebugOverlay.h DebugOverlay.cpp
     DayNight.h DayNight.cpp
     Sky.h Sky.cpp
+    SdfRenderer.h SdfRenderer.cpp
 )
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)

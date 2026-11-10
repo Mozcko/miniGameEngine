@@ -133,7 +133,8 @@ if(MGE_BUILD_MODULES)
         gpu/shaders/test_triangle.vert
         gpu/shaders/test_triangle.frag
         gpu/shaders/test_square.comp
-        gpu/shaders/test_multiply.comp)
+        gpu/shaders/test_multiply.comp
+        gpu/shaders/test_sdf_raymarch.comp)
 
     # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
     # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.
@@ -163,7 +164,8 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(render_tests)
     mge_add_shaders(render_tests SHADERS
         render/shaders/vertex_colors.vert render/shaders/vertex_colors.frag
-        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag)
+        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag
+        render/shaders/sdf_clipped_sphere.frag)
     doctest_discover_tests(render_tests TEST_PREFIX "render: "
         PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
                    FAIL_REGULAR_EXPRESSION "Validation Error")
