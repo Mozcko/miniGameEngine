@@ -112,16 +112,27 @@ public:
 
         // 4. Streaming del mundo en el pool de hilos del motor
         m_streamer = std::make_unique<ChunkStreamer>(m_world, streamingSettings(), &jobs());
+        m_streamer->onChunkInserted([this](const ChunkCoord& coord, ChunkData& data) {
+            const auto it = m_edits.find(coord);
+            if (it != m_edits.end()) {
+                for (const auto& [localIndex, blockId] : it->second) {
+                    const int x = localIndex % kChunkSize;
+                    const int z = (localIndex / kChunkSize) % kChunkSize;
+                    const int y = localIndex / (kChunkSize * kChunkSize);
+                    data.set(x, y, z, blockId);
+                }
+            }
+        });
 
         // Configuración inicial del ratón
         m_platform->setCursorLocked(true);
 
         // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
-        MGE_LOG_INFO(
-            "Sandbox",
-            "WASD: mover, Espacio: saltar, F: caminar/volar, 1-9: hotbar, F11: HUD, "
-            "M: atlas PNG/procedural, N: música, T: avanzar hora, P: pausa, F1: rendimiento, F2: LOD, "
-            "F3/F4: depuración, G: lanzar cubo, Esc: salir");
+        MGE_LOG_INFO("Sandbox", "WASD: mover, Espacio: saltar, F: caminar/volar, Clic izq: romper, Clic der: "
+                                "colocar, 1-9: hotbar, "
+                                "F11: HUD, M: atlas PNG/procedural, N: música, T: avanzar hora, P: pausa, "
+                                "F1: rendimiento, F2: LOD, "
+                                "F3/F4: depuración, G: lanzar cubo, Esc: salir");
         return true;
     }
 
@@ -162,6 +173,8 @@ public:
         actions.bind("ToggleHud", Key::F11);
         actions.bind("FastTime", Key::T);
         actions.bind("Quit", Key::Escape);
+        actions.bind("Break", MouseButton::Left);
+        actions.bind("Place", MouseButton::Right);
         actions.bind("CaptureMouse", MouseButton::Left);
 
         actions.bind("Slot1", Key::Num1);
@@ -238,7 +251,47 @@ public:
                 usePngAtlas();
         }
 
-        if (m_platform->wasActionPressed("CaptureMouse") && !m_isPaused) m_platform->setCursorLocked(true);
+        // Romper bloque (clic izquierdo con cursor bloqueado) o capturar cursor (si no está bloqueado)
+        if (m_platform->wasActionPressed("Break")) {
+            if (!m_platform->isCursorLocked()) {
+                if (!m_isPaused) {
+                    m_platform->setCursorLocked(true);
+                    m_breakCapturedThisClick = true;
+                }
+            } else if (!m_isPaused) {
+                breakBlock();
+                m_breakTimer = 0.25f;
+            }
+        } else if (m_platform->isActionDown("Break")) {
+            if (!m_breakCapturedThisClick && m_platform->isCursorLocked() && !m_isPaused) {
+                m_breakTimer -= time().delta();
+                if (m_breakTimer <= 0.0f) {
+                    breakBlock();
+                    m_breakTimer += 0.25f;
+                }
+            }
+        } else {
+            m_breakTimer = 0.0f;
+            m_breakCapturedThisClick = false;
+        }
+
+        // Colocar bloque (clic derecho) con repetición cada 0.25 s
+        if (m_platform->wasActionPressed("Place")) {
+            if (m_platform->isCursorLocked() && !m_isPaused) {
+                placeBlock();
+                m_placeTimer = 0.25f;
+            }
+        } else if (m_platform->isActionDown("Place")) {
+            if (m_platform->isCursorLocked() && !m_isPaused) {
+                m_placeTimer -= time().delta();
+                if (m_placeTimer <= 0.0f) {
+                    placeBlock();
+                    m_placeTimer += 0.25f;
+                }
+            }
+        } else {
+            m_placeTimer = 0.0f;
+        }
 
         if (m_platform->wasActionPressed("Pause")) {
             m_isPaused = !m_isPaused;
@@ -315,7 +368,87 @@ public:
         m_thrownBodies.push_back(bodyEntity);
     }
 
+    void recordEdit(const glm::ivec3& block, BlockId blockId) {
+        const ChunkCoord coord = chunkOf(block);
+        const glm::ivec3 local = localOf(block);
+        const auto localIdx = static_cast<std::uint16_t>(ChunkData::index(local.x, local.y, local.z));
+        auto& edits = m_edits[coord];
+        for (auto& entry : edits) {
+            if (entry.first == localIdx) {
+                entry.second = blockId;
+                return;
+            }
+        }
+        edits.emplace_back(localIdx, blockId);
+    }
+
+    static bool overlapsHalfOpen(const Aabb& a, const Aabb& b) {
+        constexpr float kEps = 1e-4f;
+        return a.min.x < b.max.x - kEps && a.max.x > b.min.x + kEps && a.min.y < b.max.y - kEps &&
+               a.max.y > b.min.y + kEps && a.min.z < b.max.z - kEps && a.max.z > b.min.z + kEps;
+    }
+
+    void updateSelection() {
+        const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+        const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
+        if (!controller || !playerTransform) {
+            m_selectionHit = std::nullopt;
+            return;
+        }
+        const glm::vec3 eye = characterEyePosition(*controller, *playerTransform, time().alpha());
+        const glm::vec3 forward = controller->forward();
+        const Ray ray(eye, forward);
+
+        auto pickable = [this](BlockId id) {
+            return id != kAir && id != m_blocks.water && id != m_blocks.lava;
+        };
+        constexpr float kReachDistance = 6.0f;
+        m_selectionHit = raycastVoxels(m_world, ray, kReachDistance, pickable);
+    }
+
+    void breakBlock() {
+        if (!m_selectionHit) return;
+        const glm::ivec3 block = m_selectionHit->block;
+        m_world.setBlock(block, kAir);
+        recordEdit(block, kAir);
+        updateSelection();
+    }
+
+    void placeBlock() {
+        if (!m_selectionHit) return;
+        const BlockId toPlace = m_hotbarBlocks[static_cast<std::size_t>(m_selectedSlot)];
+        if (toPlace == kAir) return;
+
+        const glm::ivec3 placePos = m_selectionHit->block + m_selectionHit->normal;
+        const BlockId currentId = m_world.getBlock(placePos);
+        if (currentId != kAir && currentId != m_blocks.water) return;
+
+        const Aabb blockBox(glm::vec3(placePos), glm::vec3(placePos) + glm::vec3(1.0f));
+
+        const auto* playerTf = world().registry().tryGet<Transform>(m_playerEntity);
+        const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+        if (playerTf && controller) {
+            const Aabb playerBox = characterAabb(playerTf->position, controller->halfExtents);
+            if (overlapsHalfOpen(blockBox, playerBox)) return;
+        }
+
+        for (const Entity e : m_thrownBodies) {
+            if (!world().registry().valid(e)) continue;
+            const auto* rb = world().registry().tryGet<RigidBody>(e);
+            const auto* tf = world().registry().tryGet<Transform>(e);
+            if (rb && tf) {
+                if (overlapsHalfOpen(blockBox, rb->bounds(tf->position))) return;
+            }
+        }
+
+        if (m_world.setBlock(placePos, toPlace)) {
+            recordEdit(placePos, toPlace);
+            updateSelection();
+        }
+    }
+
     void onUpdate(float /*dt*/) override {
+        updateSelection();
         handleActions();
 
         // Control del personaje: mirar con el ratón cuando el cursor está capturado y no en pausa
@@ -602,13 +735,21 @@ private:
                                                 std::to_string(gpuBytes() / 1024 / 1024) + " MB GPU");
             m_overlay.setCounter("posicion", std::to_string(block.x) + " " + std::to_string(block.y) + " " +
                                                  std::to_string(block.z));
+            if (m_selectionHit) {
+                const BlockDesc& desc = m_registry.get(m_selectionHit->blockId);
+                m_overlay.setCounter("seleccion", std::to_string(m_selectionHit->block.x) + " " +
+                                                      std::to_string(m_selectionHit->block.y) + " " +
+                                                      std::to_string(m_selectionHit->block.z) + " (" +
+                                                      desc.name + ")");
+            } else {
+                m_overlay.setCounter("seleccion", "-");
+            }
             m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
             m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
                                                 std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
             m_overlay.setCounter(
-                "",
-                "1-9 hotbar  F1 panel  F2 LOD  F3 chunks  F4 frustum  F11 HUD  F volar  G lanzar  M atlas  "
-                "N musica  P pausa");
+                "", "Clic romper/colocar  1-9 hotbar  F1 panel  F2 LOD  F3 chunks  F4 frustum  F11 HUD  "
+                    "F volar  G lanzar  M atlas  N musica  P pausa");
 
             m_overlay.setProfile(profiler());
         }
@@ -628,10 +769,19 @@ private:
     }
 
     // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
-    // colisión del personaje y, con F4, el frustum congelado
+    // colisión del personaje y, con F4, el frustum congelado. El contorno del bloque seleccionado se dibuja
+    // siempre que haya uno apuntado.
     void drawDebug() {
-        if (!m_showDebug && !m_frustumFrozen && m_thrownBodies.empty()) return;
         m_debug->clear();
+
+        // Contorno de selección del bloque (siempre visible, inflado por 0.002 en negro)
+        if (m_selectionHit) {
+            constexpr float kInflate = 0.002f;
+            const glm::vec3 bMin = glm::vec3(m_selectionHit->block) - glm::vec3(kInflate);
+            const glm::vec3 bMax = glm::vec3(m_selectionHit->block) + glm::vec3(1.0f + kInflate);
+            m_debug->aabb(Aabb(bMin, bMax), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+
         if (m_showDebug) {
             const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
             const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
@@ -730,6 +880,14 @@ private:
     int m_selectedSlot = 0;
     bool m_showHud = true; // F11
     bool m_pngMissingLogged = false;
+
+    using VoxelEdits =
+        std::unordered_map<ChunkCoord, std::vector<std::pair<std::uint16_t, BlockId>>, ChunkCoordHash>;
+    VoxelEdits m_edits;
+    std::optional<VoxelRaycastHit> m_selectionHit;
+    float m_breakTimer = 0.0f;
+    float m_placeTimer = 0.0f;
+    bool m_breakCapturedThisClick = false;
     Entity m_playerEntity; // Transform + CharacterController
     Entity m_cameraEntity; // Transform + Camera + CharacterCamera
     PhysicsWorld m_physicsWorld;

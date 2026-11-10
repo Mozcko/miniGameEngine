@@ -400,3 +400,44 @@ TEST_CASE("Streamer LOD: setSettings (LOD off → on) vuelve a mallar los anillo
     }
     CHECK(delivered);
 }
+
+TEST_CASE("Streamer: onChunkInserted modifica el chunk antes de insertarlo y mallarlo") {
+    mge_test::TestBlocks blocks;
+    VoxelWorld world(blocks.registry, std::make_unique<mge_test::FlatGenerator>(blocks.stone, 8));
+
+    SUBCASE("Sincrónico (sin hilos)") {
+        StreamingSettings s = smallSettings();
+        s.loadRadius = 1;
+        s.meshRadius = 1;
+        ChunkStreamer st(world, s, nullptr);
+
+        int hookCalls = 0;
+        st.onChunkInserted([&](const ChunkCoord& coord, ChunkData& data) {
+            hookCalls++;
+            if (coord == ChunkCoord{0, 0, 0}) {
+                data.set(5, 5, 5, blocks.glass);
+            }
+        });
+
+        st.update({0, 0, 0});
+        CHECK(hookCalls > 0);
+        CHECK(world.getBlock({5, 5, 5}) == blocks.glass);
+    }
+
+    SUBCASE("Asincrónico (con JobSystem)") {
+        JobSystem jobs;
+        StreamingSettings s = smallSettings();
+        s.loadRadius = 1;
+        s.meshRadius = 1;
+        ChunkStreamer st(world, s, &jobs);
+
+        st.onChunkInserted([&](const ChunkCoord& coord, ChunkData& data) {
+            if (coord == ChunkCoord{0, 0, 0}) {
+                data.set(3, 3, 3, blocks.glass);
+            }
+        });
+
+        convergeJobs(st, jobs, {0, 0, 0});
+        CHECK(world.getBlock({3, 3, 3}) == blocks.glass);
+    }
+}

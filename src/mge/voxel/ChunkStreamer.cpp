@@ -133,6 +133,9 @@ namespace mge {
             ChunkData data = it->second.get();
             // Si mientras tanto el centro se alejó, el resultado ya no hace falta
             if (columnDistance(it->first, center) <= m_settings.loadRadius + m_settings.unloadMargin) {
+                if (m_onChunkInserted) {
+                    m_onChunkInserted(it->first, data);
+                }
                 m_world.insertChunk(it->first, data);
                 budget--;
             } else {
@@ -236,7 +239,12 @@ namespace mge {
                 }));
             } else {
                 if (budget <= 0) break;
-                m_world.loadChunk(c); // Sin hilos: generar acá, con el mismo límite por update
+                ChunkData data;
+                if (generator) generator->generate(c, data);
+                if (m_onChunkInserted) {
+                    m_onChunkInserted(c, data);
+                }
+                m_world.insertChunk(c, data); // Sin hilos: generar acá, con el mismo límite por update
                 budget--;
             }
             room--;

@@ -252,3 +252,62 @@ TEST_CASE("raycastVoxels: maxDistance infinita no crashea y encuentra bloque a d
     CHECK(hit->block == glm::ivec3(50, 0, 0));
     CHECK(hit->distance == doctest::Approx(49.5f));
 }
+
+TEST_CASE("raycastVoxels: sobrecarga con predicado pickable selecciona bloques no sólidos") {
+    TestBlocks b;
+    VoxelWorld world(b.registry);
+    world.loadChunk({0, 0, 0});
+
+    const glm::ivec3 flowerBlock(5, 5, 5);
+    world.setBlock(flowerBlock, b.flower);
+
+    const Ray ray({0.5f, 5.5f, 5.5f}, {1.0f, 0.0f, 0.0f});
+
+    // La sobrecarga estándar (solo sólidos) ignora la flor no sólida
+    CHECK_FALSE(raycastVoxels(world, ray, 10.0f).has_value());
+
+    // Con predicado personalizado que acepta la flor, la impacta correctamente
+    const auto hit = raycastVoxels(world, ray, 10.0f, [&](BlockId id) { return id == b.flower; });
+    REQUIRE(hit.has_value());
+    CHECK(hit->block == flowerBlock);
+    CHECK(hit->blockId == b.flower);
+    CHECK(hit->normal == glm::ivec3(-1, 0, 0));
+    CHECK(hit->distance == doctest::Approx(4.5f));
+}
+
+TEST_CASE("raycastVoxels: el sandbox ignora agua y selecciona bloque no sólido posterior") {
+    TestBlocks b;
+    VoxelWorld world(b.registry);
+    world.loadChunk({0, 0, 0});
+
+    world.setBlock({3, 5, 5}, b.water);
+    world.setBlock({6, 5, 5}, b.flower);
+
+    const Ray ray({0.5f, 5.5f, 5.5f}, {1.0f, 0.0f, 0.0f});
+
+    // Predicado estilo sandbox: todo no-aire excepto agua
+    auto sandboxPickable = [&](BlockId id) { return id != kAir && id != b.water; };
+
+    const auto hit = raycastVoxels(world, ray, 10.0f, sandboxPickable);
+    REQUIRE(hit.has_value());
+    CHECK(hit->block == glm::ivec3(6, 5, 5));
+    CHECK(hit->blockId == b.flower);
+    CHECK(hit->distance == doctest::Approx(5.5f));
+}
+
+TEST_CASE("raycastVoxels: origen dentro de bloque no sólido pickable devuelve t = 0") {
+    TestBlocks b;
+    VoxelWorld world(b.registry);
+    world.loadChunk({0, 0, 0});
+
+    world.setBlock({2, 2, 2}, b.flower);
+    const Ray ray({2.5f, 2.5f, 2.5f}, {0.0f, 1.0f, 0.0f});
+
+    auto pickable = [&](BlockId id) { return id == b.flower; };
+    const auto hit = raycastVoxels(world, ray, 10.0f, pickable);
+    REQUIRE(hit.has_value());
+    CHECK(hit->block == glm::ivec3(2, 2, 2));
+    CHECK(hit->distance == 0.0f);
+    CHECK(hit->normal == glm::ivec3(0));
+    CHECK(hit->blockId == b.flower);
+}

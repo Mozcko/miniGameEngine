@@ -103,6 +103,11 @@ namespace mge {
         // ¿Todo lo que corresponde a center ya está cargado y mallado? (tests, pantallas de carga)
         bool idle() const { return m_generating.empty() && m_meshing.empty() && m_lastUpdateIdle; }
 
+        // Hook llamado en el hilo principal antes de insertar y mallar un chunk recién generado
+        void onChunkInserted(std::function<void(const ChunkCoord&, ChunkData&)> callback) {
+            m_onChunkInserted = std::move(callback);
+        }
+
     private:
         static int columnDistance(const ChunkCoord& a, const ChunkCoord& b);
         bool neighboursReady(const ChunkCoord& coord) const;
@@ -123,6 +128,7 @@ namespace mge {
         std::unordered_map<ChunkCoord, std::future<ChunkData>, ChunkCoordHash> m_generating;
         std::unordered_map<ChunkCoord, PendingMesh, ChunkCoordHash> m_meshing;
         std::unordered_map<ChunkCoord, int, ChunkCoordHash> m_chunkLod;
+        std::function<void(const ChunkCoord&, ChunkData&)> m_onChunkInserted;
         std::size_t m_discarded = 0;
         bool m_lastUpdateIdle = false;
     };

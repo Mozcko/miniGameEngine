@@ -76,10 +76,12 @@ CMake modules: `platform gpu graphics audio`.
 | `ToggleFly` | F: toggle walk / fly mode |
 | `Sprint` | Left Ctrl |
 | `Throw` | G: spawn a 0.5-size box rigid body in front with forward velocity (capped at 64 bodies) |
+| `CaptureMouse` | Left mouse button (unlocked cursor: locks cursor without breaking) |
+| `Break` | Left mouse button (locked cursor: break selected block; hold to repeat every 0.25 s) |
+| `Place` | Right mouse button: place selected hotbar block at face normal (hold to repeat every 0.25 s) |
 | `Slot1` .. `Slot9` | 1 .. 9: select hotbar slot (highlighted selection) |
-| `Pause` | P |
-| `Quit` | Esc |
-| `CaptureMouse` | Left mouse button |
+| `Pause` | P: pause game and unlock cursor |
+| `Quit` | Esc: exit application |
 | `ToggleAtlas` | M: switch live between the procedural atlas and PNG atlas |
 | `ToggleMusic` | N: mute or restore the ambient music (`AudioBus::Music`) |
 | `FastTime` | T: advance day/night time at 60× speed while held |
