@@ -7,6 +7,9 @@ generates; CI builds that template on every PR, so the guide stays accurate.
 
 Prerequisites: the project builds (`docs/BUILDING.md`).
 
+> [!NOTE]
+> This is the quick 10-minute getting started guide. For the comprehensive manual covering all subsystems, modules, physics, voxels, procedural generation, sound synthesis, and an end-to-end game walkthrough, see the [Full User Guide](GUIDE.md).
+
 ---
 
 ## 1. Create the game
@@ -222,5 +225,6 @@ For unit tests of individual classes, add a doctest file under `tests/` (see `te
 
 ---
 
-Next: the engine reference lives in each folder's README (`src/mge/core/README.md` for the
-Application, ECS, input and time). The full user guide (#67) will extend this page.
+Next:
+- See the comprehensive [Full User Guide](GUIDE.md) covering all subsystems, modules, physics, voxel worlds, procedural generation, sound synthesis, and an end-to-end code-only game walkthrough.
+- The engine reference lives in each folder's README (e.g. [`src/mge/core/README.md`](../src/mge/core/README.md) for the Application, ECS, input and time).

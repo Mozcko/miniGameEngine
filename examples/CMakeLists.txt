@@ -14,4 +14,5 @@ add_subdirectory(platformer2d)
 add_subdirectory(tone)
 add_subdirectory(sdf_scene)
 add_subdirectory(sdf_glide)
+add_subdirectory(guide_game)
 # scripts/new-game.sh agrega líneas debajo
