@@ -192,4 +192,10 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(platformer_tests PRIVATE platformer2d_logic doctest_header)
     mge_set_warnings(platformer_tests)
     doctest_discover_tests(platformer_tests TEST_PREFIX "platformer: ")
+
+    # Demo SDF Glide (#66): cañón SDF, colisiones, motas, lógica y audio synth, sin ventana
+    add_executable(sdf_glide_tests test_main.cpp examples/test_sdf_glide.cpp)
+    target_link_libraries(sdf_glide_tests PRIVATE sdf_glide_logic mge_procgen doctest_header)
+    mge_set_warnings(sdf_glide_tests)
+    doctest_discover_tests(sdf_glide_tests TEST_PREFIX "sdf_glide: ")
 endif()

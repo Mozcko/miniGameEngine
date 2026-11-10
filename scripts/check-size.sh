@@ -39,7 +39,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$budget_file"
 
-targets=(headless_smoke platformer2d sandbox procgen_gallery audio_gallery)
+targets=(headless_smoke platformer2d sandbox procgen_gallery audio_gallery sdf_glide)
 over_budget=0
 found_count=0
 
