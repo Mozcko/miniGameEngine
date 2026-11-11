@@ -1,0 +1,60 @@
+# @GAME_TITLE@ (plantilla 2D)
+cmake_minimum_required(VERSION 3.25)
+project(@GAME_NAME@ LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(mge 0.9 QUIET)
+
+if(NOT mge_FOUND AND NOT TARGET mge::core)
+    include(FetchContent)
+    FetchContent_Declare(
+        mge
+        GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git
+        GIT_TAG v@MGE_VERSION@
+    )
+    FetchContent_MakeAvailable(mge)
+endif()
+
+# Lógica del juego desacoplada
+add_library(@GAME_NAME@_logic STATIC
+    src/@GAME_CLASS@Logic.cpp
+    src/@GAME_CLASS@Logic.h
+)
+target_include_directories(@GAME_NAME@_logic PUBLIC src)
+target_link_libraries(@GAME_NAME@_logic PUBLIC mge::core)
+
+# Juego con ventana, GPU y audio
+mge_add_game(@GAME_NAME@
+    SOURCES src/@GAME_CLASS@.cpp
+    LIBRARIES @GAME_NAME@_logic
+    MODULES platform gpu graphics audio
+    SMOKE_FRAMES 60
+)
+
+# Pruebas unitarias doctest
+if(NOT TARGET @GAME_NAME@_doctest)
+    find_package(doctest 2.4 QUIET)
+    if(NOT doctest_FOUND AND NOT TARGET doctest_header)
+        include(FetchContent)
+        FetchContent_Declare(
+            doctest
+            URL https://github.com/doctest/doctest/archive/refs/tags/v2.4.11.tar.gz
+            SOURCE_SUBDIR cmake-is-empty
+        )
+        FetchContent_MakeAvailable(doctest)
+        add_library(@GAME_NAME@_doctest INTERFACE)
+        target_include_directories(@GAME_NAME@_doctest SYSTEM INTERFACE ${doctest_SOURCE_DIR})
+    elseif(TARGET doctest_header)
+        add_library(@GAME_NAME@_doctest INTERFACE)
+        target_link_libraries(@GAME_NAME@_doctest INTERFACE doctest_header)
+    else()
+        add_library(@GAME_NAME@_doctest ALIAS doctest::doctest)
+    endif()
+endif()
+
+enable_testing()
+add_executable(@GAME_NAME@_tests tests/test_@GAME_NAME@.cpp)
+target_link_libraries(@GAME_NAME@_tests PRIVATE @GAME_NAME@_logic @GAME_NAME@_doctest)
+add_test(NAME @GAME_NAME@_tests COMMAND @GAME_NAME@_tests)

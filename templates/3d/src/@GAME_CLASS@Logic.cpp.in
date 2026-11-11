@@ -1,0 +1,25 @@
+#include "@GAME_CLASS@Logic.h"
+
+#include <cmath>
+
+namespace @GAME_NAME@ {
+
+    void updateFloatingOrb(FloatingOrb& orb, float dt) {
+        orb.phase += orb.bobSpeed * dt;
+        orb.rotationAngle += orb.rotationSpeed * dt;
+
+        // Mantener los ángulos en rango [0, 2pi) para evitar pérdidas de precisión numérica
+        constexpr float kTwoPi = 6.28318530718f;
+        if (orb.phase > kTwoPi) {
+            orb.phase = std::fmod(orb.phase, kTwoPi);
+        }
+        if (orb.rotationAngle > kTwoPi) {
+            orb.rotationAngle = std::fmod(orb.rotationAngle, kTwoPi);
+        }
+    }
+
+    glm::vec3 computeOrbPosition(const FloatingOrb& orb) {
+        return orb.basePosition + glm::vec3(0.0f, std::sin(orb.phase) * orb.bobAmplitude, 0.0f);
+    }
+
+} // namespace @GAME_NAME@

@@ -1,0 +1,65 @@
+// @GAME_TITLE@: programa headless generado a partir de la plantilla "headless".
+// Sin módulos: sin ventana, GPU ni SDL. Ideal para servidores, simulaciones y herramientas.
+// Corre 600 frames con un reloj manual (determinista) y verifica el resultado al terminar.
+#include <mge/mge.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+#include <memory>
+
+namespace {
+
+    struct SimComponent {
+        @GAME_NAME@::SimulationState state;
+    };
+
+    class @GAME_CLASS@ : public mge::Application {
+    public:
+        @GAME_CLASS@() : mge::Application(makeConfig()) {
+            // Cada frame dura exactamente 1/60 s: resultado idéntico en cualquier máquina
+            setClock(std::make_unique<mge::ManualClock>(1.0 / 60.0));
+        }
+
+    protected:
+        bool onInit() override {
+            mge::Registry& registry = world().registry();
+            m_simEntity = registry.create();
+            registry.add<SimComponent>(m_simEntity);
+
+            world().addSystem(mge::SystemPhase::Fixed, "sim_step", [](mge::World& w, float dt) {
+                w.registry().each<SimComponent>(
+                    [dt](mge::Entity, SimComponent& sim) { @GAME_NAME@::stepSimulation(sim.state, dt); });
+            });
+            return true;
+        }
+
+        void onShutdown() override {
+            const auto& sim = world().registry().get<SimComponent>(m_simEntity);
+            const std::uint64_t expectedSteps = time().fixedStepCount();
+            if (!@GAME_NAME@::verifySimulation(sim.state, expectedSteps)) {
+                MGE_LOG_ERROR("@GAME_NAME@", "Fallo de verificacion: esperaba ", expectedSteps,
+                              " pasos, hubo ", sim.state.stepCount);
+                setExitCode(1);
+                return;
+            }
+            MGE_LOG_INFO("@GAME_NAME@", "OK: simulacion determinista completada con ", sim.state.stepCount,
+                         " pasos en ", getFrameCount(), " frames");
+        }
+
+    private:
+        static mge::ApplicationConfig makeConfig() {
+            mge::ApplicationConfig config;
+            config.title = "@GAME_TITLE@";
+            config.headless = true;
+            config.maxFrames = 600;
+            return config;
+        }
+
+        mge::Entity m_simEntity{};
+    };
+
+} // namespace
+
+mge::Application* mge::createApplication() {
+    return new @GAME_CLASS@();
+}

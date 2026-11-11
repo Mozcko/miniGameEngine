@@ -1,0 +1,97 @@
+#include "@GAME_CLASS@Logic.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace @GAME_NAME@ {
+
+    void movePlayer(Player2D& player, const glm::vec2& inputDir, float dt,
+                    const std::vector<Rect2D>& obstacles, const glm::vec2& bounds) {
+        if (glm::length(inputDir) > 1e-4f) {
+            const glm::vec2 dir = glm::normalize(inputDir);
+
+            // Subpasos para evitar tunneling si el paso supera el tamaño del jugador
+            constexpr float kMaxSubStep = 4.0f;
+            const float totalDistance = player.speed * dt;
+            const int steps = std::max(1, static_cast<int>(std::ceil(totalDistance / kMaxSubStep)));
+            const float subDt = dt / static_cast<float>(steps);
+
+            for (int s = 0; s < steps; ++s) {
+                const glm::vec2 step = dir * (player.speed * subDt);
+
+                // Movimiento en eje X con resolución de colisiones
+                player.position.x += step.x;
+                Rect2D playerRect{player.position, player.size};
+                for (const auto& obs : obstacles) {
+                    if (playerRect.intersects(obs)) {
+                        if (step.x > 0.0f) {
+                            player.position.x = obs.position.x - player.size.x;
+                        } else if (step.x < 0.0f) {
+                            player.position.x = obs.position.x + obs.size.x;
+                        }
+                        playerRect.position.x = player.position.x;
+                    }
+                }
+
+                // Movimiento en eje Y con resolución de colisiones
+                player.position.y += step.y;
+                playerRect.position.y = player.position.y;
+                for (const auto& obs : obstacles) {
+                    if (playerRect.intersects(obs)) {
+                        if (step.y > 0.0f) {
+                            player.position.y = obs.position.y - player.size.y;
+                        } else if (step.y < 0.0f) {
+                            player.position.y = obs.position.y + obs.size.y;
+                        }
+                        playerRect.position.y = player.position.y;
+                    }
+                }
+            }
+        }
+
+        // Delimitar dentro del área visible de la arena
+        player.position.x = glm::clamp(player.position.x, 0.0f, std::max(0.0f, bounds.x - player.size.x));
+        player.position.y = glm::clamp(player.position.y, 0.0f, std::max(0.0f, bounds.y - player.size.y));
+    }
+
+    int collectCoins(World2D& world) {
+        int collectedCount = 0;
+        const Rect2D playerRect{world.player.position, world.player.size};
+        for (auto& coin : world.coins) {
+            if (!coin.collected) {
+                const Rect2D coinRect{coin.position, coin.size};
+                if (playerRect.intersects(coinRect)) {
+                    coin.collected = true;
+                    world.score += 10;
+                    collectedCount++;
+                }
+            }
+        }
+        return collectedCount;
+    }
+
+    World2D createDefaultWorld(const glm::vec2& bounds) {
+        World2D world;
+        world.bounds = bounds;
+        world.player.position = {100.0f, 100.0f};
+        world.player.size = {32.0f, 32.0f};
+        world.player.speed = 300.0f;
+
+        world.obstacles = {
+            Rect2D{{300.0f, 150.0f}, {80.0f, 200.0f}},
+            Rect2D{{600.0f, 350.0f}, {150.0f, 80.0f}},
+            Rect2D{{850.0f, 150.0f}, {80.0f, 250.0f}}
+        };
+
+        world.coins = {
+            Coin2D{{200.0f, 200.0f}, {24.0f, 24.0f}, false},
+            Coin2D{{450.0f, 250.0f}, {24.0f, 24.0f}, false},
+            Coin2D{{750.0f, 200.0f}, {24.0f, 24.0f}, false},
+            Coin2D{{500.0f, 500.0f}, {24.0f, 24.0f}, false},
+            Coin2D{{1000.0f, 400.0f}, {24.0f, 24.0f}, false}
+        };
+
+        return world;
+    }
+
+} // namespace @GAME_NAME@

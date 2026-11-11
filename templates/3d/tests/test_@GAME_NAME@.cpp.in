@@ -1,0 +1,50 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+#include <mge/core/Time.h>
+#include <mge/physics/CharacterController.h>
+
+using namespace @GAME_NAME@;
+
+TEST_CASE("@GAME_NAME@: consulta de piso plano") {
+    CHECK(isFloorSolid(glm::ivec3(0, -1, 0)) == true);
+    CHECK(isFloorSolid(glm::ivec3(10, -5, -20)) == true);
+    CHECK(isFloorSolid(glm::ivec3(0, 0, 0)) == false);
+    CHECK(isFloorSolid(glm::ivec3(5, 1, 3)) == false);
+}
+
+TEST_CASE("@GAME_NAME@: oscilacion de orbe flotante") {
+    FloatingOrb orb;
+    orb.basePosition = glm::vec3(0.0f, 2.0f, 0.0f);
+    orb.bobAmplitude = 0.5f;
+    orb.bobSpeed = 2.0f;
+
+    const glm::vec3 startPos = computeOrbPosition(orb);
+    CHECK(startPos.y == doctest::Approx(2.0f));
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int i = 0; i < 60; ++i) {
+        updateFloatingOrb(orb, kDt);
+        const glm::vec3 pos = computeOrbPosition(orb);
+        CHECK(pos.y >= 2.0f - 0.5f - 1e-4f);
+        CHECK(pos.y <= 2.0f + 0.5f + 1e-4f);
+    }
+}
+
+TEST_CASE("@GAME_NAME@: personaje apoyado en piso plano") {
+    mge::CharacterController controller;
+    glm::vec3 feet(0.0f, 0.0f, 0.0f);
+    controller.grounded = true;
+    controller.previousPosition = feet;
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int i = 0; i < 60; ++i) {
+        feet = mge::stepCharacter(controller, feet, kDt, isFloorSolid);
+    }
+
+    CHECK(controller.grounded);
+    CHECK(feet.y == doctest::Approx(0.0f));
+    CHECK(controller.velocity.y == doctest::Approx(0.0f));
+}

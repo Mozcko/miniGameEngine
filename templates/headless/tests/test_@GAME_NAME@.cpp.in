@@ -1,0 +1,27 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+using namespace @GAME_NAME@;
+
+TEST_CASE("@GAME_NAME@: determinismo de la simulacion headless") {
+    SimulationState sim1;
+    SimulationState sim2;
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int i = 0; i < 300; ++i) {
+        stepSimulation(sim1, kDt);
+        stepSimulation(sim2, kDt);
+    }
+
+    CHECK(sim1.stepCount == 300);
+    CHECK(sim2.stepCount == 300);
+    CHECK(sim1.position.x == doctest::Approx(sim2.position.x));
+    CHECK(sim1.position.y == doctest::Approx(sim2.position.y));
+    CHECK(sim1.position.z == doctest::Approx(sim2.position.z));
+    CHECK(sim1.accumulatedDistance == doctest::Approx(sim2.accumulatedDistance));
+
+    CHECK(verifySimulation(sim1, 300) == true);
+    CHECK(verifySimulation(sim1, 299) == false);
+}

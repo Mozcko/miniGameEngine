@@ -1,0 +1,224 @@
+// @GAME_TITLE@: juego 3D generado a partir de la plantilla "3d".
+// Muestra: suelo plano con SolidQuery, CharacterController con gravedad y salto,
+// cielo procedural con ciclo DayNight, iluminación direccional y niebla,
+// entidades ECS animadas en el paso fijo, overlay de rendimiento (F1) y audio sintetizado.
+#include <mge/mge.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <memory>
+
+namespace {
+
+    class @GAME_CLASS@ : public mge::Application {
+    public:
+        @GAME_CLASS@() : mge::Application(makeConfig()) {
+            addModule<mge::PlatformModule>();
+            addModule<mge::GpuModule>();
+            addModule<mge::AudioModule>();
+        }
+
+    protected:
+        bool onInit() override {
+            m_platform = getModule<mge::PlatformModule>();
+            m_gpu = getModule<mge::GpuModule>();
+            m_audio = getModule<mge::AudioModule>();
+            if (!m_platform || !m_gpu || !m_audio) return false;
+
+            // 1. Acciones de entrada
+            auto& actions = m_platform->actions();
+            actions.bindAxis("MoveX", mge::Key::D, mge::Key::A);
+            actions.bindAxis("MoveZ", mge::Key::W, mge::Key::S);
+            actions.bind("Jump", mge::Key::Space);
+            actions.bind("Sprint", mge::Key::LeftShift);
+            actions.bind("Overlay", mge::Key::F1);
+            actions.bind("Quit", mge::Key::Escape);
+
+            // Bloquear cursor para control con ratón
+            m_platform->setCursorLocked(true);
+
+            // 2. Renderizadores de GPU
+            mge::GpuDevice& device = m_gpu->device();
+            m_renderer = std::make_unique<mge::MeshRenderer>(device, m_gpu->swapchainFormat());
+            if (!m_renderer->valid()) return false;
+
+            m_skyRenderer = std::make_unique<mge::SkyRenderer>(device, m_gpu->swapchainFormat(),
+                                                              device.depthFormat());
+            if (!m_skyRenderer->valid()) return false;
+
+            m_ui = std::make_unique<mge::Renderer2D>(device, m_gpu->swapchainFormat());
+            if (!m_ui->valid()) return false;
+
+            // 3. Mallas procedurales
+            m_floorMesh = device.uploadMesh(
+                mge::primitives::plane(50.0f, 50.0f, 10, 10, glm::vec4(0.28f, 0.42f, 0.25f, 1.0f)));
+            m_boxMesh = device.uploadMesh(
+                mge::primitives::box(glm::vec3(1.2f, 1.2f, 1.2f), glm::vec4(0.70f, 0.45f, 0.25f, 1.0f)));
+            m_pillarMesh = device.uploadMesh(
+                mge::primitives::cylinder(0.5f, 3.0f, 24, true, glm::vec4(0.55f, 0.60f, 0.68f, 1.0f)));
+            m_orbMesh = device.uploadMesh(
+                mge::primitives::uvSphere(0.5f, 24, 16, glm::vec4(0.95f, 0.80f, 0.20f, 1.0f)));
+
+            // 4. Audio sintetizado procedural
+            m_jumpSfx = m_audio->addSfx(mge::sfx::jump());
+
+            // 5. Jugador físico con CharacterController sobre suelo plano
+            m_playerEntity = world().registry().create();
+            mge::CharacterController playerController;
+            playerController.previousPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+            world().registry().add<mge::Transform>(m_playerEntity, glm::vec3(0.0f, 0.0f, 0.0f));
+            world().registry().add<mge::CharacterController>(m_playerEntity, playerController);
+
+            // Cámara del ECS que sigue al personaje
+            m_cameraEntity = world().registry().create();
+            world().registry().add<mge::Transform>(m_cameraEntity);
+            world().registry().add<mge::Camera>(m_cameraEntity);
+            world().registry().add<mge::CharacterCamera>(m_cameraEntity, mge::CharacterCamera{m_playerEntity});
+
+            mge::addCharacterSystem(world(), @GAME_NAME@::isFloorSolid);
+            mge::addCharacterCameraSystem(world(), time());
+
+            // 6. Entidad ECS animada en paso fijo (FloatingOrb)
+            m_orbEntity = world().registry().create();
+            @GAME_NAME@::FloatingOrb orbState;
+            orbState.basePosition = glm::vec3(0.0f, 1.5f, -5.0f);
+            world().registry().add<mge::Transform>(m_orbEntity, orbState.basePosition);
+            world().registry().add<@GAME_NAME@::FloatingOrb>(m_orbEntity, orbState);
+
+            world().addSystem(mge::SystemPhase::Fixed, "floating_orb", [](mge::World& w, float dt) {
+                w.registry().each<@GAME_NAME@::FloatingOrb, mge::Transform>(
+                    [dt](mge::Entity, @GAME_NAME@::FloatingOrb& orb, mge::Transform& transform) {
+                        @GAME_NAME@::updateFloatingOrb(orb, dt);
+                        transform.position = @GAME_NAME@::computeOrbPosition(orb);
+                        transform.rotation = glm::angleAxis(orb.rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+                    });
+            });
+
+            MGE_LOG_INFO("@GAME_NAME@", "WASD: mover, Espacio: saltar, Shift: correr, F1: rendimiento, Esc: salir");
+            return true;
+        }
+
+        void onShutdown() override {
+            m_floorMesh = {};
+            m_boxMesh = {};
+            m_pillarMesh = {};
+            m_orbMesh = {};
+            m_ui.reset();
+            m_skyRenderer.reset();
+            m_renderer.reset();
+        }
+
+        void onUpdate(float dt) override {
+            if (m_platform->wasActionPressed("Quit")) {
+                requestStop();
+                return;
+            }
+            if (m_platform->wasActionPressed("Overlay")) {
+                m_overlay.toggle();
+            }
+
+            auto& controller = world().registry().get<mge::CharacterController>(m_playerEntity);
+            if (m_platform->isCursorLocked()) {
+                const mge::Vec2f mouseDelta = m_platform->input().mouseDelta();
+                controller.look(mouseDelta.x * 0.15f, -mouseDelta.y * 0.15f);
+            }
+
+            controller.input.moveForward = m_platform->axis("MoveZ");
+            controller.input.moveRight = m_platform->axis("MoveX");
+            controller.input.sprint = m_platform->isActionDown("Sprint");
+
+            const bool wantJump = m_platform->wasActionPressed("Jump");
+            if (wantJump && controller.grounded) {
+                m_audio->play(m_jumpSfx);
+            }
+            controller.input.jump = m_platform->isActionDown("Jump");
+
+            m_dayNight.advance(dt);
+        }
+
+        void onRender() override {
+            const mge::GpuFrame* frame = m_gpu->frame();
+            if (!frame) return;
+
+            const auto& cameraTransform = world().registry().get<mge::Transform>(m_cameraEntity);
+            const auto& camera = world().registry().get<mge::Camera>(m_cameraEntity);
+            const mge::CameraMatrices mats =
+                mge::cameraMatrices(cameraTransform.localMatrix(), camera, viewport());
+
+            const mge::Lighting currentLighting = m_dayNight.lighting(m_lighting);
+
+            if (m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
+                                  glm::vec4(currentLighting.fogColor, 1.0f))) {
+                m_renderer->setCamera(mats.viewProjection, mats.position);
+                m_renderer->setLighting(currentLighting);
+
+                if (m_skyRenderer) {
+                    m_skyRenderer->draw(*m_renderer, glm::inverse(mats.viewProjection), mats.position,
+                                        m_dayNight.sky());
+                }
+
+                // Plano del suelo
+                m_renderer->draw(m_floorMesh, glm::mat4(1.0f));
+
+                // Primitivas estáticas de referencia
+                m_renderer->draw(m_boxMesh, glm::translate(glm::mat4(1.0f), glm::vec3(-4.0f, 0.6f, -6.0f)));
+                m_renderer->draw(m_pillarMesh, glm::translate(glm::mat4(1.0f), glm::vec3(4.0f, 1.5f, -6.0f)));
+
+                // Entidad ECS animada
+                const auto& orbTransform = world().registry().get<mge::Transform>(m_orbEntity);
+                m_renderer->draw(m_orbMesh, orbTransform.localMatrix());
+
+                m_renderer->end();
+            }
+
+            // Overlay de rendimiento y texto 2D
+            m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
+            m_overlay.setProfile(profiler());
+            m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));
+            m_ui->text({16.0f, m_ui->size().y - 40.0f}, "@GAME_TITLE@", {1.0f, 1.0f, 1.0f, 1.0f}, 2.5f);
+            m_overlay.draw(*m_ui);
+            m_ui->flush(*frame->cmd, frame->swapchain);
+        }
+
+    private:
+        static mge::ApplicationConfig makeConfig() {
+            mge::ApplicationConfig config;
+            config.title = "@GAME_TITLE@";
+            config.width = 1280;
+            config.height = 720;
+            return config;
+        }
+
+        mge::PlatformModule* m_platform = nullptr;
+        mge::GpuModule* m_gpu = nullptr;
+        mge::AudioModule* m_audio = nullptr;
+
+        std::unique_ptr<mge::MeshRenderer> m_renderer;
+        std::unique_ptr<mge::SkyRenderer> m_skyRenderer;
+        std::unique_ptr<mge::Renderer2D> m_ui;
+        mge::DebugOverlay m_overlay;
+
+        mge::DayNight m_dayNight{10.0f, 600.0f};
+        mge::Lighting m_lighting;
+
+        mge::GpuMesh m_floorMesh;
+        mge::GpuMesh m_boxMesh;
+        mge::GpuMesh m_pillarMesh;
+        mge::GpuMesh m_orbMesh;
+
+        mge::SampleId m_jumpSfx{};
+
+        mge::Entity m_playerEntity{};
+        mge::Entity m_cameraEntity{};
+        mge::Entity m_orbEntity{};
+    };
+
+} // namespace
+
+mge::Application* mge::createApplication() {
+    return new @GAME_CLASS@();
+}
