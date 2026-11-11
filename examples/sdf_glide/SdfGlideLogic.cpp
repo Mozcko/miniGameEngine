@@ -112,6 +112,7 @@ namespace sdf_glide {
 
     void GlideGame::reset() {
         m_playerPos = glm::vec3(0.0f, 0.0f, 0.0f);
+        m_prevPlayerPos = m_playerPos;
         m_playerVel = glm::vec3(0.0f, 0.0f, -16.0f);
         m_shields = kMaxShields;
         m_score = 0;
@@ -164,6 +165,7 @@ namespace sdf_glide {
     }
 
     void GlideGame::update(float dt, const GlideInput& input) {
+        m_prevPlayerPos = m_playerPos;
         m_audioEvents.clear();
 
         if (m_gameOver) {
@@ -196,19 +198,38 @@ namespace sdf_glide {
         m_playerVel.x = glm::mix(m_playerVel.x, targetVelX, std::clamp(12.0f * dt, 0.0f, 1.0f));
         m_playerVel.y = glm::mix(m_playerVel.y, targetVelY, std::clamp(12.0f * dt, 0.0f, 1.0f));
 
-        m_playerPos += m_playerVel * dt;
-
         // 4. Temporizador de invulnerabilidad tras colisión
         if (m_invulnerableTimer > 0.0f) {
             m_invulnerableTimer = std::max(0.0f, m_invulnerableTimer - dt);
         }
 
-        // 5. Detección y respuesta de colisión con el cañón
-        const float d = canyonDistance(m_playerPos);
-        if (d < kPlayerRadius) {
+        // 5. Avance con sub-pasos de sphere-tracing y detección de colisión continua con el cañón
+        float remaining = dt;
+        const float speed = glm::length(m_playerVel);
+        bool hit = false;
+
+        while (remaining > 0.0f) {
+            const float d = canyonDistance(m_playerPos) - kOrbRadius;
+            if (d <= 0.0f) {
+                hit = true;
+                break;
+            }
+            const float safeDt = speed > 1e-4f ? (d / speed) : remaining;
+            const float minDt = speed > 1e-4f ? (0.05f / speed) : remaining;
+            const float step = std::min(remaining, std::max(minDt, safeDt));
+            m_playerPos += m_playerVel * step;
+            remaining -= step;
+            if (canyonDistance(m_playerPos) - kOrbRadius <= 0.0f) {
+                hit = true;
+                break;
+            }
+        }
+
+        if (hit) {
+            const float currentD = canyonDistance(m_playerPos);
             const glm::vec3 normal = canyonNormal(m_playerPos);
             // Empujar hacia afuera para evitar que quede atascado
-            m_playerPos += normal * (kPlayerRadius - d + 0.15f);
+            m_playerPos += normal * (kOrbRadius - currentD + 0.15f);
 
             // Rebote de velocidad en el plano normal
             m_playerVel.x += normal.x * 10.0f;
