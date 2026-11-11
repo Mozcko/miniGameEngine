@@ -1,0 +1,31 @@
+#pragma once
+
+#include <mge/core/math/Geometry.h>
+#include <mge/physics/GridQuery.h>
+
+#include <glm/glm.hpp>
+
+namespace @GAME_NAME@ {
+
+    // Componente de la entidad que oscila en la fase Fixed
+    struct FloatingOrb {
+        glm::vec3 basePosition{0.0f, 1.5f, 0.0f};
+        float phase = 0.0f;
+        float bobSpeed = 2.5f;
+        float bobAmplitude = 0.4f;
+        float rotationSpeed = 1.8f;
+        float rotationAngle = 0.0f;
+    };
+
+    // Actualiza la oscilación y rotación del orbe (determinista)
+    void updateFloatingOrb(FloatingOrb& orb, float dt);
+
+    // Calcula la posición en el mundo a partir de la oscilación
+    glm::vec3 computeOrbPosition(const FloatingOrb& orb);
+
+    // Función de consulta de colisión: suelo plano en y < 0
+    inline bool isFloorSolid(const glm::ivec3& block) {
+        return block.y < 0;
+    }
+
+} // namespace @GAME_NAME@

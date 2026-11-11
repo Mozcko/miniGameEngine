@@ -1,0 +1,31 @@
+#include "@GAME_CLASS@Logic.h"
+
+#include <cmath>
+
+namespace @GAME_NAME@ {
+
+    void stepSimulation(SimulationState& state, float dt) {
+        state.stepCount++;
+        // Oscilador armónico determinista
+        constexpr float kOmega = 1.0f;
+        const glm::vec3 acceleration = -kOmega * kOmega * state.position;
+        state.velocity += acceleration * dt;
+        const glm::vec3 delta = state.velocity * dt;
+        state.position += delta;
+        state.accumulatedDistance += glm::length(delta);
+    }
+
+    bool verifySimulation(const SimulationState& state, std::uint64_t expectedSteps) {
+        if (state.stepCount != expectedSteps) {
+            return false;
+        }
+        if (std::isnan(state.position.x) || std::isnan(state.position.y) || std::isnan(state.position.z)) {
+            return false;
+        }
+        if (std::isnan(state.accumulatedDistance) || state.accumulatedDistance <= 0.0f) {
+            return false;
+        }
+        return true;
+    }
+
+} // namespace @GAME_NAME@

@@ -1,0 +1,50 @@
+#pragma once
+
+#include <glm/glm.hpp>
+#include <vector>
+
+namespace @GAME_NAME@ {
+
+    struct Rect2D {
+        glm::vec2 position{0.0f}; // Esquina superior izquierda
+        glm::vec2 size{0.0f};
+
+        bool intersects(const Rect2D& other) const {
+            return (position.x < other.position.x + other.size.x &&
+                    position.x + size.x > other.position.x &&
+                    position.y < other.position.y + other.size.y &&
+                    position.y + size.y > other.position.y);
+        }
+    };
+
+    struct Player2D {
+        glm::vec2 position{100.0f, 100.0f};
+        glm::vec2 size{32.0f, 32.0f};
+        float speed = 250.0f; // píxeles por segundo
+    };
+
+    struct Coin2D {
+        glm::vec2 position{300.0f, 200.0f};
+        glm::vec2 size{24.0f, 24.0f};
+        bool collected = false;
+    };
+
+    struct World2D {
+        Player2D player;
+        std::vector<Rect2D> obstacles;
+        std::vector<Coin2D> coins;
+        glm::vec2 bounds{1280.0f, 720.0f};
+        int score = 0;
+    };
+
+    // Actualiza la posición del jugador con colisión contra obstáculos y bordes
+    void movePlayer(Player2D& player, const glm::vec2& inputDir, float dt,
+                    const std::vector<Rect2D>& obstacles, const glm::vec2& bounds);
+
+    // Comprueba colisiones con monedas y acumula el puntaje; retorna cuántas monedas se recolectaron
+    int collectCoins(World2D& world);
+
+    // Genera un mundo inicial con obstáculos en los bordes y monedas distribuidas
+    World2D createDefaultWorld(const glm::vec2& bounds);
+
+} // namespace @GAME_NAME@

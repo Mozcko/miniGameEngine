@@ -1,0 +1,22 @@
+#pragma once
+
+#include <cstdint>
+#include <glm/glm.hpp>
+
+namespace @GAME_NAME@ {
+
+    // Estado de una simulación matemática determinista
+    struct SimulationState {
+        std::uint64_t stepCount = 0;
+        glm::vec3 position{1.0f, 0.0f, 0.0f};
+        glm::vec3 velocity{0.0f, 2.0f, 0.0f};
+        float accumulatedDistance = 0.0f;
+    };
+
+    // Avanza un paso fijo de la simulación
+    void stepSimulation(SimulationState& state, float dt);
+
+    // Verifica que los resultados sean deterministas y concuerden con los pasos esperados
+    bool verifySimulation(const SimulationState& state, std::uint64_t expectedSteps);
+
+} // namespace @GAME_NAME@

@@ -1,0 +1,53 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+using namespace @GAME_NAME@;
+
+TEST_CASE("@GAME_NAME@: interseccion de rectangulos 2D") {
+    Rect2D a{{0.0f, 0.0f}, {10.0f, 10.0f}};
+    Rect2D b{{5.0f, 5.0f}, {10.0f, 10.0f}};
+    Rect2D c{{20.0f, 20.0f}, {10.0f, 10.0f}};
+
+    CHECK(a.intersects(b) == true);
+    CHECK(b.intersects(a) == true);
+    CHECK(a.intersects(c) == false);
+    CHECK(b.intersects(c) == false);
+}
+
+TEST_CASE("@GAME_NAME@: movimiento y colision de jugador contra obstaculo") {
+    Player2D player;
+    player.position = {10.0f, 10.0f};
+    player.size = {20.0f, 20.0f};
+    player.speed = 100.0f;
+
+    std::vector<Rect2D> obstacles = {
+        Rect2D{{40.0f, 10.0f}, {20.0f, 20.0f}} // Obstáculo a la derecha
+    };
+    glm::vec2 bounds{200.0f, 200.0f};
+
+    // Moverse hacia la derecha durante 1 segundo (intentaría avanzar 100 px hasta x=110)
+    movePlayer(player, glm::vec2(1.0f, 0.0f), 1.0f, obstacles, bounds);
+
+    // Debe detenerse justo antes del obstáculo (x + size <= 40 => x == 20)
+    CHECK(player.position.x == doctest::Approx(20.0f));
+    CHECK(player.position.y == doctest::Approx(10.0f));
+}
+
+TEST_CASE("@GAME_NAME@: recoleccion de monedas y puntaje") {
+    World2D world;
+    world.player.position = {50.0f, 50.0f};
+    world.player.size = {20.0f, 20.0f};
+    world.coins = {
+        Coin2D{{55.0f, 55.0f}, {10.0f, 10.0f}, false}, // En contacto
+        Coin2D{{150.0f, 150.0f}, {10.0f, 10.0f}, false} // Lejos
+    };
+    world.score = 0;
+
+    const int collected = collectCoins(world);
+    CHECK(collected == 1);
+    CHECK(world.score == 10);
+    CHECK(world.coins[0].collected == true);
+    CHECK(world.coins[1].collected == false);
+}

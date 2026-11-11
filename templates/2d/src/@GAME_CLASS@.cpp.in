@@ -1,0 +1,152 @@
+// @GAME_TITLE@: juego 2D generado a partir de la plantilla "2d".
+// Muestra: escena en espacio de píxeles con Renderer2D, formas procedurales,
+// texto con la fuente embebida, jugador móvil en paso fijo, colisión simple contra rectángulos,
+// sonido de moneda sintetizado procedural y overlay de rendimiento (F1).
+#include <mge/mge.h>
+
+#include "@GAME_CLASS@Logic.h"
+
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <string>
+
+namespace {
+
+    class @GAME_CLASS@ : public mge::Application {
+    public:
+        @GAME_CLASS@() : mge::Application(makeConfig()) {
+            addModule<mge::PlatformModule>();
+            addModule<mge::GpuModule>();
+            addModule<mge::AudioModule>();
+        }
+
+    protected:
+        bool onInit() override {
+            m_platform = getModule<mge::PlatformModule>();
+            m_gpu = getModule<mge::GpuModule>();
+            m_audio = getModule<mge::AudioModule>();
+            if (!m_platform || !m_gpu || !m_audio) return false;
+
+            // 1. Acciones de entrada
+            auto& actions = m_platform->actions();
+            actions.bindAxis("MoveX", mge::Key::D, mge::Key::A);
+            actions.bindAxis("MoveY", mge::Key::S, mge::Key::W);
+            actions.bind("Overlay", mge::Key::F1);
+            actions.bind("Quit", mge::Key::Escape);
+
+            // 2. Renderizador 2D por lotes
+            m_ui = std::make_unique<mge::Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
+            if (!m_ui->valid()) return false;
+
+            // 3. Audio procedural sintetizado
+            m_coinSfx = m_audio->addSfx(mge::sfx::coin());
+
+            // 4. Mundo 2D inicial
+            m_world = @GAME_NAME@::createDefaultWorld(glm::vec2(1280.0f, 720.0f));
+
+            MGE_LOG_INFO("@GAME_NAME@", "WASD: mover cuadro, F1: rendimiento, Esc: salir");
+            return true;
+        }
+
+        void onShutdown() override {
+            m_ui.reset();
+        }
+
+        void onFixedUpdate(float fixedDt) override {
+            // Movimiento físico desacoplado a 60 Hz determinista
+            const glm::vec2 inputDir(m_platform->axis("MoveX"), m_platform->axis("MoveY"));
+            @GAME_NAME@::movePlayer(m_world.player, inputDir, fixedDt, m_world.obstacles, m_world.bounds);
+
+            const int collected = @GAME_NAME@::collectCoins(m_world);
+            if (collected > 0) {
+                m_audio->play(m_coinSfx);
+            }
+        }
+
+        void onUpdate(float /*dt*/) override {
+            if (m_platform->wasActionPressed("Quit")) {
+                requestStop();
+                return;
+            }
+            if (m_platform->wasActionPressed("Overlay")) {
+                m_overlay.toggle();
+            }
+        }
+
+        void onRender() override {
+            const mge::GpuFrame* frame = m_gpu->frame();
+            if (!frame) return;
+
+            // Limpiar fondo con color oscuro
+            mge::ColorTarget target;
+            target.texture = frame->swapchain;
+            target.clearColor = {0.12f, 0.14f, 0.18f, 1.0f};
+            {
+                mge::RenderPass pass = frame->cmd->beginRenderPass(target);
+            }
+
+            // Escena 2D en espacio de pantalla
+            m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
+            m_overlay.setProfile(profiler());
+            m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));
+
+            // Dibujar bordes de arena
+            m_ui->rectOutline({8.0f, 8.0f}, {frame->width - 16.0f, frame->height - 16.0f},
+                              glm::vec4(0.3f, 0.35f, 0.45f, 1.0f));
+
+            // Dibujar obstáculos
+            for (const auto& obs : m_world.obstacles) {
+                m_ui->rect(obs.position, obs.size, glm::vec4(0.30f, 0.35f, 0.45f, 1.0f));
+                m_ui->rectOutline(obs.position, obs.size, glm::vec4(0.55f, 0.65f, 0.80f, 1.0f));
+            }
+
+            // Dibujar monedas
+            for (const auto& coin : m_world.coins) {
+                if (!coin.collected) {
+                    m_ui->rect(coin.position, coin.size, glm::vec4(1.0f, 0.85f, 0.20f, 1.0f));
+                    m_ui->rectOutline(coin.position, coin.size, glm::vec4(1.0f, 0.95f, 0.50f, 1.0f));
+                }
+            }
+
+            // Dibujar jugador
+            m_ui->rect(m_world.player.position, m_world.player.size, glm::vec4(0.20f, 0.80f, 0.95f, 1.0f));
+            m_ui->rectOutline(m_world.player.position, m_world.player.size, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+            // Texto HUD con fuente embebida
+            m_ui->text({24.0f, 24.0f}, "Puntaje: " + std::to_string(m_world.score),
+                       glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 2.5f);
+            m_ui->text({24.0f, 60.0f}, "WASD: mover | Recoge las monedas amarillas (+10)",
+                       glm::vec4(0.75f, 0.80f, 0.85f, 1.0f), 1.5f);
+
+            // Overlay de rendimiento
+            m_overlay.draw(*m_ui);
+
+            m_ui->flush(*frame->cmd, frame->swapchain);
+        }
+
+    private:
+        static mge::ApplicationConfig makeConfig() {
+            mge::ApplicationConfig config;
+            config.title = "@GAME_TITLE@";
+            config.width = 1280;
+            config.height = 720;
+            return config;
+        }
+
+        mge::PlatformModule* m_platform = nullptr;
+        mge::GpuModule* m_gpu = nullptr;
+        mge::AudioModule* m_audio = nullptr;
+
+        std::unique_ptr<mge::Renderer2D> m_ui;
+        mge::DebugOverlay m_overlay;
+
+        mge::SampleId m_coinSfx{};
+        @GAME_NAME@::World2D m_world;
+    };
+
+} // namespace
+
+mge::Application* mge::createApplication() {
+    return new @GAME_CLASS@();
+}
