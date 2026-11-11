@@ -27,6 +27,7 @@ dependencies = []
 test = [
     "pytest>=7.0",
     "numpy>=1.20",
+    "nanobind>=2.0",
 ]
 
 [tool.scikit-build]

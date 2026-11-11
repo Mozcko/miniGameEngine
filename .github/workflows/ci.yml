@@ -519,7 +519,7 @@ jobs:
       - name: Install build and test dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install ".[test]"
+          python -m pip install ".[test]" nanobind
 
       - name: Run pytest test suite
         run: |
@@ -527,7 +527,7 @@ jobs:
 
       - name: Verify nanobind stub generation
         run: |
-          python -m nanobind.stubgen -m mge._mge -O bindings/python/mge
+          python -m nanobind.stubgen -m mge._mge -o bindings/python/mge/_mge.pyi
           git diff --exit-code bindings/python/mge/_mge.pyi
 
       - name: Run headless simulation example
