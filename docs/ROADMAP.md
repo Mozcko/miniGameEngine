@@ -193,8 +193,8 @@ _Write games in **C** and **Python**, not only C++._ A stable C API (`mge_c`) is
 | # | Issue | Labels |
 |---|---|---|
 | [#160](https://github.com/Mozcko/miniGameEngine/issues/160) | [ADR 0006](adr/0006-language-bindings.md): language bindings strategy (C API as stable ABI, Python via nanobind) | documentation, priority:high, size:S |
-| [#161](https://github.com/Mozcko/miniGameEngine/issues/161) | C API v1 (`mge_c`): write games in plain C | enhancement, priority:high, size:L |
-| [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | Python bindings v1 (`import mge`) via nanobind | enhancement, priority:high, size:L |
+| [#161](https://github.com/Mozcko/miniGameEngine/issues/161) | [C API v1 (`mge_c`)](C_API.md): write games in plain C | enhancement, priority:high, size:L |
+| [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | [Python bindings v1 (`import mge`)](PYTHON.md) via nanobind | enhancement, priority:high, size:L |
 | [#163](https://github.com/Mozcko/miniGameEngine/issues/163) | `mge new --lang c\|python`: project templates for C and Python | enhancement, priority:medium, size:M |
 
 ## Suggested order

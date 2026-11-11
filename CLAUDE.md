@@ -219,6 +219,15 @@ lights like meshes and writes `gl_FragDepth`, so SDFs intersect rasterized geome
 - **GPU Resource Tracking**: `GpuResourceTracker` tracks all mesh and texture handles; `GpuModule::onShutdown` invalidates them before destroying `GpuDevice`, making handles inert and preventing GPU shutdown hangs.
 - **Tests & Samples**: Pure C99 test suite in `tests/c/` (`mge_c_tests`), zero-asset example `examples/c_hello`, and package verification in `samples/c_consumer`. Full guide in `docs/C_API.md`.
 
+## Python bindings (M10)
+`mge` (`import mge`, Python 3.10+) wraps the engine via nanobind and scikit-build-core (ADR 0006, #162).
+- **Build**: Top-level `-DMGE_BUILD_PYTHON=ON`, or `pip install .` / `pip install -e ".[test]"` from the repo root via `pyproject.toml`.
+- **Module**: `_mge` nanobind module (`NB_STATIC`, `STABLE_ABI`). Output to `bindings/python/mge/`. Type stubs: `bindings/python/mge/_mge.pyi`.
+- **GIL & Threading**: `Application.run()` releases GIL (`nb::call_guard<nb::gil_scoped_release>()`); callbacks into Python re-acquire it. All engine code runs main-thread only; background Python threads can run concurrently without deadlock.
+- **ECS**: Built-in components (`Transform`, `Camera`, `CharacterController`, `RigidBody`) + arbitrary custom Python classes as components with weakref-safe release on entity destroy. Multi-component queries via `world.each()` and systems via `world.add_system()`.
+- **Math**: `Vec2`, `Vec3`, `Vec4`, `Quat`, `Mat4` with operators, buffer protocol (`Py_buffer`), and zero-copy NumPy interop.
+- **Tests & Examples**: Pytest suite in `bindings/python/tests/` (math, ECS, input, audio, voxel, GPU safety, lifecycle, GIL). Examples: `examples/python/hello.py` and `examples/python/headless_sim.py`. Guide: `docs/PYTHON.md`.
+
 ## Assets (ADR 0004, #65, `docs/ASSETS.md`)
 Loaders (`Texture2D::fromFile`, `AudioModule::loadWav`, `loadTtfFontFile`, `platformer::loadLevel`) take paths **relative to the asset
 root** (or absolute) and resolve them with `mge::assetPath` themselves – don't wrap them in `assetPath(...)`, never `"../assets/..."`.

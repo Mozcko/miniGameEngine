@@ -1,0 +1,40 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "mge"
+dynamic = ["version"]
+description = "miniGameEngine Python bindings"
+readme = "bindings/python/README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "miniGameEngine contributors" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: C++",
+    "Topic :: Games/Entertainment",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "numpy>=1.20",
+]
+
+[tool.scikit-build]
+cmake.source-dir = "."
+cmake.define = { MGE_BUILD_PYTHON = "ON", MGE_BUILD_TESTS = "OFF", MGE_BUILD_EXAMPLES = "OFF", MGE_BUILD_SANDBOX = "OFF", MGE_BUILD_BENCHMARKS = "OFF", MGE_BUILD_CLI = "OFF", MGE_SOURCE_ASSET_FALLBACK = "OFF" }
+wheel.packages = ["bindings/python/mge"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "CMakeLists.txt"
+regex = 'project\(miniGameEngine VERSION (?P<value>[0-9]+\.[0-9]+\.[0-9]+)'
