@@ -23,7 +23,8 @@ namespace mge {
         // (para copyFromOriginal: animaciones de tiles)
         static Texture2D fromPixels(GpuDevice& device, std::uint32_t width, std::uint32_t height,
                                     const std::uint8_t* rgba, bool keepCpuCopy = false);
-        // Inválida si no se pudo leer el archivo (el motivo queda en el log)
+        // Inválida si no se pudo leer el archivo (el motivo queda en el log).
+        // path: relativo a la raíz de assets (se resuelve con mge::assetPath) o absoluto.
         static Texture2D fromFile(GpuDevice& device, const std::filesystem::path& path,
                                   bool keepCpuCopy = false);
         // 1×1 blanca: para dibujar mallas sin textura con el mismo shader

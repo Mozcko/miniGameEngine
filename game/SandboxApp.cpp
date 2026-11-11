@@ -544,8 +544,7 @@ private:
 
     bool usePngAtlas() {
         if (!m_pngAtlas) {
-            m_pngAtlas = Texture2D::fromFile(m_gpu->device(),
-                                             assetPath("textures/Minecraft-like_3d_tileset.png"), true);
+            m_pngAtlas = Texture2D::fromFile(m_gpu->device(), "textures/Minecraft-like_3d_tileset.png", true);
             if (!m_pngAtlas) {
                 MGE_LOG_ERROR("Sandbox", "No se pudo cargar el atlas. Assets en: ", assetRoot().string(),
                               " (se puede cambiar con MGE_ASSET_DIR)");

@@ -63,9 +63,6 @@ namespace mge {
                 return fs::path(MGE_SOURCE_ASSET_DIR);
             }
 #endif
-            MGE_LOG_WARN("Assets",
-                         "No se encontró la carpeta de assets; usando 'assets' relativo al directorio "
-                         "actual. Definir MGE_ASSET_DIR para indicarla.");
             return fs::path("assets");
         }
     }

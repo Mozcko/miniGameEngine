@@ -231,3 +231,12 @@ None. Time is owned by the `Application` (#12), input by `PlatformModule` (#15),
 | Chunk GPU meshes | `SandboxApp::m_gpuChunks` (`GpuMesh`: move‑only GPU buffers) | cleared in `SandboxApp::onShutdown`, before the `GpuModule` destroys the device |
 | GPU device | `GpuModule` (`unique_ptr<GpuDevice>`) | `onShutdown`: wait idle, release the window, destroy |
 | GPU buffers, textures, samplers, pipelines | Move‑only `GpuHandle`s (`GpuMesh`, `Texture2D`, `MeshRenderer` members) | released by their destructors, before the `GpuDevice` |
+
+## 10. Asset architecture (procedural-first, assets optional)
+
+Following [ADR 0004](adr/0004-procedural-first-assets-optional.md) and [docs/ASSETS.md](ASSETS.md):
+- Every system provides a code/math path (procedural textures, SDFs, primitives, synthesized audio, embedded font).
+- External asset loading (PNGs, TTF fonts, WAV sounds, level maps) is an optional, supported path via `<mge/core/Assets.h>` (`mge::assetPath`) and module-level loaders.
+- Loaders live in modules (`mge_graphics`, `mge_audio`) or game logic, never in `mge_core` ([ADR 0003](adr/0003-headless-core.md)).
+- Shaders are compiled to SPIR-V at build time and embedded directly into binaries.
+- Zero-asset execution is verified in CI: code-only builds run cleanly from an empty directory outside the repo with no asset warnings or accesses.

@@ -1,5 +1,6 @@
 #include <mge/graphics/Texture2D.h>
 
+#include <mge/core/Assets.h>
 #include <mge/core/Log.h>
 
 #include <cstring>
@@ -46,16 +47,17 @@ namespace mge {
     }
 
     Texture2D Texture2D::fromFile(GpuDevice& device, const std::filesystem::path& path, bool keepCpuCopy) {
+        const std::filesystem::path full = path.is_absolute() ? path : assetPath(path.generic_string());
         int width = 0, height = 0, channels = 0;
-        stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, 4); // Siempre RGBA
+        stbi_uc* pixels = stbi_load(full.string().c_str(), &width, &height, &channels, 4); // Siempre RGBA
         if (!pixels) {
-            MGE_LOG_ERROR("Texture", "No se pudo leer ", path.string(), ": ", stbi_failure_reason());
+            MGE_LOG_ERROR("Texture", "No se pudo leer ", full.string(), ": ", stbi_failure_reason());
             return {};
         }
         Texture2D texture = fromPixels(device, static_cast<std::uint32_t>(width),
                                        static_cast<std::uint32_t>(height), pixels, keepCpuCopy);
         stbi_image_free(pixels);
-        if (texture) MGE_LOG_DEBUG("Texture", path.filename().string(), ": ", width, "x", height);
+        if (texture) MGE_LOG_DEBUG("Texture", full.filename().string(), ": ", width, "x", height);
         return texture;
     }
 

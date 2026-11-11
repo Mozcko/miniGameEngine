@@ -79,6 +79,7 @@ TEST_CASE("Una TTF inválida o inexistente da una fuente inválida (y un error e
     CHECK_FALSE(loadTtfFont({}, 16.0f).valid());
     CHECK_FALSE(loadTtfFont(std::vector<std::uint8_t>(64, 0xAB), 16.0f).valid());
     CHECK_FALSE(loadTtfFontFile("/no/existe/fuente.ttf", 16.0f).valid());
+    CHECK_FALSE(loadTtfFontFile("no/existe/fuente.ttf", 16.0f).valid());
 }
 
 // --- Batch2D (#42): lote 2D armado en la CPU ---

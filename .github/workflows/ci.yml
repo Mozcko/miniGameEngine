@@ -183,6 +183,38 @@ jobs:
       - name: Check binary size budget
         run: cmake --preset minsize && cmake --build --preset minsize && scripts/check-size.sh build-minsize
 
+  # Verificación de compilación y ejecución sin assets (ADR 0004, #65)
+  zero-asset:
+    name: zero-asset build check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies and strace
+        run: |
+          scripts/ci-install-deps.sh
+          sudo apt-get install -y --no-install-recommends strace
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: zero-asset-release
+
+      - name: Configure (release preset, no source asset fallback)
+        run: >
+          cmake --preset release -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DMGE_SOURCE_ASSET_FALLBACK=OFF
+          -DMGE_BUILD_TESTS=OFF
+          -DMGE_BUILD_BENCHMARKS=OFF
+
+      - name: Build executables
+        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery
+
+      - name: Run zero-asset check
+        run: scripts/check-zero-asset.sh build-release --require-strace
+
   # Microbenchmarks de rendimiento (modo Release, headless: core, procgen, voxel, physics).
   # En push a main guarda la línea base (bench-main). En PR compara contra la última línea base.
   bench:

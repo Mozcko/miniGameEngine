@@ -25,6 +25,7 @@ option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANIT
 option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
+option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
 option(MGE_PROFILING "Activar instrumentación del profiler (MGE_PROFILE_SCOPE)" ON)
 option(MGE_TRACY "Activar integración opcional con Tracy Profiler" OFF)
 
