@@ -41,6 +41,7 @@ if(NOT TARGET @GAME_NAME@_doctest)
         FetchContent_Declare(
             doctest
             URL https://github.com/doctest/doctest/archive/refs/tags/v2.4.11.tar.gz
+            URL_HASH SHA256=632ed2c05a7f53fa961381497bf8069093f0d6628c5f26286161fbd32a560186
             SOURCE_SUBDIR cmake-is-empty
         )
         FetchContent_MakeAvailable(doctest)
