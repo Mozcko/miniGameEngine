@@ -78,7 +78,7 @@ mge test [--release] [--preset <preset>]
 
 ### `mge check`
 
-Validates code format and guidelines.
+Validates code format and guidelines (checks by default, exits 1 on errors; pass `--fix` to apply corrections).
 
 ```bash
 mge check [--fix]

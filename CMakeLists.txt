@@ -186,7 +186,12 @@ endif()
 
 # --- Herramientas (CLI) ---
 if(MGE_BUILD_CLI)
-    add_subdirectory(tools/mge)
+    if(WIN32)
+        set(MGE_BUILD_CLI OFF CACHE BOOL "Compilar la herramienta CLI mge (tools/mge)" FORCE)
+        message(STATUS "mge CLI: desactivado en Windows (tools/mge/Process.cpp requiere POSIX)")
+    else()
+        add_subdirectory(tools/mge)
+    endif()
 endif()
 
 # --- Tests unitarios ---

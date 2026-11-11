@@ -6,13 +6,26 @@
 #include <cstring>
 #include <filesystem>
 #include <sstream>
+#include <vector>
+
+#if !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <vector>
+#endif
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 namespace mge::cli {
 
+#if !defined(_WIN32)
     int runCommand(const std::vector<std::string>& args, const std::filesystem::path& workingDir) {
         if (args.empty()) {
             return -1;
@@ -154,8 +167,37 @@ namespace mge::cli {
 
         return false;
     }
+#else
+    int runCommand(const std::vector<std::string>& /*args*/, const std::filesystem::path& /*workingDir*/) {
+        return -1;
+    }
+
+    int runCommandCapture(const std::vector<std::string>& /*args*/, std::string& /*outOutput*/,
+                          const std::filesystem::path& /*workingDir*/) {
+        return -1;
+    }
+
+    bool commandExists(const std::string& /*commandName*/) {
+        return false;
+    }
+#endif
 
     std::filesystem::path getExecutablePath() {
+#if defined(__APPLE__)
+        uint32_t size = 0;
+        _NSGetExecutablePath(nullptr, &size);
+        if (size > 0) {
+            std::vector<char> buffer(size);
+            if (_NSGetExecutablePath(buffer.data(), &size) == 0) {
+                std::error_code ec;
+                auto canonical = std::filesystem::canonical(buffer.data(), ec);
+                if (!ec) {
+                    return canonical;
+                }
+                return std::filesystem::path(buffer.data());
+            }
+        }
+#elif defined(__linux__)
         char buffer[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
         if (len > 0) {
@@ -167,6 +209,13 @@ namespace mge::cli {
             }
             return std::filesystem::path(buffer);
         }
+#elif defined(_WIN32)
+        wchar_t buffer[MAX_PATH];
+        DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+        if (len > 0) {
+            return std::filesystem::path(buffer);
+        }
+#endif
         return std::filesystem::current_path() / "mge";
     }
 

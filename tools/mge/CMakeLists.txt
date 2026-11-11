@@ -1,5 +1,10 @@
 # Herramienta de línea de comandos del motor (mge CLI)
 
+if(WIN32)
+    message(STATUS "mge CLI: no está soportado en Windows todavía")
+    return()
+endif()
+
 add_library(mge_cli_core STATIC
     Process.h Process.cpp
     Colors.h

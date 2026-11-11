@@ -416,25 +416,7 @@ jobs:
         run: scripts/ci-install-deps.sh
 
       - name: Install system SDL3
-        run: |
-          if sudo apt-get install -y --no-install-recommends libsdl3-dev 2>/dev/null; then
-            echo "Installed libsdl3-dev from package manager"
-          else
-            echo "Building SDL3 release-3.4.18 from source and installing to /usr/local"
-            TMP_SDL=$(mktemp -d)
-            curl -sSL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.18.tar.gz | tar -xz -C "$TMP_SDL"
-            cmake -S "$TMP_SDL/SDL-release-3.4.18" -B "$TMP_SDL/build" -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DSDL_SHARED=ON \
-              -DSDL_STATIC=OFF \
-              -DSDL_TEST_LIBRARY=OFF \
-              -DSDL_TESTS=OFF \
-              -DSDL_EXAMPLES=OFF \
-              -DSDL_INSTALL=ON
-            sudo cmake --build "$TMP_SDL/build" --target install
-            sudo ldconfig
-            rm -rf "$TMP_SDL"
-          fi
+        run: scripts/ci-install-sdl3.sh
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -447,6 +429,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/tmp/mge-prefix \
             -DMGE_INSTALL=ON \
+            -DMGE_SOURCE_ASSET_FALLBACK=OFF \
             -DMGE_BUILD_CLI=ON \
             -DMGE_BUILD_TESTS=OFF \
             -DMGE_BUILD_BENCHMARKS=OFF \
