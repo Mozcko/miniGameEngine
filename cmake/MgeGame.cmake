@@ -11,6 +11,18 @@
 # ejecutable en la raíz del build dir y crea el target run-<nombre> (y `run` para MGE_MAIN_GAME).
 set(MGE_MAIN_GAME "sandbox" CACHE STRING "Juego que ejecuta el target 'run'")
 
+enable_testing()
+
+if(NOT COMMAND mge_set_warnings)
+    function(mge_set_warnings target)
+        if(MSVC)
+            target_compile_options(${target} PRIVATE /W4)
+        else()
+            target_compile_options(${target} PRIVATE -Wall -Wextra -Wshadow)
+        endif()
+    endfunction()
+endif()
+
 function(mge_add_game name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "HEADLESS" "SMOKE_FRAMES" "SOURCES;LIBRARIES;MODULES")
     if(NOT ARG_SOURCES)
@@ -21,7 +33,7 @@ function(mge_add_game name)
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
-    target_link_libraries(${name} PRIVATE mge_main ${ARG_LIBRARIES})
+    target_link_libraries(${name} PRIVATE mge::main ${ARG_LIBRARIES})
 
     if(ARG_HEADLESS)
         if(ARG_MODULES)
@@ -35,7 +47,7 @@ function(mge_add_game name)
             if(NOT module MATCHES "^(platform|gpu|graphics|audio)$")
                 message(FATAL_ERROR "mge_add_game(${name}): módulo desconocido '${module}' (platform, gpu, graphics, audio)")
             endif()
-            target_link_libraries(${name} PRIVATE mge_${module})
+            target_link_libraries(${name} PRIVATE mge::${module})
         endforeach()
     endif()
 
@@ -44,12 +56,12 @@ function(mge_add_game name)
 
     # Compilar y ejecutar en un paso
     add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
-    if(name STREQUAL MGE_MAIN_GAME AND NOT TARGET run)
+    if(DEFINED MGE_MAIN_GAME AND name STREQUAL MGE_MAIN_GAME AND NOT TARGET run)
         add_custom_target(run COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
     endif()
 
     # Smoke test: corre n frames desde otro directorio (prueba que no depende del cwd)
-    if(ARG_SMOKE_FRAMES AND MGE_BUILD_TESTS)
+    if(ARG_SMOKE_FRAMES)
         set(environment "MGE_MAX_FRAMES=${ARG_SMOKE_FRAMES}")
         if(ARG_HEADLESS)
             set(test_name "smoke: ${name} headless ${ARG_SMOKE_FRAMES} frames")
@@ -62,7 +74,9 @@ function(mge_add_game name)
                  "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
             set(labels gpu)
         endif()
-        add_test(NAME "${test_name}" COMMAND ${name} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
+        set(smoke_cwd "${CMAKE_BINARY_DIR}/smoke-cwd")
+        file(MAKE_DIRECTORY "${smoke_cwd}")
+        add_test(NAME "${test_name}" COMMAND ${name} WORKING_DIRECTORY "${smoke_cwd}")
         set_tests_properties("${test_name}" PROPERTIES TIMEOUT 120 ENVIRONMENT "${environment}")
         if(labels)
             # Con las capas de validación de Vulkan instaladas, un error de uso de la GPU hace fallar el test

@@ -10,7 +10,8 @@ build_dir="${1:-build-ci}"
 
 # Archivos versionados + nuevos sin ignorar (para que los archivos nuevos también se revisen)
 mapfile -t sources < <(git ls-files -co --exclude-standard '*.h' '*.cpp')
-mapfile -t units < <(git ls-files -co --exclude-standard '*.cpp')
+# samples/ está fuera del árbol de CMake del motor y no está en compile_commands.json
+mapfile -t units < <(git ls-files -co --exclude-standard '*.cpp' | grep -v '^samples/' || true)
 
 if (( fix )); then
     clang-format -i "${sources[@]}"

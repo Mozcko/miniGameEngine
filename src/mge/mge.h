@@ -6,6 +6,7 @@
 // src/mge/*). Así un programa headless nunca necesita los headers de SDL ni de la GPU.
 
 // --- Core (siempre) ---
+#include <mge/Version.h>
 #include <mge/core/Application.h>
 #include <mge/core/Assets.h>
 #include <mge/core/Clock.h>

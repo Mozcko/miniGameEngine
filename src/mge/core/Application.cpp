@@ -1,4 +1,5 @@
 #include <mge/core/Application.h>
+#include <mge/Version.h>
 #include <mge/core/Log.h>
 #include <mge/core/ecs/Camera.h>
 
@@ -122,6 +123,7 @@ namespace mge {
     }
 
     int Application::run() {
+        MGE_LOG_INFO("App", "miniGameEngine v", kVersionString);
         // "Corriendo" desde el principio: así un requestStop() en onInit (o en un módulo) se respeta
         // y el loop no llega a ejecutarse (antes se pisaba con m_running = true después de onInit).
         m_running = true;

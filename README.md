@@ -105,6 +105,7 @@ Every folder under `src/`, `game/` and `assets/` has its own `README.md` describ
 | Document | What it covers |
 |----------|----------------|
 | [docs/FIRST_GAME.md](docs/FIRST_GAME.md) | **Start here to make a game**: quick 10-minute tutorial |
+| [docs/USING_THE_ENGINE.md](docs/USING_THE_ENGINE.md) | **Using the engine as a dependency**: CMake package (`find_package`), `FetchContent`, and target list |
 | [docs/GUIDE.md](docs/GUIDE.md) | **Comprehensive user guide**: subsystems, modules, physics, audio, procgen, step-by-step game |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Goals, key decisions, milestones and GitHub issues |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, branch/commit/PR rules, conventions, labels |
