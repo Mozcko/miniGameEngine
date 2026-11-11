@@ -8,12 +8,12 @@ miniGameEngine follows [ADR 0004: Procedural-first, assets optional](adr/0004-pr
 
 | System | Code Path (Procedural / In-Memory) | File Path (Optional Asset Loading) | Module | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **Textures** | `Texture2D::fromPixels(...)`, procedural texture generators (`mge::texgen`, `sandbox::buildProceduralAtlas`) | `Texture2D::fromFile(device, path)` via `mge::assetPath("textures/...")` | `mge_graphics` | Loads RGBA8 PNGs via `stb_image`. Returns `{}` on failure. |
-| **Fonts** | `Font::builtin()` (embedded 8×8 bitmap font atlas), `loadTtfFont(bytes, height)` | `loadTtfFontFile(path, height)` via `mge::assetPath("fonts/...")` | `mge_graphics` | TTF rasterization via `stb_truetype`. Returns invalid `Font` on failure. |
+| **Textures** | `Texture2D::fromPixels(...)`, procedural texture generators (`mge::texgen`, `sandbox::buildProceduralAtlas`) | `Texture2D::fromFile(device, "textures/...")` | `mge_graphics` | Loads RGBA8 PNGs via `stb_image`. Relative paths resolve via `mge::assetPath`. Returns `{}` on failure. |
+| **Fonts** | `Font::builtin()` (embedded 8×8 bitmap font atlas), `loadTtfFont(bytes, height)` | `loadTtfFontFile("fonts/...", height)` | `mge_graphics` | TTF rasterization via `stb_truetype`. Relative paths resolve via `mge::assetPath`. Returns invalid `Font` on failure. |
 | **Meshes** | `Primitives::*` (cubes, spheres, cylinders, quads), `MeshOps::*`, `Sdf::*`, `buildChunkMesh(...)` | *N/A* (procedural-only; export to `.obj` via `writeObj` for Blender/tools) | `mge_procgen`, `mge_voxel` | Meshes are constructed directly in memory as `MeshData`. |
-| **Audio (Samples)** | `mge::sfx::*` (synthesizer presets + variations), `AudioModule::addSfx(...)` | `AudioModule::loadWav(path)` via `mge::assetPath("sounds/...")` | `mge_synth`, `mge_audio` | Loads uncompressed WAV via `SDL_LoadWAV`, converted to float32 at mixer rate. Returns `kInvalidSample` on failure. |
+| **Audio (Samples)** | `mge::sfx::*` (synthesizer presets + variations), `AudioModule::addSfx(...)` | `AudioModule::loadWav("sounds/...")` | `mge_synth`, `mge_audio` | Loads uncompressed WAV via `SDL_LoadWAV`, converted to float32 at mixer rate. Relative paths resolve via `mge::assetPath`. Returns `kInvalidSample` on failure. |
 | **Audio (Music)** | `mge::songs::*`, procedural synthesizer sequencer (`mge::Song`), `AudioModule::addSong(...)` | *N/A* (music is synthesized in code via instruments and note sequences) | `mge_synth`, `mge_audio` | Synthesized in real time on the audio callback; zero runtime audio files needed. |
-| **Levels** | In-code procedural generation (`SandboxTerrain`), `platformer::parseLevel(text)` | `platformer::loadLevel(path)` via `mge::assetPath("levels/...")` | Game layer (e.g. `examples/platformer2d`) | ASCII level maps parsed into tile grids and entity spawn lists. Returns `nullopt` on failure. |
+| **Levels** | In-code procedural generation (`SandboxTerrain`), `platformer::parseLevel(text)` | `platformer::loadLevel("levels/...")` | Game layer (e.g. `examples/platformer2d`) | ASCII level maps parsed into tile grids and entity spawn lists. Relative paths resolve via `mge::assetPath`. Returns `nullopt` on failure. |
 | **Shaders** | `mge_add_shaders(...)` compiles GLSL to embedded SPIR-V headers at build time | *N/A* (always embedded as bytecode, never read from disk at runtime) | CMake / `mge_gpu` | Zero runtime shader files or compilation overhead. |
 
 ---
@@ -43,7 +43,7 @@ All loaders adhere to the following principles:
 
 1. **Module placement**: Loaders live in their respective modules (`mge_graphics`, `mge_audio`, or game logic), never in `mge_core` (ADR 0003). `mge_core` provides only path resolution in `Assets.h`.
 2. **Clean error reporting**: Loaders report failures via `MGE_LOG_ERROR` (or structured error output) and return an invalid or empty object (`{}` for `Texture2D`/`Font`, `kInvalidSample` for audio, `std::nullopt` for `Level`). Loaders never throw exceptions, call `std::exit`, or crash.
-3. **Path flexibility**: Loaders accept paths built with `mge::assetPath(...)` or relative paths (which they resolve through `mge::assetPath` automatically).
+3. **Path convention (relative to asset root)**: High-level loaders (`Texture2D::fromFile`, `AudioModule::loadWav`, `loadTtfFontFile`, `platformer::loadLevel`) accept a path **relative to the asset root** (e.g. `"textures/Minecraft-like_3d_tileset.png"`, `"sounds/jump.wav"`) or an **absolute path**. Loaders automatically resolve relative paths through `mge::assetPath(path)` internally. Callers must pass the relative path directly rather than wrapping it in `assetPath(...)`, avoiding double-prefixing when the asset root itself is relative (e.g. via `setAssetRoot("relative_root")`).
 
 ---
 

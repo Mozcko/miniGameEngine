@@ -906,8 +906,7 @@ private:
 
     bool usePngAtlas() {
         if (!m_pngAtlas) {
-            m_pngAtlas = Texture2D::fromFile(m_gpu->device(),
-                                             assetPath("textures/Minecraft-like_3d_tileset.png"), true);
+            m_pngAtlas = Texture2D::fromFile(m_gpu->device(), "textures/Minecraft-like_3d_tileset.png", true);
             if (!m_pngAtlas) {
                 if (!m_pngMissingLogged) {
                     MGE_LOG_WARN("Sandbox", "No se encontró el atlas PNG; permaneciendo en atlas procedural");

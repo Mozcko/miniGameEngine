@@ -99,9 +99,16 @@ for target in "${targets[@]}"; do
         continue
     fi
 
-    # Verificar que no se haya abierto ningún archivo bajo el directorio assets/ del repo
+    # Verificar que no se haya intentado abrir ningún archivo bajo assets/ (relativo o absoluto, éxito o ENOENT)
     if (( has_strace )); then
-        if grep -F "$repo_assets" "$strace_log"; then
+        offending="$(grep -E 'openat\([^,]+,\s*"([^"]*/)?assets/' "$strace_log" || true)"
+        if [[ -n "$offending" ]]; then
+            echo "❌ Error: $target intentó abrir archivos bajo assets/:" >&2
+            echo "$offending" >&2
+            failed=1
+            continue
+        fi
+        if grep -F "$repo_assets" "$strace_log" >/dev/null 2>&1; then
             echo "❌ Error: $target intentó abrir archivos dentro de '$repo_assets':" >&2
             grep -F "$repo_assets" "$strace_log" >&2
             failed=1
