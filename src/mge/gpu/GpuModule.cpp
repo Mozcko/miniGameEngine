@@ -77,6 +77,7 @@ namespace mge {
         m_frame = {};
         if (m_device) {
             m_device->waitIdle();
+            m_device->tracker().releaseAll();
             SDL_ReleaseWindowFromGPUDevice(m_device->get(), m_platform->getWindow().getSDLWindow());
             m_device.reset();
         }

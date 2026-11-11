@@ -215,3 +215,27 @@ if(MGE_BUILD_CLI)
     mge_set_warnings(mge_cli_tests)
     doctest_discover_tests(mge_cli_tests TEST_PREFIX "cli: ")
 endif()
+
+# --- Tests de la API de C (mge_c) en C99 puro (sin doctest) ---
+if(MGE_BUILD_MODULES)
+    add_executable(mge_c_tests
+        c/test_c_main.c
+        c/test_c_lifecycle.c
+        c/test_c_ecs.c
+        c/test_c_input.c
+        c/test_c_audio.c
+        c/test_c_voxel.c
+        c/test_c_safety.c
+    )
+    set_target_properties(mge_c_tests PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON)
+    target_include_directories(mge_c_tests PRIVATE ${miniGameEngine_SOURCE_DIR}/src)
+    target_link_libraries(mge_c_tests PRIVATE mge::c)
+    mge_set_warnings(mge_c_tests)
+
+    add_test(NAME "c:lifecycle: ciclo de vida headless y timers" COMMAND mge_c_tests lifecycle)
+    add_test(NAME "c:ecs: registro dinamico de componentes y sistemas" COMMAND mge_c_tests ecs)
+    add_test(NAME "c:input: mapeo de acciones y consultas" COMMAND mge_c_tests input)
+    add_test(NAME "c:audio: render offline y generacion de sfx" COMMAND mge_c_tests audio)
+    add_test(NAME "c:voxel: mundo, generador c y raycast" COMMAND mge_c_tests voxel)
+    add_test(NAME "c:safety: liberacion segura de recursos gpu en shutdown" COMMAND mge_c_tests safety)
+endif()

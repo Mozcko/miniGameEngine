@@ -236,3 +236,126 @@ TEST_CASE("Una app headless corre los sistemas del World en sus fases durante N 
     // 60 pasos fijos de 1/60 s a 1 u/s = 1 unidad
     app.world().registry().each<Position>([](Entity, Position& p) { CHECK(p.x == doctest::Approx(1.0f)); });
 }
+
+TEST_CASE("ECS runtime: alineación estricta a 16 y 32 bytes") {
+    Registry registry;
+    const ComponentTypeId align16 = registry.registerRuntimeComponent("Align16", 24, 16);
+    const ComponentTypeId align32 = registry.registerRuntimeComponent("Align32", 48, 32);
+
+    for (int i = 0; i < 20; ++i) {
+        Entity e = registry.create();
+        void* p16 = registry.addRaw(e, align16);
+        void* p32 = registry.addRaw(e, align32);
+
+        CHECK(reinterpret_cast<std::uintptr_t>(p16) % 16 == 0);
+        CHECK(reinterpret_cast<std::uintptr_t>(p32) % 32 == 0);
+    }
+}
+
+TEST_CASE("ECS runtime: operaciones addRaw, getRaw, hasRaw, removeRaw") {
+    Registry registry;
+    struct CustomData {
+        float x, y, z;
+        int id;
+    };
+    const ComponentTypeId customType =
+        registry.registerRuntimeComponent("Custom", sizeof(CustomData), alignof(CustomData));
+
+    Entity e1 = registry.create();
+    Entity e2 = registry.create();
+
+    CHECK_FALSE(registry.hasRaw(e1, customType));
+    CHECK_FALSE(registry.hasRaw(e2, customType));
+
+    // addRaw inicializa la memoria en cero
+    auto* d1 = static_cast<CustomData*>(registry.addRaw(e1, customType));
+    REQUIRE(d1 != nullptr);
+    CHECK(d1->x == 0.0f);
+    CHECK(d1->y == 0.0f);
+    CHECK(d1->z == 0.0f);
+    CHECK(d1->id == 0);
+
+    d1->x = 10.0f;
+    d1->id = 42;
+
+    CHECK(registry.hasRaw(e1, customType));
+    auto* fetched = static_cast<CustomData*>(registry.getRaw(e1, customType));
+    CHECK(fetched->x == 10.0f);
+    CHECK(fetched->id == 42);
+
+    // removeRaw
+    CHECK(registry.removeRaw(e1, customType));
+    CHECK_FALSE(registry.hasRaw(e1, customType));
+    CHECK_FALSE(registry.removeRaw(e1, customType));
+}
+
+TEST_CASE("ECS runtime: eachRaw con múltiples componentes") {
+    Registry registry;
+    const ComponentTypeId tA = registry.registerRuntimeComponent("TypeA", sizeof(int), alignof(int));
+    const ComponentTypeId tB = registry.registerRuntimeComponent("TypeB", sizeof(float), alignof(float));
+
+    Entity eBoth1 = registry.create();
+    Entity eAOnly = registry.create();
+    Entity eBoth2 = registry.create();
+    Entity eBOnly = registry.create();
+
+    *static_cast<int*>(registry.addRaw(eBoth1, tA)) = 100;
+    *static_cast<float*>(registry.addRaw(eBoth1, tB)) = 1.5f;
+
+    *static_cast<int*>(registry.addRaw(eAOnly, tA)) = 200;
+
+    *static_cast<int*>(registry.addRaw(eBoth2, tA)) = 300;
+    *static_cast<float*>(registry.addRaw(eBoth2, tB)) = 3.5f;
+
+    *static_cast<float*>(registry.addRaw(eBOnly, tB)) = 4.5f;
+
+    std::vector<ComponentTypeId> types = {tA, tB};
+    int count = 0;
+    int sumInt = 0;
+    float sumFloat = 0.0f;
+
+    registry.eachRaw(types, [&](Entity e, void** ptrs) {
+        count++;
+        auto* a = static_cast<int*>(ptrs[0]);
+        auto* b = static_cast<float*>(ptrs[1]);
+        sumInt += *a;
+        sumFloat += *b;
+        CHECK((e == eBoth1 || e == eBoth2));
+    });
+
+    CHECK(count == 2);
+    CHECK(sumInt == 400);
+    CHECK(sumFloat == doctest::Approx(5.0f));
+}
+
+TEST_CASE("ECS runtime: destruir entidad limpia los componentes raw") {
+    Registry registry;
+    const ComponentTypeId typeId = registry.registerRuntimeComponent("Test", sizeof(double), alignof(double));
+
+    Entity e = registry.create();
+    registry.addRaw(e, typeId);
+    CHECK(registry.hasRaw(e, typeId));
+
+    registry.destroy(e);
+    CHECK_FALSE(registry.hasRaw(e, typeId));
+}
+
+TEST_CASE("ECS runtime: registrar muchos tipos de componentes") {
+    Registry registry;
+    std::vector<ComponentTypeId> ids;
+    ids.reserve(50);
+    for (int i = 0; i < 50; ++i) {
+        ids.push_back(
+            registry.registerRuntimeComponent("Type_" + std::to_string(i), sizeof(int), alignof(int)));
+    }
+
+    Entity e = registry.create();
+    for (auto id : ids) {
+        *static_cast<int*>(registry.addRaw(e, id)) = static_cast<int>(id);
+    }
+
+    for (auto id : ids) {
+        CHECK(registry.hasRaw(e, id));
+        CHECK(*static_cast<int*>(registry.getRaw(e, id)) == static_cast<int>(id));
+    }
+}

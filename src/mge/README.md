@@ -17,6 +17,7 @@ SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.m
 | `graphics/` | `mge_graphics` | gpu, procgen | `Texture2D` (file or pixels), `MeshRenderer` (texture × vertex colour, depth, opaque/transparent), embedded shaders | [graphics/README.md](graphics/README.md) |
 | `synth/` | `mge_synth` | core (headless) | `Mixer` (lock‑free commands, voices, samples, master volume), tones | [synth/README.md](synth/README.md) |
 | `audio/` | `mge_audio` | core, synth, SDL3 | `AudioModule`: the mixer on the audio device, WAV loading | [audio/README.md](audio/README.md) |
+| `c/` | `mge_c` | core, procgen, voxel, synth, physics, modules | Pure C99 API for plain C games and foreign language bindings | [c/README.md](c/README.md) |
 | `app/` | `mge_main` | core | `Main.cpp` (`main()`) | [app/README.md](app/README.md) |
 
 

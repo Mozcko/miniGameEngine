@@ -40,6 +40,7 @@ if(MGE_BUILD_MODULES)
     add_subdirectory(gpu)
     add_subdirectory(graphics)
     add_subdirectory(audio)
+    add_subdirectory(c)
 endif()
 
 # Instalación y exportación del paquete mge
@@ -71,6 +72,7 @@ if(MGE_INSTALL)
             mge_gpu
             mge_graphics
             mge_audio
+            mge_c
         )
     endif()
 
