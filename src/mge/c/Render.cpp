@@ -9,14 +9,18 @@ namespace {
         auto* mesh = new mge_mesh();
         mesh->app = app;
         mesh->cpuMesh = std::move(meshData);
-        mesh->alive = true;
+        mesh->alive = false;
 
         if (app && app->gpu) {
             mesh->gpuMesh = app->gpu->device().uploadMesh(mesh->cpuMesh);
-            mesh->trackerId = app->gpu->device().tracker().registerResource("GpuMesh", [mesh]() {
-                mesh->gpuMesh = mge::GpuMesh{};
-                mesh->alive = false;
-            });
+            mesh->alive = !mesh->gpuMesh.empty();
+            if (mesh->alive) {
+                mesh->trackerId = app->gpu->device().tracker().registerResource("GpuMesh", [mesh]() {
+                    mesh->gpuMesh = mge::GpuMesh{};
+                    mesh->alive = false;
+                    mesh->app = nullptr;
+                });
+            }
         }
         return mesh;
     }
@@ -60,11 +64,14 @@ mge_mesh* mge_mesh_upload(mge_app* app, const float* vertices, size_t vertex_cou
 
 void mge_mesh_destroy(mge_mesh* mesh) {
     if (!mesh) return;
-    if (mesh->alive && mesh->app && mesh->app->gpu) {
-        mesh->app->gpu->device().tracker().unregisterResource(mesh->trackerId);
+    if (mesh->alive && mesh->app) {
+        if (mesh->app->gpu) {
+            mesh->app->gpu->device().tracker().unregisterResource(mesh->trackerId);
+        }
     }
     mesh->gpuMesh = mge::GpuMesh{};
     mesh->alive = false;
+    mesh->app = nullptr;
     delete mesh;
 }
 
@@ -186,6 +193,7 @@ mge_texture* mge_texture_create_rgba(mge_app* app, int width, int height, const 
         tex->trackerId = app->gpu->device().tracker().registerResource("Texture2D", [tex]() {
             tex->texture = mge::Texture2D{};
             tex->alive = false;
+            tex->app = nullptr;
         });
     }
     return tex;
@@ -193,11 +201,14 @@ mge_texture* mge_texture_create_rgba(mge_app* app, int width, int height, const 
 
 void mge_texture_destroy(mge_texture* texture) {
     if (!texture) return;
-    if (texture->alive && texture->app && texture->app->gpu) {
-        texture->app->gpu->device().tracker().unregisterResource(texture->trackerId);
+    if (texture->alive && texture->app) {
+        if (texture->app->gpu) {
+            texture->app->gpu->device().tracker().unregisterResource(texture->trackerId);
+        }
     }
     texture->texture = mge::Texture2D{};
     texture->alive = false;
+    texture->app = nullptr;
     delete texture;
 }
 
