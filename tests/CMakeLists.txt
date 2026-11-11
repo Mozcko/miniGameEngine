@@ -133,7 +133,8 @@ if(MGE_BUILD_MODULES)
         gpu/shaders/test_triangle.vert
         gpu/shaders/test_triangle.frag
         gpu/shaders/test_square.comp
-        gpu/shaders/test_multiply.comp)
+        gpu/shaders/test_multiply.comp
+        gpu/shaders/test_sdf_raymarch.comp)
 
     # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
     # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.
@@ -163,7 +164,8 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(render_tests)
     mge_add_shaders(render_tests SHADERS
         render/shaders/vertex_colors.vert render/shaders/vertex_colors.frag
-        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag)
+        render/shaders/lit_mesh.vert render/shaders/lit_mesh.frag
+        render/shaders/sdf_clipped_sphere.frag)
     doctest_discover_tests(render_tests TEST_PREFIX "render: "
         PROPERTIES LABELS gpu ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
                    FAIL_REGULAR_EXPRESSION "Validation Error")
@@ -190,4 +192,10 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(platformer_tests PRIVATE platformer2d_logic doctest_header)
     mge_set_warnings(platformer_tests)
     doctest_discover_tests(platformer_tests TEST_PREFIX "platformer: ")
+
+    # Demo SDF Glide (#66): cañón SDF, colisiones, motas, lógica y audio synth, sin ventana
+    add_executable(sdf_glide_tests test_main.cpp examples/test_sdf_glide.cpp)
+    target_link_libraries(sdf_glide_tests PRIVATE sdf_glide_logic mge_procgen doctest_header)
+    mge_set_warnings(sdf_glide_tests)
+    doctest_discover_tests(sdf_glide_tests TEST_PREFIX "sdf_glide: ")
 endif()

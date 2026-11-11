@@ -33,7 +33,7 @@ else
 fi
 
 # Binarios a verificar en modo procedural (sin assets)
-targets=(headless_smoke sandbox procgen_gallery)
+targets=(headless_smoke sandbox procgen_gallery sdf_glide)
 
 for target in "${targets[@]}"; do
     bin_path="$build_dir/$target"
