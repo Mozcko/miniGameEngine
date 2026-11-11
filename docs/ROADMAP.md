@@ -102,8 +102,8 @@ _Move rendering to SDL3 GPU (Vulkan/Metal/D3D12) with embedded shaders and proce
 | [#32](https://github.com/Mozcko/miniGameEngine/issues/32) | ✅ Camera rework: components, real frustum culling, pixel ortho, resize | enhancement, priority:high, size:M |
 | [#33](https://github.com/Mozcko/miniGameEngine/issues/33) | ✅ Lighting model: directional, hemisphere ambient, fog | enhancement, priority:medium, size:M |
 | [#34](https://github.com/Mozcko/miniGameEngine/issues/34) | ✅ Procedural materials alongside textures | enhancement, priority:high, size:L |
-| [#35](https://github.com/Mozcko/miniGameEngine/issues/35) | ↪ moved to M8 · Procedural sky | enhancement, priority:low, size:M |
-| [#36](https://github.com/Mozcko/miniGameEngine/issues/36) | ↪ moved to M8 · SDF raymarching render pass | enhancement, priority:low, size:L |
+| [#35](https://github.com/Mozcko/miniGameEngine/issues/35) | ✅ (done in M8) Procedural sky | enhancement, priority:low, size:M |
+| [#36](https://github.com/Mozcko/miniGameEngine/issues/36) | ✅ (done in M8) SDF raymarching render pass | enhancement, priority:low, size:L |
 | [#37](https://github.com/Mozcko/miniGameEngine/issues/37) | ✅ Swapchain and device configuration | chore, priority:medium, size:S |
 | [#38](https://github.com/Mozcko/miniGameEngine/issues/38) | ✅ Debug draw utilities | enhancement, priority:medium, size:S |
 | [#39](https://github.com/Mozcko/miniGameEngine/issues/39) | ✅ Offscreen render tests in CI (lavapipe) | testing, priority:medium, size:M |
@@ -139,10 +139,10 @@ _Robust collision and a proper character controller._ Voxel raycasts, swept AABB
 
 | # | Issue | Labels |
 |---|---|---|
-| [#51](https://github.com/Mozcko/miniGameEngine/issues/51) | Voxel DDA raycast | enhancement, priority:high, size:S |
-| [#52](https://github.com/Mozcko/miniGameEngine/issues/52) | Swept AABB collision against the voxel world | enhancement, priority:high, size:M |
-| [#53](https://github.com/Mozcko/miniGameEngine/issues/53) | Character controller decoupled from the camera | refactor, priority:high, size:M |
-| [#54](https://github.com/Mozcko/miniGameEngine/issues/54) | Basic rigid bodies and spatial-hash broadphase | enhancement, priority:low, size:L |
+| [#51](https://github.com/Mozcko/miniGameEngine/issues/51) | ✅ Voxel DDA raycast | enhancement, priority:high, size:S |
+| [#52](https://github.com/Mozcko/miniGameEngine/issues/52) | ✅ Swept AABB collision against the voxel world | enhancement, priority:high, size:M |
+| [#53](https://github.com/Mozcko/miniGameEngine/issues/53) | ✅ Character controller decoupled from the camera | refactor, priority:high, size:M |
+| [#54](https://github.com/Mozcko/miniGameEngine/issues/54) | ✅ Basic rigid bodies and spatial-hash broadphase | enhancement, priority:low, size:L |
 
 ### M7 · Performance & Size — [epic #75](https://github.com/Mozcko/miniGameEngine/issues/75)
 
@@ -150,13 +150,13 @@ _Measure, parallelise, stream and shrink._ Profiling, job system, chunk streamin
 
 | # | Issue | Labels |
 |---|---|---|
-| [#55](https://github.com/Mozcko/miniGameEngine/issues/55) | Profiling instrumentation | performance, priority:high, size:S |
+| [#55](https://github.com/Mozcko/miniGameEngine/issues/55) | ✅ Profiling instrumentation | performance, priority:high, size:S |
 | [#56](https://github.com/Mozcko/miniGameEngine/issues/56) | ✅ (done early, with M3) Job system / thread pool | performance, priority:high, size:L |
 | [#57](https://github.com/Mozcko/miniGameEngine/issues/57) | ✅ (done early, with M3) Chunk streaming with unload and memory budget | performance, priority:high, size:M |
-| [#58](https://github.com/Mozcko/miniGameEngine/issues/58) | GPU compute procedural generation | performance, priority:low, size:L |
-| [#59](https://github.com/Mozcko/miniGameEngine/issues/59) | Headless benchmarks in CI | performance, testing, priority:medium, size:M |
-| [#60](https://github.com/Mozcko/miniGameEngine/issues/60) | Binary size budget | performance, priority:medium, size:S |
-| [#61](https://github.com/Mozcko/miniGameEngine/issues/61) | Terrain level of detail | performance, priority:low, size:L |
+| [#58](https://github.com/Mozcko/miniGameEngine/issues/58) | ✅ GPU compute procedural generation | performance, priority:low, size:L |
+| [#59](https://github.com/Mozcko/miniGameEngine/issues/59) | ✅ Headless benchmarks in CI | performance, testing, priority:medium, size:M |
+| [#60](https://github.com/Mozcko/miniGameEngine/issues/60) | ✅ Binary size budget | performance, priority:medium, size:S |
+| [#61](https://github.com/Mozcko/miniGameEngine/issues/61) | ✅ Terrain level of detail | performance, priority:low, size:L |
 
 ### M8 · Showcase — [epic #76](https://github.com/Mozcko/miniGameEngine/issues/76)
 
@@ -164,12 +164,14 @@ _A showcase game that demonstrates the engine: procedural‑first, using assets 
 
 | # | Issue | Labels |
 |---|---|---|
-| [#62](https://github.com/Mozcko/miniGameEngine/issues/62) | Rebuild the sandbox on the new engine (procedural-first showcase) | enhancement, priority:high, size:L |
-| [#63](https://github.com/Mozcko/miniGameEngine/issues/63) | Block break and place with selection outline | enhancement, priority:medium, size:M |
-| [#64](https://github.com/Mozcko/miniGameEngine/issues/64) | Synthesized sound effects and music in the showcase | enhancement, priority:medium, size:S |
-| [#65](https://github.com/Mozcko/miniGameEngine/issues/65) | Optional asset loading behind clean APIs + zero-asset build check | chore, priority:high, size:S |
-| [#66](https://github.com/Mozcko/miniGameEngine/issues/66) | Second demo: tiny SDF-based game | enhancement, priority:low, size:M |
-| [#67](https://github.com/Mozcko/miniGameEngine/issues/67) | Engine user guide: build a game with code only | documentation, priority:medium, size:M |
+| [#35](https://github.com/Mozcko/miniGameEngine/issues/35) | ✅ Procedural sky and day/night cycle (moved from M3) | enhancement, priority:low, size:M |
+| [#36](https://github.com/Mozcko/miniGameEngine/issues/36) | ✅ SDF raymarching render pass + shader `#include` (moved from M3) | enhancement, priority:low, size:L |
+| [#62](https://github.com/Mozcko/miniGameEngine/issues/62) | ✅ Rebuild the sandbox on the new engine (procedural-first showcase) | enhancement, priority:high, size:L |
+| [#63](https://github.com/Mozcko/miniGameEngine/issues/63) | ✅ Block break and place with selection outline | enhancement, priority:medium, size:M |
+| [#64](https://github.com/Mozcko/miniGameEngine/issues/64) | ✅ Synthesized sound effects and music in the showcase | enhancement, priority:medium, size:S |
+| [#65](https://github.com/Mozcko/miniGameEngine/issues/65) | ✅ Optional asset loading behind clean APIs + zero-asset build check | chore, priority:high, size:S |
+| [#66](https://github.com/Mozcko/miniGameEngine/issues/66) | ✅ Second demo: tiny SDF-based game | enhancement, priority:low, size:M |
+| [#67](https://github.com/Mozcko/miniGameEngine/issues/67) | ✅ Engine user guide: build a game with code only | documentation, priority:medium, size:M |
 
 ### M9 · mge CLI & Project Wizard (post‑1.0) — [epic #107](https://github.com/Mozcko/miniGameEngine/issues/107)
 
@@ -186,4 +188,4 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40; #35/#36 moved to M8), ✅ M4 (#41–#45) and ✅ M5 (#46–#50) are done, plus #56/#57 from M7 (job system, chunk streaming). Next: M6 (physics and gameplay). Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61) and ✅ M8 (#35, #36, #62–#67) are done: the engine MVP is complete. Next: M9 (mge CLI and project wizard, post‑1.0). Each issue's **Depends on** section on GitHub lists its prerequisites.

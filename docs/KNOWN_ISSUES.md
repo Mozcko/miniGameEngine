@@ -56,3 +56,11 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 - Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.
 - ~~`build/` directory with binaries is committed~~ – fixed in #1.
 - `README.md` was a one‑liner before this documentation pass; no tests, no CI.
+- LOD (#61): where water is only 1–2 blocks deep, the coarse LOD cell can end at the same height as the flat water quad; the water then
+  loses the depth test and distant shallow water looks like ground. Purely visual.
+- LOD cells are solid if they contain any opaque block, so distant terrain looks up to f−1 blocks taller (f = 2 or 4); skirts hide the
+  cracks between rings.
+- `examples/sdf_glide`: input is read every frame but consumed per fixed step and the mouse delta is overwritten, not accumulated, so
+  mouse steering is weaker at frame rates above the 60 Hz tick. Fix: add up the delta in `onUpdate`, clear it after `onFixedUpdate`.
+- Rigid bodies: friction between two bodies only applies while they push into each other (no resting‑contact friction), and
+  spheres collide with voxels as their AABB.
