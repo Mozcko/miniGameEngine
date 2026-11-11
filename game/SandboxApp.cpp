@@ -627,12 +627,12 @@ public:
         m_fpsFrames++;
         m_fpsElapsed += time().unscaledDelta();
         if (m_fpsElapsed >= 5.0f) {
-            [[maybe_unused]] const RenderStats& stats = m_renderer->stats();
+            const RenderStats& stats = m_renderer->stats();
             MGE_LOG_DEBUG("Sandbox", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed), " (",
                           m_gpuChunks.size(), " chunks; dibujo: ", stats.totalDrawCalls(), " llamadas, ",
                           stats.totalTriangles(), " triángulos = opaco ", stats.triangles[0], " + cutout ",
                           stats.triangles[1], " + transparente ", stats.triangles[2], ")");
-            [[maybe_unused]] const StreamingStats streaming = m_streamer->stats();
+            const StreamingStats streaming = m_streamer->stats();
             MGE_LOG_DEBUG("Sandbox", "Streaming: ", streaming.loaded, " cargados (",
                           streaming.cpuBytes() / 1024 / 1024, " MB CPU), ", m_gpuChunks.size(), " mallados (",
                           gpuBytes() / 1024 / 1024, " MB GPU), ", streaming.pendingGenerate, " + ",
@@ -922,7 +922,7 @@ private:
 
     bool useProceduralAtlas() {
         if (!m_proceduralAtlas) {
-            [[maybe_unused]] const auto start = std::chrono::steady_clock::now();
+            const auto start = std::chrono::steady_clock::now();
             const Image image = sandbox::buildProceduralAtlas();
             m_proceduralAtlas =
                 Texture2D::fromPixels(m_gpu->device(), image.width(), image.height(), image.data(), true);
