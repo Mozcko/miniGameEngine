@@ -1,0 +1,13 @@
+.github/workflows/ci.yml 1e51f7708bb53770
+.gitignore 668d7124ecd80892
+.vscode/settings.json bb3724e5fa6cdbd2
+.vscode/tasks.json 9e4cbfd50e7c076d
+CMakeLists.txt b298c12a75dd4ca2
+CMakePresets.json a3baee64ebbfd7d2
+LICENSE 6f77bed25018d3eb
+README.md 064497a4b2b71579
+mge.project edba69832bc80205
+src/ArcadePlane.cpp ee1fbaec0d50f4a9
+src/ArcadePlaneLogic.cpp a98dc73119180b19
+src/ArcadePlaneLogic.h ca695797f5345daa
+tests/test_arcade_plane.cpp 0913e4ec2f830c88

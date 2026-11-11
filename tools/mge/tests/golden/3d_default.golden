@@ -1,0 +1,13 @@
+.github/workflows/ci.yml 1e51f7708bb53770
+.gitignore 668d7124ecd80892
+.vscode/settings.json bb3724e5fa6cdbd2
+.vscode/tasks.json 9e4cbfd50e7c076d
+CMakeLists.txt c06e9eb96fee91e0
+CMakePresets.json a3baee64ebbfd7d2
+LICENSE 6f77bed25018d3eb
+README.md 52e96fdd79e54bc6
+mge.project bf599c98d7c8e984
+src/SpaceShooter.cpp d3729db09bdcc7da
+src/SpaceShooterLogic.cpp 88d9765baeba8590
+src/SpaceShooterLogic.h 3ed4c3a384d2a482
+tests/test_space_shooter.cpp 3534ecfe22ba26c5

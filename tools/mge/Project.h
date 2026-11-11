@@ -38,12 +38,27 @@ namespace mge::cli {
     // Detecta el proyecto inspeccionando la carpeta actual y sus ancestros
     ProjectInfo detectProject(const std::filesystem::path& startDir);
 
+    enum class LicenseType {
+        Mit,
+        Apache2,
+        None
+    };
+
     struct NewProjectOptions {
         std::string name;
         std::string templateName{"3d"};
         std::filesystem::path targetDir;
+        bool audio{true};
+        LicenseType license{LicenseType::Mit};
+        bool git{true};
+        bool vscode{true};
         bool noGit{false};
     };
+
+    // Reemplaza marcadores @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@, @MGE_VERSION@ y módulos opcionales
+    std::string renderTemplateString(const std::string& content, const NewProjectOptions& options,
+                                     const std::string& className, const std::string& title,
+                                     const std::string& version);
 
     // Crea un proyecto a partir de la plantilla seleccionada
     int createNewProject(const NewProjectOptions& options, const std::filesystem::path& exePath,

@@ -10,6 +10,7 @@ old one as *Superseded*.
 | [0002](0002-zero-asset-policy.md) | Zero external asset files | Superseded by 0004 |
 | [0003](0003-headless-core.md) | Headless core with optional modules | Accepted |
 | [0004](0004-procedural-first-assets-optional.md) | Procedural‑first, assets optional | Accepted |
+| [0005](0005-interactive-project-wizard-tui.md) | Interactive project wizard (TUI) for mge new | Accepted |
 
 ## Template
 

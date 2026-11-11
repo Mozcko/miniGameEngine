@@ -11,6 +11,8 @@ add_library(mge_cli_core STATIC
     Project.h Project.cpp
     Doctor.h Doctor.cpp
     Commands.h Commands.cpp
+    wizard/WizardModel.h wizard/WizardModel.cpp
+    wizard/TerminalView.h wizard/TerminalView.cpp
 )
 
 target_include_directories(mge_cli_core PUBLIC

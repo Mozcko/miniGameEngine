@@ -23,22 +23,76 @@ mge doctor
 Scaffolds a new standalone or in-tree game project from an official engine template.
 
 ```bash
-mge new <name> [--template <3d|2d|headless>] [--dir <path>] [--no-git]
+mge new [name] [options]
 ```
 
-- `<name>`: Project identifier. Must match `^[a-z][a-z0-9_]*$` and cannot use engine reserved names (`sandbox`, `run`, `mge_core`, etc.).
-- `--template <tmpl>`: Template type:
+When run with **no arguments** on an interactive terminal (`stdin` and `stdout` are TTYs), `mge new` starts the **interactive project wizard (TUI)**.
+
+In non-interactive environments (CI, pipes, scripts, SSH without TTY allocation), `mge new` requires the project name and executes without prompting. Missing arguments report command usage and exit with code 1.
+
+#### Options
+
+- `[name]`: Project identifier. Must match `^[a-z][a-z0-9_]*$` and cannot use engine reserved names (`sandbox`, `run`, `mge_core`, etc.).
+- `--template <3d|2d|headless>`: Template type:
   - `3d` (default): 3D procedural world with camera controller, lighting, sky, character controller, and sound.
   - `2d`: Pixel-space 2D game with `Renderer2D`, procedural shapes, bitmap font, collision, and sound.
   - `headless`: Offscreen deterministic simulation without SDL or GPU dependencies.
+- `--audio` / `--no-audio`: Enables or disables the procedural audio synthesis module (`mge::AudioModule`). Always disabled for `headless`.
+- `--license <mit|apache|none>`: Open source license to generate (defaults to `mit`). Automatically sets copyright year and user name from `git config user.name`.
+- `--git` / `--no-git`: Initializes a Git repository in the created project (defaults to `--git`).
+- `--vscode` / `--no-vscode`: Generates `.vscode/tasks.json` and `.vscode/settings.json` with build, run, test, and lint tasks (defaults to `--vscode`).
 - `--dir <path>`: Target directory for project files (defaults to `./<name>`).
-- `--no-git`: Disables automatic `git init` in the created project directory.
+- `-y, --yes`: Accepts default choices for all omitted options without prompting.
+- `-h, --help`: Displays command help.
 
-`mge new` generates an `mge.project` file in the project root:
+#### Interactive Wizard (TUI) Walkthrough
+
+When invoked as `mge new`, the TUI guides you through each configuration choice with live validation and keyboard navigation:
+
+```text
+$ mge new
+mge new - Asistente interactivo de proyecto
+
+? Nombre del proyecto: space_shooter [✓]
+? Seleccione plantilla:
+  ❯ 3D (mundo 3D procedimental con iluminación, cámara y física)
+    2D (juego pixel-space con Renderer2D, figuras y fuentes)
+    Headless (simulación determinista sin ventana ni GPU)
+? ¿Activar módulo de audio sintetizado? [Sí] No
+? Licencia de código abierto:
+  ❯ MIT (permisiva, estándar)
+    Apache-2.0 (permisiva con concesión de patentes)
+    Ninguna / Propietaria
+? ¿Inicializar repositorio Git? [Sí] No
+? ¿Generar configuración de VS Code (.vscode/)? [Sí] No
+
+Resumen del proyecto:
+  Nombre:      space_shooter
+  Plantilla:   3d
+  Audio:       Sí
+  Licencia:    mit
+  Git init:    Sí
+  VS Code:     Sí
+  Destino:     /home/user/space_shooter
+
+¿Crear proyecto? [Sí] No
+
+Creado '/home/user/space_shooter' (plantilla 3d, clase SpaceShooter).
+
+Siguientes pasos:
+  cd space_shooter
+  mge run
+```
+
+Pressing `Ctrl+C` at any point cleanly restores terminal attributes and aborts immediately without creating any files.
+
+`mge new` generates an `mge.project` metadata file in the project root:
 
 ```ini
-name=my_game
+name=space_shooter
 template=3d
+audio=yes
+license=mit
 ```
 
 ### `mge build`
