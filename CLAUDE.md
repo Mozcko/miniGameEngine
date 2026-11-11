@@ -11,7 +11,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
-  0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002) – supersede with a new ADR, never edit accepted ones.
+  0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002, 0005 wizard TUI, 0006 language bindings) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state)
 - C++17 mini game engine: **SDL3** (window/input/events/audio), **SDL3 GPU API** (Vulkan today; Metal/D3D12 later) for
