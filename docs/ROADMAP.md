@@ -181,10 +181,10 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 
 | # | Issue | Labels |
 |---|---|---|
-| [#103](https://github.com/Mozcko/miniGameEngine/issues/103) | Engine as a reusable dependency (installable CMake package + FetchContent) | enhancement, priority:high, size:M |
-| [#104](https://github.com/Mozcko/miniGameEngine/issues/104) | mge CLI: cargo-like new/build/run/test/check/doctor | enhancement, priority:high, size:L |
-| [#105](https://github.com/Mozcko/miniGameEngine/issues/105) | Interactive project wizard (TUI) for mge new | enhancement, priority:medium, size:M |
-| [#106](https://github.com/Mozcko/miniGameEngine/issues/106) | Project templates: 2D, 3D and headless | enhancement, priority:medium, size:L |
+| [#103](https://github.com/Mozcko/miniGameEngine/issues/103) | ✅ Engine as a reusable dependency (installable CMake package + FetchContent) | enhancement, priority:high, size:M |
+| [#104](https://github.com/Mozcko/miniGameEngine/issues/104) | ✅ mge CLI: cargo-like new/build/run/test/check/doctor | enhancement, priority:high, size:L |
+| [#105](https://github.com/Mozcko/miniGameEngine/issues/105) | ✅ Interactive project wizard (TUI) for mge new | enhancement, priority:medium, size:M |
+| [#106](https://github.com/Mozcko/miniGameEngine/issues/106) | ✅ Project templates: 2D, 3D and headless | enhancement, priority:medium, size:L |
 
 ### M10 · Language Bindings — [epic #164](https://github.com/Mozcko/miniGameEngine/issues/164)
 
@@ -199,4 +199,4 @@ _Write games in **C** and **Python**, not only C++._ A stable C API (`mge_c`) is
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61) and ✅ M8 (#35, #36, #62–#67) are done: the engine MVP is complete. Next: M9 (mge CLI and project wizard, post‑1.0), then M10 (C and Python bindings). Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61), ✅ M8 (#35, #36, #62–#67), and ✅ M9 (#103–#106) are done: the engine packaging, developer CLI tools, project templates and v0.9.0 release are complete. Next: M10 (C and Python bindings). Each issue's **Depends on** section on GitHub lists its prerequisites.
