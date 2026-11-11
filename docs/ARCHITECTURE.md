@@ -10,13 +10,14 @@ per‑file reference, see the `README.md` in each folder under `src/`.
  ────────────────────────                  ──────────────────────────────────────────────────────────────
  sandbox (exe) ─────────────────────────►  mge_main      main() → createApplication() → run()
    SandboxApp : mge::Application           mge_platform  PlatformModule: Window, SDL events → InputState/ActionMap
-     addModule<PlatformModule>()           mge_gpu       GpuModule: SDL3 GPU device + swapchain, RAII handles
-     addModule<GpuModule>()                mge_graphics  MeshRenderer, Texture2D (embedded shaders)
+     addModule<PlatformModule>()           mge_gpu       GpuModule: SDL3 GPU device + swapchain, RAII handles, compute
+     addModule<GpuModule>()                mge_graphics  MeshRenderer, Texture2D, Sky, SdfRenderer, 2D UI (embedded shaders)
      addModule<AudioModule>()              mge_audio     AudioModule: the Mixer on the audio device (SDL3 audio stream)
- sandbox_world (lib, headless) ─────────►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher
-   SandboxBlocks, SandboxTerrain           mge_procgen   MeshData, primitives, noise, SDF
+ sandbox_world (lib, headless) ─────────►  mge_voxel     BlockRegistry, VoxelWorld, ChunkMesher, LOD, ChunkStreamer
+   SandboxBlocks, SandboxTerrain,          mge_physics   swept collision, CharacterController, RigidBody, SpatialHash
+   SandboxSounds                           mge_procgen   MeshData, primitives, noise, SDF
                                            mge_synth     Mixer (lock-free commands), samples, tones (headless)
-                                           mge_core      Application runner + Module, ECS, cameras, Input, Log, Time
+                                           mge_core      Application runner + Module, ECS, cameras, Input, Log, Time, Profiler
                                                          (no SDL, no GPU)
  Third party: SDL3 (incl. SDL GPU → Vulkan) · glslang (build time) · GLM · stb_image (core: GLM only)
 ```
@@ -24,7 +25,7 @@ per‑file reference, see the `README.md` in each folder under `src/`.
 Each engine folder is its own static library (see `src/mge/README.md`), and the game is a
 separate executable plus a `sandbox_world` library so its logic can be tested.
 `-DMGE_BUILD_MODULES=OFF` builds only the headless modules (`mge_core`, `mge_procgen`,
-`mge_voxel`), which CI checks on a machine without SDL.
+`mge_voxel`, `mge_physics`, `mge_synth`), which CI checks on a machine without SDL.
 The game plugs in through the `Application` / `createApplication` contract.
 
 ## 2. The entry‑point contract
