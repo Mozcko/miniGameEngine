@@ -461,7 +461,8 @@ public:
     }
 };
 
-mge::VoxelWorld world(registry, std::make_unique<ProceduralTerrain>());
+mge::BlockRegistry blockRegistry;
+mge::VoxelWorld world(blockRegistry, std::make_unique<ProceduralTerrain>());
 world.loadChunk({0, 0, 0});
 world.setBlock({5, 2, 8}, stoneId); // Sets block in world space, marks chunk dirty
 ```
@@ -689,7 +690,7 @@ MGE provides built-in instrumentation to monitor CPU frame times and identify bo
 Instrument code blocks using `MGE_PROFILE_SCOPE`:
 ```cpp
 void simulateWorld() {
-    MGE_PROFILE_SCOPE("WorldSimulation");
+    MGE_PROFILE_SCOPE(profiler(), "WorldSimulation");
     // Heavy calculations...
 }
 ```
@@ -728,7 +729,7 @@ Always resolve asset paths using `mge::assetPath(...)`:
 #include <mge/core/Assets.h>
 
 // Automatically checks MGE_ASSET_DIR env, adjacent assets, and parent folders
-std::string path = mge::assetPath("textures/terrain.png");
+std::filesystem::path path = mge::assetPath("textures/terrain.png");
 ```
 
 ---

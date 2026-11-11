@@ -33,6 +33,9 @@ namespace mge {
         bool wasActionPressed(const std::string& action) const {
             return m_actions.wasPressed(m_input, action);
         }
+        bool wasActionReleased(const std::string& action) const {
+            return m_actions.wasReleased(m_input, action);
+        }
         float axis(const std::string& axisName) const { return m_actions.axis(m_input, axisName); }
 
         // Cursor capturado: oculto, movimiento relativo y confinado a la ventana (cámaras FPS)
