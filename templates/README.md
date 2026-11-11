@@ -3,7 +3,7 @@
 Standalone game templates used by [`scripts/new-game.sh`](../scripts/new-game.sh) and the `mge new` CLI.
 
 Each template (`3d/`, `2d/`, `headless/`) is a **complete, standalone CMake project** that can be created inside or outside this repository. Each generated project contains:
-- `CMakeLists.txt`: looks for an installed engine package via `find_package(mge 0.9 QUIET)` and falls back to `FetchContent` (`GIT_TAG v@MGE_VERSION@`).
+- `CMakeLists.txt`: looks for an installed engine package via `find_package(mge 1.0 QUIET)` and falls back to `FetchContent` (`GIT_TAG v@MGE_VERSION@`).
 - `CMakePresets.json`: `dev` (Debug) and `release` presets matching the engine.
 - `.gitignore`: ignores build folders, `.vscode` (except settings), and compiled binaries.
 - `.github/workflows/ci.yml`: standalone CI workflow running tests on Ubuntu 24.04.
@@ -29,10 +29,10 @@ Files inside templates use the `.in` suffix and contain placeholders substituted
 | `@GAME_NAME@` | `space_shooter` | Lowercase snake_case identifier (CMake target, test executable, log category). |
 | `@GAME_CLASS@` | `SpaceShooter` | PascalCase class name and C++ source filename. |
 | `@GAME_TITLE@` | `Space Shooter` | Human-readable title for window headers and documentation. |
-| `@MGE_VERSION@` | `0.9.0` | Target engine release version for FetchContent fallbacks. |
+| `@MGE_VERSION@` | `1.0.0` | Target engine release version for FetchContent fallbacks. |
 
 > [!NOTE]
-> `FetchContent` in templates uses `GIT_TAG v@MGE_VERSION@` (e.g. `v0.9.0`). This tag must be created on GitHub once milestone M9 merges. For testing generated projects prior to release tagging, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
+> `FetchContent` in templates uses `GIT_TAG v@MGE_VERSION@` (e.g. `v1.0.0`), so every engine version that generates projects must have its release tag published. To test generated projects against a local checkout, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
 
 The `.in` suffix keeps template source files out of clang-format and clang-tidy in-tree, as placeholders are not valid C++ identifiers. When a project is generated, `scripts/new-game.sh` runs `clang-format` on all generated `.h` and `.cpp` files.
 
@@ -46,7 +46,7 @@ To add a new project template `templates/<name>/`:
    ```
 
 2. **Add project configuration**:
-   - `templates/<name>/CMakeLists.txt.in`: configure `find_package(mge 0.9 QUIET)` with `FetchContent` fallback, an isolated static library `@GAME_NAME@_logic` for headless game logic, `mge_add_game(@GAME_NAME@ SOURCES src/@GAME_CLASS@.cpp LIBRARIES @GAME_NAME@_logic ...)` with `SMOKE_FRAMES 60`, and a doctest test target `@GAME_NAME@_tests`.
+   - `templates/<name>/CMakeLists.txt.in`: configure `find_package(mge 1.0 QUIET)` with `FetchContent` fallback, an isolated static library `@GAME_NAME@_logic` for headless game logic, `mge_add_game(@GAME_NAME@ SOURCES src/@GAME_CLASS@.cpp LIBRARIES @GAME_NAME@_logic ...)` with `SMOKE_FRAMES 60`, and a doctest test target `@GAME_NAME@_tests`.
    - `templates/<name>/CMakePresets.json`: provide `dev` and `release` configure, build, and test presets.
    - `templates/<name>/.gitignore`: ignore `build*/`, `.vscode/*` (except `settings.json`), and `*.spv`.
    - `templates/<name>/.github/workflows/ci.yml`: setup CI on `ubuntu-24.04` installing dependencies and running `ctest --preset dev`.

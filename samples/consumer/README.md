@@ -1,7 +1,7 @@
 # Sample Consumer
 
 Sample game demonstrating how to consume `miniGameEngine` as a reusable dependency:
-1. via `find_package(mge 0.9 REQUIRED)` (after installing the engine with `-DMGE_INSTALL=ON`).
+1. via `find_package(mge 1.0 REQUIRED)` (after installing the engine with `-DMGE_INSTALL=ON`).
 2. via `FetchContent` (`-DMGE_CONSUMER_FETCH=ON`).
 
 ## Building with `find_package(mge)`
@@ -27,7 +27,7 @@ cmake --build build
 ```
 
 > [!NOTE]
-> `FetchContent_Declare` defaults to `GIT_TAG v0.9.0`. The release git tag `v0.9.0` must be created on the remote repository for this to fetch automatically. During local development or prior to the tag creation, point `FETCHCONTENT_SOURCE_DIR_MGE` to your local clone:
+> `FetchContent_Declare` uses `GIT_TAG v1.0.0` (a published release tag). To build against a local clone instead, point `FETCHCONTENT_SOURCE_DIR_MGE` to it:
 > ```bash
 > cmake -S . -B build -DMGE_CONSUMER_FETCH=ON -DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine
 > ```

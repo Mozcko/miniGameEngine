@@ -5,7 +5,7 @@ project(@GAME_NAME@ LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(mge 0.9 QUIET)
+find_package(mge 1.0 QUIET)
 
 if(NOT mge_FOUND AND NOT TARGET mge::core)
     include(FetchContent)

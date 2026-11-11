@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-12
+
+First stable release: the engine MVP (M0–M8) plus the developer workflow of M9.
+
 ### Added
-- Reusable engine packaging: installable CMake package (`find_package(mge 0.9)`) and FetchContent support (#103).
+- **Engine as a package** (#103): installable CMake package (`-DMGE_INSTALL=ON`, `find_package(mge 1.0)`) exporting
+  `mge::core`, `procgen`, `voxel`, `physics`, `synth`, `main`, `platform`, `gpu`, `graphics`, `audio`, with `mge_add_game` and
+  `mge_add_shaders`; FetchContent support (`GIT_TAG v1.0.0`); `<mge/Version.h>`; out-of-tree sample in `samples/consumer`.
+- **Project templates** (#106): standalone `3d`, `2d` and `headless` templates with presets, a doctest target, README,
+  `.gitignore` and a CI workflow; CI generates, builds and tests every template against the installed engine.
+- **`mge` CLI** (#104): `new`, `build`, `run`, `test`, `check [--fix]`, `clean`, `doctor`, `--version`; project detection via
+  `mge.project`; child processes started without a shell (Linux/macOS; not built on Windows yet).
+- **`mge new` wizard** (#105): interactive TUI (name, template, audio, license, git, VS Code) with a flag for every question,
+  non-interactive fallback, clean cancel on Ctrl+C/EOF; ADR 0005.
+
+### Changed
+- `MGE_INSTALL` is opt-in (default `OFF`); the source-tree asset fallback stays `ON` for dev builds (warning when combined
+  with `MGE_INSTALL`).
+- The package version file uses semantic versioning (`SameMajorVersion`): any 1.x engine satisfies `find_package(mge 1.0)`.
+- `scripts/new-game.sh` is now a thin wrapper around `mge new`.
 
 ## [0.9.0] - 2026-11-10
 

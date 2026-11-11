@@ -36,7 +36,7 @@ A minimal consumer `CMakeLists.txt` requires only a few lines:
 cmake_minimum_required(VERSION 3.24)
 project(my_game LANGUAGES C CXX)
 
-find_package(mge 0.9 REQUIRED)
+find_package(mge 1.0 REQUIRED)
 
 mge_add_game(my_game SOURCES Main.cpp SMOKE_FRAMES 30)
 ```
@@ -62,7 +62,7 @@ include(FetchContent)
 FetchContent_Declare(
     mge
     GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git
-    GIT_TAG        v0.9.0
+    GIT_TAG        v1.0.0
 )
 FetchContent_MakeAvailable(mge)
 
@@ -70,7 +70,7 @@ mge_add_game(my_game SOURCES Main.cpp SMOKE_FRAMES 30)
 ```
 
 > [!NOTE]
-> `GIT_TAG v0.9.0` will be available after milestone M9 is merged and tag `v0.9.0` is pushed. For local development or prior to the release tag, use `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
+> `GIT_TAG` must name a published release tag (`v1.0.0` or later). To build against a local checkout instead, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
 
 When consumed via `FetchContent`, tests, benchmarks, examples, and the sandbox are disabled automatically (`MGE_BUILD_TESTS`, `MGE_BUILD_BENCHMARKS`, `MGE_BUILD_EXAMPLES`, and `MGE_BUILD_SANDBOX` default to `OFF`). Only the engine library targets are compiled.
 

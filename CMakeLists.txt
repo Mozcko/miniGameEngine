@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(miniGameEngine VERSION 0.9.0 LANGUAGES C CXX)
+project(miniGameEngine VERSION 1.0.0 LANGUAGES C CXX)
 
 # --- Estándar de C++ ---
 set(CMAKE_CXX_STANDARD 17)
@@ -205,7 +205,7 @@ if(MGE_INSTALL)
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/mgeConfigVersion.cmake"
         VERSION ${miniGameEngine_VERSION}
-        COMPATIBILITY SameMinorVersion
+        COMPATIBILITY SameMajorVersion # semver: 1.x es compatible con 1.y (y ≥ x)
     )
     configure_package_config_file(
         "${miniGameEngine_SOURCE_DIR}/cmake/mgeConfig.cmake.in"
