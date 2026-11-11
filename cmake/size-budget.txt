@@ -10,5 +10,6 @@ audio_gallery 94208
 headless_smoke 114688
 procgen_gallery 135168
 sdf_glide 2961408
+guide_game 2928640
 platformer2d 2912256
 sandbox 3141632

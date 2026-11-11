@@ -210,7 +210,7 @@ jobs:
           -DMGE_BUILD_BENCHMARKS=OFF
 
       - name: Build executables
-        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide
+        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide guide_game
 
       - name: Run zero-asset check
         run: scripts/check-zero-asset.sh build-release --require-strace

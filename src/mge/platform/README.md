@@ -19,7 +19,7 @@ The OpenGL context and GLEW were removed in #40.
 |-----|-----|
 | `input()` | The frame's `mge::InputState` (core): keys, buttons, mouse position/delta, wheel, with edges |
 | `actions()` | The game's `mge::ActionMap` (bind in `onInit`) |
-| `isActionDown(a)`, `wasActionPressed(a)`, `axis(a)` | Shortcuts: an action or axis evaluated on the current input |
+| `isActionDown(a)`, `wasActionPressed(a)`, `wasActionReleased(a)`, `axis(a)` | Shortcuts: an action or axis evaluated on the current input |
 | `setCursorLocked(bool)`, `isCursorLocked()` | Relative mouse mode + grab (FPS cameras); re‑applied every frame while requested |
 | `setEventCallback(fn)` | Raw SDL events for **non‑input** needs (focus, …). Called before the input update |
 | `getWindow()` | Valid between init and shutdown |
