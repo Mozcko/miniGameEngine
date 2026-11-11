@@ -57,6 +57,7 @@ namespace sdf_glide {
     public:
         static constexpr float kSectionLength = 24.0f;
         static constexpr float kPlayerRadius = 0.38f;
+        static constexpr float kOrbRadius = kPlayerRadius;
         static constexpr int kMaxShields = 3;
         static constexpr float kMaxEnergy = 100.0f;
 
@@ -66,7 +67,13 @@ namespace sdf_glide {
         void update(float dt, const GlideInput& input);
 
         const glm::vec3& playerPosition() const { return m_playerPos; }
+        const glm::vec3& previousPosition() const { return m_prevPlayerPos; }
         const glm::vec3& playerVelocity() const { return m_playerVel; }
+        void setPlayerPosition(const glm::vec3& pos) {
+            m_playerPos = pos;
+            m_prevPlayerPos = pos;
+        }
+        void setPlayerVelocity(const glm::vec3& vel) { m_playerVel = vel; }
         int shields() const { return m_shields; }
         int score() const { return m_score; }
         int bestScore() const { return m_bestScore; }
@@ -86,6 +93,7 @@ namespace sdf_glide {
         void updateMotes();
 
         glm::vec3 m_playerPos{0.0f, 0.0f, 0.0f};
+        glm::vec3 m_prevPlayerPos{0.0f, 0.0f, 0.0f};
         glm::vec3 m_playerVel{0.0f, 0.0f, -16.0f};
         int m_shields = kMaxShields;
         int m_score = 0;

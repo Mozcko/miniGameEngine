@@ -270,3 +270,79 @@ TEST_CASE("Audio procedural de SdfGlide: parámetros SFX válidos y canción de 
     CHECK(song.bpm() > 0.0f);
     CHECK(song.lengthSteps() > 0);
 }
+
+TEST_CASE("GlideGame: impacto contra pilar sin tunelado incluso con dt = 0.25 y boost activado") {
+    // Buscar una posición en z = p1z + 5.0f que esté en aire libre (d > kOrbRadius)
+    const float h1 = sectionHash(0, 1u);
+    const float p1x = -3.8f + (h1 - 0.5f) * 0.6f;
+    const float p1z = -7.0f;
+
+    // Encontrar un punto en el pasillo que apunte hacia el pilar
+    float testX = p1x;
+    for (float ox = 0.0f; ox <= 2.0f; ox += 0.2f) {
+        if (canyonDistance(glm::vec3(p1x + ox, 0.0f, p1z + 5.0f)) > GlideGame::kOrbRadius + 0.2f) {
+            testX = p1x + ox;
+            break;
+        }
+    }
+
+    GlideGame game;
+    game.setPlayerPosition(glm::vec3(testX, 0.0f, p1z + 5.0f));
+    CHECK(canyonDistance(game.playerPosition()) > GlideGame::kOrbRadius);
+    CHECK(game.shields() == 3);
+
+    GlideInput input;
+    input.boost = true;
+    input.steerX = -1.0f; // Guiar hacia el pilar de la izquierda
+
+    game.update(0.25f, input);
+
+    CHECK(game.shields() < 3);
+
+    bool hadHitAudio = false;
+    for (auto ev : game.audioEvents()) {
+        if (ev == AudioEvent::HitWall) hadHitAudio = true;
+    }
+    CHECK(hadHitAudio);
+}
+
+TEST_CASE("GlideGame: determinismo estricto a través de 600 pasos fijos") {
+    GlideGame game1;
+    GlideGame game2;
+
+    constexpr float kFixedDt = 1.0f / 60.0f;
+    for (int step = 0; step < 600; ++step) {
+        GlideInput input;
+        if (step % 50 < 25) {
+            input.steerX = 0.4f;
+            input.steerY = -0.2f;
+        } else {
+            input.steerX = -0.3f;
+            input.steerY = 0.5f;
+        }
+        if (step > 100 && step < 200) {
+            input.boost = true;
+        }
+
+        game1.update(kFixedDt, input);
+        game2.update(kFixedDt, input);
+
+        REQUIRE(game1.playerPosition() == game2.playerPosition());
+        REQUIRE(game1.previousPosition() == game2.previousPosition());
+        REQUIRE(game1.playerVelocity() == game2.playerVelocity());
+        REQUIRE(game1.score() == game2.score());
+        REQUIRE(game1.shields() == game2.shields());
+        REQUIRE(game1.energy() == game2.energy());
+        REQUIRE(game1.isGameOver() == game2.isGameOver());
+    }
+}
+
+TEST_CASE("GlideGame: previousPosition guarda la posición previa para interpolación") {
+    GlideGame game;
+    CHECK(game.previousPosition() == game.playerPosition());
+    GlideInput input;
+    game.update(1.0f / 60.0f, input);
+    CHECK(game.previousPosition() != game.playerPosition());
+    CHECK(game.previousPosition().z == doctest::Approx(0.0f));
+    CHECK(game.playerPosition().z < 0.0f);
+}

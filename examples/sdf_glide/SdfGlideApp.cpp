@@ -86,29 +86,47 @@ namespace {
             return true;
         }
 
-        void onUpdate(float dt) override {
+        void onUpdate(float /*dt*/) override {
             if (m_platform->wasActionPressed("Quit")) {
                 requestStop();
                 return;
             }
 
-            // Lectura de controles del jugador
-            sdf_glide::GlideInput input;
-            input.steerX = m_platform->axis("SteerX");
-            input.steerY = m_platform->axis("SteerY");
+            // Lectura continua de controles
+            m_pendingInput.steerX = m_platform->axis("SteerX");
+            m_pendingInput.steerY = m_platform->axis("SteerY");
 
             if (m_platform->isCursorLocked()) {
                 const auto mouseDelta = m_platform->input().mouseDelta();
                 constexpr float kMouseSensitivity = 0.05f;
-                input.steerX += mouseDelta.x * kMouseSensitivity;
-                input.steerY += -mouseDelta.y * kMouseSensitivity;
+                m_pendingInput.steerX += mouseDelta.x * kMouseSensitivity;
+                m_pendingInput.steerY += -mouseDelta.y * kMouseSensitivity;
             }
-            input.steerX = glm::clamp(input.steerX, -1.0f, 1.0f);
-            input.steerY = glm::clamp(input.steerY, -1.0f, 1.0f);
-            input.boost = m_platform->isActionDown("Boost");
-            input.restart = m_platform->wasActionPressed("Restart");
+            m_pendingInput.steerX = glm::clamp(m_pendingInput.steerX, -1.0f, 1.0f);
+            m_pendingInput.steerY = glm::clamp(m_pendingInput.steerY, -1.0f, 1.0f);
+            m_pendingInput.boost = m_platform->isActionDown("Boost");
 
-            m_game.update(dt, input);
+            // Enganche de acciones de borde (edge actions) para el paso fijo
+            if (m_platform->wasActionPressed("Restart")) {
+                m_latchedRestart = true;
+            }
+            if (m_platform->wasActionPressed("Boost")) {
+                m_latchedBoostStart = true;
+            }
+        }
+
+        void onFixedUpdate(float fixedDt) override {
+            sdf_glide::GlideInput input = m_pendingInput;
+            if (m_latchedRestart) {
+                input.restart = true;
+                m_latchedRestart = false;
+            }
+            if (m_latchedBoostStart) {
+                input.boost = true;
+                m_latchedBoostStart = false;
+            }
+
+            m_game.update(fixedDt, input);
 
             // Procesar eventos sonoros ocurridos durante la simulación
             for (const auto event : m_game.audioEvents()) {
@@ -132,10 +150,11 @@ namespace {
 
             const float aspect = float(frame->width) / float(std::max(1u, frame->height));
 
-            // Cámara en tercera persona siguiendo al orbe
-            const glm::vec3 playerPos = m_game.playerPosition();
-            const glm::vec3 eye = playerPos + glm::vec3(0.0f, 1.2f, 3.8f);
-            const glm::vec3 target = playerPos + glm::vec3(0.0f, 0.2f, -8.0f);
+            // Cámara en tercera persona siguiendo al orbe (interpolada entre pasos de simulación)
+            const float alpha = time().alpha();
+            const glm::vec3 renderPos = glm::mix(m_game.previousPosition(), m_game.playerPosition(), alpha);
+            const glm::vec3 eye = renderPos + glm::vec3(0.0f, 1.2f, 3.8f);
+            const glm::vec3 target = renderPos + glm::vec3(0.0f, 0.2f, -8.0f);
             const glm::vec3 up(0.0f, 1.0f, 0.0f);
 
             const glm::mat4 view = glm::lookAt(eye, target, up);
@@ -155,14 +174,14 @@ namespace {
             const bool visible =
                 (m_game.invulnerableTimer() <= 0.0f) || (int(m_game.invulnerableTimer() * 15.0f) % 2 == 0);
             if (visible && !m_game.isGameOver()) {
-                const glm::mat4 orbModel = glm::translate(glm::mat4(1.0f), playerPos);
+                const glm::mat4 orbModel = glm::translate(glm::mat4(1.0f), renderPos);
                 m_renderer->draw(m_orbMesh, orbModel);
             }
 
             // B. Dibujar motes de luz activos dentro del rango visual
             for (const auto& mote : m_game.motes()) {
                 if (mote.collected) continue;
-                if (mote.position.z > eye.z + 5.0f || mote.position.z < playerPos.z - 120.0f) continue;
+                if (mote.position.z > eye.z + 5.0f || mote.position.z < renderPos.z - 120.0f) continue;
                 const glm::mat4 moteModel = glm::translate(glm::mat4(1.0f), mote.position);
                 m_renderer->draw(m_moteMesh, moteModel);
             }
@@ -173,7 +192,7 @@ namespace {
             sdfFrame.inverseViewProjection = invViewProj;
             sdfFrame.cameraPosition = eye;
             sdfFrame.time = static_cast<float>(time().unscaledElapsed());
-            sdfFrame.params[0] = glm::vec4(playerPos, 1.0f); // Luz del orbe hacia las paredes
+            sdfFrame.params[0] = glm::vec4(renderPos, 1.0f); // Luz del orbe hacia las paredes
 
             m_sdfRenderer->draw(*m_renderer, sdfFrame, m_lighting);
             m_renderer->end();
@@ -270,6 +289,9 @@ namespace {
         mge::Lighting m_lighting;
 
         sdf_glide::GlideGame m_game;
+        sdf_glide::GlideInput m_pendingInput;
+        bool m_latchedRestart = false;
+        bool m_latchedBoostStart = false;
         sdf_glide::GlideAudioParams m_audioParams;
         std::array<mge::SampleId, 8> m_moteSampleIds{};
         mge::SampleId m_hitSampleId = mge::kInvalidSample;
