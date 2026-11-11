@@ -21,6 +21,7 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/mgeTargets.cmake")
 
 # Herramientas de CMake del motor para el consumidor
+set(MGE_FROM_INSTALLED_PACKAGE TRUE)
 include("${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/MgeShaders.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/MgeGame.cmake")

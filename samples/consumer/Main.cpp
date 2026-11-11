@@ -34,7 +34,10 @@ namespace consumer {
             return true;
         }
 
-        void onShutdown() override { m_renderer.reset(); }
+        void onShutdown() override {
+            m_cubeMesh = {};
+            m_renderer.reset();
+        }
 
         void onUpdate(float dt) override {
             if (m_platform->wasActionPressed("Quit")) {
