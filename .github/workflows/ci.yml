@@ -321,6 +321,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/tmp/mge-prefix \
             -DMGE_INSTALL=ON \
+            -DMGE_SOURCE_ASSET_FALLBACK=OFF \
             -DMGE_BUILD_TESTS=OFF \
             -DMGE_BUILD_BENCHMARKS=OFF \
             -DMGE_BUILD_EXAMPLES=OFF \

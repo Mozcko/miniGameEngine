@@ -17,7 +17,7 @@ if(NOT MGE_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # --- Opciones ---
-option(MGE_INSTALL "Instalar y exportar paquetes CMake para reutilizar el motor" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_INSTALL "Instalar y exportar paquetes CMake para reutilizar el motor" OFF)
 option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
 option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ${PROJECT_IS_TOP_LEVEL})
@@ -29,11 +29,10 @@ option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
 
-set(MGE_SOURCE_ASSET_FALLBACK_DEFAULT ON)
-if(MGE_INSTALL)
-    set(MGE_SOURCE_ASSET_FALLBACK_DEFAULT OFF)
+option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
+if(MGE_INSTALL AND MGE_SOURCE_ASSET_FALLBACK)
+    message(WARNING "MGE_INSTALL=ON y MGE_SOURCE_ASSET_FALLBACK=ON: installed libraries will contain an absolute path to this source tree; pass -DMGE_SOURCE_ASSET_FALLBACK=OFF for distributable packages")
 endif()
-option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ${MGE_SOURCE_ASSET_FALLBACK_DEFAULT})
 option(MGE_PROFILING "Activar instrumentación del profiler (MGE_PROFILE_SCOPE)" ON)
 option(MGE_TRACY "Activar integración opcional con Tracy Profiler" OFF)
 
