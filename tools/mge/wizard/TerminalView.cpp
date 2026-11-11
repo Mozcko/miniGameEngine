@@ -10,6 +10,9 @@
 #include <conio.h>
 #include <windows.h>
 #else
+#include <cerrno>
+#include <csignal>
+#include <poll.h>
 #include <termios.h>
 #include <unistd.h>
 #endif
@@ -18,9 +21,49 @@ namespace mge::cli::wizard {
 
     namespace {
 
+#ifndef _WIN32
+        // Estado global para restaurar el modo terminal en manejadores de señales (async-signal-safe)
+        static struct termios sOrigTerm{};
+        static volatile sig_atomic_t sOrigTermSaved{0};
+        static struct sigaction sOldSigterm{};
+        static struct sigaction sOldSighup{};
+        static struct sigaction sOldSigint{};
+
+        extern "C" void terminalSignalHandler(int sig) {
+            if (sOrigTermSaved) {
+                tcsetattr(STDIN_FILENO, TCSAFLUSH, &sOrigTerm);
+            }
+            struct sigaction dfl{};
+            dfl.sa_handler = SIG_DFL;
+            sigemptyset(&dfl.sa_mask);
+            dfl.sa_flags = 0;
+            sigaction(sig, &dfl, nullptr);
+            raise(sig);
+        }
+
+        bool pollInput(int fd, int timeoutMs) {
+            struct pollfd pfd{};
+            pfd.fd = fd;
+            pfd.events = POLLIN;
+            while (true) {
+                int ret = poll(&pfd, 1, timeoutMs);
+                if (ret < 0) {
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    return false;
+                }
+                return (ret > 0) && ((pfd.revents & POLLIN) != 0);
+            }
+        }
+#endif
+
         class TerminalGuard {
         public:
-            TerminalGuard() {
+            explicit TerminalGuard(bool enable = true) {
+                if (!enable) {
+                    return;
+                }
 #ifdef _WIN32
                 m_hIn = GetStdHandle(STD_INPUT_HANDLE);
                 if (m_hIn != INVALID_HANDLE_VALUE) {
@@ -33,6 +76,17 @@ namespace mge::cli::wizard {
 #else
                 if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
                     if (tcgetattr(STDIN_FILENO, &m_origTerm) == 0) {
+                        sOrigTerm = m_origTerm;
+                        sOrigTermSaved = 1;
+
+                        struct sigaction sa{};
+                        sa.sa_handler = terminalSignalHandler;
+                        sigemptyset(&sa.sa_mask);
+                        sa.sa_flags = 0;
+                        sigaction(SIGTERM, &sa, &sOldSigterm);
+                        sigaction(SIGHUP, &sa, &sOldSighup);
+                        sigaction(SIGINT, &sa, &sOldSigint);
+
                         struct termios raw = m_origTerm;
                         raw.c_lflag &= ~(ECHO | ICANON | ISIG);
                         raw.c_iflag &= ~(IXON | ICRNL);
@@ -57,6 +111,12 @@ namespace mge::cli::wizard {
                 }
 #else
                 tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_origTerm);
+                if (sOrigTermSaved) {
+                    sigaction(SIGTERM, &sOldSigterm, nullptr);
+                    sigaction(SIGHUP, &sOldSighup, nullptr);
+                    sigaction(SIGINT, &sOldSigint, nullptr);
+                    sOrigTermSaved = 0;
+                }
 #endif
                 m_active = false;
             }
@@ -73,23 +133,12 @@ namespace mge::cli::wizard {
 #endif
         };
 
-        enum class Key {
-            None,
-            Enter,
-            Backspace,
-            Up,
-            Down,
-            Left,
-            Right,
-            Space,
-            Tab,
-            CtrlC,
-            Char
-        };
-
         Key readKeyEvent(char& outChar) {
 #ifdef _WIN32
             int c = _getch();
+            if (c == EOF || c == 4) {
+                return Key::Eof;
+            }
             if (c == 3) {
                 return Key::CtrlC;
             }
@@ -115,6 +164,9 @@ namespace mge::cli::wizard {
                 }
                 return Key::None;
             }
+            if (c == 27) {
+                return Key::Escape;
+            }
             if (c >= 32 && c < 127) {
                 outChar = static_cast<char>(c);
                 return Key::Char;
@@ -122,13 +174,25 @@ namespace mge::cli::wizard {
             return Key::None;
 #else
             char c = 0;
-            ssize_t n = read(STDIN_FILENO, &c, 1);
-            if (n <= 0) {
-                return Key::None;
+            while (true) {
+                ssize_t n = read(STDIN_FILENO, &c, 1);
+                if (n == 0) {
+                    return Key::Eof;
+                }
+                if (n < 0) {
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    return Key::Eof;
+                }
+                break;
             }
 
             if (c == 0x03) {
                 return Key::CtrlC;
+            }
+            if (c == 0x04) {
+                return Key::Eof;
             }
             if (c == '\r' || c == '\n') {
                 return Key::Enter;
@@ -144,15 +208,42 @@ namespace mge::cli::wizard {
             }
 
             if (c == 0x1b) {
-                char seq[2] = {0, 0};
-                if (read(STDIN_FILENO, &seq[0], 1) <= 0) {
-                    return Key::None;
+                if (!pollInput(STDIN_FILENO, 50)) {
+                    // ESC solitario: no bloquea ni espera más bytes
+                    return Key::Escape;
                 }
-                if (read(STDIN_FILENO, &seq[1], 1) <= 0) {
-                    return Key::None;
+                char seq[2] = {0, 0};
+                while (true) {
+                    ssize_t n0 = read(STDIN_FILENO, &seq[0], 1);
+                    if (n0 == 0) {
+                        return Key::Eof;
+                    }
+                    if (n0 < 0) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        return Key::Eof;
+                    }
+                    break;
+                }
+                if (!pollInput(STDIN_FILENO, 50)) {
+                    return Key::Escape;
+                }
+                while (true) {
+                    ssize_t n1 = read(STDIN_FILENO, &seq[1], 1);
+                    if (n1 == 0) {
+                        return Key::Eof;
+                    }
+                    if (n1 < 0) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        return Key::Eof;
+                    }
+                    break;
                 }
 
-                if (seq[0] == '[') {
+                if (seq[0] == '[' || seq[0] == 'O') {
                     switch (seq[1]) {
                     case 'A': return Key::Up;
                     case 'B': return Key::Down;
@@ -171,6 +262,13 @@ namespace mge::cli::wizard {
 #endif
         }
 
+        Key readKey(const KeyReader& customReader, char& outChar) {
+            if (customReader) {
+                return customReader(outChar);
+            }
+            return readKeyEvent(outChar);
+        }
+
         void clearCurrentLine() {
             std::cout << "\r\033[K" << std::flush;
         }
@@ -183,8 +281,8 @@ namespace mge::cli::wizard {
 
     } // namespace
 
-    bool runInteractiveWizard(WizardModel& model) {
-        TerminalGuard guard;
+    bool runInteractiveWizard(WizardModel& model, const KeyReader& customKeyReader) {
+        TerminalGuard guard(!customKeyReader);
 
         std::cout << colors::cyan() << colors::bold() << "mge new - Asistente interactivo de proyecto"
                   << colors::reset() << "\n\n";
@@ -206,8 +304,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -258,8 +356,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -302,8 +400,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -357,8 +455,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -400,8 +498,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -442,8 +540,8 @@ namespace mge::cli::wizard {
                 std::cout << std::flush;
 
                 char ch = 0;
-                Key key = readKeyEvent(ch);
-                if (key == Key::CtrlC) {
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
                     std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                     model.cancel();
@@ -496,8 +594,8 @@ namespace mge::cli::wizard {
             std::cout << std::flush;
 
             char ch = 0;
-            Key key = readKeyEvent(ch);
-            if (key == Key::CtrlC) {
+            Key key = readKey(customKeyReader, ch);
+            if (key == Key::CtrlC || key == Key::Eof) {
                 guard.restore();
                 std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
                 model.cancel();

@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include "Project.h"
+#include "wizard/TerminalView.h"
 #include "wizard/WizardModel.h"
 
 #include <cstdlib>
@@ -232,4 +233,77 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         CHECK_FALSE(files.empty());
         verifyGolden("2d_no_git_no_vscode", formatSnapshot(files));
     }
+}
+
+TEST_CASE("wizard: EOF cancela el asistente de inmediato sin crear archivos") {
+    WizardModel model;
+    std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_eof_cancel";
+    std::filesystem::remove_all(tempProjectDir);
+    model.setTargetDir(tempProjectDir);
+
+    auto fakeKeySource = [](char& /*outChar*/) -> Key { return Key::Eof; };
+
+    bool ok = runInteractiveWizard(model, fakeKeySource);
+    CHECK_FALSE(ok);
+    CHECK(model.isCancelled());
+    CHECK_FALSE(std::filesystem::exists(tempProjectDir));
+}
+
+TEST_CASE("wizard: EOF a mitad del flujo cancela el asistente sin crear archivos") {
+    WizardModel model;
+    std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_eof_midway";
+    std::filesystem::remove_all(tempProjectDir);
+    model.setTargetDir(tempProjectDir);
+
+    // Secuencia: escribe 'j', 'u', 'e', 'g', 'o', Enter, luego EOF
+    std::vector<std::pair<Key, char>> script = {{Key::Char, 'j'}, {Key::Char, 'u'}, {Key::Char, 'e'},
+                                                {Key::Char, 'g'}, {Key::Char, 'o'}, {Key::Enter, '\n'},
+                                                {Key::Eof, 0}};
+    size_t keyIndex = 0;
+    auto fakeKeySource = [&script, &keyIndex](char& outChar) -> Key {
+        if (keyIndex < script.size()) {
+            auto item = script[keyIndex++];
+            outChar = item.second;
+            return item.first;
+        }
+        return Key::Eof;
+    };
+
+    bool ok = runInteractiveWizard(model, fakeKeySource);
+    CHECK_FALSE(ok);
+    CHECK(model.isCancelled());
+    CHECK_FALSE(std::filesystem::exists(tempProjectDir));
+}
+
+TEST_CASE("wizard: ESC solitario no bloquea ni cancela el asistente") {
+    WizardModel model;
+    std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_esc_continue";
+    std::filesystem::remove_all(tempProjectDir);
+    model.setTargetDir(tempProjectDir);
+
+    std::vector<std::pair<Key, char>> script = {
+        {Key::Escape, 0}, // ESC solitario ignorado
+        {Key::Char, 'm'},   {Key::Char, 'i'},   {Key::Char, 'n'},
+        {Key::Char, 'i'},   {Key::Enter, '\n'}, {Key::Escape, 0}, // ESC solitario en selección de plantilla
+        {Key::Enter, '\n'},                                       // Plantilla 3D por defecto
+        {Key::Enter, '\n'},                                       // Audio por defecto
+        {Key::Enter, '\n'},                                       // Licencia por defecto
+        {Key::Enter, '\n'},                                       // Git por defecto
+        {Key::Enter, '\n'},                                       // VS Code por defecto
+        {Key::Enter, '\n'}                                        // Confirmación
+    };
+    size_t keyIndex = 0;
+    auto fakeKeySource = [&script, &keyIndex](char& outChar) -> Key {
+        if (keyIndex < script.size()) {
+            auto item = script[keyIndex++];
+            outChar = item.second;
+            return item.first;
+        }
+        return Key::Eof;
+    };
+
+    bool ok = runInteractiveWizard(model, fakeKeySource);
+    CHECK(ok);
+    CHECK(model.isFinished());
+    CHECK(model.answers().name == "mini");
 }

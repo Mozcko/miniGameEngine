@@ -93,6 +93,8 @@ namespace mge::cli::wizard {
         void toggleVsCode();
         void setVsCode(bool value);
 
+        void setTargetDir(const std::filesystem::path& dir) { m_answers.targetDir = dir; }
+
         // Validación de nombres
         bool isNameValid() const;
         std::string nameError() const { return m_nameError; }
