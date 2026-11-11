@@ -33,6 +33,7 @@ add_executable(mge_core_tests
     core/test_profiler.cpp
     core/test_time.cpp
     core/test_umbrella.cpp
+    core/test_version.cpp
 )
 target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
 mge_set_warnings(mge_core_tests)

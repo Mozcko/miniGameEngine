@@ -19,3 +19,8 @@ Files are `*.in` with placeholders, substituted by the script:
 The `.in` suffix keeps the templates out of clang-format and clang-tidy, since placeholders aren't
 valid C++. Generated code is formatted with clang-format when it's installed. CI generates both
 templates on every PR, then builds and runs them, so they can't rot.
+
+> [!NOTE]
+> Today templates generate in-tree examples via `scripts/new-game.sh`. Following #103,
+> out-of-tree projects can consume the engine via installed CMake package (`find_package(mge 0.9)`)
+> or `FetchContent` (see [`docs/USING_THE_ENGINE.md`](../docs/USING_THE_ENGINE.md)).

@@ -19,7 +19,14 @@ add_library(mge_core STATIC
     ecs/Transform.h ecs/Transform.cpp
     ecs/World.h ecs/World.cpp
 )
-target_include_directories(mge_core PUBLIC ${PROJECT_SOURCE_DIR}/src)
+add_library(mge::core ALIAS mge_core)
+set_target_properties(mge_core PROPERTIES EXPORT_NAME core)
+
+target_include_directories(mge_core PUBLIC
+    $<BUILD_INTERFACE:${miniGameEngine_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${miniGameEngine_BINARY_DIR}/generated/include>
+    $<INSTALL_INTERFACE:include>
+)
 # JobSystem (std::thread)
 find_package(Threads REQUIRED)
 target_link_libraries(mge_core PUBLIC Threads::Threads)
@@ -41,3 +48,24 @@ if(MGE_TRACY)
 endif()
 
 mge_set_warnings(mge_core)
+
+mge_install_headers(core
+    Application.h
+    Assets.h
+    Input.h
+    Jobs.h
+    Log.h
+    Module.h
+    Profiler.h
+    Random.h
+    SpscQueue.h
+    Clock.h
+    FlyController.h
+    Time.h
+    math/Geometry.h
+    ecs/Camera.h
+    ecs/Entity.h
+    ecs/Registry.h
+    ecs/Transform.h
+    ecs/World.h
+)

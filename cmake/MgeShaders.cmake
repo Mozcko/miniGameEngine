@@ -19,30 +19,47 @@ if(MGE_GLSLANG_EXECUTABLE)
     set(MGE_GLSLANG_COMMAND "${MGE_GLSLANG_EXECUTABLE}")
     set(MGE_GLSLANG_TARGET "")
 else()
-    message(STATUS "glslang: no está instalado, se compila desde el código fuente")
-    include(FetchContent)
-    # Solo el compilador de línea de comandos: sin optimizador (SPIRV-Tools), HLSL, tests ni install
-    set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
-    set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
-    set(ENABLE_HLSL OFF CACHE BOOL "" FORCE)
-    set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    set(ENABLE_GLSLANG_BINARIES ON CACHE BOOL "" FORCE)
-    FetchContent_Declare(glslang
-        URL https://github.com/KhronosGroup/glslang/archive/refs/tags/16.2.0.tar.gz
-        URL_HASH SHA256=01985335785c97906a91afe3cb5ee015997696181ec6c125bab5555602ba08e2
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(glslang)
-    set(MGE_GLSLANG_COMMAND "$<TARGET_FILE:glslang-standalone>")
-    set(MGE_GLSLANG_TARGET glslang-standalone)
+    if(PROJECT_IS_TOP_LEVEL)
+        message(STATUS "glslang: no está instalado, se compila desde el código fuente")
+        include(FetchContent)
+        # Solo el compilador de línea de comandos: sin optimizador (SPIRV-Tools), HLSL, tests ni install
+        set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
+        set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
+        set(ENABLE_HLSL OFF CACHE BOOL "" FORCE)
+        set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
+        set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        set(ENABLE_GLSLANG_BINARIES ON CACHE BOOL "" FORCE)
+        FetchContent_Declare(glslang
+            URL https://github.com/KhronosGroup/glslang/archive/refs/tags/16.2.0.tar.gz
+            URL_HASH SHA256=01985335785c97906a91afe3cb5ee015997696181ec6c125bab5555602ba08e2
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(glslang)
+        set(MGE_GLSLANG_COMMAND "$<TARGET_FILE:glslang-standalone>")
+        set(MGE_GLSLANG_TARGET glslang-standalone)
+    else()
+        message(FATAL_ERROR "glslang no encontrado en el sistema. mge_add_shaders requiere glslang o glslangValidator.")
+    endif()
 endif()
 
 set(MGE_EMBED_SPIRV_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
 
+# Directorio de includes de shaders (.glsl) del motor
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include")
+    get_filename_component(MGE_DEFAULT_SHADER_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include" ABSOLUTE)
+elseif(DEFINED miniGameEngine_SOURCE_DIR AND EXISTS "${miniGameEngine_SOURCE_DIR}/src/mge/graphics/shaders/include")
+    set(MGE_DEFAULT_SHADER_INCLUDE_DIR "${miniGameEngine_SOURCE_DIR}/src/mge/graphics/shaders/include")
+elseif(DEFINED mge_SOURCE_DIR AND EXISTS "${mge_SOURCE_DIR}/src/mge/graphics/shaders/include")
+    set(MGE_DEFAULT_SHADER_INCLUDE_DIR "${mge_SOURCE_DIR}/src/mge/graphics/shaders/include")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
+    set(MGE_DEFAULT_SHADER_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
+endif()
+
 # Todos los headers de shaders generados: scripts/lint.sh lo compila antes de clang-tidy
 # (que necesita los headers aunque no se haya compilado nada más)
-add_custom_target(mge_generated_shaders)
+if(NOT TARGET mge_generated_shaders)
+    add_custom_target(mge_generated_shaders)
+endif()
 
 function(mge_add_shaders target)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "SHADERS;INCLUDE_DIRS")
@@ -52,7 +69,10 @@ function(mge_add_shaders target)
     set(out_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
     set(headers "")
 
-    set(include_args "-I${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
+    set(include_args "")
+    if(MGE_DEFAULT_SHADER_INCLUDE_DIR)
+        list(APPEND include_args "-I${MGE_DEFAULT_SHADER_INCLUDE_DIR}")
+    endif()
     foreach(inc_dir IN LISTS ARG_INCLUDE_DIRS)
         get_filename_component(abs_inc "${inc_dir}" ABSOLUTE)
         list(APPEND include_args "-I${abs_inc}")

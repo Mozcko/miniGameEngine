@@ -1,0 +1,21 @@
+#pragma once
+
+// Versión del motor generada automáticamente por CMake.
+
+#define MGE_VERSION_MAJOR @miniGameEngine_VERSION_MAJOR@
+#define MGE_VERSION_MINOR @miniGameEngine_VERSION_MINOR@
+#define MGE_VERSION_PATCH @miniGameEngine_VERSION_PATCH@
+#define MGE_VERSION_STRING "@miniGameEngine_VERSION@"
+
+namespace mge {
+
+    struct Version {
+        int major;
+        int minor;
+        int patch;
+    };
+
+    inline constexpr Version kVersion{MGE_VERSION_MAJOR, MGE_VERSION_MINOR, MGE_VERSION_PATCH};
+    inline constexpr const char* kVersionString = MGE_VERSION_STRING;
+
+} // namespace mge

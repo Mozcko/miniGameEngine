@@ -36,6 +36,7 @@ Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/d
 - `src/mge/<module>/` = one static lib each: `mge_core` (headless, **no SDL/GPU** – CI `core-only` job
   builds it with `-DMGE_BUILD_MODULES=OFF`, together with the headless `mge_procgen`/`mge_voxel`), `mge_platform` (PlatformModule),
   `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_synth` (headless audio: Mixer, samples), `mge_audio` (AudioModule: the mixer on the SDL audio device), `mge_main` (main(), core‑only).
+- Each engine library provides an alias `mge::<module>` (e.g. `mge::core`, `mge::platform`, `mge::main`). Out-of-tree consumers can consume the engine via installed package (`find_package(mge 0.9)`) or `FetchContent` (#103, `docs/USING_THE_ENGINE.md`).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/<module>/` → `mge_<module>_tests` (core, procgen, voxel, platform, gpu), `tests/game/` → `game_tests`.
 - Explicit source lists per target CMakeLists (no globbing) – add new files there.

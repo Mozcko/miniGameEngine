@@ -1,0 +1,26 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Dependencias obligatorias para los módulos del motor
+find_dependency(Threads)
+
+set(MGE_BUILD_MODULES @MGE_BUILD_MODULES@)
+if(MGE_BUILD_MODULES)
+    find_dependency(SDL3 3.2 CONFIG REQUIRED)
+endif()
+
+# GLM: matemática vectorial (header-only)
+find_package(glm CONFIG QUIET)
+if(NOT glm_FOUND AND NOT TARGET glm::glm)
+    # GLM no se exportó como paquete CMake configurado; asegúrese de que sus cabeceras
+    # estén accesibles en el directorio de inclusión estándar del sistema (ej: /usr/include/glm).
+endif()
+
+# Importar las definiciones de targets del motor (mge::core, mge::platform, etc.)
+include("${CMAKE_CURRENT_LIST_DIR}/mgeTargets.cmake")
+
+# Herramientas de CMake del motor para el consumidor
+include("${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/MgeShaders.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/MgeGame.cmake")

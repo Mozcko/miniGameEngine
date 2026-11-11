@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(miniGameEngine LANGUAGES C CXX)
+project(miniGameEngine VERSION 0.9.0 LANGUAGES C CXX)
 
 # --- Estándar de C++ ---
 set(CMAKE_CXX_STANDARD 17)
@@ -17,17 +17,32 @@ if(NOT MGE_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # --- Opciones ---
+option(MGE_INSTALL "Instalar y exportar paquetes CMake para reutilizar el motor" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
 option(MGE_WERROR "Tratar los warnings como errores" OFF)
-option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ON)
+option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
 option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANITIZERS)" OFF)
-option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ON)
+option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_BUILD_EXAMPLES "Compilar los ejemplos (examples/)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
-option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
+
+set(MGE_SOURCE_ASSET_FALLBACK_DEFAULT ON)
+if(MGE_INSTALL)
+    set(MGE_SOURCE_ASSET_FALLBACK_DEFAULT OFF)
+endif()
+option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ${MGE_SOURCE_ASSET_FALLBACK_DEFAULT})
 option(MGE_PROFILING "Activar instrumentación del profiler (MGE_PROFILE_SCOPE)" ON)
 option(MGE_TRACY "Activar integración opcional con Tracy Profiler" OFF)
+
+# Versión del motor (<mge/Version.h>)
+configure_file(
+    "${miniGameEngine_SOURCE_DIR}/src/mge/Version.h.in"
+    "${miniGameEngine_BINARY_DIR}/generated/include/mge/Version.h"
+    @ONLY
+)
 
 # --- Optimización de tamaño (MGE_SIZE_OPTIMIZE) ---
 if(MGE_SIZE_OPTIMIZE)
@@ -122,6 +137,9 @@ if(MGE_BUILD_MODULES)
     else()
         message(STATUS "SDL3: compilado desde el código fuente (release-3.4.18)")
     endif()
+    if(MGE_INSTALL AND NOT SDL3_FOUND)
+        message(FATAL_ERROR "MGE_INSTALL=ON requiere una instalación de SDL3 del sistema (ej: SDL3-devel o libsdl3-dev). SDL3 compilado con FetchContent no es exportable. Instale SDL3 en el sistema o configure con -DMGE_INSTALL=OFF.")
+    endif()
 endif()
 
 # --- Tracy Profiler (opcional, -DMGE_TRACY=ON) ---
@@ -153,11 +171,13 @@ endif()
 
 # --- Motor (src/mge), juegos y ejemplos ---
 add_subdirectory(src/mge)
-if(MGE_BUILD_MODULES)
+if(MGE_BUILD_MODULES AND MGE_BUILD_SANDBOX)
     add_subdirectory(game)
 endif()
-# examples/ decide qué compilar según MGE_BUILD_MODULES (los headless van siempre)
-add_subdirectory(examples)
+if(MGE_BUILD_EXAMPLES)
+    # examples/ decide qué compilar según MGE_BUILD_MODULES (los headless van siempre)
+    add_subdirectory(examples)
+endif()
 
 # --- Benchmarks ---
 if(MGE_BUILD_BENCHMARKS)
@@ -167,4 +187,28 @@ endif()
 # --- Tests unitarios ---
 if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
+endif()
+
+# --- Paquete CMake (find_package(mge)) ---
+if(MGE_INSTALL)
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/mgeConfigVersion.cmake"
+        VERSION ${miniGameEngine_VERSION}
+        COMPATIBILITY SameMinorVersion
+    )
+    configure_package_config_file(
+        "${miniGameEngine_SOURCE_DIR}/cmake/mgeConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/mgeConfig.cmake"
+        INSTALL_DESTINATION lib/cmake/mge
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    )
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/mgeConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/mgeConfigVersion.cmake"
+        "${miniGameEngine_SOURCE_DIR}/cmake/MgeGame.cmake"
+        "${miniGameEngine_SOURCE_DIR}/cmake/MgeShaders.cmake"
+        "${miniGameEngine_SOURCE_DIR}/cmake/MgeEmbedSpirv.cmake"
+        DESTINATION lib/cmake/mge
+    )
 endif()

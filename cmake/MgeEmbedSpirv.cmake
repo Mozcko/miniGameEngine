@@ -1,5 +1,9 @@
 # cmake -DINPUT=<x.spv> -DOUTPUT=<x.h> -DSOURCE_NAME=<x.vert> -P MgeEmbedSpirv.cmake
 # Convierte un binario SPIR-V en un header con un mge::ShaderCode (lo usa mge_add_shaders).
+if(NOT DEFINED INPUT OR NOT DEFINED OUTPUT)
+    return()
+endif()
+
 file(READ "${INPUT}" hex HEX)
 string(LENGTH "${hex}" hex_length)
 math(EXPR byte_count "${hex_length} / 2")
