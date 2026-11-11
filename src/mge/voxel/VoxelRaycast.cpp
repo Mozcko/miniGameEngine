@@ -19,6 +19,12 @@ namespace mge {
     } // namespace
 
     std::optional<VoxelRaycastHit> raycastVoxels(const VoxelWorld& world, const Ray& ray, float maxDistance) {
+        return raycastVoxels(world, ray, maxDistance,
+                             [&world](BlockId id) { return world.registry().isSolid(id); });
+    }
+
+    std::optional<VoxelRaycastHit> raycastVoxels(const VoxelWorld& world, const Ray& ray, float maxDistance,
+                                                 const std::function<bool(BlockId)>& pickable) {
         if (std::isnan(maxDistance) || maxDistance < 0.0f) {
             return std::nullopt;
         }
@@ -28,8 +34,13 @@ namespace mge {
 
         glm::ivec3 currentBlock = blockAt(ray.origin);
 
-        // Si el rayo nace dentro de un bloque sólido, reporta impacto inmediato a distancia 0
-        if (world.isSolid(currentBlock)) {
+        const auto isTarget = [&world, &pickable](const glm::ivec3& block) {
+            const BlockId id = world.getBlock(block);
+            return pickable ? pickable(id) : world.registry().isSolid(id);
+        };
+
+        // Si el rayo nace dentro de un bloque objetivo, reporta impacto inmediato a distancia 0
+        if (isTarget(currentBlock)) {
             VoxelRaycastHit hit;
             hit.block = currentBlock;
             hit.normal = glm::ivec3(0);
@@ -103,8 +114,8 @@ namespace mge {
             currentBlock[hitAxis] += step[hitAxis];
             lastStepAxis = hitAxis;
 
-            // Al entrar al nuevo bloque comprobamos si es sólido
-            if (world.isSolid(currentBlock)) {
+            // Al entrar al nuevo bloque comprobamos si cumple el predicado
+            if (isTarget(currentBlock)) {
                 VoxelRaycastHit hit;
                 hit.block = currentBlock;
                 hit.normal = glm::ivec3(0);

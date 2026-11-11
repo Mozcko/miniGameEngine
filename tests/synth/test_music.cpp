@@ -148,7 +148,7 @@ TEST_CASE("Música: fundido cruzado sin saltos de volumen y grupo Music") {
 }
 
 TEST_CASE("Canciones de ejemplo: válidas, suenan y no saturan") {
-    for (const Song& song : {songs::platformerTheme(), songs::sandboxAmbient()}) {
+    for (const Song& song : {songs::platformerTheme(), songs::sandboxAmbient(), songs::sandboxNight()}) {
         CAPTURE(song.bpm());
         REQUIRE_MESSAGE(song.valid(), song.error());
         Mixer mixer(kRate);

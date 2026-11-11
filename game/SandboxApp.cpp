@@ -2,17 +2,20 @@
 
 #include <game/SandboxBlocks.h>
 #include <game/SandboxMaterials.h>
+#include <game/SandboxSounds.h>
 #include <game/SandboxTerrain.h>
 #include <SDL3/SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <deque>
-#include <string>
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace mge;
@@ -49,9 +52,16 @@ public:
         m_audio = getModule<AudioModule>();
         m_audio->setDelay({0.45f, 0.4f, 0.35f});
         m_audio->setBusVolume(AudioBus::Music, kMusicVolume);
-        m_audio->playSong(m_audio->addSong(songs::sandboxAmbient()), 3.0f);
+        m_daySongId = m_audio->addSong(songs::sandboxAmbient());
+        m_nightSongId = m_audio->addSong(songs::sandboxNight());
+        m_isNightMusic = (m_dayNight.hour >= 19.5f || m_dayNight.hour < 5.5f);
+        m_audio->playSong(m_isNightMusic ? m_nightSongId : m_daySongId, 3.0f);
+        m_soundIds = sandbox::registerSandboxSounds(*m_audio, m_sounds);
         m_renderer = std::make_unique<MeshRenderer>(m_gpu->device(), m_gpu->swapchainFormat());
         if (!m_renderer->valid()) return false;
+        m_skyRenderer = std::make_unique<SkyRenderer>(m_gpu->device(), m_gpu->swapchainFormat(),
+                                                      m_gpu->device().depthFormat());
+        if (!m_skyRenderer->valid()) return false;
         m_debug = std::make_unique<DebugDraw>(m_gpu->device());
         // UI 2D (#42) y overlay de rendimiento (F1, #43): visible de entrada en Debug
         m_ui = std::make_unique<Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
@@ -79,6 +89,8 @@ public:
         playerController.previousPosition = spawnFeet;
         playerController.enabled = m_world.isLoaded(chunkOf(blockAt(spawnFeet))) &&
                                    m_world.isLoaded(chunkOf(blockAt(spawnFeet) - glm::ivec3(0, 1, 0)));
+        m_prevFeet = spawnFeet;
+        m_wasGrounded = playerController.grounded;
 
         m_playerEntity = world().registry().create();
         world().registry().add<Transform>(m_playerEntity, spawnFeet);
@@ -94,25 +106,40 @@ public:
         m_physicsWorld.setVoxels(solidQuery(m_world));
         addPhysicsSystem(world(), m_physicsWorld);
 
-        // 3. Atlas: el PNG (camino de los assets) o uno generado por código (camino procedural, #34). Los
-        // dos con las mismas posiciones de tiles; M alterna en vivo. SANDBOX_ATLAS=procedural arranca sin
-        // cargar ninguna imagen. Se guarda una copia en la CPU para animar el agua y la lava copiando tiles.
+        m_hotbarBlocks = {m_blocks.grass,       m_blocks.dirt,   m_blocks.stone,
+                          m_blocks.cobblestone, m_blocks.planks, m_blocks.brick,
+                          m_blocks.log,         m_blocks.glass,  m_blocks.leaves};
+
+        // 3. Atlas: por defecto el procedural (#34, sin imágenes). El PNG es opt-in con SANDBOX_ATLAS=png
+        // o con la tecla M en vivo. Si el PNG no existe, se registra el aviso una vez y se queda en
+        // procedural.
         const char* atlasMode = std::getenv("SANDBOX_ATLAS");
-        const bool procedural = atlasMode && std::string(atlasMode) == "procedural";
-        if (!(procedural ? useProceduralAtlas() : usePngAtlas())) return false;
+        const bool usePng = atlasMode && std::string(atlasMode) == "png";
+        if (!(usePng ? usePngAtlas() : useProceduralAtlas())) return false;
 
         // 4. Streaming del mundo en el pool de hilos del motor
         m_streamer = std::make_unique<ChunkStreamer>(m_world, streamingSettings(), &jobs());
+        m_streamer->onChunkInserted([this](const ChunkCoord& coord, ChunkData& data) {
+            const auto it = m_edits.find(coord);
+            if (it != m_edits.end()) {
+                for (const auto& [localIndex, blockId] : it->second) {
+                    const int x = localIndex % kChunkSize;
+                    const int z = (localIndex / kChunkSize) % kChunkSize;
+                    const int y = localIndex / (kChunkSize * kChunkSize);
+                    data.set(x, y, z, blockId);
+                }
+            }
+        });
 
         // Configuración inicial del ratón
         m_platform->setCursorLocked(true);
 
         // F1 muestra FPS, tiempos y contadores en pantalla (fuente embebida, #43); además cada 5 s van al log
-        MGE_LOG_INFO(
-            "Sandbox",
-            "WASD: mover, Espacio: saltar, F: caminar/volar, Espacio/Shift: subir/bajar (vuelo), "
-            "Ctrl: correr, M: atlas "
-            "PNG/procedural, N: música, P: pausa, F1: rendimiento, F2: LOD, F3/F4: depuración, Esc: salir");
+        MGE_LOG_INFO("Sandbox", "WASD: mover, Espacio: saltar, F: caminar/volar, Clic izq: romper, Clic der: "
+                                "colocar, 1-9: hotbar, "
+                                "F11: HUD, M: atlas PNG/procedural, N: música, T: avanzar hora, P: pausa, "
+                                "F1: rendimiento, F2: LOD, "
+                                "F3/F4: depuración, G: lanzar cubo, Esc: salir");
         return true;
     }
 
@@ -130,6 +157,7 @@ public:
         m_atlas = nullptr;
         m_debug.reset();
         m_ui.reset();
+        m_skyRenderer.reset();
         m_renderer.reset();
     }
 
@@ -149,8 +177,22 @@ public:
         actions.bind("ToggleMusic", Key::N);
         actions.bind("DebugDraw", Key::F3);
         actions.bind("FreezeFrustum", Key::F4);
+        actions.bind("ToggleHud", Key::F11);
+        actions.bind("FastTime", Key::T);
         actions.bind("Quit", Key::Escape);
+        actions.bind("Break", MouseButton::Left);
+        actions.bind("Place", MouseButton::Right);
         actions.bind("CaptureMouse", MouseButton::Left);
+
+        actions.bind("Slot1", Key::Num1);
+        actions.bind("Slot2", Key::Num2);
+        actions.bind("Slot3", Key::Num3);
+        actions.bind("Slot4", Key::Num4);
+        actions.bind("Slot5", Key::Num5);
+        actions.bind("Slot6", Key::Num6);
+        actions.bind("Slot7", Key::Num7);
+        actions.bind("Slot8", Key::Num8);
+        actions.bind("Slot9", Key::Num9);
     }
 
     // El cambio de tamaño ya no necesita código: el motor ajusta las cámaras al viewport (CameraSystem)
@@ -163,6 +205,15 @@ public:
     void handleActions() {
         if (m_platform->wasActionPressed("Quit")) requestStop();
         if (m_platform->wasActionPressed("Overlay")) m_overlay.toggle();
+        if (m_platform->wasActionPressed("ToggleHud")) m_showHud = !m_showHud;
+
+        static constexpr const char* kSlotActions[9] = {"Slot1", "Slot2", "Slot3", "Slot4", "Slot5",
+                                                        "Slot6", "Slot7", "Slot8", "Slot9"};
+        for (int i = 0; i < 9; ++i) {
+            if (m_platform->wasActionPressed(kSlotActions[i])) {
+                m_selectedSlot = i;
+            }
+        }
         if (m_platform->wasActionPressed("ToggleLod")) {
             m_lodEnabled = !m_lodEnabled;
             m_streamer->setSettings(streamingSettings());
@@ -207,7 +258,47 @@ public:
                 usePngAtlas();
         }
 
-        if (m_platform->wasActionPressed("CaptureMouse") && !m_isPaused) m_platform->setCursorLocked(true);
+        // Romper bloque (clic izquierdo con cursor bloqueado) o capturar cursor (si no está bloqueado)
+        if (m_platform->wasActionPressed("Break")) {
+            if (!m_platform->isCursorLocked()) {
+                if (!m_isPaused) {
+                    m_platform->setCursorLocked(true);
+                    m_breakCapturedThisClick = true;
+                }
+            } else if (!m_isPaused) {
+                breakBlock();
+                m_breakTimer = 0.25f;
+            }
+        } else if (m_platform->isActionDown("Break")) {
+            if (!m_breakCapturedThisClick && m_platform->isCursorLocked() && !m_isPaused) {
+                m_breakTimer -= time().delta();
+                if (m_breakTimer <= 0.0f) {
+                    breakBlock();
+                    m_breakTimer += 0.25f;
+                }
+            }
+        } else {
+            m_breakTimer = 0.0f;
+            m_breakCapturedThisClick = false;
+        }
+
+        // Colocar bloque (clic derecho) con repetición cada 0.25 s
+        if (m_platform->wasActionPressed("Place")) {
+            if (m_platform->isCursorLocked() && !m_isPaused) {
+                placeBlock();
+                m_placeTimer = 0.25f;
+            }
+        } else if (m_platform->isActionDown("Place")) {
+            if (m_platform->isCursorLocked() && !m_isPaused) {
+                m_placeTimer -= time().delta();
+                if (m_placeTimer <= 0.0f) {
+                    placeBlock();
+                    m_placeTimer += 0.25f;
+                }
+            }
+        } else {
+            m_placeTimer = 0.0f;
+        }
 
         if (m_platform->wasActionPressed("Pause")) {
             m_isPaused = !m_isPaused;
@@ -282,9 +373,103 @@ public:
         rb.previousPosition = spawnPos;
         world().registry().add<RigidBody>(bodyEntity, rb);
         m_thrownBodies.push_back(bodyEntity);
+
+        const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+        m_audio->play(m_soundIds.throwSound, 0.4f, pan);
+    }
+
+    void recordEdit(const glm::ivec3& block, BlockId blockId) {
+        const ChunkCoord coord = chunkOf(block);
+        const glm::ivec3 local = localOf(block);
+        const auto localIdx = static_cast<std::uint16_t>(ChunkData::index(local.x, local.y, local.z));
+        auto& edits = m_edits[coord];
+        for (auto& entry : edits) {
+            if (entry.first == localIdx) {
+                entry.second = blockId;
+                return;
+            }
+        }
+        edits.emplace_back(localIdx, blockId);
+    }
+
+    static bool overlapsHalfOpen(const Aabb& a, const Aabb& b) {
+        constexpr float kEps = 1e-4f;
+        return a.min.x < b.max.x - kEps && a.max.x > b.min.x + kEps && a.min.y < b.max.y - kEps &&
+               a.max.y > b.min.y + kEps && a.min.z < b.max.z - kEps && a.max.z > b.min.z + kEps;
+    }
+
+    void updateSelection() {
+        const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+        const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
+        if (!controller || !playerTransform) {
+            m_selectionHit = std::nullopt;
+            return;
+        }
+        const glm::vec3 eye = characterEyePosition(*controller, *playerTransform, time().alpha());
+        const glm::vec3 forward = controller->forward();
+        const Ray ray(eye, forward);
+
+        auto pickable = [this](BlockId id) {
+            return id != kAir && id != m_blocks.water && id != m_blocks.lava;
+        };
+        constexpr float kReachDistance = 6.0f;
+        m_selectionHit = raycastVoxels(m_world, ray, kReachDistance, pickable);
+    }
+
+    void breakBlock() {
+        if (!m_selectionHit) return;
+        const glm::ivec3 block = m_selectionHit->block;
+        const BlockId brokenId = m_world.getBlock(block);
+        if (brokenId != kAir) {
+            const auto mat = static_cast<std::size_t>(sandbox::soundMaterialForBlock(brokenId, m_registry));
+            const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kBreakVariants);
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+            m_audio->play(m_soundIds.materials[mat].breakVariants[variant], 0.45f, pan);
+        }
+        m_world.setBlock(block, kAir);
+        recordEdit(block, kAir);
+        updateSelection();
+    }
+
+    void placeBlock() {
+        if (!m_selectionHit) return;
+        const BlockId toPlace = m_hotbarBlocks[static_cast<std::size_t>(m_selectedSlot)];
+        if (toPlace == kAir) return;
+
+        const glm::ivec3 placePos = m_selectionHit->block + m_selectionHit->normal;
+        const BlockId currentId = m_world.getBlock(placePos);
+        if (currentId != kAir && currentId != m_blocks.water) return;
+
+        const Aabb blockBox(glm::vec3(placePos), glm::vec3(placePos) + glm::vec3(1.0f));
+
+        const auto* playerTf = world().registry().tryGet<Transform>(m_playerEntity);
+        const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+        if (playerTf && controller) {
+            const Aabb playerBox = characterAabb(playerTf->position, controller->halfExtents);
+            if (overlapsHalfOpen(blockBox, playerBox)) return;
+        }
+
+        for (const Entity e : m_thrownBodies) {
+            if (!world().registry().valid(e)) continue;
+            const auto* rb = world().registry().tryGet<RigidBody>(e);
+            const auto* tf = world().registry().tryGet<Transform>(e);
+            if (rb && tf) {
+                if (overlapsHalfOpen(blockBox, rb->bounds(tf->position))) return;
+            }
+        }
+
+        if (m_world.setBlock(placePos, toPlace)) {
+            recordEdit(placePos, toPlace);
+            const auto mat = static_cast<std::size_t>(sandbox::soundMaterialForBlock(toPlace, m_registry));
+            const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kPlaceVariants);
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+            m_audio->play(m_soundIds.materials[mat].placeVariants[variant], 0.4f, pan);
+            updateSelection();
+        }
     }
 
     void onUpdate(float /*dt*/) override {
+        updateSelection();
         handleActions();
 
         // Control del personaje: mirar con el ratón cuando el cursor está capturado y no en pausa
@@ -302,10 +487,71 @@ public:
         controller.input.sprint = m_platform->isActionDown("Sprint");
         controller.input.jump = m_platform->isActionDown("Jump");
 
+        // Salto: sonido al impulsarse en modo caminata estando apoyado
+        if (m_platform->wasActionPressed("Jump") && controller.mode == CharacterMode::Walk &&
+            controller.grounded && !m_isPaused) {
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+            m_audio->play(m_soundIds.jump, 0.35f, pan);
+        }
+
+        // Aterrizaje: transición false -> true con caída rápida (|velocity.y| > 6)
+        if (!controller.grounded) {
+            if (controller.velocity.y < 0.0f) {
+                m_lastFallSpeed = std::max(m_lastFallSpeed, -controller.velocity.y);
+            }
+        } else {
+            if (!m_wasGrounded && m_lastFallSpeed > 6.0f && !m_isPaused) {
+                const float gain = std::clamp((m_lastFallSpeed - 6.0f) / 12.0f + 0.3f, 0.3f, 1.0f);
+                const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+                m_audio->play(m_soundIds.land, gain, pan);
+            }
+            m_lastFallSpeed = 0.0f;
+        }
+        m_wasGrounded = controller.grounded;
+
         // Seguridad de streaming: no simular hasta que el chunk bajo los pies y el inferior estén cargados
         const glm::vec3 feet = world().registry().get<Transform>(m_playerEntity).position;
         controller.enabled = m_world.isLoaded(chunkOf(blockAt(feet))) &&
                              m_world.isLoaded(chunkOf(blockAt(feet) - glm::ivec3(0, 1, 0)));
+
+        // Pasos: cada 0.45 bloques caminando (0.3 al correr) sobre el bloque bajo los pies
+        if (controller.mode == CharacterMode::Walk && controller.grounded && !m_isPaused) {
+            const float dx = feet.x - m_prevFeet.x;
+            const float dz = feet.z - m_prevFeet.z;
+            const float dist = std::sqrt(dx * dx + dz * dz);
+            if (dist < 2.0f) {
+                m_stepAccumulator += dist;
+            }
+            const float stepInterval = controller.input.sprint ? 0.3f : 0.45f;
+            if (m_stepAccumulator >= stepInterval) {
+                m_stepAccumulator = std::fmod(m_stepAccumulator, stepInterval);
+
+                glm::ivec3 blockPos = blockAt(feet - glm::vec3(0.0f, 0.1f, 0.0f));
+                BlockId blockId = m_world.getBlock(blockPos);
+                if (blockId == kAir) {
+                    blockPos = blockAt(feet - glm::vec3(0.0f, 0.5f, 0.0f));
+                    blockId = m_world.getBlock(blockPos);
+                }
+                const auto mat =
+                    static_cast<std::size_t>(sandbox::soundMaterialForBlock(blockId, m_registry));
+                const std::size_t variant = m_audioRng.range(0, sandbox::SandboxSounds::kFootstepVariants);
+                const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.15f;
+                const float gain = controller.input.sprint ? 0.35f : 0.25f;
+                m_audio->play(m_soundIds.materials[mat].footsteps[variant], gain, pan);
+            }
+        } else {
+            m_stepAccumulator = 0.0f;
+        }
+        m_prevFeet = feet;
+
+        // Chapuzón al ingresar en agua
+        const BlockId feetBlock = m_world.getBlock(blockAt(feet + glm::vec3(0.0f, 0.2f, 0.0f)));
+        const bool inWater = (feetBlock == m_blocks.water);
+        if (inWater && !m_wasInWater && !m_isPaused) {
+            const float pan = (m_audioRng.nextFloat01() * 2.0f - 1.0f) * 0.1f;
+            m_audio->play(m_soundIds.splash, 0.5f, pan);
+        }
+        m_wasInWater = inWater;
 
         // Animaciones
         m_animTimer += time().unscaledDelta();
@@ -318,20 +564,40 @@ public:
                      sandbox::kLavaTile);
         }
 
+        // Ciclo día/noche (#35): T avanza el tiempo rápido (x60) mientras se mantenga presionada
+        const float timeSpeed = m_platform->isActionDown("FastTime") ? 60.0f : 1.0f;
+        const float timeDelta =
+            m_isPaused ? (m_platform->isActionDown("FastTime") ? time().unscaledDelta() * 60.0f : 0.0f)
+                       : (time().delta() * timeSpeed);
+        m_dayNight.advance(timeDelta);
+        updateFog();
+
+        // Música día / noche con fundido cruzado de 4 s (#64)
+        const bool isNight = (m_dayNight.hour >= 19.5f || m_dayNight.hour < 5.5f);
+        if (isNight != m_isNightMusic) {
+            m_isNightMusic = isNight;
+            m_audio->playSong(m_isNightMusic ? m_nightSongId : m_daySongId, 4.0f);
+        }
+
         streamChunks();
     }
 
     void onRender() override {
         const GpuFrame* frame = m_gpu->frame();
         if (!frame) return; // Ventana minimizada
+        const glm::vec3 horizon = m_dayNight.sky().horizonColor;
         if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
-                               glm::vec4(kSkyColor, 1.0f)))
+                               glm::vec4(horizon, 1.0f)))
             return;
         // La cámara del ECS: el aspecto ya está ajustado al tamaño real del swapchain (CameraSystem)
         Registry& registry = world().registry();
         const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
                                                      registry.get<Camera>(m_cameraEntity), viewport());
         m_renderer->setCamera(camera.viewProjection, camera.position);
+        if (m_skyRenderer) {
+            m_skyRenderer->draw(*m_renderer, glm::inverse(camera.viewProjection), camera.position,
+                                m_dayNight.sky());
+        }
         // F4: el culling usa el frustum congelado (se ve qué se descarta al salir de él)
         if (!m_frustumFrozen) m_frozenViewProjection = camera.viewProjection;
         const Frustum cullFrustum =
@@ -378,16 +644,16 @@ public:
     }
 
 private:
-    static constexpr int kBaseRenderDistance = 4;           // Distancia base sin LOD (9×9 chunks)
-    static constexpr int kDoubleRenderDistance = 8;         // Distancia doblada con LOD (17×17 chunks)
-    static constexpr glm::vec3 kSkyColor{0.5f, 0.7f, 1.0f}; // Fondo y niebla
+    static constexpr int kBaseRenderDistance = 4;   // Distancia base sin LOD (9×9 chunks)
+    static constexpr int kDoubleRenderDistance = 8; // Distancia doblada con LOD (17×17 chunks)
 
     void updateFog() {
         const int renderDist = m_lodEnabled ? kDoubleRenderDistance : kBaseRenderDistance;
-        Lighting lighting;
-        lighting.fogColor = kSkyColor;
-        lighting.fogStart = (renderDist - 1.5f) * kChunkSize;
-        lighting.fogEnd = renderDist * kChunkSize;
+        Lighting base;
+        base.fog = true;
+        base.fogStart = (renderDist - 1.5f) * kChunkSize;
+        base.fogEnd = renderDist * kChunkSize;
+        const Lighting lighting = m_dayNight.lighting(base);
         if (m_renderer) m_renderer->setLighting(lighting);
     }
 
@@ -456,59 +722,155 @@ private:
         return terrain;
     }
 
+    // HUD del juego (F11): punto de mira (crosshair), barra de acceso rápido (hotbar de 9 slots con el
+    // tile superior de cada bloque) e indicador de modo ("Caminar" / "Volar") y la hora
+    void drawHud(Renderer2D& ui) {
+        if (!m_showHud) return;
+        const glm::vec2 size = ui.size();
+
+        // 1. Punto de mira (crosshair): dos rectángulos centrados en pantalla
+        const glm::vec2 center = glm::floor(size * 0.5f);
+        constexpr float kCrosshairLen = 10.0f;
+        constexpr float kCrosshairThick = 2.0f;
+        const glm::vec4 crosshairColor(1.0f, 1.0f, 1.0f, 0.8f);
+        ui.rect({center.x - kCrosshairLen * 0.5f, center.y - kCrosshairThick * 0.5f},
+                {kCrosshairLen, kCrosshairThick}, crosshairColor);
+        ui.rect({center.x - kCrosshairThick * 0.5f, center.y - kCrosshairLen * 0.5f},
+                {kCrosshairThick, kCrosshairLen}, crosshairColor);
+
+        // 2. Hotbar de 9 slots abajo con la cara superior de cada bloque
+        constexpr float kSlotSize = 28.0f;
+        constexpr float kSlotMargin = 4.0f;
+        constexpr float kIconPadding = 4.0f;
+        constexpr float kIconSize = kSlotSize - 2.0f * kIconPadding;
+        constexpr int kSlots = 9;
+        const float totalWidth = kSlots * kSlotSize + (kSlots - 1) * kSlotMargin;
+        const float startX = glm::floor((size.x - totalWidth) * 0.5f);
+        const float startY = size.y - kSlotSize - 8.0f;
+
+        const TextureAtlas atlas{sandbox::kAtlasColumns, sandbox::kAtlasRows};
+        for (int i = 0; i < kSlots; ++i) {
+            const glm::vec2 slotPos(startX + static_cast<float>(i) * (kSlotSize + kSlotMargin), startY);
+            // Fondo del slot
+            ui.rect(slotPos, {kSlotSize, kSlotSize}, {0.0f, 0.0f, 0.0f, 0.5f});
+            // Borde: seleccionado destacado (2 px, blanco) o normal (1 px)
+            if (i == m_selectedSlot) {
+                ui.rectOutline(slotPos, {kSlotSize, kSlotSize}, {1.0f, 1.0f, 1.0f, 0.95f}, 2.0f);
+            } else {
+                ui.rectOutline(slotPos, {kSlotSize, kSlotSize}, {1.0f, 1.0f, 1.0f, 0.3f}, 1.0f);
+            }
+
+            // Cara superior del bloque desde el atlas
+            const BlockId blockId = m_hotbarBlocks[static_cast<std::size_t>(i)];
+            const BlockDesc& desc = m_registry.get(blockId);
+            const int tile = desc.tile(BlockFace::Top);
+            if (tile >= 0 && m_atlas) {
+                const UvRect uv = atlas.tileUv(tile);
+                ui.image(m_atlas, slotPos + glm::vec2(kIconPadding), {kIconSize, kIconSize}, uv.min, uv.max,
+                         glm::vec4(1.0f), true);
+            }
+        }
+
+        // 3. Indicador de modo ("Caminar" / "Volar") y la hora
+        const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
+        const char* modeStr = (controller && controller->mode == CharacterMode::Fly) ? "Volar" : "Caminar";
+        const int hourInt = static_cast<int>(m_dayNight.hour);
+        const int minuteInt = static_cast<int>((m_dayNight.hour - static_cast<float>(hourInt)) * 60.0f);
+        char hourBuf[32];
+        std::snprintf(hourBuf, sizeof(hourBuf), "%s  %02d:%02d", modeStr, hourInt, minuteInt);
+
+        const glm::vec2 infoPos(8.0f, 8.0f);
+        const float textWidth = static_cast<float>(std::strlen(hourBuf)) * 8.0f;
+        ui.rect(infoPos, {textWidth + 8.0f, 16.0f}, {0.0f, 0.0f, 0.0f, 0.4f});
+        ui.text(infoPos + glm::vec2(4.0f, 4.0f), hourBuf, {1.0f, 1.0f, 1.0f, 0.9f});
+    }
+
     // F1: FPS, gráfico de tiempos y contadores, encima de la escena (Renderer2D)
     void drawOverlay(const GpuFrame& frame) {
         m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame.acquireMs);
-        if (!m_overlay.visible()) return;
-        const RenderStats& render = m_renderer->stats();
-        const StreamingStats streaming = m_streamer->stats();
-        const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
-        const glm::ivec3 block = blockAt(playerPos);
-        m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
-                                           std::to_string(render.totalTriangles() / 1000) + "k triangulos");
-        std::array<int, 3> lodChunks = {0, 0, 0};
-        std::array<std::size_t, 3> lodTris = {0, 0, 0};
-        for (const auto& [coord, gpu] : m_gpuChunks) {
-            const int l = std::clamp(gpu.lod, 0, 2);
-            lodChunks[l]++;
-            lodTris[l] += (gpu.opaque.indexCount + gpu.cutout.indexCount + gpu.transparent.indexCount) / 3;
+        if (m_overlay.visible()) {
+            const RenderStats& render = m_renderer->stats();
+            const StreamingStats streaming = m_streamer->stats();
+            const glm::vec3 playerPos = world().registry().get<Transform>(m_playerEntity).position;
+            const glm::ivec3 block = blockAt(playerPos);
+            const int hourInt = static_cast<int>(m_dayNight.hour);
+            const int minuteInt = static_cast<int>((m_dayNight.hour - static_cast<float>(hourInt)) * 60.0f);
+            char hourBuf[32];
+            std::snprintf(hourBuf, sizeof(hourBuf), "%02d:%02d", hourInt, minuteInt);
+            m_overlay.setCounter("hora", hourBuf);
+            m_overlay.setCounter("dibujo", std::to_string(render.totalDrawCalls()) + " llamadas, " +
+                                               std::to_string(render.totalTriangles() / 1000) +
+                                               "k triangulos");
+            std::array<int, 3> lodChunks = {0, 0, 0};
+            std::array<std::size_t, 3> lodTris = {0, 0, 0};
+            for (const auto& [coord, gpu] : m_gpuChunks) {
+                const int l = std::clamp(gpu.lod, 0, 2);
+                lodChunks[l]++;
+                lodTris[l] +=
+                    (gpu.opaque.indexCount + gpu.cutout.indexCount + gpu.transparent.indexCount) / 3;
+            }
+            m_overlay.setCounter(
+                "lod", (m_lodEnabled ? "ON" : "OFF") + std::string(" (L0: ") + std::to_string(lodChunks[0]) +
+                           "c/" + std::to_string(lodTris[0] / 1000) +
+                           "k, L1: " + std::to_string(lodChunks[1]) + "c/" +
+                           std::to_string(lodTris[1] / 1000) + "k, L2: " + std::to_string(lodChunks[2]) +
+                           "c/" + std::to_string(lodTris[2] / 1000) + "k)");
+            m_overlay.setCounter("chunks", std::to_string(streaming.loaded) + " cargados, " +
+                                               std::to_string(m_gpuChunks.size()) + " mallados, pool " +
+                                               std::to_string(streaming.pooled));
+            m_overlay.setCounter("trabajos", std::to_string(streaming.pendingGenerate) + " generar + " +
+                                                 std::to_string(streaming.pendingMesh) + " mallar");
+            m_overlay.setCounter("memoria", std::to_string(streaming.cpuBytes() / 1024 / 1024) + " MB CPU, " +
+                                                std::to_string(gpuBytes() / 1024 / 1024) + " MB GPU");
+            m_overlay.setCounter("posicion", std::to_string(block.x) + " " + std::to_string(block.y) + " " +
+                                                 std::to_string(block.z));
+            if (m_selectionHit) {
+                const BlockDesc& desc = m_registry.get(m_selectionHit->blockId);
+                m_overlay.setCounter("seleccion", std::to_string(m_selectionHit->block.x) + " " +
+                                                      std::to_string(m_selectionHit->block.y) + " " +
+                                                      std::to_string(m_selectionHit->block.z) + " (" +
+                                                      desc.name + ")");
+            } else {
+                m_overlay.setCounter("seleccion", "-");
+            }
+            m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
+            m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
+                                                std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
+            m_overlay.setCounter(
+                "", "Clic romper/colocar  1-9 hotbar  F1 panel  F2 LOD  F3 chunks  F4 frustum  F11 HUD  "
+                    "F volar  G lanzar  M atlas  N musica  P pausa");
+
+            m_overlay.setProfile(profiler());
         }
-        m_overlay.setCounter(
-            "lod", (m_lodEnabled ? "ON" : "OFF") + std::string(" (L0: ") + std::to_string(lodChunks[0]) +
-                       "c/" + std::to_string(lodTris[0] / 1000) + "k, L1: " + std::to_string(lodChunks[1]) +
-                       "c/" + std::to_string(lodTris[1] / 1000) + "k, L2: " + std::to_string(lodChunks[2]) +
-                       "c/" + std::to_string(lodTris[2] / 1000) + "k)");
-        m_overlay.setCounter("chunks", std::to_string(streaming.loaded) + " cargados, " +
-                                           std::to_string(m_gpuChunks.size()) + " mallados, pool " +
-                                           std::to_string(streaming.pooled));
-        m_overlay.setCounter("trabajos", std::to_string(streaming.pendingGenerate) + " generar + " +
-                                             std::to_string(streaming.pendingMesh) + " mallar");
-        m_overlay.setCounter("memoria", std::to_string(streaming.cpuBytes() / 1024 / 1024) + " MB CPU, " +
-                                            std::to_string(gpuBytes() / 1024 / 1024) + " MB GPU");
-        m_overlay.setCounter("posicion", std::to_string(block.x) + " " + std::to_string(block.y) + " " +
-                                             std::to_string(block.z));
-        m_overlay.setCounter("atlas", m_atlas == &m_pngAtlas ? "PNG" : "procedural");
-        m_overlay.setCounter("cuerpos", std::to_string(m_thrownBodies.size()) + " (" +
-                                            std::to_string(m_physicsWorld.lastPairCount()) + " pares)");
-        m_overlay.setCounter(
-            "", "F1 panel  F2 LOD  F3 chunks  F4 frustum  F volar  G lanzar  M atlas  N musica  P pausa");
 
-        m_overlay.setProfile(profiler());
-
-        // Escala entera: la fuente 8x8 queda nítida en pantallas HiDPI
-        {
+        // UI 2D: HUD debajo, F1 overlay encima (ambos con escala entera para píxeles nítidos)
+        if (m_showHud || m_overlay.visible()) {
             MGE_PROFILE_SCOPE(profiler(), "UI");
             m_ui->begin(frame.width, frame.height, std::max(1.0f, std::round(frame.displayScale)));
-            m_overlay.draw(*m_ui);
+            if (m_showHud) {
+                drawHud(*m_ui);
+            }
+            if (m_overlay.visible()) {
+                m_overlay.draw(*m_ui);
+            }
             m_ui->flush(*frame.cmd, frame.swapchain);
         }
     }
 
     // F3: bordes de los chunks (verde = mallado, amarillo = con datos sin malla, rojo = sucio), la caja de
-    // colisión de la cámara y, con F4, el frustum congelado
+    // colisión del personaje y, con F4, el frustum congelado. El contorno del bloque seleccionado se dibuja
+    // siempre que haya uno apuntado.
     void drawDebug() {
-        if (!m_showDebug && !m_frustumFrozen && m_thrownBodies.empty()) return;
         m_debug->clear();
+
+        // Contorno de selección del bloque (siempre visible, inflado por 0.002 en negro)
+        if (m_selectionHit) {
+            constexpr float kInflate = 0.002f;
+            const glm::vec3 bMin = glm::vec3(m_selectionHit->block) - glm::vec3(kInflate);
+            const glm::vec3 bMax = glm::vec3(m_selectionHit->block) + glm::vec3(1.0f + kInflate);
+            m_debug->aabb(Aabb(bMin, bMax), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+
         if (m_showDebug) {
             const auto* playerTransform = world().registry().tryGet<Transform>(m_playerEntity);
             const auto* controller = world().registry().tryGet<CharacterController>(m_playerEntity);
@@ -546,9 +908,11 @@ private:
         if (!m_pngAtlas) {
             m_pngAtlas = Texture2D::fromFile(m_gpu->device(), "textures/Minecraft-like_3d_tileset.png", true);
             if (!m_pngAtlas) {
-                MGE_LOG_ERROR("Sandbox", "No se pudo cargar el atlas. Assets en: ", assetRoot().string(),
-                              " (se puede cambiar con MGE_ASSET_DIR)");
-                return false;
+                if (!m_pngMissingLogged) {
+                    MGE_LOG_WARN("Sandbox", "No se encontró el atlas PNG; permaneciendo en atlas procedural");
+                    m_pngMissingLogged = true;
+                }
+                return useProceduralAtlas();
             }
         }
         m_atlas = &m_pngAtlas;
@@ -588,6 +952,18 @@ private:
     AudioModule* m_audio = nullptr;
     static constexpr float kMusicVolume = 0.7f;
     bool m_musicOn = true; // N
+    sandbox::SandboxSounds m_sounds;
+    sandbox::RegisteredSounds m_soundIds;
+    Pcg32 m_audioRng{1337, 7};
+    SongId m_daySongId = kInvalidSong;
+    SongId m_nightSongId = kInvalidSong;
+    bool m_isNightMusic = false;
+
+    float m_stepAccumulator = 0.0f;
+    glm::vec3 m_prevFeet{0.0f};
+    bool m_wasGrounded = false;
+    float m_lastFallSpeed = 0.0f;
+    bool m_wasInWater = false;
 
     static mge::ApplicationConfig makeConfig() {
         mge::ApplicationConfig config;
@@ -598,6 +974,20 @@ private:
     }
 
     std::unique_ptr<MeshRenderer> m_renderer;
+    std::unique_ptr<SkyRenderer> m_skyRenderer;
+    DayNight m_dayNight{9.0f, 600.0f}; // Comienza a las 9:00, día de 10 minutos (600 s)
+    std::array<BlockId, 9> m_hotbarBlocks{};
+    int m_selectedSlot = 0;
+    bool m_showHud = true; // F11
+    bool m_pngMissingLogged = false;
+
+    using VoxelEdits =
+        std::unordered_map<ChunkCoord, std::vector<std::pair<std::uint16_t, BlockId>>, ChunkCoordHash>;
+    VoxelEdits m_edits;
+    std::optional<VoxelRaycastHit> m_selectionHit;
+    float m_breakTimer = 0.0f;
+    float m_placeTimer = 0.0f;
+    bool m_breakCapturedThisClick = false;
     Entity m_playerEntity; // Transform + CharacterController
     Entity m_cameraEntity; // Transform + Camera + CharacterCamera
     PhysicsWorld m_physicsWorld;

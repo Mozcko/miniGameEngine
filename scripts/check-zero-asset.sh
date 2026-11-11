@@ -60,12 +60,12 @@ cd "$tmp_dir"
 export SDL_VIDEODRIVER=offscreen
 export SDL_AUDIODRIVER=dummy
 export MGE_MAX_FRAMES=120
-export SANDBOX_ATLAS=procedural
 # VK_DRIVER_FILES si lavapipe está disponible para entornos headless locales sin pantalla
 if [[ -z "${VK_DRIVER_FILES:-}" && -f "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" ]]; then
     export VK_DRIVER_FILES="/usr/share/vulkan/icd.d/lvp_icd.x86_64.json"
 fi
 unset MGE_ASSET_DIR || true
+unset SANDBOX_ATLAS || true
 
 failed=0
 

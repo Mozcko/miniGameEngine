@@ -234,5 +234,52 @@ namespace mge {
             song.addTrack(iBell, {bells});
             return song;
         }
+
+        Song sandboxNight() {
+            // Canción nocturna calmada: tempo lento (52 BPM), pads oscuros y campanillas dispersas
+            Song song(52.0f, 2);
+            Instrument pad;
+            pad.wave = Waveform::Sine;
+            pad.envelope = {1.5f, 1.2f, 0.7f, 2.5f};
+            pad.filter = FilterMode::LowPass;
+            pad.cutoff = 700.0f;
+            pad.gain = 0.12f;
+            pad.vibratoDepth = 0.04f;
+            pad.vibratoRate = 0.25f;
+            pad.delaySend = 0.35f;
+
+            Instrument padHigh;
+            padHigh.wave = Waveform::Triangle;
+            padHigh.envelope = {1.8f, 1.0f, 0.5f, 2.0f};
+            padHigh.filter = FilterMode::LowPass;
+            padHigh.cutoff = 850.0f;
+            padHigh.pan = -0.2f;
+            padHigh.gain = 0.07f;
+            padHigh.delaySend = 0.4f;
+
+            Instrument chime;
+            chime.wave = Waveform::Sine;
+            chime.envelope = {0.005f, 0.45f, 0.0f, 0.8f};
+            chime.gain = 0.15f;
+            chime.pan = 0.25f;
+            chime.delaySend = 0.5f;
+
+            const int iPadLow = song.addInstrument(pad);
+            const int iPadHigh = song.addInstrument(padHigh);
+            const int iChime = song.addInstrument(chime);
+
+            // Progresión menor nocturna y contemplativa (La menor, Fa, Do, Mi menor)
+            const int low =
+                song.pattern("A2 - - - - - - - | F2 - - - - - - - | C3 - - - - - - - | E2 - - - - - - -");
+            const int high =
+                song.pattern("C4 - - - E4 - - - | A3 - - - C4 - - - | G3 - - - E4 - - - | B3 - - - G4 - - -");
+            const int chimes =
+                song.pattern(". . E5 . . . . . | . . . C5 . . . . | . . G5 . . . . . | . . . B4 . . . .");
+
+            song.addTrack(iPadLow, {low});
+            song.addTrack(iPadHigh, {high});
+            song.addTrack(iChime, {chimes});
+            return song;
+        }
     }
 }

@@ -153,6 +153,7 @@ if(MGE_BUILD_MODULES)
         render/test_render_scenes.cpp
         render/test_graphics.cpp
         render/test_text.cpp
+        render/test_daynight.cpp
     )
     target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world platformer2d_view doctest_header)
     target_compile_definitions(render_tests PRIVATE
@@ -178,6 +179,7 @@ if(MGE_BUILD_MODULES)
         test_main.cpp
         game/test_sandbox_blocks.cpp
         game/test_sandbox_terrain.cpp
+        game/test_sandbox_audio.cpp
     )
     target_link_libraries(game_tests PRIVATE sandbox_world doctest_header)
     mge_set_warnings(game_tests)
