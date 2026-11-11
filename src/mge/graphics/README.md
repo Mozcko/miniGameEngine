@@ -31,7 +31,7 @@ and fog (#33), procedural materials (#34) and debug drawing (#38).
 
 ```cpp
 mge::GpuDevice& device = getModule<mge::GpuModule>()->device();
-mge::Texture2D atlas = mge::Texture2D::fromFile(device, mge::assetPath("textures/atlas.png"));   // asset path
+mge::Texture2D atlas = mge::Texture2D::fromFile(device, "textures/atlas.png");   // relative to asset root
 mge::Texture2D noise = mge::Texture2D::fromPixels(device, 64, 64, pixels.data());               // code path
 ```
 
