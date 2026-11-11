@@ -5,8 +5,9 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games built from **pure math/code** *or* with regular asset files
-  (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M9, issues #1–#67 and #96–#107,
-  epics #68–#76, #101, #107 on Mozcko/miniGameEngine). **M0–M8 are done (engine MVP); next is M9 (mge CLI, post‑1.0).**
+  (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M10, issues #1–#67, #96–#107 and #160–#164,
+  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M8 are done (engine MVP); next is M9 (mge CLI, post‑1.0), then
+  M10 (C API + Python bindings).**
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,

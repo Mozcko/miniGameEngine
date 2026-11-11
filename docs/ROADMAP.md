@@ -186,6 +186,17 @@ _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine cons
 | [#105](https://github.com/Mozcko/miniGameEngine/issues/105) | Interactive project wizard (TUI) for mge new | enhancement, priority:medium, size:M |
 | [#106](https://github.com/Mozcko/miniGameEngine/issues/106) | Project templates: 2D, 3D and headless | enhancement, priority:medium, size:L |
 
+### M10 · Language Bindings — [epic #164](https://github.com/Mozcko/miniGameEngine/issues/164)
+
+_Write games in **C** and **Python**, not only C++._ A stable C API (`mge_c`) is the ABI every non‑C++ language binds to; Python uses nanobind over the C++ API with the same v1 scope. Starts simple with C and Python; more languages (Rust, Zig, Odin, C#, Lua…) can follow on the C API. Needs #103 from M9; #163 also needs #104–#106.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#160](https://github.com/Mozcko/miniGameEngine/issues/160) | ADR: language bindings strategy (C API as stable ABI, Python via nanobind) | documentation, priority:high, size:S |
+| [#161](https://github.com/Mozcko/miniGameEngine/issues/161) | C API v1 (`mge_c`): write games in plain C | enhancement, priority:high, size:L |
+| [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | Python bindings v1 (`import mge`) via nanobind | enhancement, priority:high, size:L |
+| [#163](https://github.com/Mozcko/miniGameEngine/issues/163) | `mge new --lang c\|python`: project templates for C and Python | enhancement, priority:medium, size:M |
+
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61) and ✅ M8 (#35, #36, #62–#67) are done: the engine MVP is complete. Next: M9 (mge CLI and project wizard, post‑1.0). Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61) and ✅ M8 (#35, #36, #62–#67) are done: the engine MVP is complete. Next: M9 (mge CLI and project wizard, post‑1.0), then M10 (C and Python bindings). Each issue's **Depends on** section on GitHub lists its prerequisites.
