@@ -36,6 +36,22 @@ cmake --preset dev && cmake --build --preset dev
 cmake --build --preset dev --target run   # build + run in one CMake command
 ```
 
+### Using the `mge` CLI
+
+The engine provides a cargo-like developer CLI tool (`tools/mge`):
+
+```bash
+# Check installed tools and system requirements
+./build/mge doctor
+
+# Create and run a new game from template
+./build/mge new my_game --template 3d
+cd my_game
+mge run
+```
+
+See **[docs/CLI.md](docs/CLI.md)** for complete documentation on all subcommands (`new`, `build`, `run`, `test`, `check`, `clean`, `doctor`).
+
 ### Controls (SandboxApp)
 
 | Input                | Action                                              |
@@ -65,6 +81,7 @@ miniGameEngine/
 ├── README.md               This file
 ├── LICENSE                 GNU LGPL v2.1
 ├── docs/                   Cross‑cutting documentation
+│   ├── CLI.md              mge CLI tool guide (new/build/run/test/check/doctor)
 │   ├── FIRST_GAME.md       Your first game in 10 minutes
 │   ├── GUIDE.md            Comprehensive user guide and engine manual
 │   ├── ROADMAP.md          Goals, decisions, milestones → GitHub issues
@@ -72,6 +89,8 @@ miniGameEngine/
 │   ├── ARCHITECTURE.md     Main loop, namespaces, rendering pipeline, ownership
 │   ├── BUILDING.md         Dependencies, build/run, troubleshooting
 │   └── KNOWN_ISSUES.md     Bugs, quirks and technical debt found while reviewing
+├── tools/                  Developer utilities
+│   └── mge/                mge CLI executable (C++17, std only + mge_core)
 ├── src/                    Engine source             → src/README.md
 │   └── mge/                One folder per CMake target → src/mge/README.md
 │       ├── core/           mge_core: headless, no SDL/GPU (Time)

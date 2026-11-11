@@ -28,6 +28,7 @@ option(MGE_BUILD_EXAMPLES "Compilar los ejemplos (examples/)" ${PROJECT_IS_TOP_L
 option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
+option(MGE_BUILD_CLI "Compilar la herramienta CLI mge (tools/mge)" ${PROJECT_IS_TOP_LEVEL})
 
 set(MGE_SOURCE_ASSET_FALLBACK_DEFAULT ON)
 if(MGE_INSTALL)
@@ -184,6 +185,11 @@ if(MGE_BUILD_BENCHMARKS)
     add_subdirectory(bench)
 endif()
 
+# --- Herramientas (CLI) ---
+if(MGE_BUILD_CLI)
+    add_subdirectory(tools/mge)
+endif()
+
 # --- Tests unitarios ---
 if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
@@ -211,4 +217,5 @@ if(MGE_INSTALL)
         "${miniGameEngine_SOURCE_DIR}/cmake/MgeEmbedSpirv.cmake"
         DESTINATION lib/cmake/mge
     )
+    install(DIRECTORY templates/ DESTINATION share/mge/templates)
 endif()
