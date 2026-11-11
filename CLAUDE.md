@@ -148,8 +148,8 @@ its walkthrough is `examples/guide_game`, built in CI – keep them in sync).
 
 ## Games
 Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MODULES …] [HEADLESS] [SMOKE_FRAMES n])`
-(`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `scripts/new-game.sh <name> [--headless]`
-→ `examples/<name>/` from `templates/` (`*.in`, CI builds both templates).
+(`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `mge new <name> [--template 3d|2d|headless]`
+(or `scripts/new-game.sh` wrapper) → `examples/<name>/` or standalone from `templates/` (`*.in`, CI builds and tests templates).
 
 ## Procgen
 `mge_procgen` (headless, always built): `MeshData` (SoA, all attributes same length, `validate()`, `writeObj`).

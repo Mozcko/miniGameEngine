@@ -28,6 +28,7 @@ option(MGE_BUILD_EXAMPLES "Compilar los ejemplos (examples/)" ${PROJECT_IS_TOP_L
 option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
+option(MGE_BUILD_CLI "Compilar la herramienta CLI mge (tools/mge)" ${PROJECT_IS_TOP_LEVEL})
 
 option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
 if(MGE_INSTALL AND MGE_SOURCE_ASSET_FALLBACK)
@@ -183,6 +184,16 @@ if(MGE_BUILD_BENCHMARKS)
     add_subdirectory(bench)
 endif()
 
+# --- Herramientas (CLI) ---
+if(MGE_BUILD_CLI)
+    if(WIN32)
+        set(MGE_BUILD_CLI OFF CACHE BOOL "Compilar la herramienta CLI mge (tools/mge)" FORCE)
+        message(STATUS "mge CLI: desactivado en Windows (tools/mge/Process.cpp requiere POSIX)")
+    else()
+        add_subdirectory(tools/mge)
+    endif()
+endif()
+
 # --- Tests unitarios ---
 if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
@@ -210,4 +221,5 @@ if(MGE_INSTALL)
         "${miniGameEngine_SOURCE_DIR}/cmake/MgeEmbedSpirv.cmake"
         DESTINATION lib/cmake/mge
     )
+    install(DIRECTORY templates/ DESTINATION share/mge/templates)
 endif()

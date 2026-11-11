@@ -65,10 +65,11 @@
             "type": "pickString",
             "description": "Plantilla",
             "options": [
-                { "label": "window (ventana)", "value": "" },
-                { "label": "headless (sin ventana)", "value": "--headless" }
+                { "label": "3d (mundo 3D procedimental con iluminación y física)", "value": "--template 3d" },
+                { "label": "2d (juego pixel-space con Renderer2D y fuentes)", "value": "--template 2d" },
+                { "label": "headless (simulación determinista sin ventana ni GPU)", "value": "--template headless" }
             ],
-            "default": ""
+            "default": "--template 3d"
         }
     ]
 }

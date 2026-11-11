@@ -405,4 +405,65 @@ jobs:
           cmake --build "${RUNNER_TEMP:-/tmp}/game_headless/build"
           ctest --test-dir "${RUNNER_TEMP:-/tmp}/game_headless/build" --output-on-failure
 
+  # Herramienta mge CLI (Issue #104)
+  cli:
+    name: mge cli
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/ci-install-deps.sh
+
+      - name: Install system SDL3
+        run: scripts/ci-install-sdl3.sh
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: cli-release
+
+      - name: Configure and install engine with CLI (Release)
+        run: |
+          cmake -S . -B build-install -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/mge-prefix \
+            -DMGE_INSTALL=ON \
+            -DMGE_SOURCE_ASSET_FALLBACK=OFF \
+            -DMGE_BUILD_CLI=ON \
+            -DMGE_BUILD_TESTS=OFF \
+            -DMGE_BUILD_BENCHMARKS=OFF \
+            -DMGE_BUILD_EXAMPLES=OFF \
+            -DMGE_BUILD_SANDBOX=OFF \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build-install
+          cmake --install build-install
+
+      - name: Verify mge version and doctor
+        run: |
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          mge --version
+          mge doctor
+
+      - name: Test mge new, build, test with 3D template
+        run: |
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          export CMAKE_PREFIX_PATH=/tmp/mge-prefix
+          mge new my_game_3d --template 3d --dir "${RUNNER_TEMP:-/tmp}/my_game_3d"
+          cd "${RUNNER_TEMP:-/tmp}/my_game_3d"
+          mge build
+          mge test
+
+      - name: Test mge new, build, test with headless template
+        run: |
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          export CMAKE_PREFIX_PATH=/tmp/mge-prefix
+          mge new my_game_headless --template headless --dir "${RUNNER_TEMP:-/tmp}/my_game_headless"
+          cd "${RUNNER_TEMP:-/tmp}/my_game_headless"
+          mge build
+          mge test
+          mge check
+          mge clean
+
 

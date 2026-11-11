@@ -200,3 +200,14 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(sdf_glide_tests)
     doctest_discover_tests(sdf_glide_tests TEST_PREFIX "sdf_glide: ")
 endif()
+
+# --- Tests del CLI mge ---
+if(MGE_BUILD_CLI)
+    add_executable(mge_cli_tests
+        test_main.cpp
+        cli/test_cli.cpp
+    )
+    target_link_libraries(mge_cli_tests PRIVATE mge_cli_core doctest_header)
+    mge_set_warnings(mge_cli_tests)
+    doctest_discover_tests(mge_cli_tests TEST_PREFIX "cli: ")
+endif()
