@@ -526,6 +526,7 @@ jobs:
           pytest bindings/python/tests -v
 
       - name: Verify nanobind stub generation
+        if: matrix.python-version == '3.12'
         run: |
           python -m nanobind.stubgen -m mge._mge -o bindings/python/mge/_mge.pyi
           git diff --exit-code bindings/python/mge/_mge.pyi
