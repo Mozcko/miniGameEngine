@@ -31,6 +31,9 @@ Files inside templates use the `.in` suffix and contain placeholders substituted
 | `@GAME_TITLE@` | `Space Shooter` | Human-readable title for window headers and documentation. |
 | `@MGE_VERSION@` | `0.9.0` | Target engine release version for FetchContent fallbacks. |
 
+> [!NOTE]
+> `FetchContent` in templates uses `GIT_TAG v@MGE_VERSION@` (e.g. `v0.9.0`). This tag must be created on GitHub once milestone M9 merges. For testing generated projects prior to release tagging, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
+
 The `.in` suffix keeps template source files out of clang-format and clang-tidy in-tree, as placeholders are not valid C++ identifiers. When a project is generated, `scripts/new-game.sh` runs `clang-format` on all generated `.h` and `.cpp` files.
 
 ## How to Add a New Template
