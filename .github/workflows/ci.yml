@@ -210,7 +210,7 @@ jobs:
           -DMGE_BUILD_BENCHMARKS=OFF
 
       - name: Build executables
-        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide guide_game
+        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide guide_game c_hello
 
       - name: Run zero-asset check
         run: scripts/check-zero-asset.sh build-release --require-strace
@@ -324,6 +324,17 @@ jobs:
 
       - name: Test consumer with find_package (offscreen smoke test)
         run: ctest --test-dir build-consumer-pkg --output-on-failure
+
+      - name: Build C consumer with find_package(mge)
+        run: |
+          cmake -S samples/c_consumer -B build-c-consumer-pkg -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/tmp/mge-prefix \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake --build build-c-consumer-pkg
+
+      - name: Test C consumer with find_package (offscreen smoke test)
+        run: ctest --test-dir build-c-consumer-pkg --output-on-failure
 
       - name: Build consumer with FetchContent
         run: |

@@ -34,6 +34,7 @@ add_subdirectory(procgen)
 add_subdirectory(voxel)
 add_subdirectory(synth)
 add_subdirectory(physics)
+add_subdirectory(c)
 
 if(MGE_BUILD_MODULES)
     add_subdirectory(platform)
@@ -64,6 +65,7 @@ if(MGE_INSTALL)
         mge_voxel
         mge_synth
         mge_physics
+        mge_c
     )
     if(MGE_BUILD_MODULES)
         list(APPEND MGE_EXPORT_TARGETS

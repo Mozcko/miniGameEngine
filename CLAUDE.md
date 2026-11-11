@@ -211,6 +211,14 @@ write). `SdfRenderer(device, color, depth, gameFrag)` – the game's fragment sh
 `mge/sdf_pass.glsl`; `draw(renderer, SdfFrame{viewProj, invViewProj, camPos, time, params[4]}, lighting)` after opaque: raymarches,
 lights like meshes and writes `gl_FragDepth`, so SDFs intersect rasterized geometry. CPU collision = same formulas in C++ (`Sdf.h`).
 
+## C API (M10)
+`mge_c` (`<mge/c/mge_c.h>`, pure C99) is the stable ABI for plain C games and foreign language bindings (ADR 0006, #161).
+- **Target**: `mge::c` (STATIC always; SHARED when `-DMGE_BUILD_C_SHARED=ON`). Exported and installable.
+- **`main()`**: C games own `main()` and call `mge_app_run(&config, &callbacks)`. Build helper: `mge_add_c_game(name SOURCES ... [SMOKE_FRAMES n])`.
+- **Runtime ECS**: `mge_component_register(app, name, size, align)` allocates type-erased aligned pools in `Registry`; built-in components (Transform, Camera, CharacterController, RigidBody) are exposed directly.
+- **GPU Resource Tracking**: `GpuResourceTracker` tracks all mesh and texture handles; `GpuModule::onShutdown` invalidates them before destroying `GpuDevice`, making handles inert and preventing GPU shutdown hangs.
+- **Tests & Samples**: Pure C99 test suite in `tests/c/` (`mge_c_tests`), zero-asset example `examples/c_hello`, and package verification in `samples/c_consumer`. Full guide in `docs/C_API.md`.
+
 ## Assets (ADR 0004, #65, `docs/ASSETS.md`)
 Loaders (`Texture2D::fromFile`, `AudioModule::loadWav`, `loadTtfFontFile`, `platformer::loadLevel`) take paths **relative to the asset
 root** (or absolute) and resolve them with `mge::assetPath` themselves – don't wrap them in `assetPath(...)`, never `"../assets/..."`.

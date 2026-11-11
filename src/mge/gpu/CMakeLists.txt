@@ -9,6 +9,7 @@ add_library(mge_gpu STATIC
     GpuMesh.h GpuMesh.cpp
     GpuModule.h GpuModule.cpp
     GpuNoiseField.h GpuNoiseField.cpp
+    GpuResourceTracker.h
     Swapchain.h Swapchain.cpp
 )
 add_library(mge::gpu ALIAS mge_gpu)
@@ -32,6 +33,7 @@ mge_install_headers(gpu
     GpuMesh.h
     GpuModule.h
     GpuNoiseField.h
+    GpuResourceTracker.h
     Handles.h
     Pipeline.h
     Shader.h

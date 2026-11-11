@@ -92,3 +92,31 @@ TEST_CASE("GPU: un command buffer sin enviar se cancela al destruirse") {
     } // other se cancela aquí
     gpu.device().waitIdle();
 }
+
+TEST_CASE("GPU: GpuResourceTracker libera recursos antes de destruir el device y deja el handle inerte") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+
+    struct TrackedMesh {
+        GpuMesh mesh;
+        bool alive = true;
+    };
+
+    auto tracked = std::make_shared<TrackedMesh>();
+    tracked->mesh = gpu.device().uploadMesh(primitives::box(glm::vec3(1.0f)));
+    CHECK_FALSE(tracked->mesh.empty());
+
+    gpu.device().tracker().registerResource("GpuMesh", [tracked]() {
+        tracked->mesh = GpuMesh{};
+        tracked->alive = false;
+    });
+
+    CHECK(gpu.device().tracker().trackedCount() == 1);
+    CHECK(tracked->alive);
+
+    // Simular el releaseAll() de onShutdown antes de destruir el device
+    gpu.device().tracker().releaseAll();
+    CHECK(gpu.device().tracker().trackedCount() == 0);
+    CHECK_FALSE(tracked->alive);
+    CHECK(tracked->mesh.empty());
+}

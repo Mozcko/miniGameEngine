@@ -2,6 +2,7 @@
 
 #include <mge/gpu/CommandBuffer.h>
 #include <mge/gpu/GpuMesh.h>
+#include <mge/gpu/GpuResourceTracker.h>
 #include <mge/gpu/Handles.h>
 #include <mge/gpu/Pipeline.h>
 #include <mge/gpu/Shader.h>
@@ -75,10 +76,15 @@ namespace mge {
         std::vector<std::uint8_t> downloadBuffer(const GpuBuffer& buffer, std::size_t size);
         void waitIdle();
 
+        // Rastreador de recursos de GPU (para bindings y prevención de cuelgues al cerrar)
+        GpuResourceTracker& tracker() { return m_tracker; }
+        const GpuResourceTracker& tracker() const { return m_tracker; }
+
     private:
         explicit GpuDevice(SDL_GPUDevice* device) : m_device(device) {}
 
         SDL_GPUDevice* m_device = nullptr;
         SDL_GPUTextureFormat m_depthFormat = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
+        GpuResourceTracker m_tracker;
     };
 }
