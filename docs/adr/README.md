@@ -11,6 +11,7 @@ old one as *Superseded*.
 | [0003](0003-headless-core.md) | Headless core with optional modules | Accepted |
 | [0004](0004-procedural-first-assets-optional.md) | Procedural‑first, assets optional | Accepted |
 | [0005](0005-interactive-project-wizard-tui.md) | Interactive project wizard (TUI) for mge new | Accepted |
+| [0006](0006-language-bindings.md) | Language bindings strategy: C API as stable ABI, Python via nanobind | Accepted |
 
 ## Template
 
