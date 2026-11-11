@@ -71,6 +71,15 @@ TEST_CASE("setAssetRoot fija la raíz a mano y vacío vuelve a buscar") {
     CHECK(assetRoot().filename() == "assets");
 }
 
+TEST_CASE("setAssetRoot con ruta relativa prefija exactamente una vez") {
+    AssetEnv env(nullptr);
+    setAssetRoot("relative_root");
+    CHECK(assetRoot() == fs::path("relative_root"));
+    const fs::path p = assetPath("textures/Minecraft-like_3d_tileset.png");
+    CHECK(p == fs::path("relative_root") / "textures" / "Minecraft-like_3d_tileset.png");
+    setAssetRoot({});
+}
+
 TEST_CASE("Sin carpeta assets ni MGE_ASSET_DIR no se emiten avisos WARN ni ERROR") {
     bool hasWarnOrError = false;
     Log::setSink([&](const LogRecord& record) {
