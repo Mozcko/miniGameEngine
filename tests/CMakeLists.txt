@@ -206,8 +206,12 @@ if(MGE_BUILD_CLI)
     add_executable(mge_cli_tests
         test_main.cpp
         cli/test_cli.cpp
+        cli/test_wizard.cpp
     )
     target_link_libraries(mge_cli_tests PRIVATE mge_cli_core doctest_header)
+    target_compile_definitions(mge_cli_tests PRIVATE
+        MGE_CLI_GOLDEN_DIR="${miniGameEngine_SOURCE_DIR}/tools/mge/tests/golden"
+    )
     mge_set_warnings(mge_cli_tests)
     doctest_discover_tests(mge_cli_tests TEST_PREFIX "cli: ")
 endif()

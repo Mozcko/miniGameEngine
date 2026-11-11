@@ -517,4 +517,16 @@ jobs:
           mge check
           mge clean
 
+      - name: Test mge new with --yes (scripted wizard defaults)
+        run: |
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          export CMAKE_PREFIX_PATH=/tmp/mge-prefix
+          mge new scripted_game --yes --dir "${RUNNER_TEMP:-/tmp}/scripted_game"
+          cd "${RUNNER_TEMP:-/tmp}/scripted_game"
+          test -f LICENSE
+          test -f .vscode/tasks.json
+          grep -q "license=mit" mge.project
+          mge build
+          mge test
+
 

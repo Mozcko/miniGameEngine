@@ -18,15 +18,14 @@ namespace {
         @GAME_CLASS@() : mge::Application(makeConfig()) {
             addModule<mge::PlatformModule>();
             addModule<mge::GpuModule>();
-            addModule<mge::AudioModule>();
+            @AUDIO_ADD_MODULE@
         }
 
     protected:
         bool onInit() override {
             m_platform = getModule<mge::PlatformModule>();
             m_gpu = getModule<mge::GpuModule>();
-            m_audio = getModule<mge::AudioModule>();
-            if (!m_platform || !m_gpu || !m_audio) return false;
+            @AUDIO_INIT_MODULE@
 
             // 1. Acciones de entrada
             auto& actions = m_platform->actions();
@@ -39,8 +38,7 @@ namespace {
             m_ui = std::make_unique<mge::Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
             if (!m_ui->valid()) return false;
 
-            // 3. Audio procedural sintetizado
-            m_coinSfx = m_audio->addSfx(mge::sfx::coin());
+            @AUDIO_LOAD_SFX@
 
             // 4. Mundo 2D inicial
             m_world = @GAME_NAME@::createDefaultWorld(glm::vec2(1280.0f, 720.0f));
@@ -59,9 +57,8 @@ namespace {
             @GAME_NAME@::movePlayer(m_world.player, inputDir, fixedDt, m_world.obstacles, m_world.bounds);
 
             const int collected = @GAME_NAME@::collectCoins(m_world);
-            if (collected > 0) {
-                m_audio->play(m_coinSfx);
-            }
+            (void)collected;
+            @AUDIO_PLAY_SFX@
         }
 
         void onUpdate(float /*dt*/) override {
@@ -136,12 +133,11 @@ namespace {
 
         mge::PlatformModule* m_platform = nullptr;
         mge::GpuModule* m_gpu = nullptr;
-        mge::AudioModule* m_audio = nullptr;
+        @AUDIO_MEMBER@
 
         std::unique_ptr<mge::Renderer2D> m_ui;
         mge::DebugOverlay m_overlay;
 
-        mge::SampleId m_coinSfx{};
         @GAME_NAME@::World2D m_world;
     };
 

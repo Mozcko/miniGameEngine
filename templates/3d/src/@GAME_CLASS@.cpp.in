@@ -19,15 +19,14 @@ namespace {
         @GAME_CLASS@() : mge::Application(makeConfig()) {
             addModule<mge::PlatformModule>();
             addModule<mge::GpuModule>();
-            addModule<mge::AudioModule>();
+            @AUDIO_ADD_MODULE@
         }
 
     protected:
         bool onInit() override {
             m_platform = getModule<mge::PlatformModule>();
             m_gpu = getModule<mge::GpuModule>();
-            m_audio = getModule<mge::AudioModule>();
-            if (!m_platform || !m_gpu || !m_audio) return false;
+            @AUDIO_INIT_MODULE@
 
             // 1. Acciones de entrada
             auto& actions = m_platform->actions();
@@ -63,8 +62,7 @@ namespace {
             m_orbMesh = device.uploadMesh(
                 mge::primitives::uvSphere(0.5f, 24, 16, glm::vec4(0.95f, 0.80f, 0.20f, 1.0f)));
 
-            // 4. Audio sintetizado procedural
-            m_jumpSfx = m_audio->addSfx(mge::sfx::jump());
+            @AUDIO_LOAD_SFX@
 
             // 5. Jugador físico con CharacterController sobre suelo plano
             m_playerEntity = world().registry().create();
@@ -131,10 +129,7 @@ namespace {
             controller.input.moveRight = m_platform->axis("MoveX");
             controller.input.sprint = m_platform->isActionDown("Sprint");
 
-            const bool wantJump = m_platform->wasActionPressed("Jump");
-            if (wantJump && controller.grounded) {
-                m_audio->play(m_jumpSfx);
-            }
+            @AUDIO_PLAY_SFX@
             controller.input.jump = m_platform->isActionDown("Jump");
 
             m_dayNight.advance(dt);
@@ -195,7 +190,7 @@ namespace {
 
         mge::PlatformModule* m_platform = nullptr;
         mge::GpuModule* m_gpu = nullptr;
-        mge::AudioModule* m_audio = nullptr;
+        @AUDIO_MEMBER@
 
         std::unique_ptr<mge::MeshRenderer> m_renderer;
         std::unique_ptr<mge::SkyRenderer> m_skyRenderer;
@@ -209,8 +204,6 @@ namespace {
         mge::GpuMesh m_boxMesh;
         mge::GpuMesh m_pillarMesh;
         mge::GpuMesh m_orbMesh;
-
-        mge::SampleId m_jumpSfx{};
 
         mge::Entity m_playerEntity{};
         mge::Entity m_cameraEntity{};

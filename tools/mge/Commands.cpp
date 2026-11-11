@@ -3,6 +3,8 @@
 #include "Colors.h"
 #include "Process.h"
 #include "Project.h"
+#include "wizard/TerminalView.h"
+#include "wizard/WizardModel.h"
 #include <mge/Version.h>
 
 #include <filesystem>
@@ -10,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unistd.h>
 
 namespace mge::cli {
 
@@ -54,17 +57,50 @@ namespace mge::cli {
 
     int cmdNew(int argc, char* argv[], const std::filesystem::path& exePath) {
         NewProjectOptions options;
+        bool acceptDefaults = false;
+
+        // Si se llama sin argumentos
+        if (argc == 0) {
+            if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+                wizard::WizardModel model;
+                if (!wizard::runInteractiveWizard(model)) {
+                    return 130;
+                }
+                options = model.answers().toProjectOptions();
+                std::string message;
+                int status = createNewProject(options, exePath, message);
+                if (status == 0) {
+                    std::cout << message;
+                } else {
+                    std::cerr << message << "\n";
+                }
+                return status;
+            }
+
+            std::cerr << "Error: se requiere el nombre del proyecto en entornos no interactivos.\n"
+                      << "Uso: mge new <nombre> [opciones]\n"
+                      << "Consulte 'mge new --help' para ver las opciones disponibles.\n";
+            return 1;
+        }
 
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
                 std::cout
-                    << "Uso: mge new <nombre> [opciones]\n\n"
-                    << "Crea un nuevo proyecto a partir de una plantilla estándar.\n\n"
+                    << "Uso: mge new [nombre] [opciones]\n\n"
+                    << "Crea un nuevo proyecto a partir de una plantilla estándar.\n"
+                    << "Si se ejecuta sin argumentos en una terminal interactiva, inicia el asistente "
+                       "TUI.\n\n"
                     << "Opciones:\n"
                     << "  --template <3d|2d|headless>  Plantilla a emplear (por defecto: 3d)\n"
+                    << "  --audio / --no-audio         Activa o desactiva el módulo de audio (por defecto: "
+                       "sí)\n"
+                    << "  --license <mit|apache|none>  Licencia a generar (por defecto: mit)\n"
+                    << "  --git / --no-git             Inicializa un repositorio Git (por defecto: sí)\n"
+                    << "  --vscode / --no-vscode       Configura tareas de VS Code en .vscode/ (por defecto: "
+                       "sí)\n"
                     << "  --dir <ruta>                 Carpeta de destino donde inicializar el proyecto\n"
-                    << "  --no-git                     No inicializar un repositorio Git automáticamente\n"
+                    << "  -y, --yes                    Acepta los valores por defecto sin preguntar\n"
                     << "  -h, --help                   Muestra esta ayuda\n";
                 return 0;
             }
@@ -75,6 +111,39 @@ namespace mge::cli {
                     std::cerr << "Error: --template requiere un argumento (3d, 2d, headless).\n";
                     return 1;
                 }
+            } else if (arg == "--audio") {
+                options.audio = true;
+            } else if (arg == "--no-audio") {
+                options.audio = false;
+            } else if (arg == "--license") {
+                if (i + 1 < argc) {
+                    std::string lic = argv[++i];
+                    if (lic == "mit" || lic == "MIT") {
+                        options.license = LicenseType::Mit;
+                    } else if (lic == "apache" || lic == "apache-2.0" || lic == "Apache-2.0") {
+                        options.license = LicenseType::Apache2;
+                    } else if (lic == "none" || lic == "None") {
+                        options.license = LicenseType::None;
+                    } else {
+                        std::cerr << "Error: licencia desconocida '" << lic << "'. Use mit, apache o none.\n";
+                        return 1;
+                    }
+                } else {
+                    std::cerr << "Error: --license requiere un tipo (mit, apache, none).\n";
+                    return 1;
+                }
+            } else if (arg == "--git") {
+                options.git = true;
+                options.noGit = false;
+            } else if (arg == "--no-git") {
+                options.git = false;
+                options.noGit = true;
+            } else if (arg == "--vscode") {
+                options.vscode = true;
+            } else if (arg == "--no-vscode") {
+                options.vscode = false;
+            } else if (arg == "--yes" || arg == "-y") {
+                acceptDefaults = true;
             } else if (arg == "--dir") {
                 if (i + 1 < argc) {
                     options.targetDir = argv[++i];
@@ -82,8 +151,6 @@ namespace mge::cli {
                     std::cerr << "Error: --dir requiere una ruta como argumento.\n";
                     return 1;
                 }
-            } else if (arg == "--no-git") {
-                options.noGit = true;
             } else if (arg.rfind("-", 0) == 0) {
                 std::cerr << "Error: opción desconocida '" << arg
                           << "'. Ejecute 'mge new --help' para ayuda.\n";
@@ -98,10 +165,32 @@ namespace mge::cli {
             }
         }
 
+        if (options.templateName == "headless") {
+            options.audio = false;
+        }
+
         if (options.name.empty()) {
-            std::cout << "Uso: mge new <nombre> [--template <3d|2d|headless>] [--dir <carpeta>] [--no-git]\n"
-                      << "Ejemplo: mge new mi_juego --template 3d\n";
-            return 1;
+            if (acceptDefaults || !isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
+                std::cerr << "Error: se requiere el nombre del proyecto.\n"
+                          << "Uso: mge new <nombre> [opciones]\n";
+                return 1;
+            }
+
+            // Iniciar asistente interactivo con las opciones preconfiguradas
+            wizard::WizardModel model;
+            if (options.templateName == "2d") {
+                model.setTemplate(wizard::TemplateChoice::TwoD);
+            } else if (options.templateName == "headless") {
+                model.setTemplate(wizard::TemplateChoice::Headless);
+            }
+            model.setAudio(options.audio);
+            model.setGit(options.git);
+            model.setVsCode(options.vscode);
+
+            if (!wizard::runInteractiveWizard(model)) {
+                return 130;
+            }
+            options = model.answers().toProjectOptions();
         }
 
         std::string message;

@@ -17,6 +17,8 @@ The `mge` CLI tool is a cargo-like developer utility for `miniGameEngine`. It pr
 - `Process.h` / `Process.cpp`: Fork/execvp-based process runner preventing shell injection.
 - `Colors.h`: ANSI terminal colors with automatic TTY and `NO_COLOR` detection.
 - `Project.h` / `Project.cpp`: Project metadata and detection, template interpolation, name validation.
+- `wizard/WizardModel.h` / `WizardModel.cpp`: Pure headless model for the interactive project wizard, state navigation, file tree planning, and snapshot testing.
+- `wizard/TerminalView.h` / `TerminalView.cpp`: Thin ANSI terminal view layer handling raw termios mode, keyboard events, and live validation rendering.
 - `Doctor.h` / `Doctor.cpp`: Diagnostics checks for C++17 compiler, CMake, Ninja, SDL3, glslang, Vulkan loader + ICD, GLM.
 - `Commands.h` / `Commands.cpp`: Subcommand implementations.
 - `Main.cpp`: CLI entry point.

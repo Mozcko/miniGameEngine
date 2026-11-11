@@ -4,6 +4,8 @@
 #include <mge/Version.h>
 
 #include <cctype>
+#include <chrono>
+#include <ctime>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -104,15 +106,81 @@ namespace mge::cli {
         return result;
     }
 
-    std::string renderTemplateString(const std::string& content, const std::string& name,
+    std::string renderTemplateString(const std::string& content, const NewProjectOptions& options,
                                      const std::string& className, const std::string& title,
                                      const std::string& version) {
         std::string result = content;
-        replaceAll(result, "@GAME_NAME@", name);
+        replaceAll(result, "@GAME_NAME@", options.name);
         replaceAll(result, "@GAME_CLASS@", className);
         replaceAll(result, "@GAME_TITLE@", title);
         replaceAll(result, "@MGE_VERSION@", version);
+
+        if (options.templateName == "2d") {
+            if (options.audio) {
+                replaceAll(result, "@GAME_MODULES@", "platform gpu graphics audio");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "addModule<mge::AudioModule>();");
+                replaceAll(result, "@AUDIO_INIT_MODULE@",
+                           "m_audio = getModule<mge::AudioModule>();\n"
+                           "            if (!m_platform || !m_gpu || !m_audio) return false;");
+                replaceAll(result, "@AUDIO_LOAD_SFX@",
+                           "// 3. Audio procedural sintetizado\n"
+                           "            m_coinSfx = m_audio->addSfx(mge::sfx::coin());");
+                replaceAll(result, "@AUDIO_PLAY_SFX@",
+                           "if (collected > 0) {\n"
+                           "                m_audio->play(m_coinSfx);\n"
+                           "            }");
+                replaceAll(result, "@AUDIO_MEMBER@",
+                           "mge::AudioModule* m_audio = nullptr;\n"
+                           "        mge::SampleId m_coinSfx{};");
+            } else {
+                replaceAll(result, "@GAME_MODULES@", "platform gpu graphics");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Módulo de audio desactivado");
+                replaceAll(result, "@AUDIO_INIT_MODULE@", "if (!m_platform || !m_gpu) return false;");
+                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_PLAY_SFX@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_MEMBER@", "// Audio desactivado");
+            }
+        } else if (options.templateName == "3d") {
+            if (options.audio) {
+                replaceAll(result, "@GAME_MODULES@", "platform gpu graphics audio physics procgen");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "addModule<mge::AudioModule>();");
+                replaceAll(result, "@AUDIO_INIT_MODULE@",
+                           "m_audio = getModule<mge::AudioModule>();\n"
+                           "            if (!m_platform || !m_gpu || !m_audio) return false;");
+                replaceAll(result, "@AUDIO_LOAD_SFX@",
+                           "// 4. Audio sintetizado procedural\n"
+                           "            m_jumpSfx = m_audio->addSfx(mge::sfx::jump());");
+                replaceAll(result, "@AUDIO_PLAY_SFX@",
+                           "const bool wantJump = m_platform->wasActionPressed(\"Jump\");\n"
+                           "            if (wantJump && controller.grounded) {\n"
+                           "                m_audio->play(m_jumpSfx);\n"
+                           "            }");
+                replaceAll(result, "@AUDIO_MEMBER@",
+                           "mge::AudioModule* m_audio = nullptr;\n"
+                           "        mge::SampleId m_jumpSfx{};");
+            } else {
+                replaceAll(result, "@GAME_MODULES@", "platform gpu graphics physics procgen");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Módulo de audio desactivado");
+                replaceAll(result, "@AUDIO_INIT_MODULE@", "if (!m_platform || !m_gpu) return false;");
+                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_PLAY_SFX@",
+                           "const bool wantJump = m_platform->wasActionPressed(\"Jump\");\n"
+                           "            (void)wantJump;");
+                replaceAll(result, "@AUDIO_MEMBER@", "// Audio desactivado");
+            }
+        }
+
         return result;
+    }
+
+    std::string renderTemplateString(const std::string& content, const std::string& name,
+                                     const std::string& className, const std::string& title,
+                                     const std::string& version) {
+        NewProjectOptions opt;
+        opt.name = name;
+        opt.templateName = "3d";
+        opt.audio = true;
+        return renderTemplateString(content, opt, className, title, version);
     }
 
     std::filesystem::path findTemplatesDir(const std::filesystem::path& exePath) {
@@ -285,8 +353,7 @@ namespace mge::cli {
                 std::ifstream src(entry.path());
                 std::stringstream buffer;
                 buffer << src.rdbuf();
-                std::string rendered =
-                    renderTemplateString(buffer.str(), options.name, className, title, version);
+                std::string rendered = renderTemplateString(buffer.str(), options, className, title, version);
 
                 std::ofstream dst(targetFile, std::ios::trunc);
                 dst << rendered;
@@ -302,11 +369,130 @@ namespace mge::cli {
             }
         }
 
+        // Crear archivo de licencia LICENSE si no es None
+        if (options.license != LicenseType::None) {
+            std::string author;
+            runCommandCapture({"git", "config", "user.name"}, author);
+            while (!author.empty() &&
+                   (author.back() == '\n' || author.back() == '\r' || author.back() == ' ')) {
+                author.pop_back();
+            }
+            if (author.empty()) {
+                const char* userEnv = std::getenv("USER");
+                if (userEnv == nullptr) {
+                    userEnv = std::getenv("USERNAME");
+                }
+                author = (userEnv != nullptr) ? userEnv : "MiniGameEngine Contributor";
+            }
+
+            auto now = std::chrono::system_clock::now();
+            std::time_t tt = std::chrono::system_clock::to_time_t(now);
+            std::tm tmTime{};
+#ifdef _WIN32
+            gmtime_s(&tmTime, &tt);
+#else
+            gmtime_r(&tt, &tmTime);
+#endif
+            std::string yearStr = std::to_string(1900 + tmTime.tm_year);
+
+            std::ofstream licFile(dest / "LICENSE");
+            if (options.license == LicenseType::Mit) {
+                licFile << "MIT License\n\n"
+                        << "Copyright (c) " << yearStr << " " << author << "\n\n"
+                        << "Permission is hereby granted, free of charge, to any person obtaining a copy\n"
+                        << "of this software and associated documentation files (the \"Software\"), to deal\n"
+                        << "in the Software without restriction, including without limitation the rights\n"
+                        << "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
+                        << "copies of the Software, and to permit persons to whom the Software is\n"
+                        << "furnished to do so, subject to the following conditions:\n\n"
+                        << "The above copyright notice and this permission notice shall be included in all\n"
+                        << "copies or substantial portions of the Software.\n\n"
+                        << "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+                        << "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+                        << "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+                        << "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+                        << "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+                        << "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
+                        << "SOFTWARE.\n";
+            } else if (options.license == LicenseType::Apache2) {
+                licFile << "                                 Apache License\n"
+                        << "                           Version 2.0, January 2004\n"
+                        << "                        http://www.apache.org/licenses/\n\n"
+                        << "   Copyright " << yearStr << " " << author << "\n\n"
+                        << "   Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+                        << "   you may not use this file except in compliance with the License.\n"
+                        << "   You may obtain a copy of the License at\n\n"
+                        << "       http://www.apache.org/licenses/LICENSE-2.0\n\n"
+                        << "   Unless required by applicable law or agreed to in writing, software\n"
+                        << "   distributed under the License is distributed on an \"AS IS\" BASIS,\n"
+                        << "   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
+                        << "   See the License for the specific language governing permissions and\n"
+                        << "   limitations under the License.\n";
+            }
+        }
+
+        // Crear configuración de VS Code (.vscode/) si está activada
+        if (options.vscode) {
+            std::filesystem::path vscodeDir = dest / ".vscode";
+            std::filesystem::create_directories(vscodeDir, ec);
+
+            std::ofstream tasksFile(vscodeDir / "tasks.json");
+            tasksFile
+                << "{\n"
+                << "    \"version\": \"2.0.0\",\n"
+                << "    \"tasks\": [\n"
+                << "        {\n"
+                << "            \"label\": \"Configure (dev)\",\n"
+                << "            \"type\": \"shell\",\n"
+                << "            \"command\": \"cmake --preset dev\",\n"
+                << "            \"problemMatcher\": []\n"
+                << "        },\n"
+                << "        {\n"
+                << "            \"label\": \"Build (dev)\",\n"
+                << "            \"type\": \"shell\",\n"
+                << "            \"command\": \"test -f build/CMakeCache.txt || cmake --preset dev; cmake "
+                   "--build --preset dev\",\n"
+                << "            \"group\": { \"kind\": \"build\", \"isDefault\": true },\n"
+                << "            \"problemMatcher\": { \"base\": \"$gcc\", \"fileLocation\": \"absolute\" }\n"
+                << "        },\n"
+                << "        {\n"
+                << "            \"label\": \"Run game\",\n"
+                << "            \"type\": \"shell\",\n"
+                << "            \"command\": \"mge run\",\n"
+                << "            \"problemMatcher\": { \"base\": \"$gcc\", \"fileLocation\": \"absolute\" }\n"
+                << "        },\n"
+                << "        {\n"
+                << "            \"label\": \"Test (dev)\",\n"
+                << "            \"type\": \"shell\",\n"
+                << "            \"command\": \"mge test\",\n"
+                << "            \"group\": { \"kind\": \"test\", \"isDefault\": true },\n"
+                << "            \"problemMatcher\": { \"base\": \"$gcc\", \"fileLocation\": \"absolute\" }\n"
+                << "        },\n"
+                << "        {\n"
+                << "            \"label\": \"Check (format)\",\n"
+                << "            \"type\": \"shell\",\n"
+                << "            \"command\": \"mge check\",\n"
+                << "            \"problemMatcher\": []\n"
+                << "        }\n"
+                << "    ]\n"
+                << "}\n";
+
+            std::ofstream settingsFile(vscodeDir / "settings.json");
+            settingsFile << "{\n"
+                         << "    \"cmake.configureOnOpen\": false\n"
+                         << "}\n";
+        }
+
         // Crear archivo de metadata mge.project
         {
+            std::string licName = (options.license == LicenseType::Mit)
+                                      ? "mit"
+                                      : ((options.license == LicenseType::Apache2) ? "apache" : "none");
             std::ofstream projFile(dest / "mge.project");
             projFile << "name=" << options.name << "\n";
             projFile << "template=" << tmplName << "\n";
+            projFile << "audio=" << (options.audio ? "yes" : "no") << "\n";
+            projFile << "license=" << licName << "\n";
         }
 
         // Si se crea en una subcarpeta de un repo CMake (ej: examples/), registrar en el CMakeLists padre
@@ -325,8 +511,9 @@ namespace mge::cli {
             registeredMsg = " Registrado en " + parentCmake.string() + ".";
         }
 
-        // Inicializar repositorio Git salvo que se indique --no-git
-        if (!options.noGit && commandExists("git")) {
+        // Inicializar repositorio Git salvo que se indique --no-git o git=false
+        bool wantGit = options.git && !options.noGit;
+        if (wantGit && commandExists("git")) {
             runCommand({"git", "init", "-q"}, dest);
         }
 

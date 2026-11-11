@@ -29,7 +29,7 @@ target_link_libraries(@GAME_NAME@_logic PUBLIC mge::core)
 mge_add_game(@GAME_NAME@
     SOURCES src/@GAME_CLASS@.cpp
     LIBRARIES @GAME_NAME@_logic
-    MODULES platform gpu graphics audio
+    MODULES @GAME_MODULES@
     SMOKE_FRAMES 60
 )
 
