@@ -10,8 +10,7 @@
       "name": "base",
       "hidden": true,
       "cacheVariables": {
-        "MGE_WARNINGS": "ON",
-        "MGE_INSTALL": "OFF"
+        "MGE_WARNINGS": "ON"
       }
     },
     {

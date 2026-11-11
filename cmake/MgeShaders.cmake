@@ -19,7 +19,7 @@ if(MGE_GLSLANG_EXECUTABLE)
     set(MGE_GLSLANG_COMMAND "${MGE_GLSLANG_EXECUTABLE}")
     set(MGE_GLSLANG_TARGET "")
 else()
-    if(PROJECT_IS_TOP_LEVEL)
+    if(NOT MGE_FROM_INSTALLED_PACKAGE)
         message(STATUS "glslang: no está instalado, se compila desde el código fuente")
         include(FetchContent)
         # Solo el compilador de línea de comandos: sin optimizador (SPIRV-Tools), HLSL, tests ni install

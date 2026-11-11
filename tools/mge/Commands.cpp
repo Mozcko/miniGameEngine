@@ -512,7 +512,7 @@ namespace mge::cli {
                   << "  build     Compila el proyecto mediante CMake presets\n"
                   << "  run       Compila y ejecuta el objetivo principal del juego\n"
                   << "  test      Ejecuta los tests del proyecto con CTest\n"
-                  << "  check     Verifica y corrige el formato de código (clang-format/clang-tidy)\n"
+                  << "  check     Verifica el formato de código (usa --fix para corregir)\n"
                   << "  clean     Elimina carpetas de compilación generadas (build*)\n"
                   << "  doctor    Comprueba el estado y versiones de las herramientas del sistema\n\n"
                   << "Opciones globales:\n"

@@ -69,6 +69,9 @@ FetchContent_MakeAvailable(mge)
 mge_add_game(my_game SOURCES Main.cpp SMOKE_FRAMES 30)
 ```
 
+> [!NOTE]
+> `GIT_TAG v0.9.0` will be available after milestone M9 is merged and tag `v0.9.0` is pushed. For local development or prior to the release tag, use `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
+
 When consumed via `FetchContent`, tests, benchmarks, examples, and the sandbox are disabled automatically (`MGE_BUILD_TESTS`, `MGE_BUILD_BENCHMARKS`, `MGE_BUILD_EXAMPLES`, and `MGE_BUILD_SANDBOX` default to `OFF`). Only the engine library targets are compiled.
 
 ---
@@ -129,13 +132,13 @@ When configuring `miniGameEngine`:
 
 | Option | Default | Description |
 |---|---|---|
-| `MGE_INSTALL` | `${PROJECT_IS_TOP_LEVEL}` | Export and generate CMake installation rules (`find_package(mge)`). |
+| `MGE_INSTALL` | `OFF` | Export and generate CMake installation rules (`find_package(mge)`). |
 | `MGE_BUILD_MODULES` | `ON` | Build SDL3/GPU modules (`platform`, `gpu`, `graphics`, `audio`). `OFF` builds headless core only. |
 | `MGE_BUILD_TESTS` | `${PROJECT_IS_TOP_LEVEL}` | Build unit test executables with doctest. |
 | `MGE_BUILD_BENCHMARKS` | `${PROJECT_IS_TOP_LEVEL}` | Build headless microbenchmarks. |
 | `MGE_BUILD_EXAMPLES` | `${PROJECT_IS_TOP_LEVEL}` | Build example projects under `examples/`. |
 | `MGE_BUILD_SANDBOX` | `${PROJECT_IS_TOP_LEVEL}` | Build showcase sandbox game (`game/`). |
-| `MGE_SOURCE_ASSET_FALLBACK` | `ON` (or `OFF` when `MGE_INSTALL=ON`) | Embed absolute path to source `assets/` directory in binaries as last-resort fallback. |
+| `MGE_SOURCE_ASSET_FALLBACK` | `ON` | Embed absolute path to source `assets/` directory in binaries as last-resort fallback (`OFF` for distributable packages). |
 | `MGE_WARNINGS` | `ON` | Enable strict compiler warnings (`-Wall -Wextra -Wshadow`). |
 | `MGE_WERROR` | `OFF` | Treat compiler warnings as errors. |
 | `MGE_PROFILING` | `ON` | Enable CPU profiler scope instrumentation (`MGE_PROFILE_SCOPE`). |

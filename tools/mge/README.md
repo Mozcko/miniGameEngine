@@ -8,7 +8,7 @@ The `mge` CLI tool is a cargo-like developer utility for `miniGameEngine`. It pr
 - `mge build [--release] [--preset <p>]`: Configures and compiles the project using CMake presets.
 - `mge run [--release] [--preset <p>] [-- <args...>]`: Builds and executes the game binary, passing optional runtime arguments.
 - `mge test [--release] [--preset <p>]`: Runs project unit tests via CTest.
-- `mge check [--fix]`: Checks or formats source files with `clang-format` and `clang-tidy`.
+- `mge check [--fix]`: Checks source file formatting (exits 1 on errors; pass `--fix` to format in place with `clang-format`).
 - `mge clean`: Deletes generated build directories.
 - `mge doctor`: Verifies development environment prerequisites and tools.
 
