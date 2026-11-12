@@ -53,11 +53,33 @@ namespace mge::cli {
             return {};
         }
 
+        std::string findPythonExecutable(const std::filesystem::path& rootDir) {
+            std::filesystem::path venvPy = rootDir / ".venv" / "bin" / "python";
+#ifdef _WIN32
+            std::filesystem::path venvPyWin = rootDir / ".venv" / "Scripts" / "python.exe";
+            if (std::filesystem::is_regular_file(venvPyWin)) {
+                return venvPyWin.string();
+            }
+#endif
+            if (std::filesystem::is_regular_file(venvPy)) {
+                return venvPy.string();
+            }
+            if (commandExists("python3")) {
+                return "python3";
+            }
+            if (commandExists("python")) {
+                return "python";
+            }
+            return "python3";
+        }
+
     } // namespace
 
     int cmdNew(int argc, char* argv[], const std::filesystem::path& exePath) {
         NewProjectOptions options;
         bool acceptDefaults = false;
+        bool hasExplicitLang = false;
+        bool hasExplicitTemplate = false;
 
         // Si se llama sin argumentos
         if (argc == 0) {
@@ -92,6 +114,7 @@ namespace mge::cli {
                     << "Si se ejecuta sin argumentos en una terminal interactiva, inicia el asistente "
                        "TUI.\n\n"
                     << "Opciones:\n"
+                    << "  --lang <c|cpp|python>        Lenguaje del proyecto (por defecto: cpp)\n"
                     << "  --template <3d|2d|headless>  Plantilla a emplear (por defecto: 3d)\n"
                     << "  --audio / --no-audio         Activa o desactiva el módulo de audio (por defecto: "
                        "sí)\n"
@@ -104,9 +127,25 @@ namespace mge::cli {
                     << "  -h, --help                   Muestra esta ayuda\n";
                 return 0;
             }
-            if (arg == "--template") {
+            if (arg == "--lang" || arg == "--language") {
+                if (i + 1 < argc) {
+                    std::string lStr = argv[++i];
+                    ProjectLanguage l = ProjectLanguage::Cpp;
+                    if (!parseLanguage(lStr, l)) {
+                        std::cerr << "Error: lenguaje desconocido '" << lStr
+                                  << "'. Opciones válidas: cpp, c, python.\n";
+                        return 1;
+                    }
+                    options.language = l;
+                    hasExplicitLang = true;
+                } else {
+                    std::cerr << "Error: --lang requiere un lenguaje (cpp, c, python).\n";
+                    return 1;
+                }
+            } else if (arg == "--template") {
                 if (i + 1 < argc) {
                     options.templateName = argv[++i];
+                    hasExplicitTemplate = true;
                 } else {
                     std::cerr << "Error: --template requiere un argumento (3d, 2d, headless).\n";
                     return 1;
@@ -165,6 +204,12 @@ namespace mge::cli {
             }
         }
 
+        std::string langErr;
+        if (!validateLanguageTemplate(options.language, options.templateName, langErr)) {
+            std::cerr << "Error: " << langErr << "\n";
+            return 1;
+        }
+
         if (options.templateName == "headless") {
             options.audio = false;
         }
@@ -178,10 +223,22 @@ namespace mge::cli {
 
             // Iniciar asistente interactivo con las opciones preconfiguradas
             wizard::WizardModel model;
-            if (options.templateName == "2d") {
-                model.setTemplate(wizard::TemplateChoice::TwoD);
-            } else if (options.templateName == "headless") {
-                model.setTemplate(wizard::TemplateChoice::Headless);
+            if (hasExplicitLang) {
+                switch (options.language) {
+                case ProjectLanguage::Cpp: model.setLanguage(wizard::LanguageChoice::Cpp); break;
+                case ProjectLanguage::C: model.setLanguage(wizard::LanguageChoice::C); break;
+                case ProjectLanguage::Python: model.setLanguage(wizard::LanguageChoice::Python); break;
+                }
+                model.setSkipLanguage(true);
+            }
+            if (hasExplicitTemplate) {
+                if (options.templateName == "2d") {
+                    model.setTemplate(wizard::TemplateChoice::TwoD);
+                } else if (options.templateName == "headless") {
+                    model.setTemplate(wizard::TemplateChoice::Headless);
+                } else {
+                    model.setTemplate(wizard::TemplateChoice::ThreeD);
+                }
             }
             model.setAudio(options.audio);
             model.setGit(options.git);
@@ -237,6 +294,17 @@ namespace mge::cli {
             std::cerr << "Error: no se detectó ningún proyecto miniGameEngine en la ruta actual ni en sus "
                          "ancestros.\n";
             return 1;
+        }
+
+        if (proj.language == ProjectLanguage::Python) {
+            std::string py = findPythonExecutable(proj.rootDir);
+            std::filesystem::path pyproject = proj.rootDir / "pyproject.toml";
+            std::filesystem::path setupPy = proj.rootDir / "setup.py";
+            if (std::filesystem::is_regular_file(pyproject) || std::filesystem::is_regular_file(setupPy)) {
+                return runCommand({py, "-m", "pip", "install", "-e", "."}, proj.rootDir);
+            }
+            std::cout << "No hay nada que compilar para el proyecto de Python.\n";
+            return 0;
         }
 
         // Si la carpeta de build del preset no contiene CMakeCache.txt, configurar previamente
@@ -301,6 +369,21 @@ namespace mge::cli {
         if (proj.type == ProjectType::None) {
             std::cerr << "Error: no se detectó ningún proyecto miniGameEngine.\n";
             return 1;
+        }
+
+        if (proj.language == ProjectLanguage::Python) {
+            std::string py = findPythonExecutable(proj.rootDir);
+            std::filesystem::path mainPy = proj.rootDir / "main.py";
+            if (!std::filesystem::is_regular_file(mainPy)) {
+                mainPy = proj.rootDir / "src" / "main.py";
+            }
+            if (!std::filesystem::is_regular_file(mainPy)) {
+                std::cerr << "Error: no se encontró 'main.py' en el proyecto de Python.\n";
+                return 1;
+            }
+            std::vector<std::string> runArgs = {py, mainPy.string()};
+            runArgs.insert(runArgs.end(), gameArgs.begin(), gameArgs.end());
+            return runCommand(runArgs, proj.rootDir);
         }
 
         std::string target = (proj.type == ProjectType::EngineRepo) ? "sandbox" : proj.name;
@@ -373,6 +456,11 @@ namespace mge::cli {
             return 1;
         }
 
+        if (proj.language == ProjectLanguage::Python) {
+            std::string py = findPythonExecutable(proj.rootDir);
+            return runCommand({py, "-m", "pytest"}, proj.rootDir);
+        }
+
         // Configurar si no existe la caché
         std::filesystem::path cacheA = proj.rootDir / "build" / "CMakeCache.txt";
         std::filesystem::path cacheB = proj.rootDir / ("build-" + preset) / "CMakeCache.txt";
@@ -443,7 +531,7 @@ namespace mge::cli {
                     for (const auto& entry : std::filesystem::recursive_directory_iterator(sDir)) {
                         if (entry.is_regular_file()) {
                             std::string ext = entry.path().extension().string();
-                            if (ext == ".cpp" || ext == ".h") {
+                            if (ext == ".cpp" || ext == ".h" || ext == ".c") {
                                 fmtArgs.push_back(entry.path().string());
                             }
                         }

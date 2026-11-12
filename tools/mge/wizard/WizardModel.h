@@ -10,6 +10,12 @@
 
 namespace mge::cli::wizard {
 
+    enum class LanguageChoice {
+        Cpp,
+        C,
+        Python
+    };
+
     enum class TemplateChoice {
         ThreeD,
         TwoD,
@@ -23,6 +29,7 @@ namespace mge::cli::wizard {
     };
 
     enum class WizardStep {
+        Language,
         Name,
         Template,
         Audio,
@@ -35,6 +42,7 @@ namespace mge::cli::wizard {
     };
 
     struct WizardAnswers {
+        LanguageChoice language{LanguageChoice::Cpp};
         std::string name;
         TemplateChoice templateChoice{TemplateChoice::ThreeD};
         bool audio{true};
@@ -43,6 +51,7 @@ namespace mge::cli::wizard {
         bool vscode{true};
         std::filesystem::path targetDir;
 
+        std::string languageString() const;
         std::string templateString() const;
         std::string licenseString() const;
         NewProjectOptions toProjectOptions() const;
@@ -72,6 +81,12 @@ namespace mge::cli::wizard {
         WizardAnswers& answers() { return m_answers; }
 
         // Modificadores de campos
+        void selectNextLanguage();
+        void selectPrevLanguage();
+        void setLanguage(LanguageChoice choice);
+        bool skipsLanguage() const { return m_skipLanguage; }
+        void setSkipLanguage(bool skip);
+
         void setName(const std::string& name);
         void appendNameChar(char c);
         void backspaceName();
@@ -103,8 +118,9 @@ namespace mge::cli::wizard {
         std::vector<PlannedFile> planFileTree(const std::filesystem::path& tmplBase) const;
 
     private:
-        WizardStep m_step{WizardStep::Name};
+        WizardStep m_step{WizardStep::Language};
         WizardAnswers m_answers;
+        bool m_skipLanguage{false};
         mutable std::string m_nameError;
     };
 

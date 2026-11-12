@@ -1,0 +1,39 @@
+"""Logica de juego desacoplada para @GAME_TITLE@."""
+from dataclasses import dataclass
+
+
+@dataclass
+class PlayerState:
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    vy: float = 0.0
+    grounded: bool = True
+
+
+class GameLogic:
+    def __init__(self) -> None:
+        # Estado inicial del jugador y rotacion de la escena
+        self.player = PlayerState()
+        self.rotation_y: float = 0.0
+        self.gravity: float = -9.8
+        self.jump_speed: float = 5.0
+
+    def update(self, dt: float, want_jump: bool = False) -> None:
+        # Fisica simplificada: impulso vertical y gravedad
+        if want_jump and self.player.grounded:
+            self.player.vy = self.jump_speed
+            self.player.grounded = False
+
+        if not self.player.grounded:
+            self.player.vy += self.gravity * dt
+            self.player.y += self.player.vy * dt
+
+            # Colision basica con el plano de suelo en y = 0
+            if self.player.y <= 0.0:
+                self.player.y = 0.0
+                self.player.vy = 0.0
+                self.player.grounded = True
+
+        # Rotacion continua del cubo central
+        self.rotation_y += dt * 1.5

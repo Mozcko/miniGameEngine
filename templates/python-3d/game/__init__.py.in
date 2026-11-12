@@ -1,0 +1,4 @@
+"""@GAME_TITLE@ logic package."""
+from .logic import GameLogic
+
+__all__ = ["GameLogic"]

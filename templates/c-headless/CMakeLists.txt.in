@@ -1,0 +1,40 @@
+# @GAME_TITLE@ (plantilla C Headless)
+cmake_minimum_required(VERSION 3.25)
+project(@GAME_NAME@ LANGUAGES C CXX)
+
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+find_package(mge 0.9 QUIET)
+
+if(NOT mge_FOUND AND NOT TARGET mge::c)
+    include(FetchContent)
+    FetchContent_Declare(
+        mge
+        GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git
+        GIT_TAG v@MGE_VERSION@
+    )
+    FetchContent_MakeAvailable(mge)
+endif()
+
+# Logica de simulacion desacoplada
+add_library(@GAME_NAME@_logic STATIC
+    src/logic.c
+    src/logic.h
+)
+target_include_directories(@GAME_NAME@_logic PUBLIC src)
+target_link_libraries(@GAME_NAME@_logic PUBLIC mge::c)
+
+# Ejecutable headless
+mge_add_c_game(@GAME_NAME@
+    SOURCES src/main.c
+    LIBRARIES @GAME_NAME@_logic
+    HEADLESS
+    SMOKE_FRAMES 60
+)
+
+# Pruebas unitarias
+enable_testing()
+add_executable(@GAME_NAME@_tests tests/test_@GAME_NAME@.c)
+target_link_libraries(@GAME_NAME@_tests PRIVATE @GAME_NAME@_logic mge::c)
+add_test(NAME @GAME_NAME@_tests COMMAND @GAME_NAME@_tests)

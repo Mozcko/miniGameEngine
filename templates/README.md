@@ -13,12 +13,28 @@ Each template (`3d/`, `2d/`, `headless/`) is a **complete, standalone CMake proj
 
 ## Available Templates
 
+### C++ Templates
+
 | Template | Command | Description |
 |----------|---------|-------------|
-| `3d/` | `scripts/new-game.sh <name> --template 3d` | Procedural 3D scene with ground plane and primitive meshes (`primitives`), procedural sky with `DayNight` cycle and directional lighting, a `CharacterController` on a flat `SolidQuery` floor, ECS entity moving in the Fixed phase, F1 `DebugOverlay` with profiler, and synthesized jump sound (`sfx::jump`). Smoke test: 60 frames offscreen. |
-| `2d/` | `scripts/new-game.sh <name> --template 2d` | 2D pixel-space scene with `Renderer2D`, procedural shapes, built-in font text, player square moving in the Fixed phase with rectangle collision, collectible coins with procedural sound (`sfx::coin`), and score HUD. Smoke test: 60 frames offscreen. |
-| `headless/` | `scripts/new-game.sh <name> --headless` | Deterministic simulation with `ManualClock` (fixed 60 Hz steps) and no modules (no window, GPU, or SDL). Verifies simulation determinism on shutdown and exits 0/1. Smoke test: 60 frames. |
+| `3d/` | `mge new <name> --template 3d` | Procedural 3D scene with ground plane and primitive meshes (`primitives`), procedural sky with `DayNight` cycle and directional lighting, a `CharacterController` on a flat `SolidQuery` floor, ECS entity moving in the Fixed phase, F1 `DebugOverlay` with profiler, and synthesized jump sound (`sfx::jump`). Smoke test: 60 frames offscreen. |
+| `2d/` | `mge new <name> --template 2d` | 2D pixel-space scene with `Renderer2D`, procedural shapes, built-in font text, player square moving in the Fixed phase with rectangle collision, collectible coins with procedural sound (`sfx::coin`), and score HUD. Smoke test: 60 frames offscreen. |
+| `headless/` | `mge new <name> --template headless` | Deterministic simulation with `ManualClock` (fixed 60 Hz steps) and no modules (no window, GPU, or SDL). Verifies simulation determinism on shutdown and exits 0/1. Smoke test: 60 frames. |
 | `window/` | `scripts/new-game.sh <name> --template window` | Legacy single-file example: pulsing clear colour, ECS pulse component, F1 performance overlay. Smoke test: 30 frames offscreen. |
+
+### C Templates (Plain C99)
+
+| Template | Command | Description |
+|----------|---------|-------------|
+| `c-3d/` | `mge new <name> --lang c --template 3d` | Pure C99 game using the `mge::c` C API and `mge_add_c_game()`. Procedural rotating cube, 3D camera, jump physics, synthesized sound preset (`MGE_SFX_JUMP`), 2D text overlay, and pure C unit tests with assertions. Smoke test: 60 frames offscreen. |
+| `c-headless/` | `mge new <name> --lang c --template headless` | Deterministic headless simulation in pure C99 without window or GPU. Runs fixed 60 Hz simulation steps, validates determinism on shutdown, and includes pure C unit tests. Smoke test: 60 frames. |
+
+### Python Templates
+
+| Template | Command | Description |
+|----------|---------|-------------|
+| `python-3d/` | `mge new <name> --lang python --template 3d` | Standalone Python game using `mge.Application`, procedural 3D cube mesh, 3D camera, jump physics in `game/logic.py`, synthesized jump audio (`mge.SfxPreset.Jump`), `pyproject.toml`, and pytest tests in `tests/test_game.py`. Offscreen smoke run: 60 frames. |
+| `python-2d/` | `mge new <name> --lang python --template 2d` | Standalone Python 2D game using `mge.Application`, 2D renderer shapes and text, coin collection logic in `game/logic.py`, synthesized audio (`mge.SfxPreset.Coin`), `pyproject.toml`, and pytest tests in `tests/test_game.py`. Offscreen smoke run: 60 frames. |
 
 ## Placeholders
 

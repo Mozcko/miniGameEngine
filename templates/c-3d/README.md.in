@@ -1,0 +1,29 @@
+# @GAME_TITLE@
+
+C 3D game generated with miniGameEngine (`@GAME_NAME@`, C-3D template).
+
+## Prerequisites
+
+- CMake 3.25+ and a C99/C++17 compiler (GCC 11+, Clang 14+, or MSVC 2022).
+- Linux dependencies (Ubuntu 24.04):
+  ```bash
+  sudo apt install -y cmake ninja-build libglm-dev libasound2-dev libpulse-dev libvulkan1 mesa-vulkan-drivers glslang-tools
+  ```
+
+## Building and Running
+
+Using `mge` CLI:
+
+```bash
+mge build
+mge run
+mge test
+```
+
+Or directly with CMake:
+
+```bash
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+```

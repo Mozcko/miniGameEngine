@@ -1,0 +1,12 @@
+.github/workflows/ci.yml 830314efc42daad5
+.gitignore b7f977d4a50d208b
+.vscode/settings.json bb3724e5fa6cdbd2
+.vscode/tasks.json 9e4cbfd50e7c076d
+LICENSE 6f77bed25018d3eb
+README.md 606fcb540336593d
+game/__init__.py 542c2514a592e8a1
+game/logic.py 808bc1d60b9d0c65
+main.py 595ed588cf2474f2
+mge.project 8330001427be0a61
+pyproject.toml b5598d36573c5285
+tests/test_game.py 76f62c16a5b7d624

@@ -1,0 +1,13 @@
+.github/workflows/ci.yml 1e51f7708bb53770
+.gitignore 668d7124ecd80892
+.vscode/settings.json bb3724e5fa6cdbd2
+.vscode/tasks.json 9e4cbfd50e7c076d
+CMakeLists.txt 83eec2a319b68199
+CMakePresets.json a3baee64ebbfd7d2
+LICENSE 6f77bed25018d3eb
+README.md 548dc2604f8d19ff
+mge.project 043b5197937521f7
+src/logic.c b1b35e621334ce59
+src/logic.h 7a36930065403ed6
+src/main.c 7b5a0e75fa9afce3
+tests/test_c_game.c d1d2ba1a312a9d75

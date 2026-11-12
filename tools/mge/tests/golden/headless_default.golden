@@ -6,7 +6,7 @@ CMakeLists.txt a6adecf2cb6dd2fc
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md bfed3750830113fc
-mge.project 0affb4553ac6901e
+mge.project d02f2563111b4ce6
 src/SimCore.cpp 9410e8ddf8295fe4
 src/SimCoreLogic.cpp e0df816d300d5834
 src/SimCoreLogic.h c259eac71250683d

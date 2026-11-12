@@ -16,6 +16,9 @@ namespace mge::cli {
     // Ejecuta las comprobaciones de dependencias del sistema y devuelve su estado
     std::vector<DoctorItem> runDoctorChecks();
 
+    // Ejecuta las comprobaciones de dependencias para proyectos de Python
+    std::vector<DoctorItem> runPythonDoctorChecks();
+
     // Comando 'mge doctor' interactivo que formatea e imprime los resultados
     int cmdDoctor(int argc = 0, char* argv[] = nullptr);
 

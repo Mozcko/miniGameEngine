@@ -1,0 +1,82 @@
+"""@GAME_TITLE@: aplicacion principal en Python."""
+import math
+import os
+import sys
+import mge
+from game.logic import GameLogic
+
+
+class @GAME_CLASS@App(mge.Application):
+    def __init__(self, headless: bool = False, max_frames: int = 0) -> None:
+        super().__init__(
+            title="@GAME_TITLE@",
+            width=800,
+            height=600,
+            headless=headless,
+            max_frames=max_frames,
+        )
+        self.logic = GameLogic()
+        self.cube: mge.Mesh | None = None
+        self.jump_sfx: mge.Sample | None = None
+
+    def on_init(self) -> bool:
+        # Malla procedural del cubo
+        self.cube = mge.Mesh.create_cube(1.0, app=self)
+
+        # Efecto de sonido sintetizado para salto
+        if self.audio is not None:
+            self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.JUMP)
+
+        # Camara 3D mirando al origen
+        eye = mge.Vec3(0.0, 2.0, 4.0)
+        target = mge.Vec3(0.0, 0.0, 0.0)
+        up = mge.Vec3(0.0, 1.0, 0.0)
+        view = mge.Mat4.look_at(eye, target, up)
+        proj = mge.Mat4.perspective(math.radians(60.0), 800.0 / 600.0, 0.1, 100.0)
+        self.renderer.set_camera(view, proj)
+        return True
+
+    def on_update(self, dt: float) -> None:
+        if self.input.key_down(mge.Key.ESCAPE):
+            self.request_stop()
+
+        want_jump = self.input.key_down(mge.Key.SPACE)
+        if want_jump and self.logic.player.grounded and self.audio and self.jump_sfx:
+            self.audio.play(self.jump_sfx)
+
+        self.logic.update(dt, want_jump=want_jump)
+
+    def on_render(self) -> None:
+        if self.cube is None or not self.cube.is_alive or self.renderer is None:
+            return
+
+        # Modelo con rotacion en Y y traslacion vertical
+        model = (
+            mge.Mat4.translation(mge.Vec3(0.0, self.logic.player.y, 0.0))
+            * mge.Mat4.rotate(self.logic.rotation_y, mge.Vec3(0.0, 1.0, 0.0))
+        )
+        color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
+        self.renderer.draw_mesh(self.cube, model, color)
+
+        # Overlay 2D
+        self.renderer.draw_text("@GAME_TITLE@ (Python 3D)", 20.0, 20.0, scale=2.0)
+        self.renderer.draw_text("Espacio: Salto | Esc: Salir", 20.0, 60.0, scale=1.0)
+
+    def on_shutdown(self) -> None:
+        if self.cube is not None:
+            self.cube.destroy()
+        if self.jump_sfx is not None:
+            self.jump_sfx.destroy()
+
+
+def main() -> None:
+    headless = "--headless" in sys.argv
+    max_frames_env = os.environ.get("MGE_MAX_FRAMES")
+    max_frames = int(max_frames_env) if max_frames_env else (60 if headless else 0)
+
+    app = @GAME_CLASS@App(headless=headless, max_frames=max_frames)
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

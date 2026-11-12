@@ -32,6 +32,71 @@ namespace mge::cli {
 
     } // namespace
 
+    std::string languageToString(ProjectLanguage lang) {
+        switch (lang) {
+        case ProjectLanguage::Cpp: return "cpp";
+        case ProjectLanguage::C: return "c";
+        case ProjectLanguage::Python: return "python";
+        }
+        return "cpp";
+    }
+
+    bool parseLanguage(const std::string& str, ProjectLanguage& outLang) {
+        std::string lower;
+        lower.reserve(str.size());
+        for (char ch : str) {
+            lower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+        }
+        if (lower == "cpp" || lower == "c++" || lower == "cxx") {
+            outLang = ProjectLanguage::Cpp;
+            return true;
+        }
+        if (lower == "c") {
+            outLang = ProjectLanguage::C;
+            return true;
+        }
+        if (lower == "python" || lower == "py") {
+            outLang = ProjectLanguage::Python;
+            return true;
+        }
+        return false;
+    }
+
+    bool validateLanguageTemplate(ProjectLanguage lang, const std::string& templateName,
+                                  std::string& outError) {
+        outError.clear();
+        std::string tmpl = templateName.empty() ? "3d" : templateName;
+        if (tmpl.rfind("c-", 0) == 0) {
+            tmpl = tmpl.substr(2);
+        } else if (tmpl.rfind("python-", 0) == 0) {
+            tmpl = tmpl.substr(7);
+        }
+
+        switch (lang) {
+        case ProjectLanguage::Cpp:
+            if (tmpl == "3d" || tmpl == "2d" || tmpl == "headless" || tmpl == "window") {
+                return true;
+            }
+            outError =
+                "Plantilla '" + templateName + "' no válida para C++ (plantillas válidas: 3d, 2d, headless).";
+            return false;
+        case ProjectLanguage::C:
+            if (tmpl == "3d" || tmpl == "headless") {
+                return true;
+            }
+            outError =
+                "Plantilla '" + templateName + "' no válida para C (plantillas válidas: 3d, headless).";
+            return false;
+        case ProjectLanguage::Python:
+            if (tmpl == "3d" || tmpl == "2d") {
+                return true;
+            }
+            outError = "Plantilla '" + templateName + "' no válida para Python (plantillas válidas: 3d, 2d).";
+            return false;
+        }
+        return false;
+    }
+
     bool validateProjectName(const std::string& name, std::string& outError) {
         outError.clear();
         if (name.empty()) {
@@ -231,14 +296,21 @@ namespace mge::cli {
                 std::string line;
                 std::string name;
                 std::string templateType;
+                ProjectLanguage lang = ProjectLanguage::Cpp;
                 while (std::getline(in, line)) {
                     if (line.rfind("name=", 0) == 0) {
                         name = line.substr(5);
                     } else if (line.rfind("template=", 0) == 0) {
                         templateType = line.substr(9);
+                    } else if (line.rfind("language=", 0) == 0) {
+                        std::string langStr = line.substr(9);
+                        ProjectLanguage parsed{};
+                        if (parseLanguage(langStr, parsed)) {
+                            lang = parsed;
+                        }
                     }
                 }
-                return ProjectInfo{ProjectType::GameProject, name, templateType, current};
+                return ProjectInfo{ProjectType::GameProject, name, templateType, current, lang};
             }
 
             // Comprobar CMakeLists.txt del repositorio del motor
@@ -250,7 +322,24 @@ namespace mge::cli {
                 std::string content = buffer.str();
 
                 if (content.find("project(miniGameEngine") != std::string::npos) {
-                    return ProjectInfo{ProjectType::EngineRepo, "miniGameEngine", "", current};
+                    return ProjectInfo{ProjectType::EngineRepo, "miniGameEngine", "", current,
+                                       ProjectLanguage::Cpp};
+                }
+
+                if (content.find("mge_add_c_game(") != std::string::npos) {
+                    size_t pos = content.find("mge_add_c_game(");
+                    size_t start = pos + 15;
+                    while (start < content.size() &&
+                           std::isspace(static_cast<unsigned char>(content[start]))) {
+                        ++start;
+                    }
+                    size_t end = start;
+                    while (end < content.size() && !std::isspace(static_cast<unsigned char>(content[end])) &&
+                           content[end] != ')' && content[end] != '\n' && content[end] != '\r') {
+                        ++end;
+                    }
+                    std::string gameName = content.substr(start, end - start);
+                    return ProjectInfo{ProjectType::GameProject, gameName, "", current, ProjectLanguage::C};
                 }
 
                 if (content.find("mge_add_game(") != std::string::npos) {
@@ -267,7 +356,7 @@ namespace mge::cli {
                         ++end;
                     }
                     std::string gameName = content.substr(start, end - start);
-                    return ProjectInfo{ProjectType::GameProject, gameName, "", current};
+                    return ProjectInfo{ProjectType::GameProject, gameName, "", current, ProjectLanguage::Cpp};
                 }
             }
 
@@ -289,6 +378,12 @@ namespace mge::cli {
             return 1;
         }
 
+        std::string langError;
+        if (!validateLanguageTemplate(options.language, options.templateName, langError)) {
+            outMessage = "Error: " + langError;
+            return 1;
+        }
+
         std::filesystem::path tmplBase = findTemplatesDir(exePath);
         if (tmplBase.empty() || !std::filesystem::is_directory(tmplBase)) {
             outMessage = "Error: no se pudo localizar la carpeta de plantillas.";
@@ -296,10 +391,25 @@ namespace mge::cli {
         }
 
         std::string tmplName = options.templateName.empty() ? "3d" : options.templateName;
-        std::filesystem::path tmplDir = tmplBase / tmplName;
+        std::string resolvedDirName = tmplName;
+        if (options.language == ProjectLanguage::C) {
+            if (resolvedDirName.rfind("c-", 0) != 0) {
+                resolvedDirName = "c-" + resolvedDirName;
+            }
+        } else if (options.language == ProjectLanguage::Python) {
+            if (resolvedDirName.rfind("python-", 0) != 0) {
+                resolvedDirName = "python-" + resolvedDirName;
+            }
+        }
+
+        std::filesystem::path tmplDir = tmplBase / resolvedDirName;
         if (!std::filesystem::is_directory(tmplDir)) {
-            outMessage = "Error: no existe la plantilla '" + tmplName + "' en " + tmplBase.string();
-            return 1;
+            if (std::filesystem::is_directory(tmplBase / tmplName)) {
+                tmplDir = tmplBase / tmplName;
+            } else {
+                outMessage = "Error: no existe la plantilla '" + tmplName + "' en " + tmplBase.string();
+                return 1;
+            }
         }
 
         std::filesystem::path dest = options.targetDir;
@@ -362,9 +472,9 @@ namespace mge::cli {
                                            std::filesystem::copy_options::overwrite_existing, ec);
             }
 
-            // Formatear archivos C++ generados si clang-format está disponible
+            // Formatear archivos C++ y C generados si clang-format está disponible
             std::string ext = targetFile.extension().string();
-            if ((ext == ".cpp" || ext == ".h") && commandExists("clang-format")) {
+            if ((ext == ".cpp" || ext == ".h" || ext == ".c") && commandExists("clang-format")) {
                 runCommand({"clang-format", "-i", targetFile.string()});
             }
         }
@@ -490,6 +600,7 @@ namespace mge::cli {
                                       : ((options.license == LicenseType::Apache2) ? "apache" : "none");
             std::ofstream projFile(dest / "mge.project");
             projFile << "name=" << options.name << "\n";
+            projFile << "language=" << languageToString(options.language) << "\n";
             projFile << "template=" << tmplName << "\n";
             projFile << "audio=" << (options.audio ? "yes" : "no") << "\n";
             projFile << "license=" << licName << "\n";

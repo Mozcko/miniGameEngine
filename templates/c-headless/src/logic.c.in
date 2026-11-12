@@ -1,0 +1,23 @@
+#include "logic.h"
+
+void sim_logic_init(SimState* state) {
+    if (!state) return;
+    state->stepCount = 0;
+    state->accumulatedTime = 0.0f;
+    state->entityPos[0] = 0.0f;
+    state->entityPos[1] = 0.0f;
+    state->entityPos[2] = 0.0f;
+}
+
+void sim_logic_step(SimState* state, float fixedDt) {
+    if (!state) return;
+    state->stepCount++;
+    state->accumulatedTime += fixedDt;
+    state->entityPos[0] += 1.0f * fixedDt;
+    state->entityPos[1] += 0.5f * fixedDt;
+}
+
+bool sim_logic_verify(const SimState* state, uint64_t expectedSteps) {
+    if (!state) return false;
+    return state->stepCount == expectedSteps;
+}

@@ -1,0 +1,27 @@
+#ifndef @GAME_NAME@_LOGIC_H
+#define @GAME_NAME@_LOGIC_H
+
+#include <stdbool.h>
+
+/* Estado del jugador y de la escena 3D */
+typedef struct GamePlayer {
+    float x;
+    float y;
+    float z;
+    float vy;
+    bool grounded;
+} GamePlayer;
+
+typedef struct GameLogicState {
+    GamePlayer player;
+    float rotationY;
+    int score;
+} GameLogicState;
+
+/* Inicializa el estado inicial del juego */
+void game_logic_init(GameLogicState* state);
+
+/* Actualiza la fisica basica y rotacion en paso fijo o variable */
+void game_logic_update(GameLogicState* state, float dt, bool wantJump);
+
+#endif /* @GAME_NAME@_LOGIC_H */
