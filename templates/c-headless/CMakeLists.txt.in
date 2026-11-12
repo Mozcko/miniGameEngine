@@ -29,6 +29,7 @@ target_link_libraries(@GAME_NAME@_logic PUBLIC mge::c)
 mge_add_c_game(@GAME_NAME@
     SOURCES src/main.c
     LIBRARIES @GAME_NAME@_logic
+    HEADLESS
     SMOKE_FRAMES 60
 )
 

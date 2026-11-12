@@ -74,7 +74,7 @@ namespace mge::cli {
 
         switch (lang) {
         case ProjectLanguage::Cpp:
-            if (tmpl == "3d" || tmpl == "2d" || tmpl == "headless") {
+            if (tmpl == "3d" || tmpl == "2d" || tmpl == "headless" || tmpl == "window") {
                 return true;
             }
             outError =

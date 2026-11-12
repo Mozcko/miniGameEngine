@@ -92,10 +92,11 @@ TEST_CASE("cli: parseLanguage y languageToString") {
 
 TEST_CASE("cli: validación de plantillas según el lenguaje") {
     std::string err;
-    // Cpp: 3d, 2d, headless
+    // Cpp: 3d, 2d, headless, window
     CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "3d", err));
     CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "2d", err));
     CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "headless", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "window", err));
     CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::Cpp, "isometric", err));
 
     // C: 3d, headless
