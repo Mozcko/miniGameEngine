@@ -6,7 +6,7 @@ LICENSE 6f77bed25018d3eb
 README.md 606fcb540336593d
 game/__init__.py 542c2514a592e8a1
 game/logic.py 808bc1d60b9d0c65
-main.py 96671d731567c0d6
+main.py 921cc572014d76aa
 mge.project 8330001427be0a61
 pyproject.toml b5598d36573c5285
 tests/test_game.py 76f62c16a5b7d624

@@ -19,7 +19,7 @@ class @GAME_CLASS@App(mge.Application):
 
     def on_init(self) -> bool:
         if self.audio is not None:
-            self.coin_sfx = self.audio.create_preset(mge.SfxPreset.Coin)
+            self.coin_sfx = self.audio.create_sfx(mge.SfxPreset.Coin)
         return True
 
     def on_update(self, dt: float) -> None:

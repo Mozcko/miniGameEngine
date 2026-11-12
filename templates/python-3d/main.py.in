@@ -24,7 +24,7 @@ class @GAME_CLASS@App(mge.Application):
 
         # Efecto de sonido sintetizado para salto
         if self.audio is not None:
-            self.jump_sfx = self.audio.create_preset(mge.SfxPreset.Jump)
+            self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.Jump)
 
         # Camara 3D mirando al origen
         self.camera.look_at(
