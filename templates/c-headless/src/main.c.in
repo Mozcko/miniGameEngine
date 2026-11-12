@@ -2,6 +2,7 @@
 #include "logic.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct AppState {
@@ -18,8 +19,14 @@ static bool on_init(mge_app* app, void* user_data) {
 
 static void on_fixed_update(mge_app* app, float fixed_dt, void* user_data) {
     (void)app;
+    (void)fixed_dt;
+    (void)user_data;
+}
+
+static void on_update(mge_app* app, float dt, void* user_data) {
+    (void)app;
     AppState* state = (AppState*)user_data;
-    sim_logic_step(&state->sim, fixed_dt);
+    sim_logic_step(&state->sim, dt > 0.0f ? dt : (1.0f / 60.0f));
 }
 
 static void on_shutdown(mge_app* app, void* user_data) {
@@ -33,12 +40,21 @@ int main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
 
+    int max_frames = 60;
+    const char* env_frames = getenv("MGE_MAX_FRAMES");
+    if (env_frames) {
+        int parsed = atoi(env_frames);
+        if (parsed > 0) {
+            max_frames = parsed;
+        }
+    }
+
     mge_app_config config;
     memset(&config, 0, sizeof(config));
     config.struct_size = sizeof(mge_app_config);
     config.title = "@GAME_TITLE@";
     config.headless = true;
-    config.max_frames = 60;
+    config.max_frames = max_frames;
     config.tick_rate = 60;
 
     AppState state;
@@ -48,7 +64,7 @@ int main(int argc, char* argv[]) {
     callbacks.struct_size = sizeof(mge_app_callbacks);
     callbacks.on_init = on_init;
     callbacks.on_fixed_update = on_fixed_update;
-    callbacks.on_update = NULL;
+    callbacks.on_update = on_update;
     callbacks.on_render = NULL;
     callbacks.on_shutdown = on_shutdown;
     callbacks.user_data = &state;
@@ -58,8 +74,9 @@ int main(int argc, char* argv[]) {
         return rc;
     }
 
-    if (!sim_logic_verify(&state.sim, 60)) {
-        fprintf(stderr, "Error: esperados 60 pasos, obtenidos %lu\n", (unsigned long)state.sim.stepCount);
+    if (!sim_logic_verify(&state.sim, (uint64_t)max_frames)) {
+        fprintf(stderr, "Error: esperados %d pasos, obtenidos %lu\n", max_frames,
+                (unsigned long)state.sim.stepCount);
         return 1;
     }
 

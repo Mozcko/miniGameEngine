@@ -9,5 +9,5 @@ README.md 2ef37355deb5c0a2
 mge.project 8b7715855ef9e56c
 src/logic.c fabb627696916e61
 src/logic.h f60388a6c6ca0cfa
-src/main.c 110c74040a3ce429
+src/main.c fe6620fe52f64b7c
 tests/test_c_headless.c 9a91ac73334f9269
