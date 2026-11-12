@@ -1,0 +1,40 @@
+#include "logic.h"
+
+void game_logic_init(GameLogicState* state) {
+    if (!state) return;
+    state->player.x = 0.0f;
+    state->player.y = 0.0f;
+    state->player.z = 0.0f;
+    state->player.vy = 0.0f;
+    state->player.grounded = true;
+    state->rotationY = 0.0f;
+    state->score = 0;
+}
+
+void game_logic_update(GameLogicState* state, float dt, bool wantJump) {
+    if (!state) return;
+
+    /* Salto y gravedad simplificada para 3D */
+    const float gravity = -9.8f;
+    const float jumpSpeed = 5.0f;
+
+    if (wantJump && state->player.grounded) {
+        state->player.vy = jumpSpeed;
+        state->player.grounded = false;
+    }
+
+    if (!state->player.grounded) {
+        state->player.vy += gravity * dt;
+        state->player.y += state->player.vy * dt;
+
+        /* Colision con el suelo en y = 0 */
+        if (state->player.y <= 0.0f) {
+            state->player.y = 0.0f;
+            state->player.vy = 0.0f;
+            state->player.grounded = true;
+        }
+    }
+
+    /* Rotacion continua del objeto central */
+    state->rotationY += dt * 1.5f;
+}

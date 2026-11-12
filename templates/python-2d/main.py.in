@@ -1,0 +1,74 @@
+"""@GAME_TITLE@: aplicacion principal 2D en Python."""
+import os
+import sys
+import mge
+from game.logic import GameLogic2D
+
+
+class @GAME_CLASS@App(mge.Application):
+    def __init__(self, headless: bool = False, max_frames: int = 0) -> None:
+        super().__init__(
+            title="@GAME_TITLE@",
+            width=800,
+            height=600,
+            headless=headless,
+            max_frames=max_frames,
+        )
+        self.logic = GameLogic2D(800.0, 600.0)
+        self.coin_sfx: mge.Sample | None = None
+
+    def on_init(self) -> bool:
+        if self.audio is not None:
+            self.coin_sfx = self.audio.create_preset(mge.SfxPreset.Coin)
+        return True
+
+    def on_update(self, dt: float) -> None:
+        if self.input.key_down(mge.Key.Escape):
+            self.request_stop()
+
+        move_x = 0.0
+        move_y = 0.0
+        if self.input.key_down(mge.Key.A) or self.input.key_down(mge.Key.Left):
+            move_x -= 1.0
+        if self.input.key_down(mge.Key.D) or self.input.key_down(mge.Key.Right):
+            move_x += 1.0
+        if self.input.key_down(mge.Key.W) or self.input.key_down(mge.Key.Up):
+            move_y -= 1.0
+        if self.input.key_down(mge.Key.S) or self.input.key_down(mge.Key.Down):
+            move_y += 1.0
+
+        collected = self.logic.update(dt, move_x, move_y)
+        if collected > 0 and self.audio and self.coin_sfx:
+            self.audio.play(self.coin_sfx)
+
+    def on_render(self) -> None:
+        if self.renderer is None:
+            return
+
+        # Dibujar monedas
+        coin_color = mge.Vec4(1.0, 0.84, 0.0, 1.0)
+        for coin in self.logic.coins:
+            self.renderer.draw_rect(coin.x, coin.y, coin.w, coin.h, color=coin_color)
+
+        # Dibujar jugador
+        player_color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
+        pr = self.logic.player_rect
+        self.renderer.draw_rect(pr.x, pr.y, pr.w, pr.h, color=player_color)
+
+        # Marcador y ayuda
+        self.renderer.draw_text("@GAME_TITLE@ (Python 2D)", 20.0, 20.0, scale=2.0)
+        self.renderer.draw_text(f"Puntaje: {self.logic.score}", 20.0, 60.0, scale=1.5)
+        self.renderer.draw_text("WASD / Flechas: Mover | Esc: Salir", 20.0, 100.0, scale=1.0)
+
+
+def main() -> None:
+    headless = "--headless" in sys.argv
+    max_frames_env = os.environ.get("MGE_MAX_FRAMES")
+    max_frames = int(max_frames_env) if max_frames_env else (60 if headless else 0)
+
+    app = @GAME_CLASS@App(headless=headless, max_frames=max_frames)
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

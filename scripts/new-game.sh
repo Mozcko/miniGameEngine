@@ -1,25 +1,33 @@
 #!/usr/bin/env bash
 # Wrapper sobre 'mge new' para crear juegos nuevos a partir de plantillas.
-# Uso: scripts/new-game.sh [nombre] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]
+# Uso: scripts/new-game.sh [nombre] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]
 #   scripts/new-game.sh space_shooter
 #   scripts/new-game.sh space_shooter --template 3d
 #   scripts/new-game.sh arcade_plane --template 2d
 #   scripts/new-game.sh simulation --headless
+#   scripts/new-game.sh my_py_game --lang python --template 3d
+#   scripts/new-game.sh my_c_game --lang c --template 3d
 #   scripts/new-game.sh --template 3d --dir /tmp/my_game
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 usage() {
-    echo "Uso: scripts/new-game.sh [nombre] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]"
+    echo "Uso: scripts/new-game.sh [nombre] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]"
 }
 
 name=""
+lang="cpp"
 template="3d"
 target_dir=""
 has_template_flag=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --lang|--language)
+            [[ $# -ge 2 ]] || { usage >&2; exit 1; }
+            lang="$2"
+            shift 2
+            ;;
         --template)
             [[ $# -ge 2 ]] || { usage >&2; exit 1; }
             template="$2"
@@ -98,4 +106,4 @@ if [[ -z "$mge_bin" ]]; then
     fi
 fi
 
-exec "$mge_bin" new "$name" --template "$template" --dir "$dest"
+exec "$mge_bin" new "$name" --lang "$lang" --template "$template" --dir "$dest"

@@ -9,6 +9,9 @@ Prerequisites: the project builds (`docs/BUILDING.md`).
 > [!NOTE]
 > This is the quick 10-minute getting started guide. For the comprehensive manual covering all subsystems, modules, physics, voxels, procedural generation, sound synthesis, and an end-to-end game walkthrough, see the [Full User Guide](GUIDE.md).
 
+> [!TIP]
+> Prefer writing your game in C or Python? `miniGameEngine` supports plain C99 (`mge new <name> --lang c`) and Python (`mge new <name> --lang python`) project templates. See the [C API Guide](C_API.md) and [Python Guide](PYTHON.md) for detailed tutorials.
+
 ---
 
 ## 1. Create the game

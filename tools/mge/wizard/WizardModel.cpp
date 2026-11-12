@@ -37,6 +37,15 @@ namespace mge::cli::wizard {
         return std::string(buffer);
     }
 
+    std::string WizardAnswers::languageString() const {
+        switch (language) {
+        case LanguageChoice::Cpp: return "cpp";
+        case LanguageChoice::C: return "c";
+        case LanguageChoice::Python: return "python";
+        }
+        return "cpp";
+    }
+
     std::string WizardAnswers::templateString() const {
         switch (templateChoice) {
         case TemplateChoice::ThreeD: return "3d";
@@ -57,6 +66,11 @@ namespace mge::cli::wizard {
 
     NewProjectOptions WizardAnswers::toProjectOptions() const {
         NewProjectOptions opt;
+        switch (language) {
+        case LanguageChoice::Cpp: opt.language = ProjectLanguage::Cpp; break;
+        case LanguageChoice::C: opt.language = ProjectLanguage::C; break;
+        case LanguageChoice::Python: opt.language = ProjectLanguage::Python; break;
+        }
         opt.name = name;
         opt.templateName = templateString();
         opt.targetDir = targetDir;
@@ -89,6 +103,7 @@ namespace mge::cli::wizard {
         }
 
         switch (m_step) {
+        case WizardStep::Language: m_step = WizardStep::Name; break;
         case WizardStep::Name: m_step = WizardStep::Template; break;
         case WizardStep::Template:
             if (m_answers.templateChoice == TemplateChoice::Headless) {
@@ -110,7 +125,12 @@ namespace mge::cli::wizard {
 
     void WizardModel::prevStep() {
         switch (m_step) {
-        case WizardStep::Name: break;
+        case WizardStep::Language: break;
+        case WizardStep::Name:
+            if (!m_skipLanguage) {
+                m_step = WizardStep::Language;
+            }
+            break;
         case WizardStep::Template: m_step = WizardStep::Name; break;
         case WizardStep::Audio: m_step = WizardStep::Template; break;
         case WizardStep::License:
@@ -149,37 +169,98 @@ namespace mge::cli::wizard {
         return validateProjectName(m_answers.name, m_nameError);
     }
 
+    void WizardModel::selectNextLanguage() {
+        switch (m_answers.language) {
+        case LanguageChoice::Cpp: setLanguage(LanguageChoice::C); break;
+        case LanguageChoice::C: setLanguage(LanguageChoice::Python); break;
+        case LanguageChoice::Python: setLanguage(LanguageChoice::Cpp); break;
+        }
+    }
+
+    void WizardModel::selectPrevLanguage() {
+        switch (m_answers.language) {
+        case LanguageChoice::Cpp: setLanguage(LanguageChoice::Python); break;
+        case LanguageChoice::C: setLanguage(LanguageChoice::Cpp); break;
+        case LanguageChoice::Python: setLanguage(LanguageChoice::C); break;
+        }
+    }
+
+    void WizardModel::setLanguage(LanguageChoice choice) {
+        m_answers.language = choice;
+        if (choice == LanguageChoice::C) {
+            if (m_answers.templateChoice == TemplateChoice::TwoD) {
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+            }
+        } else if (choice == LanguageChoice::Python) {
+            if (m_answers.templateChoice == TemplateChoice::Headless) {
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+                m_answers.audio = true;
+            }
+        }
+    }
+
+    void WizardModel::setSkipLanguage(bool skip) {
+        m_skipLanguage = skip;
+        if (skip && m_step == WizardStep::Language) {
+            m_step = WizardStep::Name;
+        }
+    }
+
     void WizardModel::selectNextTemplate() {
-        switch (m_answers.templateChoice) {
-        case TemplateChoice::ThreeD:
-            m_answers.templateChoice = TemplateChoice::TwoD;
-            m_answers.audio = true;
-            break;
-        case TemplateChoice::TwoD:
-            m_answers.templateChoice = TemplateChoice::Headless;
-            m_answers.audio = false;
-            break;
-        case TemplateChoice::Headless:
-            m_answers.templateChoice = TemplateChoice::ThreeD;
-            m_answers.audio = true;
-            break;
+        if (m_answers.language == LanguageChoice::C) {
+            if (m_answers.templateChoice == TemplateChoice::ThreeD) {
+                m_answers.templateChoice = TemplateChoice::Headless;
+                m_answers.audio = false;
+            } else {
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+                m_answers.audio = true;
+            }
+        } else if (m_answers.language == LanguageChoice::Python) {
+            if (m_answers.templateChoice == TemplateChoice::ThreeD) {
+                m_answers.templateChoice = TemplateChoice::TwoD;
+                m_answers.audio = true;
+            } else {
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+                m_answers.audio = true;
+            }
+        } else {
+            switch (m_answers.templateChoice) {
+            case TemplateChoice::ThreeD:
+                m_answers.templateChoice = TemplateChoice::TwoD;
+                m_answers.audio = true;
+                break;
+            case TemplateChoice::TwoD:
+                m_answers.templateChoice = TemplateChoice::Headless;
+                m_answers.audio = false;
+                break;
+            case TemplateChoice::Headless:
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+                m_answers.audio = true;
+                break;
+            }
         }
     }
 
     void WizardModel::selectPrevTemplate() {
-        switch (m_answers.templateChoice) {
-        case TemplateChoice::ThreeD:
-            m_answers.templateChoice = TemplateChoice::Headless;
-            m_answers.audio = false;
-            break;
-        case TemplateChoice::TwoD:
-            m_answers.templateChoice = TemplateChoice::ThreeD;
-            m_answers.audio = true;
-            break;
-        case TemplateChoice::Headless:
-            m_answers.templateChoice = TemplateChoice::TwoD;
-            m_answers.audio = true;
-            break;
+        if (m_answers.language == LanguageChoice::C) {
+            selectNextTemplate();
+        } else if (m_answers.language == LanguageChoice::Python) {
+            selectNextTemplate();
+        } else {
+            switch (m_answers.templateChoice) {
+            case TemplateChoice::ThreeD:
+                m_answers.templateChoice = TemplateChoice::Headless;
+                m_answers.audio = false;
+                break;
+            case TemplateChoice::TwoD:
+                m_answers.templateChoice = TemplateChoice::ThreeD;
+                m_answers.audio = true;
+                break;
+            case TemplateChoice::Headless:
+                m_answers.templateChoice = TemplateChoice::TwoD;
+                m_answers.audio = true;
+                break;
+            }
         }
     }
 
@@ -335,6 +416,7 @@ namespace mge::cli::wizard {
     std::string generateMgeProject(const WizardAnswers& answers) {
         std::stringstream ss;
         ss << "name=" << answers.name << "\n"
+           << "language=" << answers.languageString() << "\n"
            << "template=" << answers.templateString() << "\n"
            << "audio=" << (answers.audio ? "yes" : "no") << "\n"
            << "license=" << answers.licenseString() << "\n";
@@ -344,9 +426,19 @@ namespace mge::cli::wizard {
     std::vector<PlannedFile> WizardModel::planFileTree(const std::filesystem::path& tmplBase) const {
         std::vector<PlannedFile> files;
 
-        std::filesystem::path tmplDir = tmplBase / m_answers.templateString();
+        std::string tmplFolder = m_answers.templateString();
+        if (m_answers.language == LanguageChoice::C) {
+            tmplFolder = "c-" + tmplFolder;
+        } else if (m_answers.language == LanguageChoice::Python) {
+            tmplFolder = "python-" + tmplFolder;
+        }
+
+        std::filesystem::path tmplDir = tmplBase / tmplFolder;
         if (!std::filesystem::is_directory(tmplDir)) {
-            return files;
+            tmplDir = tmplBase / m_answers.templateString();
+            if (!std::filesystem::is_directory(tmplDir)) {
+                return files;
+            }
         }
 
         std::string className = getClassName(m_answers.name);

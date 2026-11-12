@@ -1,0 +1,53 @@
+"""Logica de juego 2D desacoplada para @GAME_TITLE@."""
+from dataclasses import dataclass
+
+
+@dataclass
+class Rect:
+    x: float
+    y: float
+    w: float
+    h: float
+
+    def intersects(self, other: "Rect") -> bool:
+        return not (
+            self.x + self.w < other.x
+            or other.x + other.w < self.x
+            or self.y + self.h < other.y
+            or other.y + other.h < self.y
+        )
+
+
+class GameLogic2D:
+    def __init__(self, screen_w: float = 800.0, screen_h: float = 600.0) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self.player_rect = Rect(screen_w * 0.5 - 20.0, screen_h * 0.5 - 20.0, 40.0, 40.0)
+        self.player_speed: float = 250.0
+        self.score: int = 0
+        self.coins: list[Rect] = [
+            Rect(150.0, 150.0, 20.0, 20.0),
+            Rect(600.0, 150.0, 20.0, 20.0),
+            Rect(380.0, 450.0, 20.0, 20.0),
+        ]
+
+    def update(self, dt: float, move_x: float, move_y: float) -> int:
+        # Movimiento del jugador
+        self.player_rect.x += move_x * self.player_speed * dt
+        self.player_rect.y += move_y * self.player_speed * dt
+
+        # Delimitar jugador a los bordes de la pantalla
+        self.player_rect.x = max(0.0, min(self.player_rect.x, self.screen_w - self.player_rect.w))
+        self.player_rect.y = max(0.0, min(self.player_rect.y, self.screen_h - self.player_rect.h))
+
+        # Recoleccion de monedas
+        collected = 0
+        remaining_coins = []
+        for coin in self.coins:
+            if self.player_rect.intersects(coin):
+                self.score += 10
+                collected += 1
+            else:
+                remaining_coins.append(coin)
+        self.coins = remaining_coins
+        return collected

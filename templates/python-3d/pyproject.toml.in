@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "@GAME_NAME@"
+version = "0.1.0"
+description = "@GAME_TITLE@"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mge @ git+https://github.com/Mozcko/miniGameEngine@v@MGE_VERSION@",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

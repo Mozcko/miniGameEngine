@@ -287,6 +287,64 @@ namespace mge::cli::wizard {
         std::cout << colors::cyan() << colors::bold() << "mge new - Asistente interactivo de proyecto"
                   << colors::reset() << "\n\n";
 
+        // Pregunta 0: Lenguaje del proyecto (se omite si se especificó --lang)
+        if (!model.skipsLanguage()) {
+            const std::vector<std::pair<LanguageChoice, std::string>> languageOptions = {
+                {LanguageChoice::Cpp, "C++ (motor completo, máximo rendimiento y control)"},
+                {LanguageChoice::C, "C (API C99 estable, interoperabilidad y simplicidad)"},
+                {LanguageChoice::Python, "Python (desarrollo rápido con bindings nanobind y pytest)"}};
+
+            int renderedLines = 0;
+            while (true) {
+                if (renderedLines > 0) {
+                    moveCursorUp(renderedLines);
+                }
+
+                std::cout << "\r" << colors::bold() << "? Lenguaje del proyecto:" << colors::reset()
+                          << "\033[K\n";
+                for (const auto& opt : languageOptions) {
+                    std::cout << "\033[K";
+                    if (model.answers().language == opt.first) {
+                        std::cout << colors::cyan() << colors::bold() << "  ❯ " << opt.second
+                                  << colors::reset() << "\n";
+                    } else {
+                        std::cout << colors::gray() << "    " << opt.second << colors::reset() << "\n";
+                    }
+                }
+                renderedLines = 1 + static_cast<int>(languageOptions.size());
+                std::cout << std::flush;
+
+                char ch = 0;
+                Key key = readKey(customKeyReader, ch);
+                if (key == Key::CtrlC || key == Key::Eof) {
+                    guard.restore();
+                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    model.cancel();
+                    return false;
+                }
+                if (key == Key::Up || key == Key::Left) {
+                    model.selectPrevLanguage();
+                } else if (key == Key::Down || key == Key::Right || key == Key::Tab) {
+                    model.selectNextLanguage();
+                } else if (key == Key::Enter) {
+                    if (renderedLines > 0) {
+                        moveCursorUp(renderedLines);
+                    }
+                    for (int i = 0; i < renderedLines; ++i) {
+                        clearCurrentLine();
+                        std::cout << "\n";
+                    }
+                    moveCursorUp(renderedLines);
+                    clearCurrentLine();
+                    std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
+                              << " Lenguaje del proyecto: " << colors::reset() << colors::cyan()
+                              << model.answers().languageString() << colors::reset() << "\n";
+                    model.nextStep();
+                    break;
+                }
+            }
+        }
+
         // Pregunta 1: Nombre del proyecto con validación en vivo
         {
             while (true) {
@@ -328,12 +386,23 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pregunta 2: Plantilla
+        // Pregunta 2: Plantilla (filtrada por lenguaje)
         {
-            const std::vector<std::pair<TemplateChoice, std::string>> templateOptions = {
-                {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con iluminación, cámara y física)"},
-                {TemplateChoice::TwoD, "2D (juego pixel-space con Renderer2D, figuras y fuentes)"},
-                {TemplateChoice::Headless, "Headless (simulación determinista sin ventana ni GPU)"}};
+            std::vector<std::pair<TemplateChoice, std::string>> templateOptions;
+            if (model.answers().language == LanguageChoice::C) {
+                templateOptions = {
+                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con iluminación y audio)"},
+                    {TemplateChoice::Headless, "Headless (simulación determinista sin ventana ni GPU)"}};
+            } else if (model.answers().language == LanguageChoice::Python) {
+                templateOptions = {
+                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con cámara, cubo y audio)"},
+                    {TemplateChoice::TwoD, "2D (juego 2D con formas procedurales y monedas)"}};
+            } else {
+                templateOptions = {
+                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con iluminación, cámara y física)"},
+                    {TemplateChoice::TwoD, "2D (juego pixel-space con Renderer2D, figuras y fuentes)"},
+                    {TemplateChoice::Headless, "Headless (simulación determinista sin ventana ni GPU)"}};
+            }
 
             int renderedLines = 0;
             while (true) {
@@ -570,6 +639,7 @@ namespace mge::cli::wizard {
         // Pantalla de Resumen y Confirmación
         std::cout << "\n" << colors::bold() << "Resumen del proyecto:" << colors::reset() << "\n";
         std::cout << "  Nombre:      " << colors::cyan() << model.answers().name << colors::reset() << "\n";
+        std::cout << "  Lenguaje:    " << model.answers().languageString() << "\n";
         std::cout << "  Plantilla:   " << model.answers().templateString() << "\n";
         std::cout << "  Audio:       " << (model.answers().audio ? "Sí" : "No") << "\n";
         std::cout << "  Licencia:    " << model.answers().licenseString() << "\n";

@@ -6,7 +6,7 @@ CMakeLists.txt b298c12a75dd4ca2
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md 064497a4b2b71579
-mge.project edba69832bc80205
+mge.project fae4eb9f47dda8c5
 src/ArcadePlane.cpp ee1fbaec0d50f4a9
 src/ArcadePlaneLogic.cpp a98dc73119180b19
 src/ArcadePlaneLogic.h ca695797f5345daa

@@ -1,0 +1,4 @@
+"""@GAME_TITLE@ logic package."""
+from .logic import GameLogic2D
+
+__all__ = ["GameLogic2D"]

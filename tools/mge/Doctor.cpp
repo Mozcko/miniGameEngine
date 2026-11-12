@@ -2,6 +2,7 @@
 
 #include "Colors.h"
 #include "Process.h"
+#include "Project.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -366,28 +367,145 @@ namespace mge::cli {
         return items;
     }
 
+    DoctorItem checkPythonVersion() {
+        DoctorItem item;
+        item.name = "Python 3";
+        item.required = true;
+
+        std::string py = commandExists("python3") ? "python3" : (commandExists("python") ? "python" : "");
+        if (py.empty()) {
+            item.ok = false;
+            item.detail = "No encontrado";
+            item.hint = "Instalar Python >= 3.10 (sudo apt install python3)";
+            return item;
+        }
+
+        std::string output;
+        if (runCommandCapture({py, "--version"}, output) != 0) {
+            item.ok = false;
+            item.detail = "Error al consultar versión de Python";
+            item.hint = "Verificar que python3 funcione correctamente";
+            return item;
+        }
+
+        std::string line = firstLine(output);
+        std::regex verRegex(R"(Python\s+(\d+)\.(\d+)(\.(\d+))?)");
+        std::smatch match;
+        if (std::regex_search(line, match, verRegex)) {
+            int major = std::stoi(match[1].str());
+            int minor = std::stoi(match[2].str());
+            if (major == 3 && minor >= 10) {
+                item.ok = true;
+            } else {
+                item.ok = false;
+                item.hint = "Se requiere Python >= 3.10";
+            }
+            item.detail = line;
+        } else {
+            item.ok = true;
+            item.detail = line;
+        }
+        return item;
+    }
+
+    DoctorItem checkPythonPip() {
+        DoctorItem item;
+        item.name = "pip";
+        item.required = true;
+
+        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string output;
+        if (runCommandCapture({py, "-m", "pip", "--version"}, output) == 0) {
+            item.ok = true;
+            item.detail = firstLine(output);
+        } else {
+            item.ok = false;
+            item.detail = "No encontrado";
+            item.hint = "Instalar pip (python3 -m ensurepip o sudo apt install python3-pip)";
+        }
+        return item;
+    }
+
+    DoctorItem checkPythonVenv() {
+        DoctorItem item;
+        item.name = "venv";
+        item.required = true;
+
+        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string output;
+        if (runCommandCapture({py, "-c", "import venv; print('OK')"}, output) == 0 &&
+            output.find("OK") != std::string::npos) {
+            item.ok = true;
+            item.detail = "Módulo estándar venv disponible";
+        } else {
+            item.ok = false;
+            item.detail = "No encontrado";
+            item.hint = "Instalar paquete python3-venv (sudo apt install python3-venv)";
+        }
+        return item;
+    }
+
+    DoctorItem checkPythonMge() {
+        DoctorItem item;
+        item.name = "mge (bindings de Python)";
+        item.required = true;
+
+        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string output;
+        if (runCommandCapture({py, "-c", "import mge; print(getattr(mge, '__version__', 'instalado'))"},
+                              output) == 0) {
+            std::string ver = firstLine(output);
+            item.ok = true;
+            item.detail = "mge v" + ver;
+        } else {
+            item.ok = false;
+            item.detail = "No encontrado en el entorno de Python";
+            item.hint = "Instalar el paquete mge (pip install . o pip install mge)";
+        }
+        return item;
+    }
+
+    std::vector<DoctorItem> runPythonDoctorChecks() {
+        std::vector<DoctorItem> items;
+        items.push_back(checkPythonVersion());
+        items.push_back(checkPythonPip());
+        items.push_back(checkPythonVenv());
+        items.push_back(checkPythonMge());
+        return items;
+    }
+
     int cmdDoctor(int argc, char* argv[]) {
+        bool isPython = false;
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
-            if (arg == "--help" || arg == "-h") {
-                std::cout << "Uso: mge doctor\n\n"
+            if (arg == "--lang" && i + 1 < argc) {
+                std::string l = argv[++i];
+                if (l == "python" || l == "py") {
+                    isPython = true;
+                }
+            } else if (arg == "--help" || arg == "-h") {
+                std::cout << "Uso: mge doctor [--lang <cpp|c|python>]\n\n"
                           << "Comprueba que las herramientas y dependencias del sistema estén instaladas\n"
                           << "y cumplan con los requisitos mínimos de miniGameEngine:\n"
-                          << "  - Compilador de C++ (GCC >= 11 o Clang >= 14)\n"
-                          << "  - CMake >= 3.24\n"
-                          << "  - Ninja (opcional)\n"
-                          << "  - SDL3 (instalación del sistema)\n"
-                          << "  - glslang (compilador GLSL a SPIR-V)\n"
-                          << "  - Loader de Vulkan y controlador ICD\n"
-                          << "  - Cabeceras de GLM\n";
+                          << "  - C/C++: Compilador, CMake, Ninja, SDL3, glslang, Vulkan, GLM\n"
+                          << "  - Python: python3 >= 3.10, pip, venv, import mge\n";
                 return 0;
             }
         }
 
-        std::cout << colors::bold() << "mge doctor - Comprobando dependencias del sistema...\n"
+        if (!isPython) {
+            ProjectInfo proj = detectProject(std::filesystem::current_path());
+            if (proj.language == ProjectLanguage::Python) {
+                isPython = true;
+            }
+        }
+
+        std::cout << colors::bold()
+                  << (isPython ? "mge doctor - Comprobando entorno de desarrollo Python...\n"
+                               : "mge doctor - Comprobando dependencias del sistema...\n")
                   << colors::reset() << "\n";
 
-        auto items = runDoctorChecks();
+        auto items = isPython ? runPythonDoctorChecks() : runDoctorChecks();
         bool anyRequiredFailed = false;
 
         for (const auto& item : items) {

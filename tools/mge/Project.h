@@ -11,11 +11,23 @@ namespace mge::cli {
         EngineRepo
     };
 
+    enum class ProjectLanguage {
+        Cpp,
+        C,
+        Python
+    };
+
+    std::string languageToString(ProjectLanguage lang);
+    bool parseLanguage(const std::string& str, ProjectLanguage& outLang);
+    bool validateLanguageTemplate(ProjectLanguage lang, const std::string& templateName,
+                                  std::string& outError);
+
     struct ProjectInfo {
         ProjectType type{ProjectType::None};
         std::string name;
         std::string templateType;
         std::filesystem::path rootDir;
+        ProjectLanguage language{ProjectLanguage::Cpp};
     };
 
     // Valida que el nombre cumpla con ^[a-z][a-z0-9_]*$ y no coincida con nombres reservados
@@ -46,6 +58,7 @@ namespace mge::cli {
 
     struct NewProjectOptions {
         std::string name;
+        ProjectLanguage language{ProjectLanguage::Cpp};
         std::string templateName{"3d"};
         std::filesystem::path targetDir;
         bool audio{true};

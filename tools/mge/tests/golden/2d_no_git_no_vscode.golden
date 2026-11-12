@@ -3,7 +3,7 @@
 CMakeLists.txt d6fba3545434ae54
 CMakePresets.json a3baee64ebbfd7d2
 README.md b15d848054eb05ed
-mge.project be798285bfbc4fc9
+mge.project a366971ca865bad1
 src/Plain2d.cpp 370c2b7a6b1d9133
 src/Plain2dLogic.cpp 84420790af9876c9
 src/Plain2dLogic.h 7aade4cac8d6cd22

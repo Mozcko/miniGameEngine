@@ -1,0 +1,29 @@
+# @GAME_TITLE@
+
+Headless C simulation generated with miniGameEngine (`@GAME_NAME@`, C-Headless template).
+
+## Prerequisites
+
+- CMake 3.25+ and a C99/C++17 compiler (GCC 11+, Clang 14+, or MSVC 2022).
+- Linux dependencies (Ubuntu 24.04):
+  ```bash
+  sudo apt install -y cmake ninja-build libglm-dev
+  ```
+
+## Building and Running
+
+Using `mge` CLI:
+
+```bash
+mge build
+mge run
+mge test
+```
+
+Or directly with CMake:
+
+```bash
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+```

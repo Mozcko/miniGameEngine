@@ -50,6 +50,17 @@ namespace {
 
 TEST_CASE("wizard: navegación y máquina de estados del modelo") {
     WizardModel model;
+    CHECK(model.currentStep() == WizardStep::Language);
+    CHECK(model.canAdvance());
+
+    model.selectNextLanguage();
+    CHECK(model.answers().language == LanguageChoice::C);
+    model.selectNextLanguage();
+    CHECK(model.answers().language == LanguageChoice::Python);
+    model.selectNextLanguage();
+    CHECK(model.answers().language == LanguageChoice::Cpp);
+
+    model.nextStep();
     CHECK(model.currentStep() == WizardStep::Name);
     CHECK_FALSE(model.canAdvance());
 
@@ -82,6 +93,7 @@ TEST_CASE("wizard: navegación y máquina de estados del modelo") {
 
 TEST_CASE("wizard: modo headless omite pregunta de audio") {
     WizardModel model;
+    model.nextStep();
     model.setName("sim_server");
     model.nextStep();
     CHECK(model.currentStep() == WizardStep::Template);
@@ -153,6 +165,37 @@ TEST_CASE("wizard: mutadores y cancelación") {
     model.cancel();
     CHECK(model.currentStep() == WizardStep::Cancelled);
     CHECK(model.isCancelled());
+}
+
+TEST_CASE("wizard: filtrado de plantillas según el lenguaje") {
+    WizardModel model;
+    // C solo soporta 3D y Headless
+    model.setLanguage(LanguageChoice::C);
+    CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::Headless);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
+    model.selectPrevTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::Headless);
+
+    // Python solo soporta 3D y 2D
+    model.setLanguage(LanguageChoice::Python);
+    CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::TwoD);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
+    model.selectPrevTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::TwoD);
+
+    // Cpp soporta 3D, 2D y Headless
+    model.setLanguage(LanguageChoice::Cpp);
+    CHECK(model.answers().templateChoice == TemplateChoice::TwoD);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::Headless);
+    model.selectNextTemplate();
+    CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
 }
 
 TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
@@ -233,6 +276,70 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         CHECK_FALSE(files.empty());
         verifyGolden("2d_no_git_no_vscode", formatSnapshot(files));
     }
+
+    // 6. C 3D
+    {
+        WizardModel model;
+        model.setLanguage(LanguageChoice::C);
+        model.setName("c_game");
+        model.setTemplate(TemplateChoice::ThreeD);
+        model.setAudio(true);
+        model.setLicense(LicenseChoice::Mit);
+        model.setGit(true);
+        model.setVsCode(true);
+
+        auto files = model.planFileTree(tmplBase);
+        CHECK_FALSE(files.empty());
+        verifyGolden("c_3d", formatSnapshot(files));
+    }
+
+    // 7. C Headless
+    {
+        WizardModel model;
+        model.setLanguage(LanguageChoice::C);
+        model.setName("c_headless");
+        model.setTemplate(TemplateChoice::Headless);
+        model.setAudio(false);
+        model.setLicense(LicenseChoice::Mit);
+        model.setGit(true);
+        model.setVsCode(true);
+
+        auto files = model.planFileTree(tmplBase);
+        CHECK_FALSE(files.empty());
+        verifyGolden("c_headless", formatSnapshot(files));
+    }
+
+    // 8. Python 3D
+    {
+        WizardModel model;
+        model.setLanguage(LanguageChoice::Python);
+        model.setName("py_3d");
+        model.setTemplate(TemplateChoice::ThreeD);
+        model.setAudio(true);
+        model.setLicense(LicenseChoice::Mit);
+        model.setGit(true);
+        model.setVsCode(true);
+
+        auto files = model.planFileTree(tmplBase);
+        CHECK_FALSE(files.empty());
+        verifyGolden("python_3d", formatSnapshot(files));
+    }
+
+    // 9. Python 2D
+    {
+        WizardModel model;
+        model.setLanguage(LanguageChoice::Python);
+        model.setName("py_2d");
+        model.setTemplate(TemplateChoice::TwoD);
+        model.setAudio(true);
+        model.setLicense(LicenseChoice::Mit);
+        model.setGit(true);
+        model.setVsCode(true);
+
+        auto files = model.planFileTree(tmplBase);
+        CHECK_FALSE(files.empty());
+        verifyGolden("python_2d", formatSnapshot(files));
+    }
 }
 
 TEST_CASE("wizard: EOF cancela el asistente de inmediato sin crear archivos") {
@@ -255,10 +362,10 @@ TEST_CASE("wizard: EOF a mitad del flujo cancela el asistente sin crear archivos
     std::filesystem::remove_all(tempProjectDir);
     model.setTargetDir(tempProjectDir);
 
-    // Secuencia: escribe 'j', 'u', 'e', 'g', 'o', Enter, luego EOF
-    std::vector<std::pair<Key, char>> script = {{Key::Char, 'j'}, {Key::Char, 'u'}, {Key::Char, 'e'},
-                                                {Key::Char, 'g'}, {Key::Char, 'o'}, {Key::Enter, '\n'},
-                                                {Key::Eof, 0}};
+    // Secuencia: selecciona lenguaje (Enter), escribe 'j', 'u', 'e', 'g', 'o', Enter, luego EOF
+    std::vector<std::pair<Key, char>> script = {{Key::Enter, '\n'}, {Key::Char, 'j'}, {Key::Char, 'u'},
+                                                {Key::Char, 'e'},   {Key::Char, 'g'}, {Key::Char, 'o'},
+                                                {Key::Enter, '\n'}, {Key::Eof, 0}};
     size_t keyIndex = 0;
     auto fakeKeySource = [&script, &keyIndex](char& outChar) -> Key {
         if (keyIndex < script.size()) {
@@ -282,7 +389,8 @@ TEST_CASE("wizard: ESC solitario no bloquea ni cancela el asistente") {
     model.setTargetDir(tempProjectDir);
 
     std::vector<std::pair<Key, char>> script = {
-        {Key::Escape, 0}, // ESC solitario ignorado
+        {Key::Escape, 0},   // ESC solitario ignorado
+        {Key::Enter, '\n'}, // Lenguaje C++ por defecto
         {Key::Char, 'm'},   {Key::Char, 'i'},   {Key::Char, 'n'},
         {Key::Char, 'i'},   {Key::Enter, '\n'}, {Key::Escape, 0}, // ESC solitario en selección de plantilla
         {Key::Enter, '\n'},                                       // Plantilla 3D por defecto
