@@ -24,7 +24,7 @@ class @GAME_CLASS@App(mge.Application):
 
         # Efecto de sonido sintetizado para salto
         if self.audio is not None:
-            self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.Jump)
+            self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.JUMP)
 
         # Camara 3D mirando al origen
         self.camera.look_at(
@@ -35,10 +35,10 @@ class @GAME_CLASS@App(mge.Application):
         return True
 
     def on_update(self, dt: float) -> None:
-        if self.input.key_down(mge.Key.Escape):
+        if self.input.key_down(mge.Key.ESCAPE):
             self.request_stop()
 
-        want_jump = self.input.key_down(mge.Key.Space)
+        want_jump = self.input.key_down(mge.Key.SPACE)
         if want_jump and self.logic.player.grounded and self.audio and self.jump_sfx:
             self.audio.play(self.jump_sfx)
 
