@@ -40,3 +40,13 @@ out/
 .cache/
 compile_commands.json
 build-*/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+

@@ -211,6 +211,12 @@ if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# --- Bindings de Python ---
+if(MGE_BUILD_PYTHON)
+    add_subdirectory(bindings/python)
+endif()
+
+
 # --- Paquete CMake (find_package(mge)) ---
 if(MGE_INSTALL)
     include(CMakePackageConfigHelpers)
