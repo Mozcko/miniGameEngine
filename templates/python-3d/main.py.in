@@ -1,4 +1,5 @@
 """@GAME_TITLE@: aplicacion principal en Python."""
+import math
 import os
 import sys
 import mge
@@ -27,11 +28,12 @@ class @GAME_CLASS@App(mge.Application):
             self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.JUMP)
 
         # Camara 3D mirando al origen
-        self.camera.look_at(
-            eye=mge.Vec3(0.0, 2.0, 4.0),
-            target=mge.Vec3(0.0, 0.0, 0.0),
-            up=mge.Vec3(0.0, 1.0, 0.0),
-        )
+        eye = mge.Vec3(0.0, 2.0, 4.0)
+        target = mge.Vec3(0.0, 0.0, 0.0)
+        up = mge.Vec3(0.0, 1.0, 0.0)
+        view = mge.Mat4.look_at(eye, target, up)
+        proj = mge.Mat4.perspective(math.radians(60.0), 800.0 / 600.0, 0.1, 100.0)
+        self.renderer.set_camera(view, proj)
         return True
 
     def on_update(self, dt: float) -> None:
@@ -45,17 +47,26 @@ class @GAME_CLASS@App(mge.Application):
         self.logic.update(dt, want_jump=want_jump)
 
     def on_render(self) -> None:
-        if self.cube is not None and self.renderer is not None:
-            # Modelo con rotacion en Y y traslacion vertical
-            model = mge.Mat4.identity()
-            model = model.translate(mge.Vec3(0.0, self.logic.player.y, 0.0))
-            model = model.rotate_y(self.logic.rotation_y)
-            color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
-            self.renderer.draw_mesh(self.cube, model, color)
+        if self.cube is None or not self.cube.is_alive or self.renderer is None:
+            return
 
-            # Overlay 2D
-            self.renderer.draw_text("@GAME_TITLE@ (Python 3D)", 20.0, 20.0, scale=2.0)
-            self.renderer.draw_text("Espacio: Salto | Esc: Salir", 20.0, 60.0, scale=1.0)
+        # Modelo con rotacion en Y y traslacion vertical
+        model = (
+            mge.Mat4.translation(mge.Vec3(0.0, self.logic.player.y, 0.0))
+            * mge.Mat4.rotate(self.logic.rotation_y, mge.Vec3(0.0, 1.0, 0.0))
+        )
+        color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
+        self.renderer.draw_mesh(self.cube, model, color)
+
+        # Overlay 2D
+        self.renderer.draw_text("@GAME_TITLE@ (Python 3D)", 20.0, 20.0, scale=2.0)
+        self.renderer.draw_text("Espacio: Salto | Esc: Salir", 20.0, 60.0, scale=1.0)
+
+    def on_shutdown(self) -> None:
+        if self.cube is not None:
+            self.cube.destroy()
+        if self.jump_sfx is not None:
+            self.jump_sfx.destroy()
 
 
 def main() -> None:

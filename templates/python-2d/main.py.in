@@ -60,6 +60,10 @@ class @GAME_CLASS@App(mge.Application):
         self.renderer.draw_text(f"Puntaje: {self.logic.score}", 20.0, 60.0, scale=1.5)
         self.renderer.draw_text("WASD / Flechas: Mover | Esc: Salir", 20.0, 100.0, scale=1.0)
 
+    def on_shutdown(self) -> None:
+        if self.coin_sfx is not None:
+            self.coin_sfx.destroy()
+
 
 def main() -> None:
     headless = "--headless" in sys.argv
