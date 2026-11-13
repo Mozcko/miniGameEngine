@@ -5,6 +5,8 @@
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/ecs/World.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -358,4 +360,116 @@ TEST_CASE("ECS runtime: registrar muchos tipos de componentes") {
         CHECK(registry.hasRaw(e, id));
         CHECK(*static_cast<int*>(registry.getRaw(e, id)) == static_cast<int>(id));
     }
+}
+
+TEST_CASE("ECS runtime: validación de tamaño, alineación y conflictos en registerRuntimeComponent") {
+    Registry registry;
+
+    // align == 0 usa alignof(std::max_align_t)
+    const ComponentTypeId defaultAlignId = registry.registerRuntimeComponent("DefaultAlign", 16, 0);
+    CHECK(defaultAlignId != kInvalidComponentType);
+    Entity e = registry.create();
+    void* p = registry.addRaw(e, defaultAlignId);
+    REQUIRE(p != nullptr);
+    CHECK(reinterpret_cast<std::uintptr_t>(p) % alignof(std::max_align_t) == 0);
+
+    // Mismo nombre y mismo layout → idempotente
+    const ComponentTypeId velId = registry.registerRuntimeComponent("Velocity", 12, 4);
+    CHECK(velId != kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("Velocity", 12, 4) == velId);
+
+    // Mismo nombre con tamaño o alineación distintos → error (no colisiona ni desborda)
+    CHECK(registry.registerRuntimeComponent("Velocity", 64, 4) == kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("Velocity", 12, 16) == kInvalidComponentType);
+
+    // Nombre vacío o parámetros fuera de rango
+    CHECK(registry.registerRuntimeComponent("", 16, 4) == kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("BadAlign3", 16, 3) == kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("BadAlign6", 16, 6) == kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("BadAlignHuge", 16, 8192) == kInvalidComponentType);
+    CHECK(registry.registerRuntimeComponent("TooLarge", 1024u * 1024u, 16) == kInvalidComponentType);
+}
+
+TEST_CASE("ECS runtime: IDs inválidos y entidades inválidas retornan nulo o false en Release") {
+    Registry registry;
+    Entity e = registry.create();
+    constexpr ComponentTypeId kUnknownId = 999;
+
+    CHECK_FALSE(registry.isValidRuntimeComponent(kUnknownId));
+    CHECK_FALSE(registry.isValidRuntimeComponent(kInvalidComponentType));
+    CHECK(registry.addRaw(e, kUnknownId) == nullptr);
+    CHECK(registry.addRaw(e, kInvalidComponentType) == nullptr);
+    CHECK(registry.getRaw(e, kUnknownId) == nullptr);
+    CHECK_FALSE(registry.hasRaw(e, kUnknownId));
+    CHECK_FALSE(registry.removeRaw(e, kUnknownId));
+
+    const ComponentTypeId validId = registry.registerRuntimeComponent("Flag", 4, 4);
+    Entity dead = registry.create();
+    registry.destroy(dead);
+    CHECK(registry.addRaw(dead, validId) == nullptr);
+    CHECK(registry.getRaw(dead, validId) == nullptr);
+    CHECK_FALSE(registry.hasRaw(dead, validId));
+}
+
+TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguros") {
+    Registry registry;
+    const ComponentTypeId valId = registry.registerRuntimeComponent("Val", sizeof(int), alignof(int));
+
+    std::vector<Entity> initialRaw;
+    for (int i = 0; i < 8; ++i) {
+        Entity e = registry.create();
+        *static_cast<int*>(registry.addRaw(e, valId)) = i + 1;
+        initialRaw.push_back(e);
+    }
+
+    // add-during-each en eachRaw: forzar múltiples realojamientos de RawPool sin UAF ni visitar los nuevos
+    int visitedRawCount = 0;
+    int sumRaw = 0;
+    const ComponentTypeId rawTypes[1] = {valId};
+    registry.eachRaw(rawTypes, 1, [&](Entity, void** ptrs) {
+        const int v = *static_cast<int*>(ptrs[0]);
+        visitedRawCount++;
+        sumRaw += v;
+        for (int k = 0; k < 10; ++k) {
+            Entity spawned = registry.create();
+            *static_cast<int*>(registry.addRaw(spawned, valId)) = 1000;
+        }
+    });
+    CHECK(visitedRawCount == 8);
+    CHECK(sumRaw == 36);
+
+    // destroy-during-each en eachRaw: destruir la siguiente entidad pendiente la omite de forma segura
+    int visitedAfterDestroy = 0;
+    registry.eachRaw(rawTypes, 1, [&](Entity e, void**) {
+        visitedAfterDestroy++;
+        if (e == initialRaw[0]) {
+            registry.destroy(initialRaw[1]);
+        }
+        registry.destroy(e);
+    });
+    CHECK(visitedAfterDestroy < 88);
+    CHECK_FALSE(registry.valid(initialRaw[1]));
+
+    // Misma seguridad para View<T>::each con add y destroy durante iteración
+    Registry typedReg;
+    std::vector<Entity> typedEnts;
+    for (int i = 0; i < 6; ++i) {
+        Entity e = typedReg.create();
+        typedReg.add<Position>(e, Position{static_cast<float>(i), 0.0f});
+        typedEnts.push_back(e);
+    }
+    int visitedTyped = 0;
+    typedReg.each<Position>([&](Entity e, Position& p) {
+        const float origX = p.x;
+        visitedTyped++;
+        if (e == typedEnts[0]) {
+            typedReg.destroy(typedEnts[1]);
+        }
+        for (int k = 0; k < 16; ++k) {
+            Entity spawned = typedReg.create();
+            typedReg.add<Position>(spawned, Position{origX + 100.0f, 0.0f});
+        }
+    });
+    CHECK(visitedTyped == 5);
+    CHECK_FALSE(typedReg.valid(typedEnts[1]));
 }

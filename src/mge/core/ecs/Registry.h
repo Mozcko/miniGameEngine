@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <new>
 #include <string>
@@ -202,6 +203,7 @@ namespace mge {
     }
 
     using ComponentTypeId = std::size_t;
+    inline constexpr ComponentTypeId kInvalidComponentType = std::numeric_limits<ComponentTypeId>::max();
 
     struct RuntimeComponentInfo {
         std::string name;
@@ -259,6 +261,9 @@ namespace mge {
         template <typename... Ts, typename Fn> void each(Fn&& fn);
 
         // --- Componentes en tiempo de ejecución (C, Python, etc.) ---
+        bool isValidRuntimeComponent(ComponentTypeId type) const {
+            return type < m_rawPools.size() && m_rawPools[type] != nullptr;
+        }
         ComponentTypeId registerRuntimeComponent(std::string name, std::size_t size, std::size_t align);
         void* addRaw(Entity entity, ComponentTypeId type);
         void* getRaw(Entity entity, ComponentTypeId type);
@@ -310,12 +315,18 @@ namespace mge {
 
         template <typename Fn> void each(Fn&& fn) {
             const ecs_detail::PoolBase* smallest = smallestPool();
-            if (!smallest) return; // Algún tipo no tiene ningún componente todavía
-            // El callback puede modificar componentes, pero no agregar/quitar de estos tipos
-            // Buscar cada pool una sola vez (no por entidad)
-            auto pools = std::make_tuple(m_registry.findPool<Ts>()...);
-            for (Entity entity : smallest->entities()) {
-                if ((std::get<ecs_detail::Pool<Ts>*>(pools)->contains(entity.index) && ...)) {
+            if (!smallest || smallest->size() == 0) return; // Algún tipo no tiene ningún componente todavía
+            // Copiar la lista de entidades: el callback puede agregar/quitar componentes o destruir
+            // entidades sin invalidar el iterador ni visitar entidades creadas durante este pase.
+            const std::vector<Entity> entities = smallest->entities();
+            for (Entity entity : entities) {
+                if (!m_registry.valid(entity)) {
+                    continue;
+                }
+                // Re-obtener los pools por si un pool se creó o creció durante la iteración
+                auto pools = std::make_tuple(m_registry.findPool<Ts>()...);
+                if ((std::get<ecs_detail::Pool<Ts>*>(pools) && ...) &&
+                    (std::get<ecs_detail::Pool<Ts>*>(pools)->contains(entity.index) && ...)) {
                     fn(entity, std::get<ecs_detail::Pool<Ts>*>(pools)->get(entity.index)...);
                 }
             }

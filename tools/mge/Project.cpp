@@ -30,6 +30,69 @@ namespace mge::cli {
             "mge_procgen", "mge_voxel", "mge_physics", "mge_synth", "mge_audio",    "build",   "templates",
             "tests",       "docs",      "scripts",     "tools",     "cmake",        "examples"};
 
+        struct LanguageMinVersion {
+            ProjectLanguage lang;
+            const char* minVersion;
+        };
+
+        constexpr LanguageMinVersion kMinVersionForLanguage[] = {
+            {ProjectLanguage::Cpp, "0.9.0"},
+            {ProjectLanguage::C, "1.0.0"},
+            {ProjectLanguage::Python, "1.0.0"},
+        };
+
+        bool parseSemver(const std::string& v, int& major, int& minor, int& patch) {
+            major = 0;
+            minor = 0;
+            patch = 0;
+            std::size_t idx = 0;
+            if (!v.empty() && (v[0] == 'v' || v[0] == 'V')) {
+                idx = 1;
+            }
+            std::vector<int> parts;
+            int current = 0;
+            bool hasDigits = false;
+            for (; idx < v.size(); ++idx) {
+                const char ch = v[idx];
+                if (ch >= '0' && ch <= '9') {
+                    current = current * 10 + (ch - '0');
+                    hasDigits = true;
+                } else if (ch == '.') {
+                    if (!hasDigits) return false;
+                    parts.push_back(current);
+                    current = 0;
+                    hasDigits = false;
+                } else if (ch == '-' || ch == '+') {
+                    break;
+                } else {
+                    return false;
+                }
+            }
+            if (!hasDigits) return false;
+            parts.push_back(current);
+            if (parts.empty()) return false;
+            major = parts[0];
+            if (parts.size() > 1) minor = parts[1];
+            if (parts.size() > 2) patch = parts[2];
+            return true;
+        }
+
+        int compareSemver(const std::string& a, const std::string& b) {
+            int aMaj = 0;
+            int aMin = 0;
+            int aPat = 0;
+            int bMaj = 0;
+            int bMin = 0;
+            int bPat = 0;
+            if (!parseSemver(a, aMaj, aMin, aPat) || !parseSemver(b, bMaj, bMin, bPat)) {
+                return a.compare(b);
+            }
+            if (aMaj != bMaj) return (aMaj < bMaj) ? -1 : 1;
+            if (aMin != bMin) return (aMin < bMin) ? -1 : 1;
+            if (aPat != bPat) return (aPat < bPat) ? -1 : 1;
+            return 0;
+        }
+
     } // namespace
 
     std::string languageToString(ProjectLanguage lang) {
@@ -95,6 +158,27 @@ namespace mge::cli {
             return false;
         }
         return false;
+    }
+
+    const char* minEngineVersionForLanguage(ProjectLanguage lang) {
+        for (const auto& entry : kMinVersionForLanguage) {
+            if (entry.lang == lang) {
+                return entry.minVersion;
+            }
+        }
+        return "0.9.0";
+    }
+
+    bool validateLanguageVersion(ProjectLanguage lang, const std::string& engineVersion,
+                                 std::string& outError) {
+        outError.clear();
+        const char* minVer = minEngineVersionForLanguage(lang);
+        if (compareSemver(engineVersion, minVer) < 0) {
+            outError = "El lenguaje '" + languageToString(lang) + "' requiere miniGameEngine >= " + minVer +
+                       " (la versión a fijar es " + engineVersion + ").";
+            return false;
+        }
+        return true;
     }
 
     bool validateProjectName(const std::string& name, std::string& outError) {
@@ -384,6 +468,13 @@ namespace mge::cli {
             return 1;
         }
 
+        const std::string version =
+            options.pinnedVersion.empty() ? std::string(MGE_VERSION_STRING) : options.pinnedVersion;
+        if (!validateLanguageVersion(options.language, version, langError)) {
+            outMessage = "Error: " + langError;
+            return 1;
+        }
+
         std::filesystem::path tmplBase = findTemplatesDir(exePath);
         if (tmplBase.empty() || !std::filesystem::is_directory(tmplBase)) {
             outMessage = "Error: no se pudo localizar la carpeta de plantillas.";
@@ -430,7 +521,6 @@ namespace mge::cli {
 
         std::string className = toPascalCase(options.name);
         std::string title = toTitleCase(options.name);
-        std::string version = MGE_VERSION_STRING;
 
         // Recorrer y copiar archivos de la plantilla recursivamente
         for (const auto& entry : std::filesystem::recursive_directory_iterator(tmplDir)) {

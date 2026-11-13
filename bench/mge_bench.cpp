@@ -24,10 +24,12 @@
 #include <SDL3/SDL.h>
 #endif
 
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -253,6 +255,29 @@ namespace {
         runner.add("voxel: generate chunk 16^3", "ns/voxel", kChunkVolume, [gen] {
             ChunkData chunk;
             gen->generate({0, 0, 0}, chunk);
+            doNotOptimize(chunk);
+        });
+
+        // a2) bulk whole-chunk buffer fill vs per-block set()
+        const std::array<BlockId, kChunkVolume> bulkSrc = [&] {
+            ChunkData tmp;
+            gen->generate({0, 0, 0}, tmp);
+            return tmp.blocks();
+        }();
+        runner.add("voxel: fill chunk bulk memcpy 16^3", "ns/voxel", kChunkVolume, [&bulkSrc] {
+            ChunkData chunk;
+            std::memcpy(chunk.blocks().data(), bulkSrc.data(), bulkSrc.size() * sizeof(BlockId));
+            doNotOptimize(chunk);
+        });
+        runner.add("voxel: fill chunk per-block set 16^3", "ns/voxel", kChunkVolume, [&bulkSrc] {
+            ChunkData chunk;
+            for (int y = 0; y < kChunkSize; ++y) {
+                for (int z = 0; z < kChunkSize; ++z) {
+                    for (int x = 0; x < kChunkSize; ++x) {
+                        chunk.set(x, y, z, bulkSrc[ChunkData::index(x, y, z)]);
+                    }
+                }
+            }
             doNotOptimize(chunk);
         });
 

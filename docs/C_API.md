@@ -249,6 +249,8 @@ mge_add_c_game(my_c_game
 | `mge_component_each(app, ids, count, cb, user_data)` | Iterates entities matching all component types simultaneously. |
 | `mge_system_add(app, phase, name, fn, user_data)` | Schedules a system callback in `MGE_PHASE_FIXED/UPDATE/RENDER`. |
 
+> **Runtime Component Pointer Validity & Iteration Safety:** Pointers returned by `mge_component_add` / `mge_component_get` or passed to `mge_component_each` callbacks are only valid until the next structural ECS change (adding/removing components of that pool, destroying entities, or registering components). Inside `mge_component_each`, you may safely create entities, add/remove components, or destroy entities: entities destroyed or missing components are skipped, and entities newly created during iteration are not visited in that pass.
+
 ### Rendering & UI
 | Function | Description |
 | :--- | :--- |

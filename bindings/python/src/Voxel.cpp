@@ -1,5 +1,8 @@
 #include "Common.h"
 
+#include <cstdio>
+#include <cstring>
+
 namespace mge::python {
 
     struct PyBlockDesc {
@@ -61,14 +64,127 @@ namespace mge::python {
         uint16_t blockId = 0;
     };
 
+    namespace {
+
+        struct PyBufferGuard {
+            Py_buffer view{};
+            bool acquired = false;
+            ~PyBufferGuard() {
+                if (acquired) {
+                    PyBuffer_Release(&view);
+                }
+            }
+        };
+
+        void fillChunkFromPyObject(mge::ChunkData& chunk, nanobind::handle obj) {
+            namespace nb = nanobind;
+            auto& dst = chunk.blocks();
+
+            if (PyObject_CheckBuffer(obj.ptr())) {
+                PyBufferGuard guard;
+                if (PyObject_GetBuffer(obj.ptr(), &guard.view, PyBUF_CONTIG_RO) != 0) {
+                    throw nb::python_error();
+                }
+                guard.acquired = true;
+
+                const std::size_t itemSize =
+                    guard.view.itemsize > 0 ? static_cast<std::size_t>(guard.view.itemsize) : 1u;
+                const std::size_t totalBytes =
+                    guard.view.len >= 0 ? static_cast<std::size_t>(guard.view.len) : 0u;
+                if (totalBytes != static_cast<std::size_t>(mge::kChunkVolume) * itemSize) {
+                    throw EngineError("generate_chunk must return 4096 block IDs");
+                }
+
+                if (itemSize == 1) {
+                    const auto* src = static_cast<const std::uint8_t*>(guard.view.buf);
+                    for (std::size_t i = 0; i < dst.size(); ++i) {
+                        dst[i] = static_cast<mge::BlockId>(src[i]);
+                    }
+                    return;
+                }
+                if (itemSize == sizeof(mge::BlockId)) {
+                    std::memcpy(dst.data(), guard.view.buf, dst.size() * sizeof(mge::BlockId));
+                    return;
+                }
+                if (itemSize == 4) {
+                    const auto* src = static_cast<const std::uint32_t*>(guard.view.buf);
+                    for (std::size_t i = 0; i < dst.size(); ++i) {
+                        dst[i] = static_cast<mge::BlockId>(src[i]);
+                    }
+                    return;
+                }
+                if (itemSize == 8) {
+                    const auto* src = static_cast<const std::uint64_t*>(guard.view.buf);
+                    for (std::size_t i = 0; i < dst.size(); ++i) {
+                        dst[i] = static_cast<mge::BlockId>(src[i]);
+                    }
+                    return;
+                }
+                throw EngineError("Unsupported buffer item size returned by generate_chunk");
+            }
+
+            if (PySequence_Check(obj.ptr())) {
+                const Py_ssize_t len = PySequence_Size(obj.ptr());
+                if (len != static_cast<Py_ssize_t>(mge::kChunkVolume)) {
+                    throw EngineError("generate_chunk must return 4096 block IDs");
+                }
+                nb::sequence seq = nb::borrow<nb::sequence>(obj);
+                for (std::size_t i = 0; i < dst.size(); ++i) {
+                    dst[i] = nb::cast<mge::BlockId>(seq[i]);
+                }
+                return;
+            }
+
+            throw EngineError("generate_chunk must return a buffer or sequence of 4096 block IDs");
+        }
+
+    } // namespace
+
     class PyTerrainGenerator : public mge::TerrainGenerator {
     public:
-        explicit PyTerrainGenerator(nanobind::object fn) : m_fn(std::move(fn)) {}
+        explicit PyTerrainGenerator(nanobind::object fn) : m_fn(std::move(fn)) {
+            if (m_fn && !m_fn.is_none() && nanobind::hasattr(m_fn, "generate_chunk")) {
+                m_mode = Mode::PerChunkMethod;
+            }
+        }
 
         void generate(const mge::ChunkCoord& coord, mge::ChunkData& chunk) const override {
             namespace nb = nanobind;
             nb::gil_scoped_acquire gil;
             if (!m_fn || m_fn.is_none()) return;
+
+            if (m_mode == Mode::PerChunkMethod) {
+                try {
+                    nb::object res = m_fn.attr("generate_chunk")(coord.x, coord.y, coord.z);
+                    fillChunkFromPyObject(chunk, res);
+                } catch (const std::exception& e) {
+                    MGE_LOG_ERROR("Voxel", "Error en generador de chunk: ", e.what());
+                    throw;
+                }
+                return;
+            }
+
+            if (m_mode == Mode::Auto || m_mode == Mode::PerChunk) {
+                try {
+                    nb::object res = m_fn(coord.x, coord.y, coord.z);
+                    if (m_mode == Mode::Auto) {
+                        if (nb::isinstance<nb::int_>(res)) {
+                            m_mode = Mode::PerBlock;
+                        } else {
+                            m_mode = Mode::PerChunk;
+                            fillChunkFromPyObject(chunk, res);
+                            return;
+                        }
+                    } else {
+                        fillChunkFromPyObject(chunk, res);
+                        return;
+                    }
+                } catch (const std::exception& e) {
+                    MGE_LOG_ERROR("Voxel", "Error en generador de chunk: ", e.what());
+                    throw;
+                }
+            }
+
             const glm::ivec3 origin = mge::chunkOrigin(coord);
             for (int z = 0; z < static_cast<int>(mge::kChunkSize); ++z) {
                 for (int y = 0; y < static_cast<int>(mge::kChunkSize); ++y) {
@@ -79,7 +195,7 @@ namespace mge::python {
                             chunk.set(x, y, z, id);
                         } catch (const nb::python_error& e) {
                             MGE_LOG_ERROR("Voxel", "Error en generador de terreno: ", e.what());
-                            return;
+                            throw;
                         }
                     }
                 }
@@ -87,7 +203,15 @@ namespace mge::python {
         }
 
     private:
+        enum class Mode {
+            Auto,
+            PerChunk,
+            PerChunkMethod,
+            PerBlock
+        };
+
         nanobind::object m_fn;
+        mutable Mode m_mode = Mode::Auto;
     };
 
     class PyVoxelWorld {

@@ -234,3 +234,32 @@ TEST_CASE("cli: diagnósticos doctor para Python") {
     CHECK(items[2].name == "venv");
     CHECK(items[3].name.find("mge") != std::string::npos);
 }
+
+TEST_CASE("cli: validación de versión mínima por lenguaje") {
+    std::string err;
+    CHECK_FALSE(validateLanguageVersion(ProjectLanguage::C, "0.9.0", err));
+    CHECK(err.find("1.0.0") != std::string::npos);
+    CHECK_FALSE(validateLanguageVersion(ProjectLanguage::Python, "0.9.9", err));
+    CHECK(err.find("1.0.0") != std::string::npos);
+
+    CHECK(validateLanguageVersion(ProjectLanguage::C, "1.0.0", err));
+    CHECK(validateLanguageVersion(ProjectLanguage::Python, "1.0.0", err));
+    CHECK(validateLanguageVersion(ProjectLanguage::Python, "1.2.0", err));
+    CHECK(validateLanguageVersion(ProjectLanguage::Cpp, "0.9.0", err));
+
+    NewProjectOptions opts;
+    opts.name = "bad_ver_c";
+    opts.language = ProjectLanguage::C;
+    opts.templateName = "3d";
+    opts.targetDir = std::filesystem::temp_directory_path() / "mge_test_bad_ver_c";
+    opts.noGit = true;
+    opts.git = false;
+    opts.vscode = false;
+    opts.pinnedVersion = "0.9.0";
+    std::filesystem::remove_all(opts.targetDir);
+
+    std::string msg;
+    CHECK(createNewProject(opts, "", msg) == 1);
+    CHECK(msg.find("1.0.0") != std::string::npos);
+    CHECK_FALSE(std::filesystem::exists(opts.targetDir));
+}

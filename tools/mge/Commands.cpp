@@ -209,6 +209,10 @@ namespace mge::cli {
             std::cerr << "Error: " << langErr << "\n";
             return 1;
         }
+        if (!validateLanguageVersion(options.language, MGE_VERSION_STRING, langErr)) {
+            std::cerr << "Error: " << langErr << "\n";
+            return 1;
+        }
 
         if (options.templateName == "headless") {
             options.audio = false;

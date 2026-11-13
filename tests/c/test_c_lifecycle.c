@@ -77,5 +77,47 @@ int test_c_lifecycle(void) {
     TEST_ASSERT_EQ(mge_c_api_version(), MGE_C_API_VERSION);
     TEST_ASSERT(mge_version_string() != NULL);
 
+    // Validación de struct_size en config y callbacks (Item 5)
+    mge_app_config zeroCfg = config;
+    zeroCfg.struct_size = 0;
+    TEST_ASSERT_EQ(mge_app_run(&zeroCfg, &callbacks), MGE_ERROR_INVALID_ARGUMENT);
+    TEST_ASSERT(strstr(mge_last_error(), "struct_size") != NULL);
+
+    mge_app_config smallCfg = config;
+    smallCfg.struct_size = sizeof(mge_app_config) - 1;
+    TEST_ASSERT_EQ(mge_app_run(&smallCfg, &callbacks), MGE_ERROR_INVALID_ARGUMENT);
+
+    mge_app_callbacks zeroCb = callbacks;
+    zeroCb.struct_size = 0;
+    TEST_ASSERT_EQ(mge_app_run(&config, &zeroCb), MGE_ERROR_INVALID_ARGUMENT);
+    TEST_ASSERT(strstr(mge_last_error(), "struct_size") != NULL);
+
+    mge_app_callbacks smallCb = callbacks;
+    smallCb.struct_size = sizeof(mge_app_callbacks) - 1;
+    TEST_ASSERT_EQ(mge_app_run(&config, &smallCb), MGE_ERROR_INVALID_ARGUMENT);
+
+    // Estructuras extendidas (struct_size > sizeof) deben aceptarse sin error
+    typedef struct ExtendedConfig {
+        mge_app_config base;
+        uint64_t future_fields[4];
+    } ExtendedConfig;
+    ExtendedConfig extCfg;
+    memset(&extCfg, 0, sizeof(extCfg));
+    extCfg.base = config;
+    extCfg.base.struct_size = sizeof(ExtendedConfig);
+    extCfg.base.max_frames = 2;
+
+    typedef struct ExtendedCallbacks {
+        mge_app_callbacks base;
+        void (*future_hook)(void);
+    } ExtendedCallbacks;
+    ExtendedCallbacks extCb;
+    memset(&extCb, 0, sizeof(extCb));
+    extCb.base = callbacks;
+    extCb.base.struct_size = sizeof(ExtendedCallbacks);
+    extCb.base.on_update = NULL;
+
+    TEST_ASSERT_EQ(mge_app_run(&extCfg.base, &extCb.base), MGE_OK);
+
     return 0;
 }

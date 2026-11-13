@@ -1,29 +1,49 @@
 // NOLINTBEGIN(readability-identifier-naming)
 #include <mge/c/mge_c_internal.h>
 
+#include <algorithm>
+#include <cstring>
+
 extern "C" {
 
 int mge_app_run(const mge_app_config* config, const mge_app_callbacks* callbacks) {
     if (!callbacks) {
         mge::c_impl::setLastError("mge_app_run: callbacks no puede ser nulo");
-        return 1;
+        return MGE_ERROR_INVALID_ARGUMENT;
     }
+
+    if (callbacks->struct_size < sizeof(mge_app_callbacks)) {
+        mge::c_impl::setLastError(
+            "Invalid mge_app_callbacks.struct_size: set struct_size = sizeof(mge_app_callbacks)");
+        return MGE_ERROR_INVALID_ARGUMENT;
+    }
+
+    mge_app_callbacks localCallbacks{};
+    std::memcpy(&localCallbacks, callbacks, std::min(callbacks->struct_size, sizeof(mge_app_callbacks)));
 
     mge::ApplicationConfig appConfig;
     uint32_t modules = MGE_MODULE_DEFAULT;
 
     if (config) {
-        if (config->title) appConfig.title = config->title;
-        if (config->width > 0) appConfig.width = config->width;
-        if (config->height > 0) appConfig.height = config->height;
-        appConfig.headless = config->headless;
-        appConfig.maxFrames = config->max_frames;
-        if (config->tick_rate > 0) appConfig.tickRate = static_cast<double>(config->tick_rate);
-        appConfig.vsync = config->vsync;
-        if (config->modules != 0) modules = config->modules;
+        if (config->struct_size < sizeof(mge_app_config)) {
+            mge::c_impl::setLastError(
+                "Invalid mge_app_config.struct_size: set struct_size = sizeof(mge_app_config)");
+            return MGE_ERROR_INVALID_ARGUMENT;
+        }
+        mge_app_config localConfig{};
+        std::memcpy(&localConfig, config, std::min(config->struct_size, sizeof(mge_app_config)));
+
+        if (localConfig.title) appConfig.title = localConfig.title;
+        if (localConfig.width > 0) appConfig.width = localConfig.width;
+        if (localConfig.height > 0) appConfig.height = localConfig.height;
+        appConfig.headless = localConfig.headless;
+        appConfig.maxFrames = localConfig.max_frames;
+        if (localConfig.tick_rate > 0) appConfig.tickRate = static_cast<double>(localConfig.tick_rate);
+        appConfig.vsync = localConfig.vsync;
+        if (localConfig.modules != 0) modules = localConfig.modules;
     }
 
-    mge::c_impl::CApplication app(appConfig, *callbacks);
+    mge::c_impl::CApplication app(appConfig, localCallbacks);
 
     if (!appConfig.headless) {
 #if defined(MGE_HAS_PLATFORM)

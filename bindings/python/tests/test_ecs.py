@@ -1,3 +1,4 @@
+import types
 import weakref
 import mge
 import pytest
@@ -158,3 +159,40 @@ def test_systems():
     tr = app.world.get(app.entity, mge.Transform)
     # 3 frames of 1/60s with vx=60 -> 3.0
     assert tr.position.x == pytest.approx(3.0)
+
+
+def test_python_components_same_short_name_different_modules():
+    mod_game = types.ModuleType("game")
+    mod_physics = types.ModuleType("physics")
+
+    class GamePosition:
+        def __init__(self, x):
+            self.x = x
+
+    class PhysicsPosition:
+        def __init__(self, px, py):
+            self.px = px
+            self.py = py
+
+    GamePosition.__name__ = "Position"
+    GamePosition.__qualname__ = "Position"
+    GamePosition.__module__ = mod_game.__name__
+
+    PhysicsPosition.__name__ = "Position"
+    PhysicsPosition.__qualname__ = "Position"
+    PhysicsPosition.__module__ = mod_physics.__name__
+
+    world = mge.World()
+    e = world.create()
+    world.add(e, GamePosition(10))
+    world.add(e, PhysicsPosition(1.5, 2.5))
+
+    assert world.has(e, GamePosition)
+    assert world.has(e, PhysicsPosition)
+    assert world.get(e, GamePosition).x == 10
+    assert world.get(e, PhysicsPosition).px == pytest.approx(1.5)
+
+    world.remove(e, GamePosition)
+    assert not world.has(e, GamePosition)
+    assert world.has(e, PhysicsPosition)
+    assert world.get(e, PhysicsPosition).py == pytest.approx(2.5)
