@@ -210,7 +210,7 @@ jobs:
           -DMGE_BUILD_BENCHMARKS=OFF
 
       - name: Build executables
-        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide guide_game
+        run: cmake --build --preset release --target headless_smoke sandbox procgen_gallery sdf_glide guide_game c_hello
 
       - name: Run zero-asset check
         run: scripts/check-zero-asset.sh build-release --require-strace
@@ -325,6 +325,17 @@ jobs:
       - name: Test consumer with find_package (offscreen smoke test)
         run: ctest --test-dir build-consumer-pkg --output-on-failure
 
+      - name: Build C consumer with find_package(mge)
+        run: |
+          cmake -S samples/c_consumer -B build-c-consumer-pkg -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/tmp/mge-prefix \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake --build build-c-consumer-pkg
+
+      - name: Test C consumer with find_package (offscreen smoke test)
+        run: ctest --test-dir build-c-consumer-pkg --output-on-failure
+
       - name: Build consumer with FetchContent
         run: |
           cmake -S samples/consumer -B build-consumer-fetch -G Ninja \
@@ -405,6 +416,54 @@ jobs:
           cmake --build "${RUNNER_TEMP:-/tmp}/game_headless/build"
           ctest --test-dir "${RUNNER_TEMP:-/tmp}/game_headless/build" --output-on-failure
 
+      - name: Generate, build and test C 3D template
+        run: |
+          scripts/new-game.sh c_game_3d --lang c --template 3d --dir "${RUNNER_TEMP:-/tmp}/c_game_3d"
+          cmake -S "${RUNNER_TEMP:-/tmp}/c_game_3d" -B "${RUNNER_TEMP:-/tmp}/c_game_3d/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/tmp/mge-prefix \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build "${RUNNER_TEMP:-/tmp}/c_game_3d/build"
+          ctest --test-dir "${RUNNER_TEMP:-/tmp}/c_game_3d/build" --output-on-failure
+
+      - name: Generate, build and test C Headless template
+        run: |
+          scripts/new-game.sh c_game_headless --lang c --template headless --dir "${RUNNER_TEMP:-/tmp}/c_game_headless"
+          cmake -S "${RUNNER_TEMP:-/tmp}/c_game_headless" -B "${RUNNER_TEMP:-/tmp}/c_game_headless/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/tmp/mge-prefix \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build "${RUNNER_TEMP:-/tmp}/c_game_headless/build"
+          ctest --test-dir "${RUNNER_TEMP:-/tmp}/c_game_headless/build" --output-on-failure
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies and engine package
+        run: |
+          python -m pip install --upgrade pip pytest setuptools wheel
+          python -m pip install .
+
+      - name: Generate, test and run Python 3D template
+        run: |
+          scripts/new-game.sh py_game_3d --lang python --template 3d --dir "${RUNNER_TEMP:-/tmp}/py_game_3d"
+          cd "${RUNNER_TEMP:-/tmp}/py_game_3d"
+          python -m pip install -e . --no-deps
+          python -m pytest
+          MGE_MAX_FRAMES=60 python main.py --headless
+
+      - name: Generate, test and run Python 2D template
+        run: |
+          scripts/new-game.sh py_game_2d --lang python --template 2d --dir "${RUNNER_TEMP:-/tmp}/py_game_2d"
+          cd "${RUNNER_TEMP:-/tmp}/py_game_2d"
+          python -m pip install -e . --no-deps
+          python -m pytest
+          MGE_MAX_FRAMES=60 python main.py --headless
+
   # Herramienta mge CLI (Issue #104)
   cli:
     name: mge cli
@@ -477,5 +536,75 @@ jobs:
           grep -q "license=mit" mge.project
           mge build
           mge test
+
+      - name: Test mge new, build, test with C template
+        run: |
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          export CMAKE_PREFIX_PATH=/tmp/mge-prefix
+          mge new my_c_game --lang c --template 3d --dir "${RUNNER_TEMP:-/tmp}/my_c_game"
+          cd "${RUNNER_TEMP:-/tmp}/my_c_game"
+          mge build
+          mge test
+
+      - name: Test mge new, test with Python template
+        run: |
+          sudo apt-get install -y --no-install-recommends python3-pytest
+          export PATH="/tmp/mge-prefix/bin:$PATH"
+          mge new my_cli_py_game --lang python --template 2d --dir "${RUNNER_TEMP:-/tmp}/my_cli_py_game"
+          cd "${RUNNER_TEMP:-/tmp}/my_cli_py_game"
+          mge test
+
+  # Python bindings (Issue #162)
+  python:
+    name: python (${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/ci-install-deps.sh
+
+      - name: Install system SDL3
+        run: scripts/ci-install-sdl3.sh
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: python-${{ matrix.python-version }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build and test dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install ".[test]" nanobind
+
+      - name: Run pytest test suite
+        run: |
+          pytest bindings/python/tests -v
+
+      - name: Verify nanobind stub generation
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m nanobind.stubgen -m mge._mge -o bindings/python/mge/_mge.pyi
+          git diff --exit-code bindings/python/mge/_mge.pyi
+
+      - name: Run headless simulation example
+        run: |
+          python examples/python/headless_sim.py
+
+      - name: Run hello example (headless smoke)
+        env:
+          MGE_MAX_FRAMES: "60"
+        run: |
+          python examples/python/hello.py --headless
+
 
 

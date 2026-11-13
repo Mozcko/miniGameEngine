@@ -6,13 +6,13 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games built from **pure math/code** *or* with regular asset files
   (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M10, issues #1–#67, #96–#107 and #160–#164,
-  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M9 are done = release 1.0.0 (engine MVP + package, templates,
-  `mge` CLI and wizard); next is M10 (C API + Python bindings, 1.1.0).** Version lives in `project(... VERSION)`; every release
+  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M10 are done = release 1.0.0 (engine MVP, package, templates,
+  `mge` CLI and wizard, C API and Python bindings); next: more languages on the C API if C/Python work well.** Version lives in `project(... VERSION)`; every release
   needs a pushed tag `vX.Y.Z` (templates and FetchContent fetch it) and a CHANGELOG entry.
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
-  0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002) – supersede with a new ADR, never edit accepted ones.
+  0003 headless core, 0004 procedural‑first/assets optional – supersedes 0002, 0005 wizard TUI, 0006 language bindings) – supersede with a new ADR, never edit accepted ones.
 
 ## What this is (current state)
 - C++17 mini game engine: **SDL3** (window/input/events/audio), **SDL3 GPU API** (Vulkan today; Metal/D3D12 later) for
@@ -222,6 +222,23 @@ mesh, lod}`; discarded/LOD‑changed meshes are re‑marked dirty; `setSettings`
 write). `SdfRenderer(device, color, depth, gameFrag)` – the game's fragment shader defines `map(p)` + `material(p)` and includes
 `mge/sdf_pass.glsl`; `draw(renderer, SdfFrame{viewProj, invViewProj, camPos, time, params[4]}, lighting)` after opaque: raymarches,
 lights like meshes and writes `gl_FragDepth`, so SDFs intersect rasterized geometry. CPU collision = same formulas in C++ (`Sdf.h`).
+
+## C API (M10)
+`mge_c` (`<mge/c/mge_c.h>`, pure C99) is the stable ABI for plain C games and foreign language bindings (ADR 0006, #161).
+- **Target**: `mge::c` (STATIC always; SHARED when `-DMGE_BUILD_C_SHARED=ON`). Exported and installable.
+- **`main()`**: C games own `main()` and call `mge_app_run(&config, &callbacks)`. Build helper: `mge_add_c_game(name SOURCES ... [SMOKE_FRAMES n])`.
+- **Runtime ECS**: `mge_component_register(app, name, size, align)` allocates type-erased aligned pools in `Registry`; built-in components (Transform, Camera, CharacterController, RigidBody) are exposed directly.
+- **GPU Resource Tracking**: `GpuResourceTracker` tracks all mesh and texture handles; `GpuModule::onShutdown` invalidates them before destroying `GpuDevice`, making handles inert and preventing GPU shutdown hangs.
+- **Tests & Samples**: Pure C99 test suite in `tests/c/` (`mge_c_tests`), zero-asset example `examples/c_hello`, and package verification in `samples/c_consumer`. Full guide in `docs/C_API.md`.
+
+## Python bindings (M10)
+`mge` (`import mge`, Python 3.10+) wraps the engine via nanobind and scikit-build-core (ADR 0006, #162).
+- **Build**: Top-level `-DMGE_BUILD_PYTHON=ON`, or `pip install .` / `pip install -e ".[test]"` from the repo root via `pyproject.toml`.
+- **Module**: `_mge` nanobind module (`NB_STATIC`, `STABLE_ABI`). Output to `bindings/python/mge/`. Type stubs: `bindings/python/mge/_mge.pyi`.
+- **GIL & Threading**: `Application.run()` releases GIL (`nb::call_guard<nb::gil_scoped_release>()`); callbacks into Python re-acquire it. All engine code runs main-thread only; background Python threads can run concurrently without deadlock.
+- **ECS**: Built-in components (`Transform`, `Camera`, `CharacterController`, `RigidBody`) + arbitrary custom Python classes as components with weakref-safe release on entity destroy. Multi-component queries via `world.each()` and systems via `world.add_system()`.
+- **Math**: `Vec2`, `Vec3`, `Vec4`, `Quat`, `Mat4` with operators, buffer protocol (`Py_buffer`), and zero-copy NumPy interop.
+- **Tests & Examples**: Pytest suite in `bindings/python/tests/` (math, ECS, input, audio, voxel, GPU safety, lifecycle, GIL). Examples: `examples/python/hello.py` and `examples/python/headless_sim.py`. Guide: `docs/PYTHON.md`.
 
 ## Assets (ADR 0004, #65, `docs/ASSETS.md`)
 Loaders (`Texture2D::fromFile`, `AudioModule::loadWav`, `loadTtfFontFile`, `platformer::loadLevel`) take paths **relative to the asset

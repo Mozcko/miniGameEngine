@@ -6,7 +6,7 @@ CMakeLists.txt aface2ae6b26bdf0
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md 52e96fdd79e54bc6
-mge.project bf599c98d7c8e984
+mge.project e4952391affcbcfc
 src/SpaceShooter.cpp d3729db09bdcc7da
 src/SpaceShooterLogic.cpp 88d9765baeba8590
 src/SpaceShooterLogic.h 3ed4c3a384d2a482

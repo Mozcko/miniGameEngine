@@ -1,0 +1,33 @@
+# @GAME_TITLE@
+
+Python 3D game generated with miniGameEngine (`@GAME_NAME@`, Python-3D template).
+
+## Prerequisites
+
+- Python 3.10+
+- System libraries for SDL3 / Vulkan:
+  - Ubuntu 24.04: `sudo apt install -y libvulkan1 mesa-vulkan-drivers libasound2-dev`
+
+## Setup and Running
+
+Create a virtual environment and install dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[test]"
+```
+
+Using `mge` CLI:
+
+```bash
+mge run
+mge test
+```
+
+Or directly with Python:
+
+```bash
+python main.py
+pytest
+```

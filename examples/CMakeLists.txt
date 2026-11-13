@@ -15,4 +15,5 @@ add_subdirectory(tone)
 add_subdirectory(sdf_scene)
 add_subdirectory(sdf_glide)
 add_subdirectory(guide_game)
+add_subdirectory(c_hello)
 # scripts/new-game.sh agrega líneas debajo

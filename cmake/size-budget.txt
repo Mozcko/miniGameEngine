@@ -11,5 +11,6 @@ headless_smoke 114688
 procgen_gallery 135168
 sdf_glide 2961408
 guide_game 2928640
+c_hello 2920448
 platformer2d 2912256
 sandbox 3141632

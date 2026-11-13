@@ -1,0 +1,33 @@
+"""Tests unitarios para la logica de @GAME_TITLE@."""
+from game.logic import GameLogic
+
+
+def test_initial_state() -> None:
+    logic = GameLogic()
+    assert logic.player.grounded is True
+    assert logic.player.y == 0.0
+    assert logic.player.vy == 0.0
+
+
+def test_jump_physics() -> None:
+    logic = GameLogic()
+    # Iniciar salto
+    logic.update(0.016, want_jump=True)
+    assert logic.player.grounded is False
+    assert logic.player.vy > 0.0
+    assert logic.player.y > 0.0
+
+    # Simular hasta que vuelva al suelo
+    for _ in range(100):
+        logic.update(0.016, want_jump=False)
+
+    assert logic.player.grounded is True
+    assert logic.player.y == 0.0
+    assert logic.player.vy == 0.0
+
+
+def test_rotation_advances() -> None:
+    logic = GameLogic()
+    initial_rot = logic.rotation_y
+    logic.update(0.1, want_jump=False)
+    assert logic.rotation_y > initial_rot

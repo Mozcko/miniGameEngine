@@ -1,0 +1,23 @@
+#ifndef @GAME_NAME@_LOGIC_H
+#define @GAME_NAME@_LOGIC_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+/* Estado determinista de la simulacion */
+typedef struct SimState {
+    uint64_t stepCount;
+    float accumulatedTime;
+    float entityPos[3];
+} SimState;
+
+/* Inicializa el estado de la simulacion */
+void sim_logic_init(SimState* state);
+
+/* Ejecuta un paso fijo de la simulacion */
+void sim_logic_step(SimState* state, float fixedDt);
+
+/* Valida que el numero de pasos ejecutados sea el esperado */
+bool sim_logic_verify(const SimState* state, uint64_t expectedSteps);
+
+#endif /* @GAME_NAME@_LOGIC_H */

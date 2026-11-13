@@ -5,8 +5,14 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <functional>
 #include <memory>
+#include <new>
+#include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -71,6 +77,119 @@ namespace mge {
             std::vector<T> m_data;
         };
 
+        // Almacenamiento "sparse set" de tipo borrado para componentes en tiempo de ejecución.
+        // Mantiene memoria alineada para structs de lenguajes externos (C, Python, etc.).
+        class RawPool : public PoolBase {
+        public:
+            RawPool(std::size_t elementSize, std::size_t elementAlign)
+                : m_elementSize(elementSize),
+                  m_elementAlign(elementAlign > 0 ? elementAlign : alignof(std::max_align_t)),
+                  m_stride(calculateStride(elementSize, m_elementAlign)) {}
+
+            ~RawPool() override { deallocate(); }
+
+            RawPool(const RawPool&) = delete;
+            RawPool& operator=(const RawPool&) = delete;
+
+            RawPool(RawPool&& other) noexcept
+                : m_elementSize(other.m_elementSize), m_elementAlign(other.m_elementAlign),
+                  m_stride(other.m_stride), m_capacity(other.m_capacity), m_data(other.m_data) {
+                m_sparse = std::move(other.m_sparse);
+                m_dense = std::move(other.m_dense);
+                other.m_data = nullptr;
+                other.m_capacity = 0;
+            }
+
+            RawPool& operator=(RawPool&& other) noexcept {
+                if (this != &other) {
+                    deallocate();
+                    m_sparse = std::move(other.m_sparse);
+                    m_dense = std::move(other.m_dense);
+                    m_elementSize = other.m_elementSize;
+                    m_elementAlign = other.m_elementAlign;
+                    m_stride = other.m_stride;
+                    m_capacity = other.m_capacity;
+                    m_data = other.m_data;
+                    other.m_data = nullptr;
+                    other.m_capacity = 0;
+                }
+                return *this;
+            }
+
+            void* emplace(Entity entity) {
+                if (contains(entity.index)) {
+                    void* ptr = m_data + m_sparse[entity.index] * m_stride;
+                    if (m_elementSize > 0) std::memset(ptr, 0, m_elementSize);
+                    return ptr;
+                }
+                if (entity.index >= m_sparse.size()) {
+                    m_sparse.resize(entity.index + 1, kAbsent);
+                }
+                if (m_dense.size() >= m_capacity) {
+                    grow(m_capacity == 0 ? 8 : m_capacity * 2);
+                }
+                const std::uint32_t pos = static_cast<std::uint32_t>(m_dense.size());
+                m_sparse[entity.index] = pos;
+                m_dense.push_back(entity);
+                void* ptr = m_data + pos * m_stride;
+                if (m_elementSize > 0) std::memset(ptr, 0, m_elementSize);
+                return ptr;
+            }
+
+            void remove(std::uint32_t index) override {
+                if (!contains(index)) return;
+                const std::uint32_t position = m_sparse[index];
+                const std::uint32_t last = static_cast<std::uint32_t>(m_dense.size() - 1);
+                if (position != last) {
+                    m_dense[position] = m_dense[last];
+                    std::memcpy(m_data + position * m_stride, m_data + last * m_stride, m_stride);
+                    m_sparse[m_dense[position].index] = position;
+                }
+                m_dense.pop_back();
+                m_sparse[index] = kAbsent;
+            }
+
+            void* get(std::uint32_t index) { return m_data + m_sparse[index] * m_stride; }
+
+            const void* get(std::uint32_t index) const { return m_data + m_sparse[index] * m_stride; }
+
+            std::size_t elementSize() const { return m_elementSize; }
+            std::size_t elementAlign() const { return m_elementAlign; }
+            std::size_t stride() const { return m_stride; }
+
+        private:
+            static std::size_t calculateStride(std::size_t size, std::size_t align) {
+                const std::size_t aligned = (size + align - 1) & ~(align - 1);
+                return std::max<std::size_t>(aligned > 0 ? aligned : align, 1);
+            }
+
+            void deallocate() {
+                if (m_data) {
+                    ::operator delete(m_data, std::align_val_t{m_elementAlign});
+                    m_data = nullptr;
+                    m_capacity = 0;
+                }
+            }
+
+            void grow(std::size_t newCap) {
+                newCap = std::max(newCap, m_capacity + 1);
+                auto* newData = static_cast<std::byte*>(
+                    ::operator new(newCap * m_stride, std::align_val_t{m_elementAlign}));
+                if (m_data && !m_dense.empty()) {
+                    std::memcpy(newData, m_data, m_dense.size() * m_stride);
+                }
+                deallocate();
+                m_data = newData;
+                m_capacity = newCap;
+            }
+
+            std::size_t m_elementSize = 0;
+            std::size_t m_elementAlign = 1;
+            std::size_t m_stride = 0;
+            std::size_t m_capacity = 0;
+            std::byte* m_data = nullptr;
+        };
+
         // Id único por tipo de componente (0, 1, 2...), asignado la primera vez que se usa el tipo
         inline std::size_t nextTypeId() {
             static std::size_t counter = 0;
@@ -81,6 +200,14 @@ namespace mge {
             return kId;
         }
     }
+
+    using ComponentTypeId = std::size_t;
+
+    struct RuntimeComponentInfo {
+        std::string name;
+        std::size_t size = 0;
+        std::size_t align = 1;
+    };
 
     template <typename... Ts> class View;
 
@@ -131,6 +258,21 @@ namespace mge {
         // Atajo: registry.each<A, B>([](Entity e, A& a, B& b) { ... });
         template <typename... Ts, typename Fn> void each(Fn&& fn);
 
+        // --- Componentes en tiempo de ejecución (C, Python, etc.) ---
+        ComponentTypeId registerRuntimeComponent(std::string name, std::size_t size, std::size_t align);
+        void* addRaw(Entity entity, ComponentTypeId type);
+        void* getRaw(Entity entity, ComponentTypeId type);
+        const void* getRaw(Entity entity, ComponentTypeId type) const;
+        bool hasRaw(Entity entity, ComponentTypeId type) const;
+        bool removeRaw(Entity entity, ComponentTypeId type);
+
+        void eachRaw(const ComponentTypeId* types, std::size_t typeCount,
+                     const std::function<void(Entity, void**)>& callback);
+
+        template <typename Container, typename Fn> void eachRaw(const Container& types, Fn&& callback) {
+            eachRaw(types.data(), types.size(), std::forward<Fn>(callback));
+        }
+
     private:
         template <typename... Ts> friend class View;
 
@@ -154,7 +296,10 @@ namespace mge {
         std::vector<std::uint32_t> m_generations; // Generación actual de cada índice
         std::vector<std::uint32_t> m_freeIndices; // Índices libres para reutilizar
         std::size_t m_alive = 0;
-        std::vector<std::unique_ptr<ecs_detail::PoolBase>> m_pools; // Por typeId
+        std::vector<std::unique_ptr<ecs_detail::PoolBase>> m_pools;   // Por typeId
+        std::vector<std::unique_ptr<ecs_detail::RawPool>> m_rawPools; // Por ComponentTypeId
+        std::unordered_map<std::string, ComponentTypeId> m_runtimeComponentNames;
+        std::vector<RuntimeComponentInfo> m_runtimeComponents;
     };
 
     // Vista sobre las entidades que tienen todos los componentes Ts. Recorre el pool más chico

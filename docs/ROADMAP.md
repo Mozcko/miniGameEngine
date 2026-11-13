@@ -175,7 +175,7 @@ _A showcase game that demonstrates the engine: procedural‑first, using assets 
 
 ### M9 · mge CLI & Project Wizard — [epic #107](https://github.com/Mozcko/miniGameEngine/issues/107)
 
-**Done — released as 1.0.0.** Engine as a package (`find_package(mge 1.0)` / FetchContent), standalone 3D/2D/headless templates, the `mge` CLI and the `mge new` wizard.
+**Done — released as 0.9.0.** Engine as a package (`find_package(mge)` / FetchContent), standalone 3D/2D/headless templates, the `mge` CLI and the `mge new` wizard.
 
 _A cargo‑like workflow: `mge new` (wizard) → `mge run`, with the engine consumed as a normal dependency._ #103 and #104 only need M1.5 and can start early. The 2D/3D templates need M3 (renderer) and M4 (2D batch + font); the headless template can come first.
 
@@ -192,11 +192,11 @@ _Write games in **C** and **Python**, not only C++._ A stable C API (`mge_c`) is
 
 | # | Issue | Labels |
 |---|---|---|
-| [#160](https://github.com/Mozcko/miniGameEngine/issues/160) | ADR: language bindings strategy (C API as stable ABI, Python via nanobind) | documentation, priority:high, size:S |
-| [#161](https://github.com/Mozcko/miniGameEngine/issues/161) | C API v1 (`mge_c`): write games in plain C | enhancement, priority:high, size:L |
-| [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | Python bindings v1 (`import mge`) via nanobind | enhancement, priority:high, size:L |
-| [#163](https://github.com/Mozcko/miniGameEngine/issues/163) | `mge new --lang c\|python`: project templates for C and Python | enhancement, priority:medium, size:M |
+| [#160](https://github.com/Mozcko/miniGameEngine/issues/160) | ✅ [ADR 0006](adr/0006-language-bindings.md): language bindings strategy (C API as stable ABI, Python via nanobind) | documentation, priority:high, size:S |
+| [#161](https://github.com/Mozcko/miniGameEngine/issues/161) | ✅ [C API v1 (`mge_c`)](C_API.md): write games in plain C | enhancement, priority:high, size:L |
+| [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | ✅ [Python bindings v1 (`import mge`)](PYTHON.md) via nanobind | enhancement, priority:high, size:L |
+| [#163](https://github.com/Mozcko/miniGameEngine/issues/163) | ✅ `mge new --lang c\|python`: project templates for C and Python | enhancement, priority:medium, size:M |
 
 ## Suggested order
 
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61), ✅ M8 (#35, #36, #62–#67) and ✅ M9 (#103–#106) are done: **1.0.0**. Next: M10 (C and Python bindings, 1.1.0). Each issue's **Depends on** section on GitHub lists its prerequisites.
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61), ✅ M8 (#35, #36, #62–#67) and ✅ M9 (#103–#106) were released as **0.9.0**; ✅ M10 (#160–#163, C API + Python bindings) completes **1.0.0**. Next: more languages on the C API (Rust, Zig, Odin, C#, Lua) if C and Python work well. Each issue's **Depends on** section on GitHub lists its prerequisites.

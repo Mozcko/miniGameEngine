@@ -84,3 +84,51 @@ function(mge_add_game name)
         endif()
     endif()
 endfunction()
+
+# mge_add_c_game(): crea el ejecutable de un juego en C puro (C99) enlazado a mge::c (#161).
+function(mge_add_c_game name)
+    enable_language(C)
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "HEADLESS" "SMOKE_FRAMES" "SOURCES;LIBRARIES;MODULES")
+    if(NOT ARG_SOURCES)
+        message(FATAL_ERROR "mge_add_c_game(${name}): falta SOURCES")
+    endif()
+    if(ARG_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "mge_add_c_game(${name}): argumentos desconocidos: ${ARG_UNPARSED_ARGUMENTS}")
+    endif()
+
+    add_executable(${name} ${ARG_SOURCES})
+    set_target_properties(${name} PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+        LINKER_LANGUAGE CXX
+    )
+    target_link_libraries(${name} PRIVATE mge::c)
+    if(ARG_LIBRARIES)
+        target_link_libraries(${name} PRIVATE ${ARG_LIBRARIES})
+    endif()
+
+    set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    mge_set_warnings(${name})
+
+    add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
+
+    if(ARG_SMOKE_FRAMES)
+        set(environment "MGE_MAX_FRAMES=${ARG_SMOKE_FRAMES}")
+        if(ARG_HEADLESS)
+            set(test_name "smoke: ${name} headless ${ARG_SMOKE_FRAMES} frames")
+            set(labels "")
+        else()
+            set(test_name "smoke: ${name} offscreen ${ARG_SMOKE_FRAMES} frames")
+            list(APPEND environment "SDL_VIDEODRIVER=offscreen" "SDL_AUDIODRIVER=dummy"
+                 "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+            set(labels gpu)
+        endif()
+        set(smoke_cwd "${CMAKE_BINARY_DIR}/smoke-cwd")
+        file(MAKE_DIRECTORY "${smoke_cwd}")
+        add_test(NAME "${test_name}" COMMAND ${name} WORKING_DIRECTORY "${smoke_cwd}")
+        set_tests_properties("${test_name}" PROPERTIES TIMEOUT 120 ENVIRONMENT "${environment}")
+        if(labels)
+            set_tests_properties("${test_name}" PROPERTIES LABELS "${labels}" FAIL_REGULAR_EXPRESSION "Validation Error")
+        endif()
+    endif()
+endfunction()

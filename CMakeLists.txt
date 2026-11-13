@@ -29,6 +29,15 @@ option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
 option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
 option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
 option(MGE_BUILD_CLI "Compilar la herramienta CLI mge (tools/mge)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_PIC "Compilar bibliotecas con código independiente de posición (fPIC)" OFF)
+option(MGE_BUILD_C_SHARED "Compilar mge_c como biblioteca compartida (shared library)" OFF)
+option(MGE_BUILD_PYTHON "Compilar bindings de Python" OFF)
+if(MGE_BUILD_C_SHARED OR MGE_BUILD_PYTHON)
+    set(MGE_PIC ON CACHE BOOL "Compilar bibliotecas con código independiente de posición (fPIC)" FORCE)
+endif()
+if(MGE_PIC)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
 if(MGE_INSTALL AND MGE_SOURCE_ASSET_FALLBACK)
@@ -102,6 +111,9 @@ endfunction()
 
 function(mge_set_warnings target)
     mge_set_size_flags(${target})
+    if(MGE_PIC)
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
     if(NOT MGE_WARNINGS)
         return()
     endif()
@@ -154,10 +166,10 @@ if(MGE_TRACY)
 endif()
 
 # mge_add_game(): una llamada por juego (ver cmake/MgeGame.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/MgeGame.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MgeGame.cmake)
 # mge_add_shaders(): GLSL → SPIR-V embebido (ver cmake/MgeShaders.cmake). Solo con módulos (GPU)
 if(MGE_BUILD_MODULES)
-    include(${PROJECT_SOURCE_DIR}/cmake/MgeShaders.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MgeShaders.cmake)
 endif()
 
 # CTest antes de los subdirectorios: juegos y ejemplos también registran tests
@@ -198,6 +210,12 @@ endif()
 if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+# --- Bindings de Python ---
+if(MGE_BUILD_PYTHON)
+    add_subdirectory(bindings/python)
+endif()
+
 
 # --- Paquete CMake (find_package(mge)) ---
 if(MGE_INSTALL)

@@ -63,6 +63,55 @@ TEST_CASE("cli: renderizado de plantillas de texto") {
     CHECK(rendered == "class DemoGame : public App {}; // demo_game - Demo Game (v0.9.0)");
 }
 
+TEST_CASE("cli: parseLanguage y languageToString") {
+    ProjectLanguage lang = ProjectLanguage::Cpp;
+    CHECK(parseLanguage("cpp", lang));
+    CHECK(lang == ProjectLanguage::Cpp);
+    CHECK(languageToString(lang) == "cpp");
+
+    CHECK(parseLanguage("c++", lang));
+    CHECK(lang == ProjectLanguage::Cpp);
+
+    CHECK(parseLanguage("c", lang));
+    CHECK(lang == ProjectLanguage::C);
+    CHECK(languageToString(lang) == "c");
+
+    CHECK(parseLanguage("C", lang));
+    CHECK(lang == ProjectLanguage::C);
+
+    CHECK(parseLanguage("python", lang));
+    CHECK(lang == ProjectLanguage::Python);
+    CHECK(languageToString(lang) == "python");
+
+    CHECK(parseLanguage("py", lang));
+    CHECK(lang == ProjectLanguage::Python);
+
+    CHECK_FALSE(parseLanguage("rust", lang));
+    CHECK_FALSE(parseLanguage("java", lang));
+}
+
+TEST_CASE("cli: validación de plantillas según el lenguaje") {
+    std::string err;
+    // Cpp: 3d, 2d, headless, window
+    CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "3d", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "2d", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "headless", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "window", err));
+    CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::Cpp, "isometric", err));
+
+    // C: 3d, headless
+    CHECK(validateLanguageTemplate(ProjectLanguage::C, "3d", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::C, "headless", err));
+    CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::C, "2d", err));
+    CHECK(err.find("no válida para C") != std::string::npos);
+
+    // Python: 3d, 2d
+    CHECK(validateLanguageTemplate(ProjectLanguage::Python, "3d", err));
+    CHECK(validateLanguageTemplate(ProjectLanguage::Python, "2d", err));
+    CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::Python, "headless", err));
+    CHECK(err.find("no válida para Python") != std::string::npos);
+}
+
 TEST_CASE("cli: detección de proyectos") {
     std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "mge_test_proj_detect";
     std::filesystem::remove_all(tempDir);
@@ -84,6 +133,7 @@ TEST_CASE("cli: detección de proyectos") {
     CHECK(infoProj.name == "test_game");
     CHECK(infoProj.templateType == "2d");
     CHECK(infoProj.rootDir == tempDir);
+    CHECK(infoProj.language == ProjectLanguage::Cpp);
 
     // Búsqueda desde un subdirectorio anidado
     std::filesystem::path subDir = tempDir / "src" / "deep";
@@ -94,6 +144,28 @@ TEST_CASE("cli: detección de proyectos") {
     CHECK(infoSub.name == "test_game");
     CHECK(infoSub.templateType == "2d");
     CHECK(infoSub.rootDir == tempDir);
+
+    // Con archivo mge.project indicando language=python
+    {
+        std::ofstream proj(tempDir / "mge.project");
+        proj << "name=py_game\n";
+        proj << "template=2d\n";
+        proj << "language=python\n";
+    }
+    auto infoPy = detectProject(tempDir);
+    CHECK(infoPy.type == ProjectType::GameProject);
+    CHECK(infoPy.language == ProjectLanguage::Python);
+
+    // Con archivo mge.project indicando language=c
+    {
+        std::ofstream proj(tempDir / "mge.project");
+        proj << "name=c_game\n";
+        proj << "template=3d\n";
+        proj << "language=c\n";
+    }
+    auto infoC = detectProject(tempDir);
+    CHECK(infoC.type == ProjectType::GameProject);
+    CHECK(infoC.language == ProjectLanguage::C);
 
     std::filesystem::remove_all(tempDir);
 }
@@ -152,4 +224,13 @@ TEST_CASE("cli: ejecución y captura de procesos") {
     int rc = runCommandCapture({"echo", "mge_cli_test_output"}, out);
     CHECK(rc == 0);
     CHECK(out.find("mge_cli_test_output") != std::string::npos);
+}
+
+TEST_CASE("cli: diagnósticos doctor para Python") {
+    auto items = runPythonDoctorChecks();
+    CHECK(items.size() == 4);
+    CHECK(items[0].name.find("Python") != std::string::npos);
+    CHECK(items[1].name == "pip");
+    CHECK(items[2].name == "venv");
+    CHECK(items[3].name.find("mge") != std::string::npos);
 }
