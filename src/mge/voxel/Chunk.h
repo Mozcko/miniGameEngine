@@ -82,6 +82,8 @@ namespace mge {
         void fill(BlockId id) { m_blocks.fill(id); }
         bool isEmpty() const; // Solo aire
         const std::array<BlockId, kChunkVolume>& blocks() const { return m_blocks; }
+        /// Acceso directo mutable al arreglo plano de bloques (orden: x más rápido, luego z, luego y).
+        std::array<BlockId, kChunkVolume>& blocks() { return m_blocks; }
 
     private:
         std::array<BlockId, kChunkVolume> m_blocks{}; // Todo aire

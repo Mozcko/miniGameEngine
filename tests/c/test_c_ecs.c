@@ -30,6 +30,41 @@ static void movement_system(mge_app* app, float dt, void* user_data) {
     s_systemTickCount++;
 }
 
+static int s_eachSpawnCount = 0;
+static mge_component_id s_spawnCompId = MGE_INVALID_COMPONENT_ID;
+static mge_app* s_spawnApp = NULL;
+static void each_add_during_callback(mge_entity entity, void** components, void* user_data) {
+    (void)entity;
+    int* sum = (int*)user_data;
+    int* val = (int*)components[0];
+    *sum += *val;
+    s_eachSpawnCount++;
+
+    // Crear 10 entidades y adjuntar el mismo componente para forzar realojamiento del pool
+    for (int i = 0; i < 10; ++i) {
+        mge_entity ne = mge_entity_create(s_spawnApp);
+        int* nv = (int*)mge_component_add(s_spawnApp, ne, s_spawnCompId);
+        if (nv) {
+            *nv = 1000;
+        }
+    }
+}
+
+typedef struct DestroyCtx {
+    mge_app* app;
+    mge_entity victim;
+    int visited;
+} DestroyCtx;
+
+static void each_destroy_callback(mge_entity entity, void** components, void* user_data) {
+    (void)components;
+    DestroyCtx* ctx = (DestroyCtx*)user_data;
+    ctx->visited++;
+    if (entity != ctx->victim && mge_entity_is_valid(ctx->app, ctx->victim)) {
+        mge_entity_destroy(ctx->app, ctx->victim);
+    }
+}
+
 static bool on_init_ecs(mge_app* app, void* user_data) {
     int* result = (int*)user_data;
 
@@ -150,6 +185,85 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
     // 11. Registrar un sistema de simulación
     if (mge_system_add(app, MGE_PHASE_UPDATE, "MovementSystem", movement_system, NULL) != MGE_OK) {
         *result = 20;
+        return false;
+    }
+
+    // 12. Validación de registro de componentes (Item 1)
+    if (mge_component_register(app, "Velocity", sizeof(Velocity), sizeof(float)) != velId) {
+        *result = 21;
+        return false;
+    }
+    if (mge_component_register(app, "Velocity", 64, 4) != MGE_INVALID_COMPONENT_ID ||
+        strlen(mge_last_error()) == 0) {
+        *result = 22;
+        return false;
+    }
+    if (mge_component_register(app, "BadAlignC", 16, 3) != MGE_INVALID_COMPONENT_ID ||
+        strlen(mge_last_error()) == 0) {
+        *result = 23;
+        return false;
+    }
+    if (mge_component_register(app, "BadHugeAlignC", 16, 8192) != MGE_INVALID_COMPONENT_ID) {
+        *result = 24;
+        return false;
+    }
+    if (mge_component_register(app, "BadSizeC", 1024u * 1024u, 16) != MGE_INVALID_COMPONENT_ID) {
+        *result = 25;
+        return false;
+    }
+    if (mge_component_register(app, "DefaultAlignC", 16, 0) == MGE_INVALID_COMPONENT_ID) {
+        *result = 26;
+        return false;
+    }
+
+    // 13. comp_id fuera de rango (Item 2)
+    if (mge_component_add(app, e1, 999) != NULL || strlen(mge_last_error()) == 0) {
+        *result = 27;
+        return false;
+    }
+    if (mge_component_get(app, e1, 999) != NULL || strlen(mge_last_error()) == 0) {
+        *result = 28;
+        return false;
+    }
+    if (mge_component_has(app, e1, 999)) {
+        *result = 29;
+        return false;
+    }
+
+    // 14. add-during-each y destroy-during-each en mge_component_each (Item 3, validado con ASan)
+    s_spawnCompId = mge_component_register(app, "Counter", sizeof(int), sizeof(int));
+    if (s_spawnCompId == MGE_INVALID_COMPONENT_ID) {
+        *result = 30;
+        return false;
+    }
+    mge_entity spawnSeed[5];
+    for (int i = 0; i < 5; ++i) {
+        spawnSeed[i] = mge_entity_create(app);
+        int* cv = (int*)mge_component_add(app, spawnSeed[i], s_spawnCompId);
+        if (!cv) {
+            *result = 31;
+            return false;
+        }
+        *cv = i + 1;
+    }
+    s_spawnApp = app;
+    s_eachSpawnCount = 0;
+    int sumCounter = 0;
+    mge_component_each(app, &s_spawnCompId, 1, each_add_during_callback, &sumCounter);
+    if (s_eachSpawnCount != 5 || sumCounter != 15) {
+        *result = 32;
+        return false;
+    }
+
+    mge_component_id tagId = mge_component_register(app, "TagC", sizeof(int), sizeof(int));
+    mge_entity d1 = mge_entity_create(app);
+    mge_entity d2 = mge_entity_create(app);
+    mge_component_add(app, d1, tagId);
+    mge_component_add(app, d2, tagId);
+    DestroyCtx dctx = {app, d2, 0};
+    mge_component_each(app, &tagId, 1, each_destroy_callback, &dctx);
+    if (dctx.visited != 1 || mge_entity_is_valid(app, d2)) {
+        *result = 33;
         return false;
     }
 

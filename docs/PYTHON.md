@@ -249,7 +249,9 @@ Lightweight sparse-set ECS supporting built-in and pure Python components:
   - `id = reg.register_block("dirt", mge.BlockDesc(is_solid=True, is_opaque=True))`
   - `reg.name(id)`, `reg.is_solid(id)`, `reg.is_opaque(id)`, `reg.find("name")`, `BlockRegistry.AIR`.
 - **`mge.VoxelWorld(registry, generator=None)`**:
-  - `generator(x, y, z) -> block_id`: Pure Python terrain generation function.
+  - `generator` supports two forms:
+    - **Whole-chunk (recommended for performance)**: `generate_chunk(cx, cy, cz) -> bytes | bytearray | array('H') | memoryview` (a callable returning a buffer/sequence, or an object with a `.generate_chunk(cx, cy, cz)` method). Invoked once per 16×16×16 chunk instead of 4,096 Python calls. Expects 4,096 block IDs in flat chunk order (`x` fastest, then `z`, then `y`: index `(y * 16 + z) * 16 + x`).
+    - **Per-block (convenience)**: `generator(x, y, z) -> block_id`, invoked 4,096 times per chunk (higher Python call overhead; best for small prototypes).
   - `world.get_block(x, y, z) -> block_id`
   - `world.set_block(x, y, z, block_id)`
   - `world.load_chunk(cx, cy, cz)`

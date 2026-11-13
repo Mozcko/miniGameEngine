@@ -21,6 +21,9 @@ namespace mge::cli {
     bool parseLanguage(const std::string& str, ProjectLanguage& outLang);
     bool validateLanguageTemplate(ProjectLanguage lang, const std::string& templateName,
                                   std::string& outError);
+    const char* minEngineVersionForLanguage(ProjectLanguage lang);
+    bool validateLanguageVersion(ProjectLanguage lang, const std::string& engineVersion,
+                                 std::string& outError);
 
     struct ProjectInfo {
         ProjectType type{ProjectType::None};
@@ -66,6 +69,7 @@ namespace mge::cli {
         bool git{true};
         bool vscode{true};
         bool noGit{false};
+        std::string pinnedVersion;
     };
 
     // Reemplaza marcadores @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@, @MGE_VERSION@ y módulos opcionales

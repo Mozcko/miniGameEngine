@@ -464,6 +464,19 @@ jobs:
           python -m pytest
           MGE_MAX_FRAMES=60 python main.py --headless
 
+      - name: Verify user-facing template generation and pinned tag
+        run: |
+          MGE_TEMPLATES_DIR="${{ github.workspace }}/templates" /tmp/mge-prefix/bin/mge new user_c_game --lang c --template 3d --no-git --dir "${RUNNER_TEMP:-/tmp}/user_c_game"
+          MGE_TEMPLATES_DIR="${{ github.workspace }}/templates" /tmp/mge-prefix/bin/mge new user_py_game --lang python --template 3d --no-git --dir "${RUNNER_TEMP:-/tmp}/user_py_game"
+          C_TAG=$(grep -oE 'GIT_TAG\s+v[0-9]+\.[0-9]+\.[0-9]+' "${RUNNER_TEMP:-/tmp}/user_c_game/CMakeLists.txt" | awk '{print $2}')
+          PY_TAG=$(grep -oE '@v[0-9]+\.[0-9]+\.[0-9]+' "${RUNNER_TEMP:-/tmp}/user_py_game/pyproject.toml" | head -n 1 | tr -d '@')
+          echo "Pinned tags: C=${C_TAG}, Python=${PY_TAG}"
+          test -n "${C_TAG}"
+          test "${C_TAG}" = "${PY_TAG}"
+          if ! git ls-remote --tags origin "refs/tags/${C_TAG}" | grep -q "refs/tags/${C_TAG}"; then
+            echo "::warning::Pinned template tag ${C_TAG} does not exist yet on origin"
+          fi
+
   # Herramienta mge CLI (Issue #104)
   cli:
     name: mge cli

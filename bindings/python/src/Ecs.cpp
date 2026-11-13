@@ -2,6 +2,17 @@
 
 namespace mge::python {
 
+    namespace {
+        std::string makePyComponentKey(nanobind::handle cls) {
+            namespace nb = nanobind;
+            const std::string modName = nb::cast<std::string>(nb::str(cls.attr("__module__")));
+            const std::string qualName = nb::hasattr(cls, "__qualname__")
+                                             ? nb::cast<std::string>(nb::str(cls.attr("__qualname__")))
+                                             : nb::cast<std::string>(nb::str(cls.attr("__name__")));
+            return "py:" + modName + "." + qualName;
+        }
+    } // namespace
+
     PyWorld::PyWorld() : m_ownedWorld(std::make_unique<mge::World>()), m_worldRef(m_ownedWorld.get()) {}
     PyWorld::PyWorld(mge::World* world) : m_worldRef(world) {}
 
@@ -52,13 +63,18 @@ namespace mge::python {
         }
 
         // Componente de Python personalizado
-        auto* typeObj = reinterpret_cast<PyTypeObject*>(comp.type().ptr());
-        m_pyComponents[entity.id][typeObj] = comp;
-
-        const auto typeName = nb::cast<std::string>(nb::str(comp.type().attr("__name__")));
+        const std::string typeName = makePyComponentKey(comp.type());
         const mge::ComponentTypeId compId =
             registry().registerRuntimeComponent(typeName, sizeof(void*), alignof(void*));
-        registry().addRaw(e, compId);
+        if (compId == mge::kInvalidComponentType) {
+            throw EngineError("Failed to register runtime component: " + typeName);
+        }
+        if (registry().addRaw(e, compId) == nullptr) {
+            throw EngineError("Failed to add runtime component: " + typeName);
+        }
+
+        auto* typeObj = reinterpret_cast<PyTypeObject*>(comp.type().ptr());
+        m_pyComponents[entity.id][typeObj] = comp;
     }
 
     bool PyWorld::has(PyEntity entity, nanobind::object compType) const {
@@ -158,10 +174,12 @@ namespace mge::python {
                 m_pyComponents.erase(it);
             }
         }
-        const auto typeName = nb::cast<std::string>(nb::str(compType.attr("__name__")));
+        const std::string typeName = makePyComponentKey(compType);
         const mge::ComponentTypeId compId =
             registry().registerRuntimeComponent(typeName, sizeof(void*), alignof(void*));
-        registry().removeRaw(e, compId);
+        if (compId != mge::kInvalidComponentType) {
+            registry().removeRaw(e, compId);
+        }
     }
 
     nanobind::object PyWorld::each(nanobind::args args) {
