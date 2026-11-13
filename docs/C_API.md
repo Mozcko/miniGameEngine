@@ -186,7 +186,7 @@ Add your C game using the CMake helper `mge_add_c_game()` declared in `MgeGame.c
 cmake_minimum_required(VERSION 3.24)
 project(my_c_game LANGUAGES C CXX)
 
-find_package(mge 0.9 REQUIRED)
+find_package(mge 1.0 REQUIRED)
 
 mge_add_c_game(my_c_game
     SOURCES Main.c
@@ -209,7 +209,7 @@ mge_add_c_game(my_c_game
 | Function | Description |
 | :--- | :--- |
 | `mge_c_api_version()` | Returns `(MGE_C_API_VERSION_MAJOR << 16) \| MGE_C_API_VERSION_MINOR`. |
-| `mge_version_string()` | Returns the engine semantic version string (e.g. `"0.9.0"`). |
+| `mge_version_string()` | Returns the engine semantic version string (e.g. `"1.0.0"`). |
 | `mge_last_error()` | Returns thread-local borrowed error message string. |
 | `mge_app_run(config, callbacks)` | Starts and runs the application main loop. Returns `mge_result`. |
 | `mge_app_request_stop(app)` | Requests application loop exit after the current frame. |

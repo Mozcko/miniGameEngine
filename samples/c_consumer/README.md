@@ -1,7 +1,7 @@
 # Sample C Consumer
 
 Sample C99 game demonstrating how to consume `miniGameEngine` via the C API (`mge_c`):
-1. via `find_package(mge 0.9 REQUIRED)` (after installing the engine with `-DMGE_INSTALL=ON`).
+1. via `find_package(mge 1.0 REQUIRED)` (after installing the engine with `-DMGE_INSTALL=ON`).
 2. via `FetchContent` (`-DMGE_CONSUMER_FETCH=ON`).
 
 ## Building with `find_package(mge)`

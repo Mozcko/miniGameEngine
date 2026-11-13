@@ -22,7 +22,7 @@ For the complete API reference, architecture rules, and guides, see [docs/C_API.
 
 ```cmake
 # In your CMakeLists.txt
-find_package(mge 0.9 REQUIRED)
+find_package(mge 1.0 REQUIRED)
 
 mge_add_c_game(my_c_game
     SOURCES Main.c

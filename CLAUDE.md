@@ -6,8 +6,9 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games built from **pure math/code** *or* with regular asset files
   (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M10, issues #1–#67, #96–#107 and #160–#164,
-  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M8 are done (engine MVP); next is M9 (mge CLI, post‑1.0), then
-  M10 (C API + Python bindings).**
+  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M10 are done = release 1.0.0 (engine MVP, package, templates,
+  `mge` CLI and wizard, C API and Python bindings); next: more languages on the C API if C/Python work well.** Version lives in `project(... VERSION)`; every release
+  needs a pushed tag `vX.Y.Z` (templates and FetchContent fetch it) and a CHANGELOG entry.
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
   per PR with "Closes #N", merge only when CI is green). Decisions: `docs/adr/` (0001 SDL3 GPU,
@@ -33,7 +34,8 @@ Sanitizers: `asan` preset (ASan+UBSan; locally use Clang – GCC's libasan isn't
 Smoke tests (CTest): `examples/headless_smoke` (no modules, 1000 frames), `examples/platformer2d` (the 2D path, #45), `sdf_scene`,
 `sdf_glide`, `guide_game` and the sandbox 120 frames offscreen (label `gpu`, uses `MGE_MAX_FRAMES`).
 CI jobs: gcc, clang, sanitizers, tsan, core-only, lint, **bench** (warns on regressions vs main), **size** (fails above
-`cmake/size-budget.txt`), **zero-asset** (games run from an empty dir, `strace` proves no `assets/` access).
+`cmake/size-budget.txt`), **zero-asset** (games run from an empty dir, `strace` proves no `assets/` access), **package** (install +
+find_package and FetchContent consumers), **templates**, **cli**. Packaging jobs install SDL3 with `scripts/ci-install-sdl3.sh`.
 Tests: doctest + CTest in `tests/` (`ctest --preset dev`), headless – no GPU/display needed.
 No globbing: every target lists its sources explicitly – add new files to that target's CMakeLists.txt.
 
@@ -42,7 +44,13 @@ No globbing: every target lists its sources explicitly – add new files to that
   builds it with `-DMGE_BUILD_MODULES=OFF`, together with the headless `mge_procgen`/`mge_voxel`/`mge_physics`/`mge_synth`),
   `mge_physics` (headless: swept voxel collision, character controller, rigid bodies), `mge_platform` (PlatformModule),
   `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_synth` (headless audio: Mixer, samples), `mge_audio` (AudioModule: the mixer on the SDL audio device), `mge_main` (main(), core‑only).
-- Each engine library provides an alias `mge::<module>` (e.g. `mge::core`, `mge::platform`, `mge::main`). Out-of-tree consumers can consume the engine via installed package (`find_package(mge 0.9)`) or `FetchContent` (#103, `docs/USING_THE_ENGINE.md`).
+- Each engine library provides an alias `mge::<module>` (e.g. `mge::core`, `mge::platform`, `mge::main`). Out-of-tree consumers use the
+  installed package (`-DMGE_INSTALL=ON`, needs a system SDL3; `find_package(mge 1.0)`) or `FetchContent` (`GIT_TAG v1.0.0`)
+  (#103, `docs/USING_THE_ENGINE.md`, sample `samples/consumer`). Install rules: public headers listed per module with
+  `mge_install_headers(<module> …)`; new modules must be added to `MGE_EXPORT_TARGETS` (src/mge/CMakeLists.txt) and mgeConfig.
+- `tools/mge/` = the `mge` CLI (`mge_cli_core` lib + exe; POSIX only, skipped on Windows; prints with std::cout – the only place
+  allowed) and its `wizard/` (pure `WizardModel` + `TerminalView`). Tests: `tests/cli/` (+ golden file trees in
+  `tools/mge/tests/golden/`, `MGE_UPDATE_GOLDEN=1`).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain/SandboxSounds on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).
 - Tests: `tests/<module>/` → `mge_<module>_tests` (core, procgen, synth, voxel, physics, platform, audio, gpu), `tests/render` →
   `render_tests` (goldens), `tests/game/` → `game_tests`, `tests/examples/` → `platformer_tests`, `sdf_glide_tests`.
@@ -148,8 +156,12 @@ its walkthrough is `examples/guide_game`, built in CI – keep them in sync).
 
 ## Games
 Declare every program with `mge_add_game(<name> SOURCES … [LIBRARIES …] [MODULES …] [HEADLESS] [SMOKE_FRAMES n])`
-(`cmake/MgeGame.cmake`): it links main + modules and adds `run-<name>` and a smoke test. New game: `mge new <name> [--template 3d|2d|headless]`
-(or `scripts/new-game.sh` wrapper) → `examples/<name>/` or standalone from `templates/` (`*.in`, CI builds and tests templates).
+(`cmake/MgeGame.cmake`, also shipped in the package): it links `mge::main` + modules (platform gpu graphics audio physics procgen voxel
+synth core) and adds `run-<name>` and a smoke test (runs from `<build>/smoke-cwd`).
+New project: `mge new` (wizard) or `mge new <name> --template 3d|2d|headless [--dir …] [--no-audio] [--license mit|apache|none]
+[--no-git] [--no-vscode] [-y]` → standalone project from `templates/<t>/` (`*.in`; placeholders `@GAME_NAME@ @GAME_CLASS@ @GAME_TITLE@
+@MGE_VERSION@`; `mge.project` marks it). Then `mge build|run|test|check|clean|doctor` (`docs/CLI.md`). `scripts/new-game.sh` wraps
+`mge new`. CI jobs `templates` and `cli` generate and build every template outside the repo.
 
 ## Procgen
 `mge_procgen` (headless, always built): `MeshData` (SoA, all attributes same length, `validate()`, `writeObj`).

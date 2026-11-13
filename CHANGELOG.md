@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-13
+
+First stable release: everything up to 0.9.0 plus language bindings (M10). Games can now be written in C++, C or Python.
+
+### Added
+- **ADR 0006** (#160): language bindings strategy – the C API is the stable ABI, Python uses nanobind over the C++ API.
+- **C API v1** (#161): `mge_c` (`<mge/c/mge_c.h>`, C99, opaque handles, `mge_result` + `mge_last_error()`,
+  `MGE_C_API_VERSION`), `mge_add_c_game()`, runtime ECS components (`Registry::registerRuntimeComponent`/`addRaw`/`eachRaw`),
+  GPU resource tracker (leaked GPU handles are released before the device is destroyed instead of hanging shutdown),
+  `examples/c_hello`, `samples/c_consumer`, `docs/C_API.md`.
+- **Python bindings v1** (#162): `import mge` via nanobind + scikit-build-core (`pip install .` from the repo root), GIL
+  released while the engine runs, Python-defined components, `.pyi` stubs, pytest on Python 3.10/3.12, `docs/PYTHON.md`.
+- **Language templates** (#163): `mge new --lang c|python` with `c-3d`, `c-headless`, `python-3d`, `python-2d` templates and a
+  language step in the wizard.
+
+### Changed
+- The CMake package version file uses semantic versioning (`SameMajorVersion`): any 1.x engine satisfies
+  `find_package(mge 1.0)` (0.9.x used `SameMinorVersion`).
+- Templates, samples and docs target `1.0` / `v1.0.0`.
+
 ## [0.9.0] - 2026-11-11
 
 ### Added

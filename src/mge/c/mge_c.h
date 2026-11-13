@@ -37,7 +37,7 @@ extern "C" {
 MGE_C_API uint32_t mge_c_api_version(void);
 
 /**
- * Retorna la cadena de versión del motor (ej: "0.9.0" o "0.10.0").
+ * Retorna la cadena de versión del motor (ej: "1.0.0" o "1.1.0").
  */
 MGE_C_API const char* mge_version_string(void);
 

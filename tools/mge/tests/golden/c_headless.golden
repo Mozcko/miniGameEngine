@@ -2,7 +2,7 @@
 .gitignore 668d7124ecd80892
 .vscode/settings.json bb3724e5fa6cdbd2
 .vscode/tasks.json 9e4cbfd50e7c076d
-CMakeLists.txt b684c73442a7f4fa
+CMakeLists.txt d6aa12cd7554b4d2
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md 2ef37355deb5c0a2
