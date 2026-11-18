@@ -62,7 +62,7 @@ include(FetchContent)
 FetchContent_Declare(
     mge
     GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git
-    GIT_TAG        v1.0.0
+    GIT_TAG        v1.0.1
 )
 FetchContent_MakeAvailable(mge)
 

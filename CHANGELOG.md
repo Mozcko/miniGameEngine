@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-18
+
+Bug-fix release: the M10 review fixes (#174) and #177, which landed after the `v1.0.0` tag.
+
+### Fixed
+- **Runtime ECS components** (#174): registering an existing name with a different size/alignment is now an error
+  (`kInvalidComponentType` / `MGE_INVALID_COMPONENT_ID` + `mge_last_error()` / `mge.EngineError`) instead of silently
+  reusing the old pool (heap overflow); alignment must be a power of two ≤ 4096, size < 1 MiB.
+- **Release-safe bounds checks** (#174): `Registry::addRaw/getRaw` and every C function taking a component id validate it in
+  all build types (an invalid id returned out-of-bounds memory in Release).
+- **Iteration safety** (#174): `Registry::eachRaw`, `View::each` and `mge_component_each` iterate a copy of the entity list and
+  re-check membership, so destroying or adding entities inside the callback no longer skips entities or touches freed memory;
+  pointer lifetimes are documented in `mge_c.h` and `docs/C_API.md`.
+- **C API ABI** (#174): `struct_size` of `mge_app_config` / `mge_app_callbacks` is enforced (too small → error; larger structs
+  from newer headers are accepted).
+- **Python components** (#174): keyed by `module.qualname`, so classes with the same `__name__` in different modules no longer
+  share a pool.
+- **Templates** (#174): `mge new --lang c|python` refuses engine versions older than the one that introduced the language.
+- **sdf_glide mouse steering** (#177, #191, thanks @Golden007-prog): mouse motion is accumulated between fixed steps, so
+  steering no longer gets weaker above 60 FPS (and is no longer applied twice below 60 FPS).
+
+### Added
+- Python voxel generators can fill a whole chunk at once (`generate_chunk(cx, cy, cz)` → 4096 block ids) instead of one call
+  per block (#174).
+
 ## [1.0.0] - 2026-11-13
 
 First stable release: everything up to 0.9.0 plus language bindings (M10). Games can now be written in C++, C or Python.
