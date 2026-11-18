@@ -45,6 +45,15 @@ namespace sdf_glide {
         bool restart = false;
     };
 
+    class GlideMouseSteering {
+    public:
+        void record(const glm::vec2& delta);
+        void apply(GlideInput& input);
+
+    private:
+        glm::vec2 m_pendingDelta{0.0f};
+    };
+
     enum class AudioEvent : std::uint8_t {
         None,
         CollectMote,

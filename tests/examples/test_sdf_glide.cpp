@@ -10,6 +10,37 @@
 
 using namespace sdf_glide;
 
+TEST_CASE("El deslizamiento acumula el ratón hasta el siguiente paso fijo") {
+    GlideMouseSteering singleFrame;
+    singleFrame.record({6.0f, -8.0f});
+
+    GlideMouseSteering fourFrames;
+    for (const auto& delta :
+         {glm::vec2(2.0f, -1.0f), glm::vec2(1.0f, -4.0f), glm::vec2(0.0f, 1.0f), glm::vec2(3.0f, -4.0f)}) {
+        fourFrames.record(delta);
+    }
+
+    const GlideInput keyboard{0.25f, -0.25f};
+    auto oneFrame = keyboard;
+    auto fourFrame = keyboard;
+    singleFrame.apply(oneFrame);
+    fourFrames.apply(fourFrame);
+    CHECK(oneFrame.steerX == doctest::Approx(0.55f));
+    CHECK(oneFrame.steerY == doctest::Approx(0.15f));
+    CHECK(fourFrame.steerX == doctest::Approx(oneFrame.steerX));
+    CHECK(fourFrame.steerY == doctest::Approx(oneFrame.steerY));
+
+    auto nextTick = keyboard;
+    fourFrames.apply(nextTick);
+    CHECK(nextTick.steerX == keyboard.steerX);
+    CHECK(nextTick.steerY == keyboard.steerY);
+
+    fourFrames.record({60.0f, 60.0f});
+    fourFrames.apply(nextTick);
+    CHECK(nextTick.steerX == 1.0f);
+    CHECK(nextTick.steerY == -1.0f);
+}
+
 TEST_CASE("Primitivas SDF en C++ coinciden con mge::sdf") {
     // Esfera
     for (float r : {0.5f, 1.0f, 2.5f}) {
