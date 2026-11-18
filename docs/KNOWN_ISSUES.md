@@ -60,7 +60,5 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
   loses the depth test and distant shallow water looks like ground. Purely visual.
 - LOD cells are solid if they contain any opaque block, so distant terrain looks up to f−1 blocks taller (f = 2 or 4); skirts hide the
   cracks between rings.
-- `examples/sdf_glide`: input is read every frame but consumed per fixed step and the mouse delta is overwritten, not accumulated, so
-  mouse steering is weaker at frame rates above the 60 Hz tick. Fix: add up the delta in `onUpdate`, clear it after `onFixedUpdate`.
 - Rigid bodies: friction between two bodies only applies while they push into each other (no resting‑contact friction), and
   spheres collide with voxels as their AABB.

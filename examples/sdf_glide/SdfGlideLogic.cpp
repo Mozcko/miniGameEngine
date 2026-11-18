@@ -5,6 +5,17 @@
 
 namespace sdf_glide {
 
+    void GlideMouseSteering::record(const glm::vec2& delta) {
+        m_pendingDelta += delta;
+    }
+
+    void GlideMouseSteering::apply(GlideInput& input) {
+        constexpr float kMouseSensitivity = 0.05f;
+        input.steerX = std::clamp(input.steerX + m_pendingDelta.x * kMouseSensitivity, -1.0f, 1.0f);
+        input.steerY = std::clamp(input.steerY - m_pendingDelta.y * kMouseSensitivity, -1.0f, 1.0f);
+        m_pendingDelta = glm::vec2(0.0f);
+    }
+
     uint32_t sectionHashU32(int32_t s, uint32_t salt) {
         uint32_t x = static_cast<uint32_t>(s) ^ (salt * 0x9e3779b9u);
         x ^= x >> 16;

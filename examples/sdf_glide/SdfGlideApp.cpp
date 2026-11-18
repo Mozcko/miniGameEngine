@@ -97,13 +97,9 @@ namespace {
             m_pendingInput.steerY = m_platform->axis("SteerY");
 
             if (m_platform->isCursorLocked()) {
-                const auto mouseDelta = m_platform->input().mouseDelta();
-                constexpr float kMouseSensitivity = 0.05f;
-                m_pendingInput.steerX += mouseDelta.x * kMouseSensitivity;
-                m_pendingInput.steerY += -mouseDelta.y * kMouseSensitivity;
+                const auto delta = m_platform->input().mouseDelta();
+                m_mouseSteering.record({delta.x, delta.y});
             }
-            m_pendingInput.steerX = glm::clamp(m_pendingInput.steerX, -1.0f, 1.0f);
-            m_pendingInput.steerY = glm::clamp(m_pendingInput.steerY, -1.0f, 1.0f);
             m_pendingInput.boost = m_platform->isActionDown("Boost");
 
             // Enganche de acciones de borde (edge actions) para el paso fijo
@@ -117,6 +113,7 @@ namespace {
 
         void onFixedUpdate(float fixedDt) override {
             sdf_glide::GlideInput input = m_pendingInput;
+            m_mouseSteering.apply(input);
             if (m_latchedRestart) {
                 input.restart = true;
                 m_latchedRestart = false;
@@ -290,6 +287,7 @@ namespace {
 
         sdf_glide::GlideGame m_game;
         sdf_glide::GlideInput m_pendingInput;
+        sdf_glide::GlideMouseSteering m_mouseSteering;
         bool m_latchedRestart = false;
         bool m_latchedBoostStart = false;
         sdf_glide::GlideAudioParams m_audioParams;
