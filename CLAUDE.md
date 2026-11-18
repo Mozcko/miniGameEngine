@@ -6,7 +6,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games built from **pure math/code** *or* with regular asset files
   (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M10, issues #1–#67, #96–#107 and #160–#164,
-  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M10 are done = release 1.0.0 (engine MVP, package, templates,
+  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M10 are done = release 1.0.x (current 1.0.1; engine MVP, package, templates,
   `mge` CLI and wizard, C API and Python bindings); next: more languages on the C API if C/Python work well.** Version lives in `project(... VERSION)`; every release
   needs a pushed tag `vX.Y.Z` (templates and FetchContent fetch it) and a CHANGELOG entry.
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
@@ -45,7 +45,7 @@ No globbing: every target lists its sources explicitly – add new files to that
   `mge_physics` (headless: swept voxel collision, character controller, rigid bodies), `mge_platform` (PlatformModule),
   `mge_gpu` (GpuModule, SDL3 GPU), `mge_graphics` (Texture2D, MeshRenderer), `mge_synth` (headless audio: Mixer, samples), `mge_audio` (AudioModule: the mixer on the SDL audio device), `mge_main` (main(), core‑only).
 - Each engine library provides an alias `mge::<module>` (e.g. `mge::core`, `mge::platform`, `mge::main`). Out-of-tree consumers use the
-  installed package (`-DMGE_INSTALL=ON`, needs a system SDL3; `find_package(mge 1.0)`) or `FetchContent` (`GIT_TAG v1.0.0`)
+  installed package (`-DMGE_INSTALL=ON`, needs a system SDL3; `find_package(mge 1.0)`) or `FetchContent` (`GIT_TAG v1.0.1`)
   (#103, `docs/USING_THE_ENGINE.md`, sample `samples/consumer`). Install rules: public headers listed per module with
   `mge_install_headers(<module> …)`; new modules must be added to `MGE_EXPORT_TARGETS` (src/mge/CMakeLists.txt) and mgeConfig.
 - `tools/mge/` = the `mge` CLI (`mge_cli_core` lib + exe; POSIX only, skipped on Windows; prints with std::cout – the only place

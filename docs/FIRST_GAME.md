@@ -64,7 +64,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(mge 1.0 QUIET)
 if(NOT mge_FOUND AND NOT TARGET mge::core)
     include(FetchContent)
-    FetchContent_Declare(mge GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git GIT_TAG v1.0.0)
+    FetchContent_Declare(mge GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git GIT_TAG v1.0.1)
     FetchContent_MakeAvailable(mge)
 endif()
 

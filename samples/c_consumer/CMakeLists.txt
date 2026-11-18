@@ -4,7 +4,7 @@ enable_testing()
 
 if(MGE_CONSUMER_FETCH)
     include(FetchContent)
-    FetchContent_Declare(mge GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git GIT_TAG v1.0.0)
+    FetchContent_Declare(mge GIT_REPOSITORY https://github.com/Mozcko/miniGameEngine.git GIT_TAG v1.0.1)
     FetchContent_MakeAvailable(mge)
 else()
     find_package(mge 1.0 REQUIRED)
