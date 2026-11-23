@@ -37,17 +37,21 @@ static void each_add_during_callback(mge_entity entity, void** components, void*
     (void)entity;
     int* sum = (int*)user_data;
     int* val = (int*)components[0];
-    *sum += *val;
+    const int orig = *val;
+    *sum += orig;
     s_eachSpawnCount++;
 
-    // Crear 10 entidades y adjuntar el mismo componente para forzar realojamiento del pool
-    for (int i = 0; i < 10; ++i) {
+    // Crear 200 entidades y adjuntar el mismo componente para cruzar páginas del pool
+    for (int i = 0; i < 200; ++i) {
         mge_entity ne = mge_entity_create(s_spawnApp);
         int* nv = (int*)mge_component_add(s_spawnApp, ne, s_spawnCompId);
         if (nv) {
             *nv = 1000;
         }
     }
+
+    // Escribir a través del puntero viejo después de las altas (patrón spawner)
+    *val = orig * 100;
 }
 
 typedef struct DestroyCtx {
@@ -252,6 +256,35 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
     mge_component_each(app, &s_spawnCompId, 1, each_add_during_callback, &sumCounter);
     if (s_eachSpawnCount != 5 || sumCounter != 15) {
         *result = 32;
+        return false;
+    }
+    for (int i = 0; i < 5; ++i) {
+        int* got = (int*)mge_component_get(app, spawnSeed[i], s_spawnCompId);
+        if (!got || *got != (i + 1) * 100) {
+            *result = 34;
+            return false;
+        }
+    }
+
+    // Puntero de mge_component_add sigue válido tras agregar 1000 componentes iguales
+    mge_component_id stableId = mge_component_register(app, "StableC", sizeof(int), sizeof(int));
+    mge_entity anchor = mge_entity_create(app);
+    int* anchorPtr = (int*)mge_component_add(app, anchor, stableId);
+    if (!anchorPtr) {
+        *result = 35;
+        return false;
+    }
+    *anchorPtr = 42;
+    for (int i = 0; i < 1000; ++i) {
+        mge_entity extra = mge_entity_create(app);
+        int* ep = (int*)mge_component_add(app, extra, stableId);
+        if (ep) {
+            *ep = i;
+        }
+    }
+    *anchorPtr = 1234;
+    if (*(int*)mge_component_get(app, anchor, stableId) != 1234) {
+        *result = 36;
         return false;
     }
 

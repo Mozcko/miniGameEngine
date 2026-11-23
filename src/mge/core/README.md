@@ -136,7 +136,7 @@ app.world().addSystem(mge::SystemPhase::Fixed, "movement", [](mge::World& w, flo
 |-------|-----------|
 | `Entity` | 32‑bit index + 32‑bit generation. `destroy` bumps the generation, so stale handles fail `valid()`. Indices are recycled. `kNullEntity` is the null handle |
 | `Registry` | `create`, `destroy` (removes all components), `valid`, `aliveCount`; per component type: `add` (replaces if present), `get`, `tryGet` (nullptr if absent), `has`, `remove`, `count` |
-| Storage | One **sparse set** per type: dense contiguous arrays of entities and components, O(1) add/get/remove (swap‑and‑pop). Type ids come from a static counter |
+| Storage | One **sparse set** per type: dense contiguous arrays of entities and components, O(1) add/get/remove (swap‑and‑pop). Type ids come from a static counter. Runtime components (`RawPool`) use fixed 64-element aligned pages that never relocate, so pointers stay valid across `addRaw()` calls; removal (`removeRaw`/`destroy`) uses swap-and-pop and invalidates pointers to that component and to the one that was last in its pool |
 | `view<A, B…>()` / `each<A, B…>(fn)` | Iterates the **smallest** pool and checks the others (pools looked up once per call). `fn(Entity, A&, B&…)` may modify components but must not add/remove these types during the iteration. Don't repeat a type in the list |
 | `Transform` | `position`, `rotation` (quat), `scale`, `localMatrix()` (T·R·S) |
 | `Parent` + `TransformSystem::update` | Computes `WorldTransform` (world = parent world · local), parents first. Invalid parents → root; cycles or depth > 256 → root + warning |

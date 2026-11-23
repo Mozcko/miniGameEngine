@@ -230,16 +230,28 @@ MGE_C_API void mge_rigid_body_remove(mge_app* app, mge_entity entity);
 /* Componentes en tiempo de ejecución (dinámicos) */
 MGE_C_API mge_component_id mge_component_register(mge_app* app, const char* name, size_t size, size_t align);
 /**
- * Los punteros devueltos por mge_component_add, mge_component_get o entregados a
- * mge_component_each solo son válidos hasta el siguiente cambio estructural en el ECS
- * (agregar/quitar componentes de ese tipo, destruir entidades o registrar componentes).
+ * Los punteros devueltos por mge_component_add y mge_component_get o entregados a
+ * mge_component_each permanecen válidos al agregar componentes. Quitar un componente
+ * (mge_component_remove) o destruir una entidad (mge_entity_destroy) invalida los punteros
+ * a ese componente y al que era el último en su pool.
  * Las entidades creadas o modificadas durante mge_component_each no se visitan en esa pasada;
  * las destruidas o sin componente se omiten de forma segura.
  */
 MGE_C_API void* mge_component_add(mge_app* app, mge_entity entity, mge_component_id comp_id);
+/**
+ * Devuelve un puntero a la memoria del componente o NULL si no existe.
+ * Los punteros permanecen válidos al agregar componentes; quitar un componente o destruir
+ * una entidad invalida los punteros a ese componente y al que era el último en su pool.
+ */
 MGE_C_API void* mge_component_get(mge_app* app, mge_entity entity, mge_component_id comp_id);
 MGE_C_API bool mge_component_has(mge_app* app, mge_entity entity, mge_component_id comp_id);
 MGE_C_API void mge_component_remove(mge_app* app, mge_entity entity, mge_component_id comp_id);
+/**
+ * Itera las entidades que poseen todos los componentes indicados.
+ * Los punteros recibidos en el callback permanecen válidos al agregar componentes; quitar un
+ * componente o destruir una entidad invalida los punteros a ese componente y al que era el
+ * último en su pool. Las entidades creadas durante la iteración no se visitan en esa pasada.
+ */
 MGE_C_API void mge_component_each(mge_app* app, const mge_component_id* comp_ids, size_t comp_count,
                                   void (*callback)(mge_entity entity, void** components, void* user_data),
                                   void* user_data);

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Stable runtime ECS component storage** (#176): `ecs_detail::RawPool` now uses fixed 64-element aligned pages instead of a single reallocating buffer, so pointers from `addRaw`/`getRaw`/`eachRaw` (`mge_component_add`/`get`/`each`) remain valid across adds (the spawner pattern). Removal (`removeRaw`/`destroy`) keeps swap-and-pop and invalidates pointers to that component and to the one that was last in its pool.
+
 ## [1.0.1] - 2026-11-18
 
 Bug-fix release: the M10 review fixes (#174) and #177, which landed after the `v1.0.0` tag.

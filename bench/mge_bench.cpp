@@ -187,6 +187,45 @@ namespace {
             });
             doNotOptimize(*registry);
         });
+
+        runner.add("ecs: runtime component add", "ns/entidad", count, [count] {
+            Registry rawReg;
+            const ComponentTypeId posId =
+                rawReg.registerRuntimeComponent("RawPos", sizeof(Position), alignof(Position));
+            for (int i = 0; i < count; ++i) {
+                Entity e = rawReg.create();
+                auto* p = static_cast<Position*>(rawReg.addRaw(e, posId));
+                p->x = static_cast<float>(i);
+            }
+            doNotOptimize(rawReg);
+        });
+
+        auto rawRegistry = std::make_shared<Registry>();
+        const ComponentTypeId rawPosId =
+            rawRegistry->registerRuntimeComponent("RawPos", sizeof(Position), alignof(Position));
+        const ComponentTypeId rawVelId =
+            rawRegistry->registerRuntimeComponent("RawVel", sizeof(Velocity), alignof(Velocity));
+        for (int i = 0; i < count; ++i) {
+            Entity e = rawRegistry->create();
+            auto* p = static_cast<Position*>(rawRegistry->addRaw(e, rawPosId));
+            p->x = static_cast<float>(i);
+            auto* v = static_cast<Velocity*>(rawRegistry->addRaw(e, rawVelId));
+            v->x = 1.0f;
+            v->y = 0.5f;
+            v->z = 0.25f;
+        }
+
+        runner.add("ecs: runtime eachRaw", "ns/entidad", count, [rawRegistry, rawPosId, rawVelId] {
+            const ComponentTypeId types[2] = {rawPosId, rawVelId};
+            rawRegistry->eachRaw(types, 2, [](Entity, void** ptrs) {
+                auto* p = static_cast<Position*>(ptrs[0]);
+                const auto* v = static_cast<const Velocity*>(ptrs[1]);
+                p->x += v->x * 0.016f;
+                p->y += v->y * 0.016f;
+                p->z += v->z * 0.016f;
+            });
+            doNotOptimize(*rawRegistry);
+        });
     }
 
     // --- 3) Voxel benchmarks ---

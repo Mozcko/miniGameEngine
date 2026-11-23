@@ -473,3 +473,180 @@ TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguro
     CHECK(visitedTyped == 5);
     CHECK_FALSE(typedReg.valid(typedEnts[1]));
 }
+
+TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") {
+    struct SpawnerItem {
+        int id = 0;
+        double value = 0.0;
+    };
+
+    Registry registry;
+    const ComponentTypeId itemType =
+        registry.registerRuntimeComponent("SpawnerItem", sizeof(SpawnerItem), alignof(SpawnerItem));
+    REQUIRE(itemType != kInvalidComponentType);
+
+    Entity anchor = registry.create();
+    auto* anchorPtr = static_cast<SpawnerItem*>(registry.addRaw(anchor, itemType));
+    REQUIRE(anchorPtr != nullptr);
+    anchorPtr->id = 77;
+    anchorPtr->value = 3.25;
+    CHECK(registry.getRaw(anchor, itemType) == anchorPtr);
+
+    // Agregar 1000 entidades con el mismo componente (cruza múltiples páginas)
+    std::vector<Entity> others;
+    others.reserve(1000);
+    for (int i = 0; i < 1000; ++i) {
+        Entity e = registry.create();
+        auto* p = static_cast<SpawnerItem*>(registry.addRaw(e, itemType));
+        REQUIRE(p != nullptr);
+        p->id = i + 1;
+        p->value = static_cast<double>(i) * 0.5;
+        others.push_back(e);
+    }
+
+    // Escribir y leer a través del puntero antiguo después de 1000 altas
+    CHECK(anchorPtr->id == 77);
+    CHECK(anchorPtr->value == doctest::Approx(3.25));
+    anchorPtr->id = 999;
+    anchorPtr->value = 12.5;
+
+    auto* fetchedAnchor = static_cast<SpawnerItem*>(registry.getRaw(anchor, itemType));
+    CHECK(fetchedAnchor == anchorPtr);
+    CHECK(fetchedAnchor->id == 999);
+    CHECK(fetchedAnchor->value == doctest::Approx(12.5));
+
+    // Patrón spawner dentro de eachRaw: leer → crear entidades con el mismo componente → escribir con el
+    // puntero viejo
+    const ComponentTypeId types[1] = {itemType};
+    int visited = 0;
+    registry.eachRaw(types, 1, [&](Entity e, void** ptrs) {
+        visited++;
+        auto* item = static_cast<SpawnerItem*>(ptrs[0]);
+        const int origId = item->id;
+        if (e == anchor || origId <= 5) {
+            for (int k = 0; k < 200; ++k) {
+                Entity spawned = registry.create();
+                auto* sp = static_cast<SpawnerItem*>(registry.addRaw(spawned, itemType));
+                sp->id = 50000 + k;
+            }
+        }
+        item->id = origId * 10;
+    });
+    CHECK(visited == 1001);
+    CHECK(anchorPtr->id == 9990);
+    CHECK(static_cast<SpawnerItem*>(registry.getRaw(others[0], itemType))->id == 10);
+}
+
+TEST_CASE("ECS runtime: alineación a 64 bytes en límites de página y tras 1000 altas") {
+    Registry registry;
+    const ComponentTypeId align64Type = registry.registerRuntimeComponent("Align64", 40, 64);
+    REQUIRE(align64Type != kInvalidComponentType);
+
+    std::vector<Entity> entities;
+    std::vector<void*> ptrs;
+    entities.reserve(1000);
+    ptrs.reserve(1000);
+
+    for (int i = 0; i < 1000; ++i) {
+        Entity e = registry.create();
+        void* p = registry.addRaw(e, align64Type);
+        REQUIRE(p != nullptr);
+        CHECK(reinterpret_cast<std::uintptr_t>(p) % 64 == 0);
+        *static_cast<int*>(p) = i + 100;
+        entities.push_back(e);
+        ptrs.push_back(p);
+    }
+
+    // Verificar índices clave (primera página, borde 63/64/65 y resto) y contenido intacto
+    CHECK(reinterpret_cast<std::uintptr_t>(ptrs[0]) % 64 == 0);
+    CHECK(reinterpret_cast<std::uintptr_t>(ptrs[63]) % 64 == 0);
+    CHECK(reinterpret_cast<std::uintptr_t>(ptrs[64]) % 64 == 0);
+    CHECK(reinterpret_cast<std::uintptr_t>(ptrs[65]) % 64 == 0);
+    CHECK(reinterpret_cast<std::uintptr_t>(ptrs[999]) % 64 == 0);
+
+    for (int i = 0; i < 1000; ++i) {
+        CHECK(registry.getRaw(entities[static_cast<std::size_t>(i)], align64Type) ==
+              ptrs[static_cast<std::size_t>(i)]);
+        CHECK(*static_cast<int*>(ptrs[static_cast<std::size_t>(i)]) == i + 100);
+    }
+}
+
+TEST_CASE("ECS runtime: swap-and-pop conserva valores de las entidades restantes") {
+    struct Entry {
+        int index;
+        std::uint64_t magic;
+    };
+
+    Registry registry;
+    const ComponentTypeId entryType =
+        registry.registerRuntimeComponent("Entry", sizeof(Entry), alignof(Entry));
+    REQUIRE(entryType != kInvalidComponentType);
+
+    constexpr int kTotal = 150;
+    std::vector<Entity> entities;
+    std::vector<Entry*> ptrs;
+    entities.reserve(kTotal);
+    ptrs.reserve(kTotal);
+
+    for (int i = 0; i < kTotal; ++i) {
+        Entity e = registry.create();
+        auto* p = static_cast<Entry*>(registry.addRaw(e, entryType));
+        p->index = i;
+        p->magic = 0xCAFE0000ULL + static_cast<std::uint64_t>(i);
+        entities.push_back(e);
+        ptrs.push_back(p);
+    }
+
+    // Quitar una entidad intermedia en la primera página y otra en la segunda página
+    CHECK(registry.removeRaw(entities[1], entryType));
+    CHECK_FALSE(registry.hasRaw(entities[1], entryType));
+    registry.destroy(entities[65]);
+    CHECK_FALSE(registry.hasRaw(entities[65], entryType));
+
+    // Los punteros de elementos no movidos ni removidos (ej. 0, 10, 64) siguen válidos
+    CHECK(registry.getRaw(entities[0], entryType) == ptrs[0]);
+    CHECK(registry.getRaw(entities[10], entryType) == ptrs[10]);
+    CHECK(registry.getRaw(entities[64], entryType) == ptrs[64]);
+    ptrs[10]->index = 1010;
+
+    // Todos los restantes mantienen sus valores
+    for (int i = 0; i < kTotal; ++i) {
+        if (i == 1 || i == 65) continue;
+        REQUIRE(registry.hasRaw(entities[static_cast<std::size_t>(i)], entryType));
+        const auto* got =
+            static_cast<const Entry*>(registry.getRaw(entities[static_cast<std::size_t>(i)], entryType));
+        const int expectedIndex = (i == 10) ? 1010 : i;
+        CHECK(got->index == expectedIndex);
+        CHECK(got->magic == 0xCAFE0000ULL + static_cast<std::uint64_t>(i));
+    }
+}
+
+TEST_CASE("ECS runtime: move constructor y move assignment de RawPool") {
+    ecs_detail::RawPool poolA(sizeof(int), 64);
+    std::vector<Entity> entities;
+    for (std::uint32_t i = 0; i < 130; ++i) {
+        Entity e{i, 0};
+        void* p = poolA.emplace(e);
+        *static_cast<int*>(p) = static_cast<int>(i * 3 + 1);
+        entities.push_back(e);
+    }
+    void* ptr0 = poolA.get(entities[0].index);
+    void* ptr70 = poolA.get(entities[70].index);
+
+    ecs_detail::RawPool poolB(std::move(poolA));
+    CHECK(poolA.size() == 0);
+    CHECK(poolB.size() == 130);
+    CHECK(poolB.get(entities[0].index) == ptr0);
+    CHECK(poolB.get(entities[70].index) == ptr70);
+    CHECK(*static_cast<int*>(poolB.get(entities[70].index)) == 211);
+
+    ecs_detail::RawPool poolC(sizeof(int), 64);
+    Entity temp{999, 0};
+    *static_cast<int*>(poolC.emplace(temp)) = 42;
+    poolC = std::move(poolB);
+    CHECK(poolB.size() == 0);
+    CHECK(poolC.size() == 130);
+    CHECK(poolC.get(entities[0].index) == ptr0);
+    CHECK(*static_cast<int*>(poolC.get(entities[0].index)) == 1);
+    CHECK(*static_cast<int*>(poolC.get(entities[129].index)) == 388);
+}

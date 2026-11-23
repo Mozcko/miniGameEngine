@@ -196,3 +196,42 @@ def test_python_components_same_short_name_different_modules():
     assert not world.has(e, GamePosition)
     assert world.has(e, PhysicsPosition)
     assert world.get(e, PhysicsPosition).py == pytest.approx(2.5)
+
+
+def test_spawn_during_iteration_custom_python_component():
+    class SpawnerItem:
+        def __init__(self, value, tag):
+            self.value = value
+            self.tag = tag
+
+    world = mge.World()
+    seeds = []
+    for i in range(100):
+        e = world.create()
+        world.add(e, SpawnerItem(i + 1, "seed"))
+        seeds.append(e)
+
+    visited = []
+    spawned = []
+
+    def on_each(ent, item):
+        orig = item.value
+        visited.append(ent)
+        ne = world.create()
+        world.add(ne, SpawnerItem(orig + 1000, "spawned"))
+        spawned.append((ne, orig + 1000))
+        item.value = orig * 10
+
+    world.each(on_each, SpawnerItem)
+
+    assert len(visited) == 100
+    assert len(spawned) == 100
+    for idx, e in enumerate(seeds):
+        comp = world.get(e, SpawnerItem)
+        assert comp.tag == "seed"
+        assert comp.value == (idx + 1) * 10
+    for ne, expected_val in spawned:
+        assert world.is_alive(ne)
+        comp = world.get(ne, SpawnerItem)
+        assert comp.tag == "spawned"
+        assert comp.value == expected_val

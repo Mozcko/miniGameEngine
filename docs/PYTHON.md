@@ -190,6 +190,7 @@ Lightweight sparse-set ECS supporting built-in and pure Python components:
   vel = world.get(e, Velocity)
   ```
 - **Automatic Weakref Safety**: When an entity is destroyed or a component removed, all Python component instances are unreferenced immediately.
+- **Pointer & Iteration Safety**: In the underlying runtime ECS storage, pointers stay valid across adds; removing a component or destroying an entity invalidates pointers to that component and to the one that was last in its pool. Inside `world.each()`, you may safely create entities, add/remove components, or destroy entities: newly created entities are not visited in that pass, and destroyed entities or removed components are safely skipped.
 - **Multi-Component Queries (`world.each`)**:
   ```python
   # Iterator / Generator syntax:
