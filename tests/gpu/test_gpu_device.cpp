@@ -5,6 +5,7 @@
 #include <mge/procgen/Primitives.h>
 
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 
 using namespace mge;
@@ -119,4 +120,38 @@ TEST_CASE("GPU: GpuResourceTracker libera recursos antes de destruir el device y
     CHECK(gpu.device().tracker().trackedCount() == 0);
     CHECK_FALSE(tracked->alive);
     CHECK(tracked->mesh.empty());
+}
+
+TEST_CASE("GPU: updateBuffer actualiza un rango con offset y el buffer completo in-place (#180)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    const std::uint32_t initial[6] = {1, 2, 3, 4, 5, 6};
+    const GpuBuffer buf = device.createBuffer(SDL_GPU_BUFFERUSAGE_INDEX, sizeof(initial));
+    REQUIRE(buf);
+    REQUIRE(device.uploadToBuffer(buf, initial, sizeof(initial)));
+
+    // Actualización parcial con offset = 2 * sizeof(uint32_t)
+    const std::uint32_t patch[2] = {30, 40};
+    REQUIRE(device.updateBuffer(buf, patch, sizeof(patch), 2 * sizeof(std::uint32_t)));
+
+    std::vector<std::uint8_t> raw = device.downloadBuffer(buf, sizeof(initial));
+    REQUIRE(raw.size() == sizeof(initial));
+    std::uint32_t readback[6]{};
+    std::memcpy(readback, raw.data(), sizeof(readback));
+    CHECK(readback[0] == 1);
+    CHECK(readback[1] == 2);
+    CHECK(readback[2] == 30);
+    CHECK(readback[3] == 40);
+    CHECK(readback[4] == 5);
+    CHECK(readback[5] == 6);
+
+    // Actualización completa desde offset 0 con cycle = true
+    const std::uint32_t replaced[6] = {60, 50, 40, 30, 20, 10};
+    REQUIRE(device.updateBuffer(buf, replaced, sizeof(replaced), 0, true));
+    raw = device.downloadBuffer(buf, sizeof(replaced));
+    REQUIRE(raw.size() == sizeof(replaced));
+    std::memcpy(readback, raw.data(), sizeof(readback));
+    for (int i = 0; i < 6; ++i) CHECK(readback[i] == replaced[i]);
 }

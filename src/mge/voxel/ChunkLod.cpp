@@ -352,7 +352,7 @@ namespace mge {
                     const glm::vec3 worldSize(static_cast<float>(factor), 0.0f, static_cast<float>(factor));
 
                     emitQuad(result.transparent, topDesc, topFace, topFaceIndex, worldPos, worldSize,
-                             kLiquidAo, options);
+                             kLiquidAo, options, &result.transparentFaceCentroids);
                 }
             }
         }

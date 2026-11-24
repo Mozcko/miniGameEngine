@@ -345,5 +345,35 @@ TEST_CASE("Mesher: cada bloque va a la malla de su RenderLayer") {
     CHECK(mesh.opaque.triangleCount() == 12);
     CHECK(mesh.cutout.triangleCount() == 12);
     CHECK(mesh.transparent.triangleCount() == 12);
+    CHECK(mesh.transparentFaceCentroids.size() * 6 == mesh.transparent.indices.size());
     CHECK(mesh.cutout.bounds().min.x == doctest::Approx(4.0f));
+}
+
+TEST_CASE("Mesher: sortQuadsBackToFront ordena 4 quads paralelos desde ambos lados (#180)") {
+    // 4 quads paralelos en z = 1, 3, 5, 7 con índices distintos por quad
+    std::vector<std::uint32_t> indices;
+    std::vector<glm::vec3> centroids;
+    const float zs[4] = {1.0f, 3.0f, 5.0f, 7.0f};
+    for (std::uint32_t q = 0; q < 4; ++q) {
+        const std::uint32_t base = q * 4;
+        indices.insert(indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
+        centroids.emplace_back(4.0f, 4.0f, zs[q]);
+    }
+
+    // Desde z = -5 (frente): más lejano es q=3 (z=7), más cercano q=0 (z=1)
+    const std::vector<std::uint32_t> fromFront =
+        sortQuadsBackToFront(indices, centroids, {4.0f, 4.0f, -5.0f});
+    REQUIRE(fromFront.size() == indices.size());
+    CHECK(fromFront[0] == 12); // q=3
+    CHECK(fromFront[6] == 8);  // q=2
+    CHECK(fromFront[12] == 4); // q=1
+    CHECK(fromFront[18] == 0); // q=0
+
+    // Desde z = 15 (atrás): más lejano es q=0 (z=1), más cercano q=3 (z=7)
+    const std::vector<std::uint32_t> fromBack = sortQuadsBackToFront(indices, centroids, {4.0f, 4.0f, 15.0f});
+    REQUIRE(fromBack.size() == indices.size());
+    CHECK(fromBack[0] == 0);   // q=0
+    CHECK(fromBack[6] == 4);   // q=1
+    CHECK(fromBack[12] == 8);  // q=2
+    CHECK(fromBack[18] == 12); // q=3
 }

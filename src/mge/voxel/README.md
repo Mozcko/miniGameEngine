@@ -133,6 +133,8 @@ options.ambientOcclusion = false;  // per‑vertex AO in the colour (aoStrength 
 options.tintTextured = false;      // textured blocks: white vertex colour (texture as is); true = tint with BlockDesc::color
 mge::ChunkMesh mesh = mge::buildChunkMesh(world, {0, 0, 0}, options);
 // mesh.opaque / mesh.cutout / mesh.transparent (one per RenderLayer): MeshData in chunk‑local space (0..16);
+// mesh.transparentFaceCentroids: one chunk‑local centroid per transparent quad (6 indices), for back‑to‑front
+// re‑sorting with mge::sortQuadsBackToFront(indices, centroids, cameraLocal) (#180).
 // draw with model = translate(chunkOrigin(coord)). GPU upload: device.uploadMesh(meshData) (mge_gpu).
 ```
 

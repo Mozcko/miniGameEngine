@@ -13,9 +13,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <deque>
+#include <future>
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 using namespace mge;
@@ -26,6 +28,18 @@ struct GpuChunk {
     GpuMesh cutout; // Hojas y plantas (prueba alfa)
     GpuMesh transparent;
     int lod = 0;
+    // Copia CPU para reordenar caras transparentes de atrás hacia adelante (#180)
+    std::vector<std::uint32_t> transparentIndices;
+    std::vector<glm::vec3> transparentCentroids;
+    glm::vec3 lastSortCameraPos{0.0f};
+    glm::vec3 lastSortCameraForward{0.0f, 0.0f, -1.0f};
+    bool transparentSorted = false;
+    std::uint64_t transparentGeneration = 0;
+};
+
+struct PendingTransparentSort {
+    std::uint64_t generation = 0;
+    std::future<std::vector<std::uint32_t>> future;
 };
 
 class SandboxApp : public mge::Application {
@@ -149,6 +163,10 @@ public:
                          " ms, max ", entry.maxMs, " ms");
         }
         // Recursos de la GPU antes que el device (el GpuModule se cierra después del juego)
+        for (auto& [coord, pending] : m_pendingTransparentSorts) {
+            if (pending.future.valid()) pending.future.wait();
+        }
+        m_pendingTransparentSorts.clear();
         m_thrownBodies.clear();
         m_streamer.reset(); // Los trabajos ya terminaron (run() los espera antes de onShutdown)
         m_gpuChunks.clear();
@@ -585,14 +603,18 @@ public:
     void onRender() override {
         const GpuFrame* frame = m_gpu->frame();
         if (!frame) return; // Ventana minimizada
-        const glm::vec3 horizon = m_dayNight.sky().horizonColor;
-        if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
-                               glm::vec4(horizon, 1.0f)))
-            return;
         // La cámara del ECS: el aspecto ya está ajustado al tamaño real del swapchain (CameraSystem)
         Registry& registry = world().registry();
         const CameraMatrices camera = cameraMatrices(registry.get<Transform>(m_cameraEntity).localMatrix(),
                                                      registry.get<Camera>(m_cameraEntity), viewport());
+        const glm::vec3 cameraForward = world().registry().get<CharacterController>(m_playerEntity).forward();
+        // Ordenar caras transparentes de chunks cercanos antes de abrir el render pass (#180)
+        updateTransparentSort(camera.position, cameraForward);
+
+        const glm::vec3 horizon = m_dayNight.sky().horizonColor;
+        if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
+                               glm::vec4(horizon, 1.0f)))
+            return;
         m_renderer->setCamera(camera.viewProjection, camera.position);
         if (m_skyRenderer) {
             m_skyRenderer->draw(*m_renderer, glm::inverse(camera.viewProjection), camera.position,
@@ -615,8 +637,7 @@ public:
         }
         {
             MGE_PROFILE_SCOPE(profiler(), "queue sort/submit");
-            const auto& playerController = world().registry().get<CharacterController>(m_playerEntity);
-            m_queue.sort(camera.position, playerController.forward());
+            m_queue.sort(camera.position, cameraForward);
             m_renderer->submit(m_queue);
         }
         drawDebug();
@@ -644,8 +665,69 @@ public:
     }
 
 private:
-    static constexpr int kBaseRenderDistance = 4;   // Distancia base sin LOD (9×9 chunks)
-    static constexpr int kDoubleRenderDistance = 8; // Distancia doblada con LOD (17×17 chunks)
+    static constexpr int kBaseRenderDistance = 4;    // Distancia base sin LOD (9×9 chunks)
+    static constexpr int kDoubleRenderDistance = 8;  // Distancia doblada con LOD (17×17 chunks)
+    static constexpr int kTransparentSortRadius = 2; // Radio en chunks alrededor de la cámara (#180)
+    static constexpr float kTransparentSortMoveThreshold = 1.0f; // Reordenar si la cámara se mueve > 1 bloque
+    static constexpr float kTransparentSortAngleCos = 0.965925826f; // cos(15°): reordenar si gira > 15°
+
+    // Recoge resultados listos de ordenamiento transparente (sube solo el index buffer) y encola
+    // reordenamientos en jobs() para chunks cercanos cuya cámara se movió/giró o que fueron remallados.
+    // Nunca bloquea el render: se dibuja el orden previo hasta que llega el nuevo.
+    void updateTransparentSort(const glm::vec3& cameraPos, const glm::vec3& cameraForward) {
+        MGE_PROFILE_SCOPE(profiler(), "transparent.sort");
+
+        // 1. Aplicar ordenamientos ya terminados en segundo plano
+        for (auto it = m_pendingTransparentSorts.begin(); it != m_pendingTransparentSorts.end();) {
+            if (it->second.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                ++it;
+                continue;
+            }
+            const std::vector<std::uint32_t> sorted = it->second.future.get();
+            const auto gpuIt = m_gpuChunks.find(it->first);
+            if (gpuIt != m_gpuChunks.end() && gpuIt->second.transparentGeneration == it->second.generation &&
+                !gpuIt->second.transparent.empty() &&
+                sorted.size() == static_cast<std::size_t>(gpuIt->second.transparent.indexCount)) {
+                m_gpu->device().updateBuffer(
+                    gpuIt->second.transparent.indices, sorted.data(),
+                    static_cast<std::uint32_t>(sorted.size() * sizeof(std::uint32_t)), 0, true);
+            }
+            it = m_pendingTransparentSorts.erase(it);
+        }
+
+        // 2. Despachar nuevos trabajos para chunks cercanos con malla transparente
+        const ChunkCoord camChunk = chunkOf(blockAt(cameraPos));
+        const float moveThresholdSq = kTransparentSortMoveThreshold * kTransparentSortMoveThreshold;
+        for (auto& [coord, gpu] : m_gpuChunks) {
+            if (gpu.transparent.empty() || gpu.transparentCentroids.size() <= 1) continue;
+            const int dist = std::max({std::abs(coord.x - camChunk.x), std::abs(coord.y - camChunk.y),
+                                       std::abs(coord.z - camChunk.z)});
+            if (dist > kTransparentSortRadius) continue;
+            if (m_pendingTransparentSorts.count(coord) != 0) continue;
+
+            const glm::vec3 delta = cameraPos - gpu.lastSortCameraPos;
+            const bool moved = glm::dot(delta, delta) > moveThresholdSq;
+            const bool turned = glm::dot(cameraForward, gpu.lastSortCameraForward) < kTransparentSortAngleCos;
+            if (gpu.transparentSorted && !moved && !turned) continue;
+
+            gpu.lastSortCameraPos = cameraPos;
+            gpu.lastSortCameraForward = cameraForward;
+            gpu.transparentSorted = true;
+
+            struct SortInput {
+                std::vector<std::uint32_t> indices;
+                std::vector<glm::vec3> centroids;
+            };
+            auto input =
+                std::make_shared<SortInput>(SortInput{gpu.transparentIndices, gpu.transparentCentroids});
+            const glm::vec3 cameraLocal = cameraPos - glm::vec3(chunkOrigin(coord));
+            m_pendingTransparentSorts.emplace(
+                coord, PendingTransparentSort{gpu.transparentGeneration, jobs().submit([input, cameraLocal] {
+                                                  return sortQuadsBackToFront(input->indices,
+                                                                              input->centroids, cameraLocal);
+                                              })});
+        }
+    }
 
     void updateFog() {
         const int renderDist = m_lodEnabled ? kDoubleRenderDistance : kBaseRenderDistance;
@@ -679,9 +761,16 @@ private:
                 gpu.cutout = m_gpu->device().uploadMesh(mesh.cutout);
                 gpu.transparent = m_gpu->device().uploadMesh(mesh.transparent);
                 gpu.lod = lod;
+                gpu.transparentIndices = std::move(mesh.transparent.indices);
+                gpu.transparentCentroids = std::move(mesh.transparentFaceCentroids);
+                gpu.transparentSorted = false;
+                ++gpu.transparentGeneration;
             }
         }
-        for (const ChunkCoord& coord : update.unloaded) m_gpuChunks.erase(coord);
+        for (const ChunkCoord& coord : update.unloaded) {
+            m_pendingTransparentSorts.erase(coord);
+            m_gpuChunks.erase(coord);
+        }
     }
 
     StreamingSettings streamingSettings() const {
@@ -999,6 +1088,7 @@ private:
     VoxelWorld m_world;
     std::unique_ptr<ChunkStreamer> m_streamer;
     std::map<ChunkCoord, GpuChunk> m_gpuChunks;
+    std::unordered_map<ChunkCoord, PendingTransparentSort, ChunkCoordHash> m_pendingTransparentSorts;
     RenderQueue m_queue;
     std::unique_ptr<DebugDraw> m_debug;
     std::unique_ptr<Renderer2D> m_ui;

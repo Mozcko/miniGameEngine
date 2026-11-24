@@ -66,23 +66,27 @@ namespace mge::detail {
 
     inline void emitQuad(MeshData& mesh, const BlockDesc& desc, const FaceDef& face, int faceIndex,
                          const glm::vec3& worldPos, const glm::vec3& worldSize, const AoValues& ao,
-                         const ChunkMeshOptions& options) {
+                         const ChunkMeshOptions& options, std::vector<glm::vec3>* centroids = nullptr) {
         UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
         const int tile = desc.tiles[faceIndex];
         if (tile >= 0) uv = options.atlas.tileUv(tile);
         const glm::vec2 uvs[4] = {uv.min, {uv.max.x, uv.min.y}, uv.max, {uv.min.x, uv.max.y}};
 
         std::uint32_t idx[4];
+        glm::vec3 centroid(0.0f);
         for (int i = 0; i < 4; i++) {
             const float shade = 1.0f - options.aoStrength * (3 - ao[i]) / 3.0f;
             const glm::vec4 base = baseColor(desc, options);
             const glm::vec4 color(glm::vec3(base) * shade, base.a);
-            idx[i] = mesh.addVertex(worldPos + face.corners[i] * worldSize, face.normal, color, uvs[i]);
+            const glm::vec3 vertexPos = worldPos + face.corners[i] * worldSize;
+            centroid += vertexPos;
+            idx[i] = mesh.addVertex(vertexPos, face.normal, color, uvs[i]);
         }
         if (ao[0] + ao[2] < ao[1] + ao[3])
             mesh.addQuad(idx[1], idx[2], idx[3], idx[0]);
         else
             mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
+        if (centroids) centroids->push_back(centroid * 0.25f);
     }
 
     inline void emitSkirtQuad(MeshData& mesh, const BlockDesc& desc, const FaceDef& face, int faceIndex,
