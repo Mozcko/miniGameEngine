@@ -27,7 +27,7 @@ cmake --build build
 ```
 
 > [!NOTE]
-> `FetchContent_Declare` uses `GIT_TAG v1.0.1` (a published release tag). To build against a local clone instead, point `FETCHCONTENT_SOURCE_DIR_MGE` to it:
+> `FetchContent_Declare` uses `GIT_TAG v1.0.2` (a published release tag). To build against a local clone instead, point `FETCHCONTENT_SOURCE_DIR_MGE` to it:
 > ```bash
 > cmake -S . -B build -DMGE_CONSUMER_FETCH=ON -DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine
 > ```
