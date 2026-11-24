@@ -83,8 +83,8 @@ namespace mge {
 
     void Log::assertFailed(const char* expression, const char* file, int line, const std::string& message) {
         write(LogLevel::Fatal, "Assert",
-              format("Assertion failed '", expression, "' at ", file, ":", line,
-                     message.empty() ? "" : " - ", message));
+              format("Assertion failed '", expression, "' at ", file, ":", line, message.empty() ? "" : " - ",
+                     message));
 
         AssertHandler handler;
         {

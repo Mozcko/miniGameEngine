@@ -114,8 +114,8 @@ namespace mge {
         }
         // Hit the cap: discard the whole backlog (leaving only the current fractional step)
         if (m_time.m_accumulator + kEpsilon >= fixedDelta) {
-            MGE_LOG_DEBUG("App", "Slow frame: dropping ",
-                          static_cast<int>(m_time.m_accumulator / fixedDelta), " fixed steps");
+            MGE_LOG_DEBUG("App", "Slow frame: dropping ", static_cast<int>(m_time.m_accumulator / fixedDelta),
+                          " fixed steps");
             while (m_time.m_accumulator + kEpsilon >= fixedDelta) m_time.m_accumulator -= fixedDelta;
         }
         if (m_time.m_accumulator < 0.0) m_time.m_accumulator = 0.0;

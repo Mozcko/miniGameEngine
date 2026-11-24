@@ -33,9 +33,8 @@ namespace mge {
                 const Parent* parent = registry.tryGet<Parent>(entity);
                 if (parent && registry.has<Transform>(parent->entity)) {
                     if (depth >= kMaxDepth) {
-                        MGE_LOG_WARN("ECS",
-                                     "Transform hierarchy too deep or cyclic at entity ",
-                                     entity.index, "; treating as root");
+                        MGE_LOG_WARN("ECS", "Transform hierarchy too deep or cyclic at entity ", entity.index,
+                                     "; treating as root");
                     } else {
                         matrix = world(parent->entity, depth + 1) * matrix;
                     }

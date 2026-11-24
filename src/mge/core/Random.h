@@ -69,7 +69,8 @@ namespace mge {
 
         float nextFloat01() { return toFloat01(nextU32()); }
 
-        // Uniform integer in [0, bound) without bias (rejection sampling, like pcg32_boundedrand). bound 0 -> 0.
+        // Uniform integer in [0, bound) without bias (rejection sampling, like pcg32_boundedrand). bound 0 ->
+        // 0.
         std::uint32_t nextBounded(std::uint32_t bound) {
             if (bound == 0) return 0;
             std::uint32_t threshold = (0u - bound) % bound;

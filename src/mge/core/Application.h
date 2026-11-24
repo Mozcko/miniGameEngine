@@ -52,9 +52,9 @@ namespace mge {
         Application& operator=(const Application&) = delete;
 
         // Initializes modules and game, runs the loop, and shuts everything down. Returns the exit code:
-        // 1 if initialization failed (the reason is in the log); otherwise the value from setExitCode (0 by default).
-        // The MGE_MAX_FRAMES environment variable (if config.maxFrames is 0) caps the frame count: useful
-        // for running any game for a few frames in CI.
+        // 1 if initialization failed (the reason is in the log); otherwise the value from setExitCode (0 by
+        // default). The MGE_MAX_FRAMES environment variable (if config.maxFrames is 0) caps the frame count:
+        // useful for running any game for a few frames in CI.
         int run();
 
         // Exit code returned by run() on normal termination (e.g., a failing headless test)
