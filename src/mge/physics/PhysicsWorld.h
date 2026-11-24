@@ -47,6 +47,20 @@ namespace mge {
             Transform* transform = nullptr;
         };
 
+        struct SolverContact {
+            std::uint32_t idxA = 0;
+            std::uint32_t idxB = 0;
+            glm::vec3 normal{0.0f, 1.0f, 0.0f};
+            float effInvA = 0.0f;
+            float effInvB = 0.0f;
+            float effSum = 0.0f;
+            float velocityBias = 0.0f;
+            float mu = 0.0f;
+            float minNormalImpulse = 0.0f;
+            float normalImpulse = 0.0f;
+            glm::vec3 tangentImpulse{0.0f};
+        };
+
         PhysicsSettings m_settings;
         SolidQuery m_voxels;
         std::size_t m_lastPairCount = 0;
@@ -55,6 +69,7 @@ namespace mge {
         // Buffers miembros para evitar asignaciones de memoria por paso
         std::vector<BodyEntry> m_bodies;
         std::vector<std::pair<std::uint32_t, std::uint32_t>> m_pairs;
+        std::vector<SolverContact> m_contacts;
     };
 
     // Registra el sistema en SystemPhase::Fixed; physics debe vivir más que el World

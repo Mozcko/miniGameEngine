@@ -73,15 +73,14 @@ Basic rigid bodies without rotation, simulated against the voxel world and other
 - **Simulation Pipeline (`PhysicsWorld::step`)**:
   1. **Deterministic collection**: collects all `<RigidBody, Transform>` entities sorted by entity ID (`index`, then `generation`), storing `previousPosition = position`.
   2. **Velocity integration**: semi-implicit Euler integration for dynamic bodies (`inverseMass() > 0`) using `settings.gravity * gravityScale` and `linearDamping`.
-  3. **Voxel world collision**: dynamic bodies sweep against voxels using `moveAabb(bounds, velocity * dt)`. Bounces on blocked axes according to `restitution` (micro-bounces below 0.5 m/s zero out); grounded bodies experience horizontal Coulomb friction deceleration.
+  3. **Voxel world collision**: dynamic boxes sweep against voxels using `moveAabb(bounds, velocity * dt)` (bouncing on blocked axes with micro-bounces < 0.5 m/s zeroed, plus horizontal Coulomb friction when grounded). Dynamic spheres use an inscribed-cube `moveAabb` sweep for anti-tunnelling followed by sphere-vs-voxel narrowphase against nearby solid blocks (deepest penetration first, closest-point normal, push-out through `moveAabb`), so spheres roll off block edges while staying put on flat floors.
   4. **Broadphase**: `SpatialHash` rebuilt with all bodies' bounds finds sorted, deduplicated collision pairs (`lastPairCount()`).
   5. **Narrowphase & Iterative Solver**:
      - Contact detection for Box–Box (minimum penetration axis), Sphere–Sphere, and Sphere–Box (closest point).
      - Coincident centers resolve along $+Y$ to prevent division by zero.
      - Stack stability & floor support: if a body is grounded on voxels or static and supports another vertically ($n_y > 0.7$), it acts with infinite effective mass so dynamic stacks remain stable on the floor without sinking.
-     - Baumgarte positional correction split by inverse mass: $\max(\text{penetration} - \text{slop}, 0) \cdot (\text{positionCorrection} / \text{solverIterations})$.
-     - Restitution impulse along normal with $e = \min(e_A, e_B)$ (clamped to 0 for relative velocity $< 0.5$ m/s).
-     - Tangential friction impulse clamped to the Coulomb friction cone $\mu \cdot j_n$ ($\mu = \sqrt{\mu_A \cdot \mu_B}$).
+     - Sequential impulses with **accumulated normal and tangential impulses** per contact across `solverIterations` (clamping accumulated normal $\ge 0$ and accumulated tangential impulse to $\mu \cdot \max(j_n, j_{n,\text{gravity}})$ with $\mu = \sqrt{\mu_A \cdot \mu_B}$), so resting stacks experience Coulomb friction. Restitution $e = \min(e_A, e_B)$ applies only for approach speeds $\ge 0.5$ m/s.
+     - Baumgarte positional correction split by inverse mass ($\max(\text{penetration} - \text{slop}, 0) \cdot \text{positionCorrection}$), routed through `moveAabb` when voxels are present.
 - **ECS Integration**: `addPhysicsSystem(world, physics)` registers the physics step in `SystemPhase::Fixed`.
 
 

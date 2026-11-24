@@ -56,5 +56,3 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 - Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.
 - ~~`build/` directory with binaries is committed~~ – fixed in #1.
 - `README.md` was a one‑liner before this documentation pass; no tests, no CI.
-- Rigid bodies: friction between two bodies only applies while they push into each other (no resting‑contact friction), and
-  spheres collide with voxels as their AABB.
