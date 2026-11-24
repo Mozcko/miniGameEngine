@@ -10,6 +10,9 @@ namespace mge {
 
     namespace {
 
+        // Velocidad mínima de acercamiento para aplicar restitución (evita micro-rebotes en reposo)
+        constexpr float kRestitutionThreshold = 0.5f;
+
         struct Contact {
             glm::vec3 normal{0.0f, 1.0f, 0.0f}; // Apunta de A hacia B
             float penetration = 0.0f;
@@ -177,7 +180,6 @@ namespace mge {
         void resolveSphereVoxels(RigidBody& body, Transform& transform, const SolidQuery& voxels,
                                  const glm::vec3& gravity, float dt, const MoveOptions& moveOpts) {
             constexpr int kMaxSphereVoxelIters = 4;
-            constexpr float kRestThreshold = 0.5f;
             constexpr float kFlatFloorNormalY = 0.99f;
 
             body.grounded = false;
@@ -228,7 +230,7 @@ namespace mge {
                 const float vn = glm::dot(body.velocity, bestNormal);
                 float jn = 0.0f;
                 if (vn < 0.0f) {
-                    const float e = (-vn >= kRestThreshold) ? body.restitution : 0.0f;
+                    const float e = (-vn >= kRestitutionThreshold) ? body.restitution : 0.0f;
                     jn = -(1.0f + e) * vn;
                     body.velocity += bestNormal * jn;
                 }
@@ -317,24 +319,23 @@ namespace mge {
                     const MoveResult res = moveAabb(currentBounds, body.velocity * dt, m_voxels, moveOpts);
                     transform.position += res.moved;
 
-                    // En los ejes bloqueados, rebotar según restitución y detener micro-rebotes si |v| < 0.5
-                    constexpr float kRestThreshold = 0.5f;
-
+                    // En los ejes bloqueados, rebotar según restitución y detener micro-rebotes si |v| <
+                    // umbral
                     if (res.blocked.x) {
                         body.velocity.x = -body.velocity.x * body.restitution;
-                        if (std::abs(body.velocity.x) < kRestThreshold) {
+                        if (std::abs(body.velocity.x) < kRestitutionThreshold) {
                             body.velocity.x = 0.0f;
                         }
                     }
                     if (res.blocked.y) {
                         body.velocity.y = -body.velocity.y * body.restitution;
-                        if (std::abs(body.velocity.y) < kRestThreshold) {
+                        if (std::abs(body.velocity.y) < kRestitutionThreshold) {
                             body.velocity.y = 0.0f;
                         }
                     }
                     if (res.blocked.z) {
                         body.velocity.z = -body.velocity.z * body.restitution;
-                        if (std::abs(body.velocity.z) < kRestThreshold) {
+                        if (std::abs(body.velocity.z) < kRestitutionThreshold) {
                             body.velocity.z = 0.0f;
                         }
                     }
@@ -387,7 +388,6 @@ namespace mge {
         }
 
         m_contacts.clear();
-        constexpr float kRestitutionThreshold = 0.5f;
 
         for (const auto& [idxA, idxB] : m_pairs) {
             BodyEntry& entryA = m_bodies[idxA];
