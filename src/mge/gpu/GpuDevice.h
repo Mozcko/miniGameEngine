@@ -63,6 +63,10 @@ namespace mge {
         // usa)
         bool uploadToBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size,
                             bool cycle = false);
+        // Actualiza un rango [offset, offset + size) de un buffer de la GPU mediante un copy pass.
+        // cycle = true solo aplica al sobrescribir desde offset == 0.
+        bool updateBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size,
+                          std::uint32_t offset = 0, bool cycle = false);
         // Copia píxeles RGBA8 de la CPU a una región de una textura (filas en el orden de la textura)
         bool uploadToTexture(const GpuTexture& texture, std::uint32_t x, std::uint32_t y, std::uint32_t width,
                              std::uint32_t height, const void* rgba);

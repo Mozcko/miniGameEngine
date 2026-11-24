@@ -30,7 +30,16 @@ namespace mge {
         MeshData opaque;
         MeshData cutout;
         MeshData transparent;
+        // Centroide en espacio local del chunk de cada quad transparente (1 por cada 6 índices)
+        std::vector<glm::vec3> transparentFaceCentroids;
     };
+
+    // Reordena los índices de quads (6 índices = 2 triángulos por quad) de atrás hacia adelante respecto
+    // a cameraLocal (más lejano primero), usando los centroides por cara. Si los tamaños no coinciden o
+    // hay menos de dos quads, devuelve una copia de indices sin cambios.
+    std::vector<std::uint32_t> sortQuadsBackToFront(const std::vector<std::uint32_t>& indices,
+                                                    const std::vector<glm::vec3>& centroids,
+                                                    const glm::vec3& cameraLocal);
 
     // Construye la malla de un chunk cargado (vacía si no lo está). Solo emite caras visibles:
     // una cara se oculta si el vecino es un cubo opaco, o si ambos son el mismo bloque transparente

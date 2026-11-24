@@ -555,3 +555,97 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }
+
+TEST_CASE("Render: ordenamiento de caras transparentes dentro de un chunk (frente y atrás, #180)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    // Un solo chunk con dos capas de vidrio de distinto color y agua detrás (tres capas translúcidas)
+    BlockRegistry registry;
+    BlockDesc stone;
+    stone.name = "stone";
+    stone.color = {0.42f, 0.42f, 0.45f, 1.0f};
+    BlockDesc redGlass;
+    redGlass.name = "red_glass";
+    redGlass.opaque = false;
+    redGlass.layer = RenderLayer::Translucent;
+    redGlass.color = {0.95f, 0.12f, 0.12f, 0.55f};
+    BlockDesc greenGlass;
+    greenGlass.name = "green_glass";
+    greenGlass.opaque = false;
+    greenGlass.layer = RenderLayer::Translucent;
+    greenGlass.color = {0.12f, 0.88f, 0.22f, 0.55f};
+    BlockDesc water;
+    water.name = "water";
+    water.opaque = false;
+    water.solid = false;
+    water.layer = RenderLayer::Translucent;
+    water.color = {0.10f, 0.35f, 0.95f, 0.65f};
+
+    const BlockId sId = registry.add(stone);
+    const BlockId rId = registry.add(redGlass);
+    const BlockId gId = registry.add(greenGlass);
+    const BlockId wId = registry.add(water);
+
+    VoxelWorld world(registry);
+    world.loadChunk({0, 0, 0});
+    for (int x = 2; x <= 13; ++x)
+        for (int z = 4; z <= 12; ++z) world.setBlock({x, 0, z}, sId);
+    // Capa 1 (z = 6): vidrio rojo; Capa 2 (z = 8): vidrio verde; Capa 3 (z = 10): agua azul
+    for (int y = 2; y <= 9; ++y) {
+        for (int x = 3; x <= 10; ++x) world.setBlock({x, y, 6}, rId);
+        for (int x = 4; x <= 11; ++x) world.setBlock({x, y, 8}, gId);
+        for (int x = 5; x <= 12; ++x) world.setBlock({x, y, 10}, wId);
+    }
+
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0});
+    REQUIRE_FALSE(mesh.transparent.empty());
+    REQUIRE(mesh.transparentFaceCentroids.size() * 6 == mesh.transparent.indices.size());
+
+    const GpuMesh opaque = device.uploadMesh(mesh.opaque);
+    GpuMesh transparent = device.uploadMesh(mesh.transparent);
+    REQUIRE_FALSE(transparent.empty());
+
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    REQUIRE(renderer.valid());
+    constexpr std::uint32_t kSize = 160;
+    const glm::vec3 target(7.5f, 4.8f, 8.5f);
+
+    auto renderFrom = [&](const glm::vec3& eye, const std::string& goldenName) {
+        const std::vector<std::uint32_t> sorted =
+            sortQuadsBackToFront(mesh.transparent.indices, mesh.transparentFaceCentroids, eye);
+        REQUIRE(device.updateBuffer(transparent.indices, sorted.data(),
+                                    static_cast<std::uint32_t>(sorted.size() * sizeof(std::uint32_t)), 0,
+                                    true));
+
+        const glm::mat4 vp = glm::perspectiveRH_ZO(glm::radians(50.0f), 1.0f, 0.1f, 100.0f) *
+                             glm::lookAt(eye, target, glm::vec3(0.0f, 1.0f, 0.0f));
+        GpuTexture colorTarget = device.createRenderTarget(kSize, kSize);
+        CommandBuffer cmd = device.acquireCommandBuffer();
+        REQUIRE(renderer.begin(cmd, colorTarget.get(), kSize, kSize, {0.15f, 0.18f, 0.24f, 1.0f}));
+        renderer.setCamera(vp, eye);
+        renderer.draw(opaque, glm::mat4(1.0f), nullptr, MeshPass::Opaque);
+        renderer.draw(transparent, glm::mat4(1.0f), nullptr, MeshPass::Transparent);
+        renderer.end();
+        REQUIRE(cmd.submitAndWait());
+
+        const mge_test::Image image{kSize, kSize, device.downloadTexture(colorTarget, kSize, kSize)};
+        const mge_test::GoldenResult result = mge_test::compareWithGolden(goldenName, image);
+        if (!result.message.empty()) MESSAGE(result.message);
+        CHECK(result.passed);
+        return image;
+    };
+
+    // Vista frontal (z < 6): vidrio rojo al frente → el rojo domina en la zona superpuesta
+    const mge_test::Image front = renderFrom(glm::vec3(7.5f, 7.5f, -5.0f), "transparent_sort_front");
+    // Vista trasera (z > 10): agua azul al frente → el azul domina en la zona superpuesta
+    const mge_test::Image back = renderFrom(glm::vec3(7.5f, 7.5f, 22.0f), "transparent_sort_back");
+
+    const std::uint8_t* frontPx = front.pixel(kSize / 2, kSize / 2);
+    const std::uint8_t* backPx = back.pixel(kSize / 2, kSize / 2);
+    CHECK(frontPx[0] > frontPx[2]); // Rojo > Azul en la vista frontal
+    CHECK(backPx[2] > backPx[0]);   // Azul > Rojo en la vista trasera
+    CHECK(frontPx[0] > backPx[0]);  // Más rojo desde el frente que desde atrás
+    CHECK(backPx[2] > frontPx[2]);  // Más azul desde atrás que desde el frente
+}
