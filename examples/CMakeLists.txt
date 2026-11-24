@@ -1,10 +1,10 @@
-# Ejemplos: un subdirectorio por programa.
+# Examples: one subdirectory per program.
 
-# Headless: se compilan siempre (también con MGE_BUILD_MODULES=OFF)
+# Headless: always built (even with MGE_BUILD_MODULES=OFF)
 add_subdirectory(procgen_gallery)
 add_subdirectory(audio_gallery)
 
-# El resto necesita los módulos con SDL/GPU
+# The rest require the SDL/GPU modules
 if(NOT MGE_BUILD_MODULES)
     return()
 endif()
@@ -16,4 +16,4 @@ add_subdirectory(sdf_scene)
 add_subdirectory(sdf_glide)
 add_subdirectory(guide_game)
 add_subdirectory(c_hello)
-# scripts/new-game.sh agrega líneas debajo
+# scripts/new-game.sh appends lines below

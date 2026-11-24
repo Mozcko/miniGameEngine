@@ -1,79 +1,79 @@
 cmake_minimum_required(VERSION 3.24)
 project(miniGameEngine VERSION 1.0.1 LANGUAGES C CXX)
 
-# --- Estándar de C++ ---
+# --- C++ standard ---
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Genera compile_commands.json (clangd, clang-tidy)
+# Generate compile_commands.json (clangd, clang-tidy)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Por defecto compilamos en Release (con optimizaciones) si nadie eligió otro tipo
+# Default to Release (with optimizations) if no build type was chosen
 get_property(MGE_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(NOT MGE_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Tipo de build" FORCE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
-# --- Opciones ---
-option(MGE_INSTALL "Instalar y exportar paquetes CMake para reutilizar el motor" OFF)
-option(MGE_WARNINGS "Activar warnings estrictos en nuestro código" ON)
-option(MGE_WERROR "Tratar los warnings como errores" OFF)
-option(MGE_BUILD_TESTS "Compilar los tests unitarios (doctest + CTest)" ${PROJECT_IS_TOP_LEVEL})
-option(MGE_SANITIZERS "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
-option(MGE_TSAN "Compilar con ThreadSanitizer (Debug; incompatible con MGE_SANITIZERS)" OFF)
-option(MGE_BUILD_BENCHMARKS "Compilar los benchmarks (bench/)" ${PROJECT_IS_TOP_LEVEL})
-option(MGE_BUILD_EXAMPLES "Compilar los ejemplos (examples/)" ${PROJECT_IS_TOP_LEVEL})
-option(MGE_BUILD_SANDBOX "Compilar el sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
-option(MGE_BUILD_MODULES "Compilar los módulos con SDL/GPU (platform, render, audio, app) y el juego. OFF = solo mge_core" ON)
-option(MGE_SIZE_OPTIMIZE "Optimizar binarios para tamaño mínimo (-Os, LTO/IPO, gc-sections)" OFF)
-option(MGE_BUILD_CLI "Compilar la herramienta CLI mge (tools/mge)" ${PROJECT_IS_TOP_LEVEL})
-option(MGE_PIC "Compilar bibliotecas con código independiente de posición (fPIC)" OFF)
-option(MGE_BUILD_C_SHARED "Compilar mge_c como biblioteca compartida (shared library)" OFF)
-option(MGE_BUILD_PYTHON "Compilar bindings de Python" OFF)
+# --- Options ---
+option(MGE_INSTALL "Install and export CMake packages for reusing the engine" OFF)
+option(MGE_WARNINGS "Enable strict warnings in our code" ON)
+option(MGE_WERROR "Treat warnings as errors" OFF)
+option(MGE_BUILD_TESTS "Build unit tests (doctest + CTest)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_SANITIZERS "Build with AddressSanitizer + UndefinedBehaviorSanitizer (Debug)" OFF)
+option(MGE_TSAN "Build with ThreadSanitizer (Debug; incompatible with MGE_SANITIZERS)" OFF)
+option(MGE_BUILD_BENCHMARKS "Build benchmarks (bench/)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_BUILD_EXAMPLES "Build examples (examples/)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_BUILD_SANDBOX "Build the sandbox (game/)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_BUILD_MODULES "Build SDL/GPU modules (platform, render, audio, app) and the game. OFF = mge_core only" ON)
+option(MGE_SIZE_OPTIMIZE "Optimize binaries for minimum size (-Os, LTO/IPO, gc-sections)" OFF)
+option(MGE_BUILD_CLI "Build the mge CLI tool (tools/mge)" ${PROJECT_IS_TOP_LEVEL})
+option(MGE_PIC "Build libraries with position-independent code (fPIC)" OFF)
+option(MGE_BUILD_C_SHARED "Build mge_c as a shared library" OFF)
+option(MGE_BUILD_PYTHON "Build Python bindings" OFF)
 if(MGE_BUILD_C_SHARED OR MGE_BUILD_PYTHON)
-    set(MGE_PIC ON CACHE BOOL "Compilar bibliotecas con código independiente de posición (fPIC)" FORCE)
+    set(MGE_PIC ON CACHE BOOL "Build libraries with position-independent code (fPIC)" FORCE)
 endif()
 if(MGE_PIC)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-option(MGE_SOURCE_ASSET_FALLBACK "Usar la carpeta assets/ del código fuente como último recurso en assetPath()" ON)
+option(MGE_SOURCE_ASSET_FALLBACK "Use the source tree assets/ folder as a last resort in assetPath()" ON)
 if(MGE_INSTALL AND MGE_SOURCE_ASSET_FALLBACK)
-    message(WARNING "MGE_INSTALL=ON y MGE_SOURCE_ASSET_FALLBACK=ON: installed libraries will contain an absolute path to this source tree; pass -DMGE_SOURCE_ASSET_FALLBACK=OFF for distributable packages")
+    message(WARNING "MGE_INSTALL=ON and MGE_SOURCE_ASSET_FALLBACK=ON: installed libraries will contain an absolute path to this source tree; pass -DMGE_SOURCE_ASSET_FALLBACK=OFF for distributable packages")
 endif()
-option(MGE_PROFILING "Activar instrumentación del profiler (MGE_PROFILE_SCOPE)" ON)
-option(MGE_TRACY "Activar integración opcional con Tracy Profiler" OFF)
+option(MGE_PROFILING "Enable profiler instrumentation (MGE_PROFILE_SCOPE)" ON)
+option(MGE_TRACY "Enable optional Tracy Profiler integration" OFF)
 
-# Versión del motor (<mge/Version.h>)
+# Engine version (<mge/Version.h>)
 configure_file(
     "${miniGameEngine_SOURCE_DIR}/src/mge/Version.h.in"
     "${miniGameEngine_BINARY_DIR}/generated/include/mge/Version.h"
     @ONLY
 )
 
-# --- Optimización de tamaño (MGE_SIZE_OPTIMIZE) ---
+# --- Size optimization (MGE_SIZE_OPTIMIZE) ---
 if(MGE_SIZE_OPTIMIZE)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT MGE_IPO_SUPPORTED OUTPUT MGE_IPO_ERROR)
     if(MGE_IPO_SUPPORTED)
-        message(STATUS "IPO/LTO soportado y activado")
+        message(STATUS "IPO/LTO supported and enabled")
     else()
-        message(WARNING "IPO no soportado: ${MGE_IPO_ERROR}")
+        message(WARNING "IPO not supported: ${MGE_IPO_ERROR}")
     endif()
 endif()
 
-# --- ThreadSanitizer: carreras de datos (JobSystem y lo que corre en él) ---
+# --- ThreadSanitizer: data races (JobSystem and what runs on it) ---
 if(MGE_TSAN)
     if(MGE_SANITIZERS)
-        message(FATAL_ERROR "MGE_TSAN y MGE_SANITIZERS (ASan) no se pueden combinar")
+        message(FATAL_ERROR "MGE_TSAN and MGE_SANITIZERS (ASan) cannot be combined")
     endif()
     add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
     add_link_options(-fsanitize=thread)
 endif()
 
-# --- Sanitizers (todo el build, incluidas dependencias, para que ASan vea todas las asignaciones) ---
+# --- Sanitizers (entire build, including dependencies, so ASan sees all allocations) ---
 if(MGE_SANITIZERS)
     if(MSVC)
         add_compile_options(/fsanitize=address)
@@ -83,7 +83,7 @@ if(MGE_SANITIZERS)
     endif()
 endif()
 
-# --- Flags de tamaño y warnings (solo para nuestros targets, no para SDL/glslang) ---
+# --- Size and warning flags (only for our targets, not for SDL/glslang) ---
 function(mge_set_size_flags target)
     if(NOT MGE_SIZE_OPTIMIZE)
         return()
@@ -124,10 +124,10 @@ function(mge_set_warnings target)
     endif()
 endfunction()
 
-# --- Dependencias de los módulos (el core no necesita ninguna) ---
+# --- Module dependencies (core needs none) ---
 if(MGE_BUILD_MODULES)
-    # SDL3: usa el del sistema si existe (ej: SDL3-devel en Fedora); si no, lo compila desde
-    # el código fuente (CI en Ubuntu 24.04, que no trae SDL3). Versión fijada + hash.
+    # SDL3: use system package if installed (e.g. SDL3-devel on Fedora); otherwise build from
+    # source (Ubuntu 24.04 CI, which does not package SDL3). Pinned version + hash.
     include(FetchContent)
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
     set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -135,7 +135,7 @@ if(MGE_BUILD_MODULES)
     set(SDL_TESTS OFF CACHE BOOL "" FORCE)
     set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-    # Extensiones opcionales de X11 que el motor no usa (evita exigir sus paquetes -dev)
+    # Optional X11 extensions not used by the engine (avoids requiring their -dev packages)
     set(SDL_X11_XSCRNSAVER OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(SDL3
         URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.18.tar.gz
@@ -145,16 +145,16 @@ if(MGE_BUILD_MODULES)
     )
     FetchContent_MakeAvailable(SDL3)
     if(SDL3_FOUND)
-        message(STATUS "SDL3: usando la instalación del sistema (${SDL3_VERSION})")
+        message(STATUS "SDL3: using system installation (${SDL3_VERSION})")
     else()
-        message(STATUS "SDL3: compilado desde el código fuente (release-3.4.18)")
+        message(STATUS "SDL3: built from source (release-3.4.18)")
     endif()
     if(MGE_INSTALL AND NOT SDL3_FOUND)
-        message(FATAL_ERROR "MGE_INSTALL=ON requiere una instalación de SDL3 del sistema (ej: SDL3-devel o libsdl3-dev). SDL3 compilado con FetchContent no es exportable. Instale SDL3 en el sistema o configure con -DMGE_INSTALL=OFF.")
+        message(FATAL_ERROR "MGE_INSTALL=ON requires a system SDL3 installation (e.g. SDL3-devel or libsdl3-dev). SDL3 built via FetchContent is not exportable. Install SDL3 on the system or configure with -DMGE_INSTALL=OFF.")
     endif()
 endif()
 
-# --- Tracy Profiler (opcional, -DMGE_TRACY=ON) ---
+# --- Tracy Profiler (optional, -DMGE_TRACY=ON) ---
 if(MGE_TRACY)
     include(FetchContent)
     FetchContent_Declare(tracy
@@ -165,14 +165,14 @@ if(MGE_TRACY)
     FetchContent_MakeAvailable(tracy)
 endif()
 
-# mge_add_game(): una llamada por juego (ver cmake/MgeGame.cmake)
+# mge_add_game(): one call per game (see cmake/MgeGame.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MgeGame.cmake)
-# mge_add_shaders(): GLSL → SPIR-V embebido (ver cmake/MgeShaders.cmake). Solo con módulos (GPU)
+# mge_add_shaders(): GLSL → embedded SPIR-V (see cmake/MgeShaders.cmake). Only with modules (GPU)
 if(MGE_BUILD_MODULES)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MgeShaders.cmake)
 endif()
 
-# CTest antes de los subdirectorios: juegos y ejemplos también registran tests
+# CTest before subdirectories: games and examples also register tests
 if(MGE_BUILD_TESTS)
     enable_testing()
 endif()
@@ -181,13 +181,13 @@ if(MGE_SIZE_OPTIMIZE AND MGE_IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
-# --- Motor (src/mge), juegos y ejemplos ---
+# --- Engine (src/mge), games and examples ---
 add_subdirectory(src/mge)
 if(MGE_BUILD_MODULES AND MGE_BUILD_SANDBOX)
     add_subdirectory(game)
 endif()
 if(MGE_BUILD_EXAMPLES)
-    # examples/ decide qué compilar según MGE_BUILD_MODULES (los headless van siempre)
+    # examples/ decides what to build based on MGE_BUILD_MODULES (headless ones always build)
     add_subdirectory(examples)
 endif()
 
@@ -196,34 +196,34 @@ if(MGE_BUILD_BENCHMARKS)
     add_subdirectory(bench)
 endif()
 
-# --- Herramientas (CLI) ---
+# --- Tools (CLI) ---
 if(MGE_BUILD_CLI)
     if(WIN32)
-        set(MGE_BUILD_CLI OFF CACHE BOOL "Compilar la herramienta CLI mge (tools/mge)" FORCE)
-        message(STATUS "mge CLI: desactivado en Windows (tools/mge/Process.cpp requiere POSIX)")
+        set(MGE_BUILD_CLI OFF CACHE BOOL "Build the mge CLI tool (tools/mge)" FORCE)
+        message(STATUS "mge CLI: disabled on Windows (tools/mge/Process.cpp requires POSIX)")
     else()
         add_subdirectory(tools/mge)
     endif()
 endif()
 
-# --- Tests unitarios ---
+# --- Unit tests ---
 if(MGE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-# --- Bindings de Python ---
+# --- Python bindings ---
 if(MGE_BUILD_PYTHON)
     add_subdirectory(bindings/python)
 endif()
 
 
-# --- Paquete CMake (find_package(mge)) ---
+# --- CMake package (find_package(mge)) ---
 if(MGE_INSTALL)
     include(CMakePackageConfigHelpers)
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/mgeConfigVersion.cmake"
         VERSION ${miniGameEngine_VERSION}
-        COMPATIBILITY SameMajorVersion # semver: 1.x es compatible con 1.y (y ≥ x)
+        COMPATIBILITY SameMajorVersion # semver: 1.x is compatible with 1.y (y ≥ x)
     )
     configure_package_config_file(
         "${miniGameEngine_SOURCE_DIR}/cmake/mgeConfig.cmake.in"

@@ -1,4 +1,4 @@
-# Ejemplo de la guía de usuario (#67): juego 3D procedural completo en código puro.
+# User guide example (#67): complete procedural 3D game in pure code.
 mge_add_game(guide_game
     SOURCES GuideGame.cpp
     MODULES platform gpu graphics audio

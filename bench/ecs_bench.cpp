@@ -1,5 +1,5 @@
-// Benchmark del ECS (no es un test): crea N entidades e itera sistemas típicos.
-// Uso: ./bench/ecs_bench [N]   (por defecto 100000). Compilar en Release para números útiles.
+// ECS benchmark (not a test): creates N entities and iterates typical systems.
+// Usage: ./bench/ecs_bench [N]   (default 100000). Build in Release for useful numbers.
 #include <mge/core/ecs/Registry.h>
 
 #include <chrono>
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
             mge::Entity e = registry.create();
             registry.add<Position>(e);
             registry.add<Velocity>(e);
-            if (i % 2 == 0) registry.add<Health>(e); // Solo la mitad
+            if (i % 2 == 0) registry.add<Health>(e); // Only half
         }
     });
 
@@ -55,12 +55,12 @@ int main(int argc, char** argv) {
         }
     });
 
-    std::printf("ECS benchmark (%d entidades)\n", count);
-    std::printf("  crear + 2.5 componentes promedio : %8.2f ms (%6.1f ns/entidad)\n", createMs,
+    std::printf("ECS benchmark (%d entities)\n", count);
+    std::printf("  create + 2.5 components avg      : %8.2f ms (%6.1f ns/entity)\n", createMs,
                 createMs * 1e6 / count);
-    std::printf("  each<Position, Velocity>         : %8.3f ms/iter (%5.2f ns/entidad)\n",
+    std::printf("  each<Position, Velocity>         : %8.3f ms/iter (%5.2f ns/entity)\n",
                 iterateMs / iterations, iterateMs * 1e6 / iterations / count);
-    std::printf("  each<Health, Position> (50%%)     : %8.3f ms/iter (%5.2f ns/entidad)\n",
+    std::printf("  each<Health, Position> (50%%)     : %8.3f ms/iter (%5.2f ns/entity)\n",
                 sparseMs / iterations, sparseMs * 1e6 / iterations / (count / 2));
     std::printf("  (checksum %.1f)\n", sum);
     return 0;

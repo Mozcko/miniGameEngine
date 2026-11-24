@@ -1,8 +1,8 @@
-# Bindings de Python para miniGameEngine mediante nanobind
+# Python bindings for miniGameEngine via nanobind
 
 find_package(Python 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
 
-# Intentar usar el paquete de nanobind instalado en el entorno de Python (ej: pip / scikit-build)
+# Try to use the nanobind package installed in the Python environment (e.g. pip / scikit-build)
 if(NOT nanobind_DIR)
     execute_process(
         COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
@@ -78,12 +78,12 @@ mge_set_warnings(_mge)
 target_compile_options(_mge PRIVATE -Wno-shadow)
 
 
-# Generar el binario dentro del paquete de desarrollo para poder importar sin instalar
+# Output the binary inside the development package so it can be imported without installing
 set_target_properties(_mge PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/mge"
 )
 
-# Instalación para empaquetado con scikit-build-core
+# Installation for packaging with scikit-build-core
 install(TARGETS _mge
     LIBRARY DESTINATION mge
     ARCHIVE DESTINATION mge

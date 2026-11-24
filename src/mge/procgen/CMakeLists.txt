@@ -1,4 +1,4 @@
-# Generación procedural en CPU (headless: solo core + GLM). Se compila siempre, también sin módulos.
+# Procedural generation on CPU (headless: core + GLM only). Always built, even without modules.
 add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
     Image.h Image.cpp
@@ -19,7 +19,7 @@ target_include_directories(mge_procgen PUBLIC
 target_link_libraries(mge_procgen PUBLIC mge_core)
 mge_set_warnings(mge_procgen)
 
-# Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_PROCGEN
+# For <mge/mge.h>: targets linking this module see MGE_HAS_PROCGEN
 target_compile_definitions(mge_procgen INTERFACE MGE_HAS_PROCGEN=1)
 
 mge_install_headers(procgen

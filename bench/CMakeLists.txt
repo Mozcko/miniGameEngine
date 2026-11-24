@@ -1,4 +1,4 @@
-# Benchmarks (no son tests): ejecutables para medir rendimiento. Solo dependen del core.
+# Benchmarks (not tests): executables for measuring performance. Depend on core only.
 add_executable(mge_bench mge_bench.cpp)
 target_include_directories(mge_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(mge_bench PRIVATE mge_core mge_procgen mge_voxel mge_physics)

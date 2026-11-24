@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Dependencias de CI (Ubuntu 24.04). SDL3 no viene empaquetado en 24.04, así que se compila
-# desde el código fuente (FetchContent): aquí van sus headers de desarrollo de Linux
-# (https://wiki.libsdl.org/SDL3/README-linux#build-dependencies), más GLM/stb del motor
-# y el driver Mesa por software para los tests "gpu" sin pantalla: lavapipe (Vulkan, para SDL3 GPU),
-# con las capas de validación (los tests de GPU fallan ante cualquier error de uso de la API).
-# glslang-tools compila los shaders (GLSL → SPIR-V, #29). libegl/libgl son headers que pide SDL al compilar.
-# fonts-dejavu-core: solo para el test de fuentes TTF (#41); el motor no necesita archivos de fuentes.
+# CI dependencies (Ubuntu 24.04). SDL3 is not packaged in 24.04, so it is built from
+# source (FetchContent): listed here are its Linux development headers
+# (https://wiki.libsdl.org/SDL3/README-linux#build-dependencies), plus GLM/stb for the engine
+# and the Mesa software driver for headless "gpu" tests: lavapipe (Vulkan, for SDL3 GPU),
+# with validation layers (GPU tests fail on any API usage error).
+# glslang-tools compiles shaders (GLSL → SPIR-V, #29). libegl/libgl are headers SDL needs to build.
+# fonts-dejavu-core: only for the TTF font test (#41); the engine does not require font files.
 set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \

@@ -58,7 +58,7 @@ The benchmark output prints:
 - **Median (ns)**: The median execution time per item across runs. Using the median filters out scheduling spikes and intermittent OS interruptions.
 - **Min (ns)**: The minimum time observed across runs (the theoretical best without interference).
 - **Iterations**: Number of measured items per timed run.
-- **Unit**: Unit of the measurement (e.g. `ns/voxel`, `ns/call`, `ns/entidad`, `ns/cuerpo`).
+- **Unit**: Unit of the measurement (e.g. `ns/voxel`, `ns/call`, `ns/entity`, `ns/body`).
 
 In the comparison table:
 - **Baseline (ns)**: Median time recorded in the baseline run.

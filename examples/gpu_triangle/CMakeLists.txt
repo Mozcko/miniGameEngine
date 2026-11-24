@@ -1,5 +1,5 @@
-# Primer programa sobre SDL3 GPU (#28, #29): un triángulo que gira sobre un fondo que late.
-# Los shaders (GLSL) se compilan a SPIR-V al compilar y quedan embebidos en el ejecutable.
+# First program on SDL3 GPU (#28, #29): a spinning triangle over a pulsing background.
+# Shaders (GLSL) are compiled to SPIR-V at build time and embedded in the executable.
 mge_add_game(gpu_triangle
     SOURCES GpuTriangle.cpp
     MODULES platform gpu

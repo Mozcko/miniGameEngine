@@ -1,4 +1,4 @@
-# Plataforma: ventana SDL e input
+# Platform: SDL window and input
 add_library(mge_platform STATIC
     Window.h Window.cpp
     SdlInput.h SdlInput.cpp
@@ -13,7 +13,7 @@ target_include_directories(mge_platform PUBLIC
 target_link_libraries(mge_platform PUBLIC mge_core SDL3::SDL3)
 mge_set_warnings(mge_platform)
 
-# Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_PLATFORM
+# For <mge/mge.h>: targets linking this module see MGE_HAS_PLATFORM
 target_compile_definitions(mge_platform INTERFACE MGE_HAS_PLATFORM=1)
 
 mge_install_headers(platform
