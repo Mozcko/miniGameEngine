@@ -13,20 +13,20 @@ namespace mge {
         Orthographic
     };
 
-    // Componente de cámara (va junto a un Transform: la cámara mira hacia -Z local, con +Y arriba).
-    // Las proyecciones usan Z en [0, 1] (convención de SDL GPU / Vulkan / D3D / Metal).
+    // Camera component (paired with a Transform: the camera looks down local -Z, with +Y up).
+    // Projections use Z in [0, 1] (SDL GPU / Vulkan / D3D / Metal convention).
     struct Camera {
         ProjectionType projection = ProjectionType::Perspective;
-        float fovY = 0.7853982f; // Radianes (45°), solo perspectiva
+        float fovY = 0.7853982f; // Radians (45°), perspective only
         float nearPlane = 0.1f;
         float farPlane = 1000.0f;
-        // Ortográfica: alto visible en unidades del mundo (el ancho sale del aspecto)
+        // Orthographic: visible height in world units (width is derived from aspect)
         float orthoHeight = 10.0f;
-        // Ortográfica en píxeles (UI): (0, 0) arriba a la izquierda, y hacia abajo, 1 unidad = 1 píxel.
-        // Ojo: con y hacia abajo un quad antihorario en píxeles queda horario en pantalla.
+        // Pixel-space orthographic (UI): (0, 0) at top-left, y pointing down, 1 unit = 1 pixel.
+        // Note: with y pointing down, a CCW quad in pixel coordinates becomes CW on screen.
         bool pixelSpace = false;
-        float aspect = 16.0f / 9.0f; // ancho / alto
-        bool autoAspect = true;      // CameraSystem lo ajusta al viewport cada frame
+        float aspect = 16.0f / 9.0f; // width / height
+        bool autoAspect = true;      // CameraSystem matches it to the viewport every frame
     };
 
     struct CameraMatrices {
@@ -34,18 +34,18 @@ namespace mge {
         glm::mat4 projection{1.0f};
         glm::mat4 viewProjection{1.0f};
         glm::vec3 position{0.0f};
-        Frustum frustum; // Para culling (planos de viewProjection)
+        Frustum frustum; // For culling (planes from viewProjection)
     };
 
-    // Proyección de la cámara para un viewport (en píxeles; también lo usa la ortográfica en píxeles)
+    // Camera projection for a viewport (in pixels; also used by pixel-space orthographic)
     glm::mat4 projectionMatrix(const Camera& camera, const glm::uvec2& viewport);
-    // Matrices completas a partir de la matriz de mundo de la cámara (Transform::localMatrix o
+    // Full matrices from the camera's world matrix (Transform::localMatrix or
     // WorldTransform)
     CameraMatrices cameraMatrices(const glm::mat4& cameraWorld, const Camera& camera,
                                   const glm::uvec2& viewport);
 
-    // Ajusta el aspecto de las cámaras con autoAspect al viewport (la Application lo corre antes de la
-    // fase Render: el cambio de tamaño de la ventana llega a todas las cámaras sin código del juego)
+    // Matches the aspect ratio of autoAspect cameras to the viewport (Application runs it before the
+    // Render phase: window resizes reach all cameras with no game code)
     class CameraSystem {
     public:
         static void update(Registry& registry, const glm::uvec2& viewport);

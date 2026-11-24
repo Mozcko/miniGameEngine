@@ -13,41 +13,41 @@ namespace mge {
     Application::Application(ApplicationConfig config) : m_config(std::move(config)) {
         m_viewport = {static_cast<unsigned>(std::max(m_config.width, 0)),
                       static_cast<unsigned>(std::max(m_config.height, 0))};
-        // Límite de frames desde el entorno (CI / smoke tests), solo si el juego no fijó uno
+        // Frame cap from environment (CI / smoke tests), only if the game did not set one
         if (m_config.maxFrames == 0) {
             if (const char* env = std::getenv("MGE_MAX_FRAMES")) {
                 char* end = nullptr;
                 unsigned long long value = std::strtoull(env, &end, 10);
                 if (end != env && *end == '\0') {
                     m_config.maxFrames = value;
-                    MGE_LOG_INFO("App", "MGE_MAX_FRAMES=", value, ": la aplicación saldrá tras ", value,
+                    MGE_LOG_INFO("App", "MGE_MAX_FRAMES=", value, ": application will exit after ", value,
                                  " frames");
                 } else {
-                    MGE_LOG_WARN("App", "MGE_MAX_FRAMES inválido ('", env, "'); se ignora");
+                    MGE_LOG_WARN("App", "Invalid MGE_MAX_FRAMES ('", env, "'); ignored");
                 }
             }
         }
-        // Vsync desde el entorno (benchmarks: MGE_VSYNC=0 mide los FPS sin el límite del monitor)
+        // Vsync from environment (benchmarks: MGE_VSYNC=0 measures FPS without the monitor cap)
         if (const char* env = std::getenv("MGE_VSYNC")) {
             const std::string value = env;
             if (value == "0" || value == "1") {
                 m_config.vsync = value == "1";
                 MGE_LOG_INFO("App", "MGE_VSYNC=", value);
             } else {
-                MGE_LOG_WARN("App", "MGE_VSYNC inválido ('", env, "'): usar 0 o 1; se ignora");
+                MGE_LOG_WARN("App", "Invalid MGE_VSYNC ('", env, "'): use 0 or 1; ignored");
             }
         }
-        // Profiling desde el entorno (MGE_PROFILE=0 desactiva el profiler en tiempo de ejecución)
+        // Profiling from environment (MGE_PROFILE=0 disables the profiler at runtime)
         if (const char* env = std::getenv("MGE_PROFILE")) {
             const std::string value = env;
             if (value == "0") {
                 m_config.profiling = false;
-                MGE_LOG_INFO("App", "MGE_PROFILE=0: profiler desactivado");
+                MGE_LOG_INFO("App", "MGE_PROFILE=0: profiler disabled");
             } else if (value == "1") {
                 m_config.profiling = true;
-                MGE_LOG_INFO("App", "MGE_PROFILE=1: profiler activado");
+                MGE_LOG_INFO("App", "MGE_PROFILE=1: profiler enabled");
             } else {
-                MGE_LOG_WARN("App", "MGE_PROFILE inválido ('", env, "'): usar 0 o 1; se ignora");
+                MGE_LOG_WARN("App", "Invalid MGE_PROFILE ('", env, "'): use 0 or 1; ignored");
             }
         }
         m_profiler.setEnabled(m_config.profiling);
@@ -59,16 +59,16 @@ namespace mge {
     JobSystem& Application::jobs() {
         if (!m_jobs) {
             m_jobs = std::make_unique<JobSystem>();
-            MGE_LOG_INFO("App", "Pool de trabajos: ", m_jobs->threadCount(), " hilos");
+            MGE_LOG_INFO("App", "Job pool: ", m_jobs->threadCount(), " threads");
         }
         return *m_jobs;
     }
 
     bool Application::initModules() {
         for (const auto& module : m_modules) {
-            MGE_LOG_DEBUG("App", "Inicializando módulo ", module->name());
+            MGE_LOG_DEBUG("App", "Initializing module ", module->name());
             if (!module->onInit(*this)) {
-                MGE_LOG_FATAL("App", "Falló la inicialización del módulo ", module->name());
+                MGE_LOG_FATAL("App", "Failed to initialize module ", module->name());
                 return false;
             }
             m_initializedModules++;
@@ -77,11 +77,11 @@ namespace mge {
     }
 
     void Application::shutdownModules() {
-        // Orden inverso, y solo los que inicializaron bien
+        // Reverse order, and only those that initialized successfully
         while (m_initializedModules > 0) {
             m_initializedModules--;
             Module& module = *m_modules[m_initializedModules];
-            MGE_LOG_DEBUG("App", "Cerrando módulo ", module.name());
+            MGE_LOG_DEBUG("App", "Shutting down module ", module.name());
             module.onShutdown(*this);
         }
     }
@@ -96,8 +96,8 @@ namespace mge {
         m_time.m_unscaledElapsed += rawFrameTime;
         m_time.m_elapsed += scaled;
 
-        // Pasos fijos con el tiempo escalado acumulado. Todo en double, y con una tolerancia de 1 ns:
-        // sumar 4 × (1/240) en coma flotante puede dar apenas menos que 1/60 y perder un paso.
+        // Fixed steps from the accumulated scaled time. All in double, with a 1 ns tolerance:
+        // summing 4 × (1/240) in floating point can be slightly less than 1/60 and miss a step.
         constexpr double kEpsilon = 1e-9;
         const double fixedDelta = m_fixedDeltaSeconds;
         m_time.m_accumulator += scaled;
@@ -112,10 +112,10 @@ namespace mge {
                 steps++;
             }
         }
-        // Se llegó al tope: descartar el atraso entero (queda solo la fracción del paso actual)
+        // Hit the cap: discard the whole backlog (leaving only the current fractional step)
         if (m_time.m_accumulator + kEpsilon >= fixedDelta) {
-            MGE_LOG_DEBUG("App", "Frame lento: se descartan ",
-                          static_cast<int>(m_time.m_accumulator / fixedDelta), " pasos fijos");
+            MGE_LOG_DEBUG("App", "Slow frame: dropping ",
+                          static_cast<int>(m_time.m_accumulator / fixedDelta), " fixed steps");
             while (m_time.m_accumulator + kEpsilon >= fixedDelta) m_time.m_accumulator -= fixedDelta;
         }
         if (m_time.m_accumulator < 0.0) m_time.m_accumulator = 0.0;
@@ -124,15 +124,15 @@ namespace mge {
 
     int Application::run() {
         MGE_LOG_INFO("App", "miniGameEngine v", kVersionString);
-        // "Corriendo" desde el principio: así un requestStop() en onInit (o en un módulo) se respeta
-        // y el loop no llega a ejecutarse (antes se pisaba con m_running = true después de onInit).
+        // "Running" from the start: this way a requestStop() in onInit (or in a module) is respected
+        // and the loop never runs (previously m_running = true was overwritten after onInit).
         m_running = true;
         if (!initModules()) {
             shutdownModules();
             return 1;
         }
         if (!onInit()) {
-            MGE_LOG_FATAL("App", "El juego no se pudo inicializar; saliendo");
+            MGE_LOG_FATAL("App", "Game failed to initialize; exiting");
             shutdownModules();
             return 1;
         }
@@ -153,12 +153,12 @@ namespace mge {
                     MGE_PROFILE_SCOPE(m_profiler, "modules.begin");
                     for (const auto& module : m_modules) module->onFrameBegin(*this);
                 }
-                // Un módulo pudo pedir salir (ej: se cerró la ventana)
+                // A module may have requested stop (e.g., the window was closed)
                 if (!m_running) {
                     frameAborted = true;
                 } else {
                     const double now = m_clock->now();
-                    advanceTime(now - lastTime); // onFixedUpdate 0..N veces
+                    advanceTime(now - lastTime); // onFixedUpdate 0..N times
                     lastTime = now;
 
                     {
@@ -188,7 +188,7 @@ namespace mge {
             if (m_config.maxFrames > 0 && m_time.m_frameCount >= m_config.maxFrames) m_running = false;
         }
 
-        // Los trabajos en curso pueden usar datos del juego: terminarlos antes de que el juego libere nada
+        // Running jobs may reference game data: finish them before the game frees anything
         if (m_jobs) m_jobs->waitIdle();
         onShutdown();
         shutdownModules();

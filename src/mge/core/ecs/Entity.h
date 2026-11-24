@@ -4,8 +4,8 @@
 
 namespace mge {
 
-    // Identificador de entidad: índice (posición reutilizable) + generación (cambia cada vez que el
-    // índice se recicla). Un handle viejo de una entidad destruida deja de ser válido.
+    // Entity identifier: index (reusable slot) + generation (incremented whenever the
+    // index is recycled). A stale handle to a destroyed entity is no longer valid.
     struct Entity {
         std::uint32_t index = kInvalidIndex;
         std::uint32_t generation = 0;
@@ -19,6 +19,6 @@ namespace mge {
         friend bool operator!=(Entity a, Entity b) { return !(a == b); }
     };
 
-    // Entidad nula (valor por defecto)
+    // Null entity (default value)
     inline constexpr Entity kNullEntity{};
 }

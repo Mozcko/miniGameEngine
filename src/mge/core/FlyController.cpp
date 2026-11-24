@@ -26,9 +26,9 @@ namespace mge {
     }
 
     void FlyController::update(float dt, const CameraInput& input) {
-        if (dt <= 0.0f) return; // Pausa
+        if (dt <= 0.0f) return; // Paused
 
-        // Mirar (pantalla: y hacia abajo → pitch hacia arriba al subir el ratón)
+        // Look (screen: y points down → pitch up when moving the mouse up)
         m_yaw += input.lookX * sensitivity;
         m_pitch = std::clamp(m_pitch - input.lookY * sensitivity, -89.0f, 89.0f);
 
@@ -37,7 +37,7 @@ namespace mge {
         if (glm::length(move) <= 0.0f) return;
         move = glm::normalize(move) * speed * (input.sprint ? sprintMultiplier : 1.0f) * dt;
 
-        // Eje por eje (X, Z, Y): se puede deslizar a lo largo de una pared
+        // Axis by axis (X, Z, Y): allows sliding along a wall
         for (int axis : {0, 2, 1}) {
             m_position[axis] += move[axis];
             if (collides()) m_position[axis] -= move[axis];
@@ -46,7 +46,7 @@ namespace mge {
 
     void FlyController::apply(Transform& transform) const {
         transform.position = m_position;
-        // quatLookAt (diestro): la rotación que lleva -Z local hacia forward()
+        // quatLookAt (right-handed): rotation mapping local -Z to forward()
         transform.rotation = glm::quatLookAt(forward(), glm::vec3(0.0f, 1.0f, 0.0f));
     }
 }

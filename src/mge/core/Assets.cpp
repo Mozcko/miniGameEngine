@@ -42,24 +42,24 @@ namespace mge {
         fs::path resolveRoot() {
             if (const char* env = std::getenv("MGE_ASSET_DIR"); env && *env) {
                 if (isDirectory(env)) {
-                    MGE_LOG_INFO("Assets", "Raíz de assets (MGE_ASSET_DIR): ", normalized(env).string());
+                    MGE_LOG_INFO("Assets", "Asset root (MGE_ASSET_DIR): ", normalized(env).string());
                     return normalized(env);
                 }
-                MGE_LOG_WARN("Assets", "MGE_ASSET_DIR='", env, "' no es una carpeta; se ignora");
+                MGE_LOG_WARN("Assets", "MGE_ASSET_DIR='", env, "' is not a directory; ignored");
             }
 
             const fs::path exeDir = executableDir();
             for (const fs::path& candidate : {exeDir / "assets", exeDir / ".." / "assets"}) {
                 if (!exeDir.empty() && isDirectory(candidate)) {
                     MGE_LOG_INFO("Assets",
-                                 "Raíz de assets (junto al ejecutable): ", normalized(candidate).string());
+                                 "Asset root (next to executable): ", normalized(candidate).string());
                     return normalized(candidate);
                 }
             }
 
 #ifdef MGE_SOURCE_ASSET_DIR
             if (isDirectory(MGE_SOURCE_ASSET_DIR)) {
-                MGE_LOG_INFO("Assets", "Raíz de assets (código fuente): ", MGE_SOURCE_ASSET_DIR);
+                MGE_LOG_INFO("Assets", "Asset root (source tree): ", MGE_SOURCE_ASSET_DIR);
                 return fs::path(MGE_SOURCE_ASSET_DIR);
             }
 #endif

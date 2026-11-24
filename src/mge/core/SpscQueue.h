@@ -7,15 +7,15 @@
 
 namespace mge {
 
-    // Cola sin locks de un productor y un consumidor (#46), de capacidad fija: un hilo hace push y otro
-    // pop, sin reservar memoria ni bloquear. La usa el audio (juego → hilo de audio). T se copia tal cual:
-    // tiene que ser trivialmente copiable. Capacity: potencia de 2 (entran Capacity - 1 elementos).
+    // Lock-free single-producer, single-consumer queue (#46) with fixed capacity: one thread pushes and
+    // another pops, with no heap allocation or blocking. Used by audio (game → audio thread). T is copied
+    // verbatim: it must be trivially copyable. Capacity: power of 2 (holds Capacity - 1 items).
     template <typename T, std::size_t Capacity> class SpscQueue {
-        static_assert(Capacity >= 2 && (Capacity & (Capacity - 1)) == 0, "Capacity debe ser potencia de 2");
-        static_assert(std::is_trivially_copyable_v<T>, "SpscQueue copia los elementos byte a byte");
+        static_assert(Capacity >= 2 && (Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
+        static_assert(std::is_trivially_copyable_v<T>, "SpscQueue copies elements byte by byte");
 
     public:
-        // Productor. false = llena (el elemento no entra)
+        // Producer. false = full (item did not fit)
         bool push(const T& item) {
             const std::size_t tail = m_tail.load(std::memory_order_relaxed);
             const std::size_t next = (tail + 1) & kMask;
@@ -25,7 +25,7 @@ namespace mge {
             return true;
         }
 
-        // Consumidor. false = vacía
+        // Consumer. false = empty
         bool pop(T& item) {
             const std::size_t head = m_head.load(std::memory_order_relaxed);
             if (head == m_tail.load(std::memory_order_acquire)) return false;
@@ -34,7 +34,7 @@ namespace mge {
             return true;
         }
 
-        // Aproximado si el otro hilo está trabajando
+        // Approximate if the other thread is active
         bool empty() const {
             return m_head.load(std::memory_order_acquire) == m_tail.load(std::memory_order_acquire);
         }
@@ -44,7 +44,7 @@ namespace mge {
         static constexpr std::size_t kMask = Capacity - 1;
 
         std::array<T, Capacity> m_items{};
-        alignas(64) std::atomic<std::size_t> m_head{0}; // Lo avanza el consumidor
-        alignas(64) std::atomic<std::size_t> m_tail{0}; // Lo avanza el productor
+        alignas(64) std::atomic<std::size_t> m_head{0}; // Advanced by the consumer
+        alignas(64) std::atomic<std::size_t> m_tail{0}; // Advanced by the producer
     };
 }
