@@ -9,11 +9,11 @@
 using namespace mge;
 using mge_test::GpuTestContext;
 
-TEST_CASE("Vsync por defecto en la config") {
+TEST_CASE("Vsync enabled by default in config") {
     CHECK(ApplicationConfig{}.vsync);
 }
 
-TEST_CASE("choosePresentMode: vsync, o el mejor modo sin vsync disponible") {
+TEST_CASE("choosePresentMode: vsync, or best available non-vsync mode") {
     auto only = [](std::set<SDL_GPUPresentMode> modes) {
         return [modes](SDL_GPUPresentMode m) { return modes.count(m) != 0; };
     };
@@ -27,7 +27,7 @@ TEST_CASE("choosePresentMode: vsync, o el mejor modo sin vsync disponible") {
     CHECK(std::string(presentModeName(SDL_GPU_PRESENTMODE_MAILBOX)) == "mailbox");
 }
 
-TEST_CASE("chooseDepthFormat: el más preciso disponible, D16 como último recurso") {
+TEST_CASE("chooseDepthFormat: most precise available, D16 as fallback") {
     auto only = [](std::set<SDL_GPUTextureFormat> formats) {
         return [formats](SDL_GPUTextureFormat f) { return formats.count(f) != 0; };
     };
@@ -38,7 +38,7 @@ TEST_CASE("chooseDepthFormat: el más preciso disponible, D16 como último recur
     CHECK(chooseDepthFormat(only({})) == SDL_GPU_TEXTUREFORMAT_D16_UNORM);
 }
 
-TEST_CASE("GPU: el device elige un depth de 24 o 32 bits y se puede usar en un render pass") {
+TEST_CASE("GPU: device selects a 24- or 32-bit depth format usable in a render pass") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     const SDL_GPUTextureFormat depth = gpu.device().depthFormat();

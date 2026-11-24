@@ -10,8 +10,8 @@
 
 using namespace mge;
 
-TEST_CASE("character: walk parado sobre el piso se queda grounded y quieto sin hundirse ni vibrar") {
-    // Suelo en y = 0 (bloques con y <= 0 son sólidos, cara superior en y = 1.0)
+TEST_CASE("character: standing still in Walk mode stays grounded without sinking or jittering") {
+    // Floor at y = 0 (blocks with y <= 0 are solid, top face at y = 1.0)
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0; };
 
     constexpr float kSkin = 1e-4f;
@@ -34,7 +34,7 @@ TEST_CASE("character: walk parado sobre el piso se queda grounded y quieto sin h
     CHECK(controller.velocity.z == doctest::Approx(0.0f));
 }
 
-TEST_CASE("character: cae desde y = 10, aterriza, grounded y velocity.y == 0") {
+TEST_CASE("character: falls from y = 10, lands, becomes grounded with velocity.y == 0") {
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0; };
 
     constexpr float kSkin = 1e-4f;
@@ -55,7 +55,7 @@ TEST_CASE("character: cae desde y = 10, aterriza, grounded y velocity.y == 0") {
     CHECK(controller.velocity.y == doctest::Approx(0.0f));
 }
 
-TEST_CASE("character: salto alcanza la altura esperada y vuelve a caer") {
+TEST_CASE("character: jump reaches expected apex height and lands back down") {
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0; };
 
     constexpr float kSkin = 1e-4f;
@@ -63,7 +63,7 @@ TEST_CASE("character: salto alcanza la altura esperada y vuelve a caer") {
     glm::vec3 feet(0.0f, 1.0f + kSkin, 0.0f);
     controller.grounded = true;
 
-    // Altura esperada según cinemática: v^2 / (2 * g)
+    // Expected apex height from kinematics: v^2 / (2 * g)
     const float expectedApexDelta =
         (controller.jumpSpeed * controller.jumpSpeed) / (2.0f * controller.gravity);
 
@@ -88,7 +88,7 @@ TEST_CASE("character: salto alcanza la altura esperada y vuelve a caer") {
     CHECK(controller.velocity.y == doctest::Approx(0.0f));
 }
 
-TEST_CASE("character: camina hacia adelante a walkSpeed en direccion flatForward ignorando pitch") {
+TEST_CASE("character: walks forward at walkSpeed along flatForward ignoring pitch") {
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0; };
 
     constexpr float kSkin = 1e-4f;
@@ -96,12 +96,12 @@ TEST_CASE("character: camina hacia adelante a walkSpeed en direccion flatForward
     glm::vec3 feet(0.0f, 1.0f + kSkin, 0.0f);
     controller.grounded = true;
 
-    // Mirar hacia abajo 45 grados (pitch = -45) con yaw = -90 (mira hacia -Z)
+    // Look down 45 degrees (pitch = -45) with yaw = -90 (facing -Z)
     controller.look(0.0f, -45.0f);
     controller.input.moveForward = 1.0f;
 
     constexpr float kDt = 1.0f / 60.0f;
-    // Con aceleración de 40 m/s^2, alcanza 4.3 m/s en aprox 0.11 s (7 frames)
+    // With 40 m/s^2 acceleration, reaches 4.3 m/s in ~0.11 s (7 frames)
     for (int i = 0; i < 60; ++i) {
         feet = stepCharacter(controller, feet, kDt, isSolid);
     }
@@ -114,14 +114,14 @@ TEST_CASE("character: camina hacia adelante a walkSpeed en direccion flatForward
     CHECK(feet.y == doctest::Approx(1.0f + kSkin));
 }
 
-TEST_CASE("character: step-up sube escalon de 1 bloque con stepHeight 1.0 pero no con 0.6") {
-    // Suelo en y = 0 para z > 0; escalon de 1 bloque (y = 1) para z <= 0
+TEST_CASE("character: step-up climbs 1-block step with stepHeight 1.0 but not with 0.6") {
+    // Floor at y = 0 for z > 0; 1-block step (y = 1) for z <= 0
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0 || (p.y == 1 && p.z <= 0); };
 
     constexpr float kSkin = 1e-4f;
     constexpr float kDt = 1.0f / 60.0f;
 
-    // Caso A: con stepHeight = 1.05f puede subir el escalón de 1.0 unidad
+    // Case A: with stepHeight = 1.05f it can climb the 1.0-unit step
     {
         CharacterController controller;
         controller.stepHeight = 1.05f;
@@ -133,13 +133,13 @@ TEST_CASE("character: step-up sube escalon de 1 bloque con stepHeight 1.0 pero n
             feet = stepCharacter(controller, feet, kDt, isSolid);
         }
 
-        // Debe haber subido a la cima del bloque y=1 (cara superior en y=2.0)
+        // Should have stepped onto the top of block y=1 (top face at y=2.0)
         CHECK(feet.y == doctest::Approx(2.0f + kSkin));
         CHECK(feet.z < 0.0f);
         CHECK(controller.grounded);
     }
 
-    // Caso B: con stepHeight = 0.6f (default) no puede subir el escalón de 1.0 unidad
+    // Case B: with stepHeight = 0.6f (default) it cannot climb the 1.0-unit step
     {
         CharacterController controller;
         controller.stepHeight = 0.6f;
@@ -151,50 +151,50 @@ TEST_CASE("character: step-up sube escalon de 1 bloque con stepHeight 1.0 pero n
             feet = stepCharacter(controller, feet, kDt, isSolid);
         }
 
-        // Queda bloqueado frente al escalón sobre el suelo original
+        // Remains blocked in front of the step on the original floor
         CHECK(feet.y == doctest::Approx(1.0f + kSkin));
         CHECK(feet.z > 0.0f);
     }
 }
 
-TEST_CASE("character: modo Fly no tiene gravedad, moveUp sube y frena con colision") {
+TEST_CASE("character: Fly mode has no gravity, moveUp ascends and stops on collision") {
     constexpr float kSkin = 1e-4f;
     constexpr float kDt = 1.0f / 60.0f;
 
-    // Techo en y = 15
+    // Ceiling at y = 15
     auto isSolid = [](const glm::ivec3& p) { return p.y >= 15; };
 
     CharacterController controller;
     controller.setMode(CharacterMode::Fly);
     glm::vec3 feet(0.0f, 10.0f, 0.0f);
 
-    // 1. Sin input en el aire no cae
+    // 1. Without input in mid-air it does not fall
     for (int i = 0; i < 60; ++i) {
         feet = stepCharacter(controller, feet, kDt, isSolid);
     }
     CHECK(feet.y == doctest::Approx(10.0f));
     CHECK(controller.velocity == glm::vec3(0.0f));
 
-    // 2. moveUp acelera verticalmente hacia arriba
+    // 2. moveUp accelerates vertically upward
     controller.input.moveUp = 1.0f;
     for (int i = 0; i < 120; ++i) {
         feet = stepCharacter(controller, feet, kDt, isSolid);
     }
 
-    // Altura máxima limitada por el techo en y = 15
-    // Caja tiene altura 2 * halfExtents.y (1.8m), la cima toca 15.0 - skin
+    // Maximum height limited by ceiling at y = 15
+    // Box height is 2 * halfExtents.y (1.8m), top touches 15.0 - skin
     const float expectedMaxFeetY = 15.0f - kSkin - 2.0f * controller.halfExtents.y;
     CHECK(feet.y == doctest::Approx(expectedMaxFeetY));
     CHECK(controller.velocity.y == doctest::Approx(0.0f));
 }
 
-TEST_CASE("character: toggleMode, enabled = false y dt = 0") {
+TEST_CASE("character: toggleMode, enabled = false, and dt = 0") {
     auto isSolid = [](const glm::ivec3&) { return false; };
 
     CharacterController controller;
     controller.velocity = glm::vec3(0.0f, -10.0f, 0.0f);
 
-    // Al alternar a Fly, velocity.y se resetea a 0
+    // When toggling to Fly, velocity.y resets to 0
     controller.toggleMode();
     CHECK(controller.mode == CharacterMode::Fly);
     CHECK(controller.velocity.y == doctest::Approx(0.0f));
@@ -202,20 +202,20 @@ TEST_CASE("character: toggleMode, enabled = false y dt = 0") {
     controller.toggleMode();
     CHECK(controller.mode == CharacterMode::Walk);
 
-    // enabled = false no mueve la entidad
+    // enabled = false does not move the entity
     controller.enabled = false;
     controller.input.moveForward = 1.0f;
     const glm::vec3 originalFeet(1.0f, 2.0f, 3.0f);
     glm::vec3 feet = stepCharacter(controller, originalFeet, 0.1f, isSolid);
     CHECK(feet == originalFeet);
 
-    // dt = 0 no mueve la entidad
+    // dt = 0 does not move the entity
     controller.enabled = true;
     feet = stepCharacter(controller, originalFeet, 0.0f, isSolid);
     CHECK(feet == originalFeet);
 }
 
-TEST_CASE("character: determinismo en dos corridas de 300 pasos") {
+TEST_CASE("character: determinism across two 300-step runs") {
     auto isSolid = [](const glm::ivec3& p) { return p.y <= 0 || (p.y == 1 && p.z <= -2); };
 
     auto simulateRun = [&](glm::vec3& outFeet, CharacterController& outController) {
@@ -254,22 +254,22 @@ TEST_CASE("character: determinismo en dos corridas de 300 pasos") {
     CHECK(ctrlA.grounded == ctrlB.grounded);
 }
 
-TEST_CASE("character: sistemas ECS addCharacterSystem y addCharacterCameraSystem") {
+TEST_CASE("character: ECS systems addCharacterSystem and addCharacterCameraSystem") {
     World world;
     auto player = world.registry().create();
     world.registry().add<Transform>(player, glm::vec3(0.0f, 10.0f, 0.0f));
     CharacterController ctrl;
     world.registry().add<CharacterController>(player, ctrl);
 
-    // Sistema de física en Fixed
+    // Physics system in Fixed phase
     addCharacterSystem(world, [](const glm::ivec3&) { return false; });
     world.run(SystemPhase::Fixed, 1.0f / 60.0f);
 
     const auto& playerTransform = world.registry().get<Transform>(player);
-    // Debe haber descendido por gravedad
+    // Should have descended due to gravity
     CHECK(playerTransform.position.y < 10.0f);
 
-    // Cámara vinculada al jugador
+    // Camera linked to player
     auto camera = world.registry().create();
     world.registry().add<Transform>(camera);
     world.registry().add<Camera>(camera);
@@ -281,11 +281,11 @@ TEST_CASE("character: sistemas ECS addCharacterSystem y addCharacterCameraSystem
 
     const auto& cameraTransform = world.registry().get<Transform>(camera);
     const auto& currentCtrl = world.registry().get<CharacterController>(player);
-    // Con alpha = 0.0f en Time por defecto, la posición es previousPosition + eyeHeight
+    // With default alpha = 0.0f in Time, position is previousPosition + eyeHeight
     CHECK(cameraTransform.position.y ==
           doctest::Approx(currentCtrl.previousPosition.y + currentCtrl.eyeHeight));
 
-    // Test puro de interpolación characterEyePosition
+    // Pure interpolation test for characterEyePosition
     Transform trFinal{glm::vec3(10.0f, 20.0f, 30.0f)};
     CharacterController ctrlInterpolation;
     ctrlInterpolation.previousPosition = glm::vec3(0.0f, 10.0f, 20.0f);
@@ -297,7 +297,7 @@ TEST_CASE("character: sistemas ECS addCharacterSystem y addCharacterCameraSystem
     CHECK(eyeHalf.z == doctest::Approx(25.0f));
 }
 
-TEST_CASE("character: deshabilitado actualiza previousPosition al mover Transform a mano") {
+TEST_CASE("character: disabled controller updates previousPosition when Transform is moved manually") {
     World world;
     auto player = world.registry().create();
     world.registry().add<Transform>(player, glm::vec3(0.0f, 0.0f, 0.0f));
@@ -308,7 +308,7 @@ TEST_CASE("character: deshabilitado actualiza previousPosition al mover Transfor
 
     addCharacterSystem(world, [](const glm::ivec3&) { return false; });
 
-    // Teletransportar / mover a mano el transform mientras está deshabilitado
+    // Teleport / manually move transform while disabled
     const glm::vec3 teleportPos(15.0f, 25.0f, 35.0f);
     world.registry().get<Transform>(player).position = teleportPos;
 
@@ -321,7 +321,7 @@ TEST_CASE("character: deshabilitado actualiza previousPosition al mover Transfor
     CHECK(updatedTransform.position == teleportPos);
     CHECK(updatedCtrl.previousPosition == teleportPos);
 
-    // También probando directamente stepCharacter
+    // Also testing stepCharacter directly
     CharacterController directCtrl;
     directCtrl.enabled = false;
     directCtrl.previousPosition = glm::vec3(0.0f);

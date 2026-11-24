@@ -15,7 +15,7 @@ using sandbox::Biome;
 using sandbox::SandboxTerrain;
 using sandbox::TerrainSettings;
 
-// Solo generación (CPU): sin ventana ni contexto OpenGL.
+// Generation only (CPU): no window or OpenGL context.
 
 namespace {
     TerrainSettings withSeed(std::uint32_t seed, bool caves = true) {
@@ -35,7 +35,7 @@ namespace {
             return chunk;
         }
 
-        // Mundo de columnas cx, cz en [-r, r] con todos sus chunks verticales, cargado en el orden indicado
+        // World of columns cx, cz in [-r, r] with all vertical chunks, loaded in the specified order
         std::unique_ptr<VoxelWorld> world(int r, bool reverse = false, TerrainSettings settings = {}) const {
             auto w = std::make_unique<VoxelWorld>(registry, std::make_unique<SandboxTerrain>(b, settings));
             for (int i = -r; i <= r; i++)
@@ -48,7 +48,7 @@ namespace {
     };
 }
 
-TEST_CASE("Terreno: determinista, distinto entre chunks y según la semilla") {
+TEST_CASE("Terrain: deterministic, distinct across chunks and by seed") {
     Fixture f;
     for (const ChunkCoord& c : {ChunkCoord{0, 1, 0}, ChunkCoord{3, 0, -2}, ChunkCoord{-7, 2, 11}}) {
         CAPTURE(c.x);
@@ -58,14 +58,14 @@ TEST_CASE("Terreno: determinista, distinto entre chunks y según la semilla") {
     }
     CHECK(f.generate({0, 1, 0}).blocks() != f.generate({1, 1, 0}).blocks());
     CHECK(f.generate({0, 1, 0}, withSeed(1)).blocks() != f.generate({0, 1, 0}, withSeed(2)).blocks());
-    // La altura ahora sí depende de la semilla (ruido)
+    // Height now depends on the seed (noise)
     const SandboxTerrain a(f.b, withSeed(1)), b(f.b, withSeed(2));
     int differ = 0;
     for (int x = 0; x < 64; x += 4) differ += a.surfaceHeight(x, 0) != b.surfaceHeight(x, 0);
     CHECK(differ > 8);
 }
 
-TEST_CASE("Terreno: debajo del mundo es roca; arriba del mundo no hay nada") {
+TEST_CASE("Terrain: below the world is stone; above the world is empty") {
     Fixture f;
     const ChunkData below = f.generate({0, -1, 0});
     for (BlockId id : below.blocks()) CHECK(id == f.b.stone);
@@ -75,7 +75,7 @@ TEST_CASE("Terreno: debajo del mundo es roca; arriba del mundo no hay nada") {
     }
 }
 
-TEST_CASE("Terreno: alturas en rango y sin repetirse como las olas de antes") {
+TEST_CASE("Terrain: heights within range and without repeating like previous waves") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     int minH = 1000, maxH = -1;
@@ -89,11 +89,11 @@ TEST_CASE("Terreno: alturas en rango y sin repetirse como las olas de antes") {
         }
     CAPTURE(minH);
     CAPTURE(maxH);
-    CHECK(minH < SandboxTerrain::kWaterLevel);      // Hay mar
-    CHECK(maxH > SandboxTerrain::kWaterLevel + 20); // Hay montañas
+    CHECK(minH < SandboxTerrain::kWaterLevel);      // Has sea
+    CHECK(maxH > SandboxTerrain::kWaterLevel + 20); // Has mountains
 }
 
-TEST_CASE("Terreno: aparecen todos los biomas en un área grande") {
+TEST_CASE("Terrain: all biomes appear across a large area") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     std::array<int, 4> counts{};
@@ -107,32 +107,32 @@ TEST_CASE("Terreno: aparecen todos los biomas en un área grande") {
     for (int i = 0; i < 4; i++) {
         CAPTURE(names[i]);
         CAPTURE(counts[i]);
-        CHECK(counts[i] > total / 50); // Cada uno > 2 %
+        CHECK(counts[i] > total / 50); // Each > 2%
     }
-    CHECK(counts[static_cast<int>(Biome::Plains)] > total / 5); // Las llanuras dominan
+    CHECK(counts[static_cast<int>(Biome::Plains)] > total / 5); // Plains dominate
 }
 
-TEST_CASE("Terreno: reglas de bloques en un mundo de 5×5 columnas") {
+TEST_CASE("Terrain: block rules in a 5x5 column world") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     const auto world = f.world(2);
     for (int x = -32; x < 48; x++) {
         for (int z = -32; z < 48; z++) {
-            CHECK(world->getBlock(x, 0, z) == f.b.stone); // Las cuevas nunca rompen el piso
+            CHECK(world->getBlock(x, 0, z) == f.b.stone); // Caves never break the floor
             const int h = terrain.surfaceHeight(x, z);
             for (int y = 1; y < SandboxTerrain::kWorldHeight; y++) {
                 const BlockId id = world->getBlock(x, y, z);
                 if (id == f.b.water) {
-                    CHECK(y <= SandboxTerrain::kWaterLevel); // El agua nunca supera el nivel del mar
-                    CHECK(y > h);                            // y solo está sobre la superficie
+                    CHECK(y <= SandboxTerrain::kWaterLevel); // Water never exceeds sea level
+                    CHECK(y > h);                            // and is only above the surface
                 }
-                if (y == h) CHECK(id != kAir); // La superficie nunca se hunde en una cueva
+                if (y == h) CHECK(id != kAir); // Surface never sinks into a cave
             }
         }
     }
 }
 
-TEST_CASE("Terreno: hay cuevas bajo tierra, y apagadas no hay") {
+TEST_CASE("Terrain: caves exist underground, and none when disabled") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     long underground = 0, carved = 0;
@@ -146,15 +146,15 @@ TEST_CASE("Terreno: hay cuevas bajo tierra, y apagadas no hay") {
         }
     CAPTURE(carved);
     CAPTURE(underground);
-    CHECK(carved > underground / 200); // > 0.5 %
-    CHECK(carved < underground / 5);   // Pero el subsuelo sigue siendo mayormente roca
+    CHECK(carved > underground / 200); // > 0.5%
+    CHECK(carved < underground / 5);   // But underground remains mostly stone
 
     const SandboxTerrain noCaves(f.b, withSeed(SandboxTerrain::kDefaultSeed, false));
     for (int x = 0; x < 32; x++)
         for (int y = 1; y < 30; y++) CHECK_FALSE(noCaves.isCave(x, y, 0, 50));
 }
 
-TEST_CASE("Terreno: la decoración genera árboles, rosas y flores en 1–3 % del pasto (regresión #5)") {
+TEST_CASE("Terrain: decoration generates trees, roses, and flowers on 1-3% of grass (regression #5)") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     const auto world = f.world(5);
@@ -165,7 +165,7 @@ TEST_CASE("Terreno: la decoración genera árboles, rosas y flores en 1–3 % de
             if (world->getBlock(x, h, z) != f.b.grass) continue;
             grassColumns++;
             const BlockId above = world->getBlock(x, h + 1, z);
-            trees += above == f.b.log; // Tronco sobre pasto = árbol
+            trees += above == f.b.log; // Log on grass = tree
             roses += above == f.b.rose;
             flowers += above == f.b.flower;
             for (int y = h + 1; y < h + 9; y++) {
@@ -188,18 +188,18 @@ TEST_CASE("Terreno: la decoración genera árboles, rosas y flores en 1–3 % de
     }
 }
 
-TEST_CASE("Terreno: coordenadas lejanas no rompen la generación (sin overflow)") {
+TEST_CASE("Terrain: distant coordinates do not break generation (no overflow)") {
     Fixture f;
     const ChunkData far = f.generate({100000, 0, -100000});
     CHECK(f.registry.isSolid(far.get(0, 0, 0)));
 }
 
-TEST_CASE("Terreno: los árboles cruzan bordes de chunk enteros (KI#6)") {
+TEST_CASE("Terrain: trees cross chunk borders intact (KI#6)") {
     Fixture f;
     const SandboxTerrain terrain(f.b);
     const auto world = f.world(3);
     int trees = 0, borderTrees = 0;
-    // Para cada tronco sobre pasto lejos del borde del área cargada: su copa entera está en el mundo
+    // For each trunk on grass away from the loaded area edge: its entire canopy is in the world
     for (int x = -46; x < 62; x++) {
         for (int z = -46; z < 62; z++) {
             const int h = terrain.surfaceHeight(x, z);
@@ -207,11 +207,11 @@ TEST_CASE("Terreno: los árboles cruzan bordes de chunk enteros (KI#6)") {
             trees++;
             int trunk = 0;
             while (world->getBlock(x, h + 1 + trunk, z) == f.b.log) trunk++;
-            const int top = h + trunk; // Último bloque del tronco
+            const int top = h + trunk; // Top block of the trunk
             const int lx = floorMod(x, kChunkSize), lz = floorMod(z, kChunkSize),
                       ly = floorMod(top, kChunkSize);
             if (lx < 2 || lx > 13 || lz < 2 || lz > 13 || ly > 13) borderTrees++;
-            // Capa de arriba de la copa (por encima del tronco): rombo completo de hojas
+            // Top canopy layer (above the trunk): full diamond of leaves
             for (int dx = -2; dx <= 2; dx++)
                 for (int dz = -2; dz <= 2; dz++) {
                     if (std::abs(dx) + std::abs(dz) >= 4) continue;
@@ -224,19 +224,19 @@ TEST_CASE("Terreno: los árboles cruzan bordes de chunk enteros (KI#6)") {
     }
     CAPTURE(trees);
     CHECK(trees > 20);
-    CHECK(borderTrees > 5); // Hay árboles que tocan otro chunk (al costado o arriba)
+    CHECK(borderTrees > 5); // There are trees touching another chunk (sideways or above)
 }
 
-TEST_CASE("Terreno: el mundo es igual sin importar el orden de carga") {
+TEST_CASE("Terrain: world is identical regardless of load order") {
     Fixture f;
     const auto a = f.world(2, false);
     const auto b = f.world(2, true);
     for (const ChunkCoord& c : a->loadedChunks()) CHECK(a->chunk(c)->blocks() == b->chunk(c)->blocks());
 }
 
-TEST_CASE("Terreno: conteo de triangulos LOD 1 y LOD 2 (seed 1337, 9 columnas)") {
+TEST_CASE("Terrain: LOD 1 and LOD 2 triangle counts (seed 1337, 9 columns)") {
     Fixture f;
-    // Cargar radio 2 para que las 9 columnas centrales (-1..1 x -1..1) tengan vecinos completos
+    // Load radius 2 so the 9 central columns (-1..1 x -1..1) have complete neighbors
     const auto world = f.world(2, false, withSeed(SandboxTerrain::kDefaultSeed));
 
     ChunkMeshOptions options;
@@ -261,11 +261,10 @@ TEST_CASE("Terreno: conteo de triangulos LOD 1 y LOD 2 (seed 1337, 9 columnas)")
         }
     }
 
-    MESSAGE("SandboxTerrain seed 1337 (9 columnas): LOD 1 = ", trisLod1, " tris, LOD 2 = ", trisLod2,
-            " tris");
-    // Línea base en main (seed 1337, 9 columnas): LOD 1 = 2934 tris, LOD 2 = 730 tris.
-    // LOD 1 queda dentro de +10 % (<= 3227); en LOD 2 (f = 4) los desniveles de 1..3 bloques dentro
-    // de cada banda añaden ~90 quads laterales obligatorios para evitar grietas (<= 950).
+    MESSAGE("SandboxTerrain seed 1337 (9 columns): LOD 1 = ", trisLod1, " tris, LOD 2 = ", trisLod2, " tris");
+    // Baseline on main (seed 1337, 9 columns): LOD 1 = 2934 tris, LOD 2 = 730 tris.
+    // LOD 1 stays within +10% (<= 3227); at LOD 2 (f = 4), 1..3 block height steps within
+    // each band add ~90 required side quads to prevent cracks (<= 950).
     CHECK(trisLod1 > 0);
     CHECK(trisLod1 <= 3227);
     CHECK(trisLod2 > 0);

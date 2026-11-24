@@ -11,7 +11,7 @@ using namespace mge;
 namespace {
     const NoiseType kTypes[] = {NoiseType::Value, NoiseType::Perlin, NoiseType::Simplex};
 
-    // Puntos pseudoaleatorios en [-100, 100] (reproducibles)
+    // Pseudorandom points in [-100, 100] (reproducible)
     std::vector<glm::vec3> samplePoints(int count) {
         Pcg32 rng(99);
         std::vector<glm::vec3> points;
@@ -23,7 +23,7 @@ namespace {
     }
 }
 
-TEST_CASE("Determinismo: misma semilla mismos valores, otra semilla otros") {
+TEST_CASE("Determinism: same seed produces same values, different seed produces different values") {
     Noise a(42), b(42), c(43);
     int different = 0;
     for (const glm::vec3& p : samplePoints(200)) {
@@ -34,10 +34,10 @@ TEST_CASE("Determinismo: misma semilla mismos valores, otra semilla otros") {
         }
         CHECK(a.worley(p.x, p.y).f1 == b.worley(p.x, p.y).f1);
     }
-    CHECK(different > 500); // Casi todas difieren
+    CHECK(different > 500); // Almost all differ
 }
 
-TEST_CASE("Rango [-1, 1] y media cercana a 0 (2D y 3D)") {
+TEST_CASE("Range [-1, 1] and mean near 0 (2D and 3D)") {
     Noise noise(7);
     const auto points = samplePoints(20000);
     for (NoiseType type : kTypes) {
@@ -58,11 +58,11 @@ TEST_CASE("Rango [-1, 1] y media cercana a 0 (2D y 3D)") {
         }
         CHECK(std::abs(sum2 / points.size()) < 0.05);
         CHECK(std::abs(sum3 / points.size()) < 0.05);
-        CHECK(maxV - minV > 1.0f); // Usa buena parte del rango (no está "aplastado")
+        CHECK(maxV - minV > 1.0f); // Uses a good portion of the range (not "squashed")
     }
 }
 
-TEST_CASE("Perlin vale 0 en los puntos enteros") {
+TEST_CASE("Perlin evaluates to 0 at integer coordinates") {
     Noise noise(3);
     for (int x = -5; x <= 5; x++) {
         for (int y = -5; y <= 5; y++) {
@@ -72,38 +72,38 @@ TEST_CASE("Perlin vale 0 en los puntos enteros") {
     }
 }
 
-TEST_CASE("Continuidad: pasos pequeños dan cambios pequeños") {
+TEST_CASE("Continuity: small steps produce small changes") {
     Noise noise(11);
     const float step = 1e-3f;
     for (const glm::vec3& p : samplePoints(2000)) {
         for (NoiseType type : kTypes) {
             const float a = noise.sample(type, p.x, p.y);
             const float b = noise.sample(type, p.x + step, p.y + step);
-            CHECK(std::abs(a - b) < 0.02f); // Pendiente acotada (Lipschitz)
+            CHECK(std::abs(a - b) < 0.02f); // Bounded slope (Lipschitz)
         }
     }
 }
 
-TEST_CASE("Worley: f1 <= f2, distancias acotadas y 0 cerca de un punto característico") {
+TEST_CASE("Worley: f1 <= f2, bounded distances, and 0 near a feature point") {
     Noise noise(5);
     for (const glm::vec3& p : samplePoints(2000)) {
         WorleyResult r2 = noise.worley(p.x, p.y);
         WorleyResult r3 = noise.worley(p.x, p.y, p.z);
         CHECK(r2.f1 <= r2.f2);
-        CHECK(r2.f1 < 1.5f); // Siempre hay un punto en la celda propia: distancia < √2
+        CHECK(r2.f1 < 1.5f); // Always a point in the current cell: distance < √2
         CHECK(r3.f1 <= r3.f2);
         CHECK(r3.f1 < 1.8f); // < √3
     }
 }
 
-TEST_CASE("fbm, ridged y billow respetan sus rangos; más octavas agregan detalle") {
+TEST_CASE("fbm, ridged, and billow stay within their ranges; more octaves add detail") {
     Noise noise(21);
     FractalSettings one;
     one.octaves = 1;
     FractalSettings many;
     many.octaves = 6;
-    // Detalle relativo: variación a escala fina dividida por la variación a escala gruesa.
-    // fbm normaliza por la suma de amplitudes, así que hay que comparar proporciones, no valores.
+    // Relative detail: fine-scale variation divided by coarse-scale variation.
+    // fbm normalizes by the sum of amplitudes, so we must compare ratios, not raw values.
     double fineOne = 0.0, coarseOne = 0.0, fineMany = 0.0, coarseMany = 0.0;
     for (const glm::vec3& p : samplePoints(5000)) {
         const float f = noise.fbm(NoiseType::Simplex, p.x, p.y, many);
@@ -128,14 +128,14 @@ TEST_CASE("fbm, ridged y billow respetan sus rangos; más octavas agregan detall
     }
     CHECK(fineMany / coarseMany > fineOne / coarseOne);
 
-    // Una sola octava es exactamente el ruido base escalado por la frecuencia
+    // A single octave is exactly the base noise scaled by frequency
     FractalSettings scaled;
     scaled.octaves = 1;
     scaled.frequency = 3.0f;
     CHECK(noise.fbm(NoiseType::Perlin, 1.3f, -2.7f, scaled) == noise.perlin(1.3f * 3.0f, -2.7f * 3.0f));
 }
 
-TEST_CASE("domainWarp: determinista y distinto del fbm sin deformar") {
+TEST_CASE("domainWarp: deterministic and distinct from unwarped fbm") {
     Noise noise(8);
     int different = 0;
     for (const glm::vec3& p : samplePoints(500)) {
@@ -149,7 +149,7 @@ TEST_CASE("domainWarp: determinista y distinto del fbm sin deformar") {
     CHECK(different > 450);
 }
 
-TEST_CASE("El muestreo por lotes da lo mismo que punto a punto") {
+TEST_CASE("Batch sampling matches point-by-point sampling") {
     Noise noise(13);
     const auto points = samplePoints(256);
     std::vector<float> xs, ys, zs, out2(points.size()), out3(points.size());

@@ -48,7 +48,7 @@ namespace {
 
 } // namespace
 
-TEST_CASE("wizard: navegación y máquina de estados del modelo") {
+TEST_CASE("wizard: model navigation and state machine") {
     WizardModel model;
     CHECK(model.currentStep() == WizardStep::Language);
     CHECK(model.canAdvance());
@@ -91,7 +91,7 @@ TEST_CASE("wizard: navegación y máquina de estados del modelo") {
     CHECK(model.isFinished());
 }
 
-TEST_CASE("wizard: modo headless omite pregunta de audio") {
+TEST_CASE("wizard: headless mode skips audio prompt") {
     WizardModel model;
     model.nextStep();
     model.setName("sim_server");
@@ -102,16 +102,16 @@ TEST_CASE("wizard: modo headless omite pregunta de audio") {
     CHECK(model.answers().templateString() == "headless");
     CHECK_FALSE(model.answers().audio);
 
-    // Al avanzar desde Template en modo Headless, salta Audio y va directo a License
+    // Advancing from Template in Headless mode skips Audio and goes straight to License
     model.nextStep();
     CHECK(model.currentStep() == WizardStep::License);
 
-    // Al retroceder desde License en modo Headless, regresa a Template
+    // Going back from License in Headless mode returns to Template
     model.prevStep();
     CHECK(model.currentStep() == WizardStep::Template);
 }
 
-TEST_CASE("wizard: selección cíclica de plantillas y licencias") {
+TEST_CASE("wizard: cyclic selection of templates and licenses") {
     WizardModel model;
     CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
 
@@ -139,7 +139,7 @@ TEST_CASE("wizard: selección cíclica de plantillas y licencias") {
     CHECK(model.answers().license == LicenseChoice::None);
 }
 
-TEST_CASE("wizard: mutadores y cancelación") {
+TEST_CASE("wizard: mutators and cancellation") {
     WizardModel model;
     model.appendNameChar('m');
     model.appendNameChar('y');
@@ -167,9 +167,9 @@ TEST_CASE("wizard: mutadores y cancelación") {
     CHECK(model.isCancelled());
 }
 
-TEST_CASE("wizard: filtrado de plantillas según el lenguaje") {
+TEST_CASE("wizard: template filtering by language") {
     WizardModel model;
-    // C solo soporta 3D y Headless
+    // C only supports 3D and Headless
     model.setLanguage(LanguageChoice::C);
     CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
     model.selectNextTemplate();
@@ -179,7 +179,7 @@ TEST_CASE("wizard: filtrado de plantillas según el lenguaje") {
     model.selectPrevTemplate();
     CHECK(model.answers().templateChoice == TemplateChoice::Headless);
 
-    // Python solo soporta 3D y 2D
+    // Python only supports 3D and 2D
     model.setLanguage(LanguageChoice::Python);
     CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
     model.selectNextTemplate();
@@ -189,7 +189,7 @@ TEST_CASE("wizard: filtrado de plantillas según el lenguaje") {
     model.selectPrevTemplate();
     CHECK(model.answers().templateChoice == TemplateChoice::TwoD);
 
-    // Cpp soporta 3D, 2D y Headless
+    // Cpp supports 3D, 2D, and Headless
     model.setLanguage(LanguageChoice::Cpp);
     CHECK(model.answers().templateChoice == TemplateChoice::TwoD);
     model.selectNextTemplate();
@@ -198,11 +198,11 @@ TEST_CASE("wizard: filtrado de plantillas según el lenguaje") {
     CHECK(model.answers().templateChoice == TemplateChoice::ThreeD);
 }
 
-TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
+TEST_CASE("wizard: file tree snapshot tests with golden files") {
     std::filesystem::path tmplBase(MGE_SOURCE_TEMPLATES_DIR);
     REQUIRE(std::filesystem::is_directory(tmplBase));
 
-    // 1. 3D por defecto (audio: on, license: MIT, git: on, vscode: on)
+    // 1. 3D default (audio: on, license: MIT, git: on, vscode: on)
     {
         WizardModel model;
         model.setName("space_shooter");
@@ -217,7 +217,7 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         verifyGolden("3d_default", formatSnapshot(files));
     }
 
-    // 2. 2D por defecto (audio: on, license: MIT, git: on, vscode: on)
+    // 2. 2D default (audio: on, license: MIT, git: on, vscode: on)
     {
         WizardModel model;
         model.setName("arcade_plane");
@@ -232,7 +232,7 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         verifyGolden("2d_default", formatSnapshot(files));
     }
 
-    // 3. Headless por defecto (audio: off, license: MIT, git: on, vscode: on)
+    // 3. Headless default (audio: off, license: MIT, git: on, vscode: on)
     {
         WizardModel model;
         model.setName("sim_core");
@@ -247,7 +247,7 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         verifyGolden("headless_default", formatSnapshot(files));
     }
 
-    // 4. 3D sin audio, licencia Apache, sin git ni vscode
+    // 4. 3D without audio, Apache license, no git or vscode
     {
         WizardModel model;
         model.setName("quiet_box");
@@ -262,7 +262,7 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
         verifyGolden("3d_no_audio", formatSnapshot(files));
     }
 
-    // 5. 2D sin git, sin vscode, sin licencia
+    // 5. 2D without git, vscode, or license
     {
         WizardModel model;
         model.setName("plain_2d");
@@ -342,7 +342,7 @@ TEST_CASE("wizard: snapshot tests del árbol de archivos con golden files") {
     }
 }
 
-TEST_CASE("wizard: EOF cancela el asistente de inmediato sin crear archivos") {
+TEST_CASE("wizard: EOF cancels the wizard immediately without creating files") {
     WizardModel model;
     std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_eof_cancel";
     std::filesystem::remove_all(tempProjectDir);
@@ -356,13 +356,13 @@ TEST_CASE("wizard: EOF cancela el asistente de inmediato sin crear archivos") {
     CHECK_FALSE(std::filesystem::exists(tempProjectDir));
 }
 
-TEST_CASE("wizard: EOF a mitad del flujo cancela el asistente sin crear archivos") {
+TEST_CASE("wizard: EOF mid-flow cancels the wizard without creating files") {
     WizardModel model;
     std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_eof_midway";
     std::filesystem::remove_all(tempProjectDir);
     model.setTargetDir(tempProjectDir);
 
-    // Secuencia: selecciona lenguaje (Enter), escribe 'j', 'u', 'e', 'g', 'o', Enter, luego EOF
+    // Sequence: select language (Enter), type 'j', 'u', 'e', 'g', 'o', Enter, then EOF
     std::vector<std::pair<Key, char>> script = {{Key::Enter, '\n'}, {Key::Char, 'j'}, {Key::Char, 'u'},
                                                 {Key::Char, 'e'},   {Key::Char, 'g'}, {Key::Char, 'o'},
                                                 {Key::Enter, '\n'}, {Key::Eof, 0}};
@@ -382,23 +382,23 @@ TEST_CASE("wizard: EOF a mitad del flujo cancela el asistente sin crear archivos
     CHECK_FALSE(std::filesystem::exists(tempProjectDir));
 }
 
-TEST_CASE("wizard: ESC solitario no bloquea ni cancela el asistente") {
+TEST_CASE("wizard: standalone ESC does not block or cancel the wizard") {
     WizardModel model;
     std::filesystem::path tempProjectDir = std::filesystem::current_path() / "test_wizard_esc_continue";
     std::filesystem::remove_all(tempProjectDir);
     model.setTargetDir(tempProjectDir);
 
     std::vector<std::pair<Key, char>> script = {
-        {Key::Escape, 0},   // ESC solitario ignorado
-        {Key::Enter, '\n'}, // Lenguaje C++ por defecto
+        {Key::Escape, 0},   // Standalone ESC ignored
+        {Key::Enter, '\n'}, // Default C++ language
         {Key::Char, 'm'},   {Key::Char, 'i'},   {Key::Char, 'n'},
-        {Key::Char, 'i'},   {Key::Enter, '\n'}, {Key::Escape, 0}, // ESC solitario en selección de plantilla
-        {Key::Enter, '\n'},                                       // Plantilla 3D por defecto
-        {Key::Enter, '\n'},                                       // Audio por defecto
-        {Key::Enter, '\n'},                                       // Licencia por defecto
-        {Key::Enter, '\n'},                                       // Git por defecto
-        {Key::Enter, '\n'},                                       // VS Code por defecto
-        {Key::Enter, '\n'}                                        // Confirmación
+        {Key::Char, 'i'},   {Key::Enter, '\n'}, {Key::Escape, 0}, // Standalone ESC during template selection
+        {Key::Enter, '\n'},                                       // Default 3D template
+        {Key::Enter, '\n'},                                       // Default audio
+        {Key::Enter, '\n'},                                       // Default license
+        {Key::Enter, '\n'},                                       // Default git
+        {Key::Enter, '\n'},                                       // Default VS Code
+        {Key::Enter, '\n'}                                        // Confirmation
     };
     size_t keyIndex = 0;
     auto fakeKeySource = [&script, &keyIndex](char& outChar) -> Key {

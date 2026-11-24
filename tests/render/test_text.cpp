@@ -1,4 +1,4 @@
-// Texto y UI 2D: fuentes TTF opcionales (#41, sin GPU) y el lote/renderer 2D (#42).
+// Text and 2D UI: optional TTF fonts (#41, no GPU) and the 2D batch/renderer (#42).
 #include "../gpu/GpuTestContext.h"
 #include "RenderTest.h"
 
@@ -20,7 +20,7 @@ using namespace mge;
 using mge_test::GpuTestContext;
 
 namespace {
-    // Una fuente del sistema para probar (el motor no trae ninguna). MGE_TEST_TTF la fija a mano
+    // A system font for testing (the engine does not bundle one). MGE_TEST_TTF overrides it manually
     std::filesystem::path findSystemTtf() {
         if (const char* env = std::getenv("MGE_TEST_TTF")) return env;
         for (const char* candidate : {"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -39,10 +39,10 @@ namespace {
     };
 }
 
-TEST_CASE("Una TTF del sistema se hornea en un atlas con medidas coherentes") {
+TEST_CASE("System TTF font bakes into an atlas with consistent metrics") {
     const std::filesystem::path path = findSystemTtf();
     if (path.empty()) {
-        MESSAGE("No hay una fuente TTF conocida en el sistema: se saltea (MGE_TEST_TTF=ruta para fijarla)");
+        MESSAGE("No known system TTF font found: skipping (set MGE_TEST_TTF=<path> to specify one)");
         return;
     }
     const Font font = loadTtfFontFile(path, 24.0f);
@@ -56,16 +56,16 @@ TEST_CASE("Una TTF del sistema se hornea en un atlas con medidas coherentes") {
     const Glyph& space = font.glyph(U' ');
     CHECK(m.size.x > 0);
     CHECK(m.size.y > 10);
-    CHECK(space.size.x == 0); // stb no reserva píxeles para el espacio
+    CHECK(space.size.x == 0); // stb does not allocate pixels for space
     CHECK(space.advance > 0.0f);
-    CHECK(m.advance > dot.advance); // Proporcional, no monoespaciada
-    // La 'M' cuelga de la línea base: su parte de arriba queda por debajo del borde superior de la línea
+    CHECK(m.advance > dot.advance); // Proportional, not monospace
+    // 'M' sits on the baseline: its top edge is below the top of the line
     CHECK(m.offset.y >= 0.0f);
     CHECK(m.offset.y + float(m.size.y) <= font.lineHeight() + 1.0f);
-    // La 'g' baja de la línea base más que la 'M'
+    // 'g' descends below the baseline further than 'M'
     CHECK(font.glyph(U'g').offset.y + float(font.glyph(U'g').size.y) > m.offset.y + float(m.size.y));
 
-    // Hay cobertura en el atlas donde está la 'M'
+    // There is coverage in the atlas where 'M' is placed
     float alpha = 0.0f;
     for (int y = 0; y < m.size.y; y++)
         for (int x = 0; x < m.size.x; x++) alpha += font.atlas().get(m.atlasPos.x + x, m.atlasPos.y + y).a;
@@ -74,7 +74,7 @@ TEST_CASE("Una TTF del sistema se hornea en un atlas con medidas coherentes") {
     CHECK(font.measure("MM").x == doctest::Approx(2.0f * m.advance));
 }
 
-TEST_CASE("Una TTF inválida o inexistente da una fuente inválida (y un error en el log)") {
+TEST_CASE("Invalid or missing TTF returns an invalid font (and logs an error)") {
     QuietLog quiet;
     CHECK_FALSE(loadTtfFont({}, 16.0f).valid());
     CHECK_FALSE(loadTtfFont(std::vector<std::uint8_t>(64, 0xAB), 16.0f).valid());
@@ -82,9 +82,9 @@ TEST_CASE("Una TTF inválida o inexistente da una fuente inválida (y un error e
     CHECK_FALSE(loadTtfFontFile("no/existe/fuente.ttf", 16.0f).valid());
 }
 
-// --- Batch2D (#42): lote 2D armado en la CPU ---
+// --- Batch2D (#42): CPU-side 2D batch builder ---
 
-TEST_CASE("Batch2D: cada primitiva son quads de 6 vértices en píxeles (origen arriba a la izquierda)") {
+TEST_CASE("Batch2D: each primitive emits 6-vertex quads in pixel space (top-left origin)") {
     Batch2D batch;
     batch.rect({10, 20}, {30, 40}, {1, 0, 0, 1});
     CHECK(batch.quadCount() == 1);
@@ -94,16 +94,16 @@ TEST_CASE("Batch2D: cada primitiva son quads de 6 vértices en píxeles (origen 
         lo = glm::min(lo, glm::vec2(v.position));
         hi = glm::max(hi, glm::vec2(v.position));
         CHECK(v.color == glm::vec4(1, 0, 0, 1));
-        CHECK(v.uv.x == doctest::Approx(Batch2D::kNoTexture)); // Sin textura: blanco en el shader
+        CHECK(v.uv.x == doctest::Approx(Batch2D::kNoTexture)); // Untextured: white in shader
     }
     CHECK(lo == glm::vec2(10, 20));
     CHECK(hi == glm::vec2(40, 60));
 
     batch.rectOutline({0, 0}, {10, 10}, {1, 1, 1, 1}, 2.0f);
-    CHECK(batch.quadCount() == 5); // 4 lados
+    CHECK(batch.quadCount() == 5); // 4 sides
     batch.line({0, 0}, {10, 0}, {1, 1, 1, 1}, 2.0f);
     CHECK(batch.quadCount() == 6);
-    batch.rect({0, 0}, {0, 10}, {1, 1, 1, 1}); // Vacío: nada
+    batch.rect({0, 0}, {0, 10}, {1, 1, 1, 1}); // Empty: nothing
     batch.line({5, 5}, {5, 5}, {1, 1, 1, 1});
     CHECK(batch.quadCount() == 6);
     CHECK(batch.commands().size() == 1);
@@ -112,20 +112,20 @@ TEST_CASE("Batch2D: cada primitiva son quads de 6 vértices en píxeles (origen 
     CHECK(batch.commands().empty());
 }
 
-TEST_CASE("Batch2D: texto = un quad por glifo visible, con el color pedido y sin quads para espacios") {
+TEST_CASE("Batch2D: text emits one quad per visible glyph, with requested color and no quads for spaces") {
     const Font font = Font::builtin();
-    const Texture2D atlas; // Solo identifica la textura del lote (no hace falta GPU)
+    const Texture2D atlas; // Only identifies the batch texture (no GPU needed)
     Batch2D batch;
     const glm::vec4 yellow(1.0f, 0.9f, 0.2f, 1.0f);
     const glm::vec2 size = batch.text(font, &atlas, {4, 6}, "FPS: 60", yellow, 2.0f);
     CHECK(size == font.measure("FPS: 60", 2.0f));
-    CHECK(batch.quadCount() == 6);                                        // 7 caracteres, un espacio
-    for (const GpuVertex& v : batch.vertices()) CHECK(v.color == yellow); // KI#19: el color no se pierde
+    CHECK(batch.quadCount() == 6);                                        // 7 characters, one space
+    for (const GpuVertex& v : batch.vertices()) CHECK(v.color == yellow); // KI#19: color is preserved
     REQUIRE(batch.commands().size() == 1);
     CHECK(batch.commands()[0].texture == &atlas);
-    CHECK(batch.commands()[0].nearest); // Fuente de píxeles
+    CHECK(batch.commands()[0].nearest); // Pixel font
 
-    // La 'F' empieza en la posición pedida y mide 8 px × escala
+    // 'F' starts at the requested position and measures 8 px * scale
     glm::vec2 lo(1e9f), hi(-1e9f);
     for (std::size_t i = 0; i < 6; i++) {
         lo = glm::min(lo, glm::vec2(batch.vertices()[i].position));
@@ -137,12 +137,12 @@ TEST_CASE("Batch2D: texto = un quad por glifo visible, con el color pedido y sin
     batch.clear();
     batch.text(font, &atlas, {0, 0}, "a\nb", yellow);
     REQUIRE(batch.quadCount() == 2);
-    CHECK(batch.vertices()[6].position.y >= font.lineHeight()); // La 'b' en la segunda línea
+    CHECK(batch.vertices()[6].position.y >= font.lineHeight()); // 'b' on the second line
 }
 
-TEST_CASE("Batch2D: el texto sale derecho (fila de arriba del glifo = v más alta de Texture2D)") {
-    // KI#18: el texto se veía al revés. Texture2D guarda la imagen invertida (v = 1 arriba), así que el
-    // borde de arriba del quad tiene que muestrear la v mayor
+TEST_CASE("Batch2D: text renders upright (top row of glyph = higher v in Texture2D)") {
+    // KI#18: text used to render upside down. Texture2D stores the image flipped (v = 1 at top), so the
+    // top edge of the quad must sample the higher v
     const Font font = Font::builtin();
     const Texture2D atlas;
     Batch2D batch;
@@ -158,7 +158,7 @@ TEST_CASE("Batch2D: el texto sale derecho (fila de arriba del glifo = v más alt
     }
 }
 
-TEST_CASE("Batch2D: cientos de elementos en pocos draw calls (rects no cortan el lote del texto)") {
+TEST_CASE("Batch2D: hundreds of elements in few draw calls (rects do not break text batch)") {
     const Font font = Font::builtin();
     const Texture2D atlas;
     Batch2D batch;
@@ -166,19 +166,19 @@ TEST_CASE("Batch2D: cientos de elementos en pocos draw calls (rects no cortan el
         batch.rect({float(i % 40) * 10.0f, float(i / 40) * 10.0f}, {8, 8}, {0.2f, 0.4f, 0.8f, 1.0f});
         if (i % 20 == 0) batch.text(font, &atlas, {0, float(i)}, "Linea de texto", {1, 1, 1, 1});
     }
-    CHECK(batch.commands().size() == 1); // Mezclados: un solo lote con la textura de la fuente
+    CHECK(batch.commands().size() == 1); // Interleaved: single batch using the font texture
 
     const Texture2D other;
     batch.image(&other, {0, 0}, {16, 16});
-    CHECK(batch.commands().size() == 2); // Otra textura: otro lote
+    CHECK(batch.commands().size() == 2); // Different texture: new batch
     batch.image(&other, {20, 0}, {16, 16});
     CHECK(batch.commands().size() == 2);
     batch.image(&other, {40, 0}, {16, 16}, {0, 0}, {1, 1}, glm::vec4(1.0f), /*nearest=*/true);
-    CHECK(batch.commands().size() == 3); // Otro filtro
+    CHECK(batch.commands().size() == 3); // Different filter
 }
 
 TEST_CASE(
-    "Batch2D: recortes anidados (intersección) separan lotes y lo totalmente afuera no gasta vértices") {
+    "Batch2D: nested clips (intersection) split batches and fully clipped items emit no vertices") {
     Batch2D batch;
     batch.rect({0, 0}, {5, 5}, {1, 1, 1, 1});
     batch.pushClip({{10, 10}, {100, 50}});
@@ -190,7 +190,7 @@ TEST_CASE(
     CHECK(*batch.commands()[1].clip == Rect2D{{10, 10}, {100, 50}});
     CHECK(*batch.commands()[2].clip == Rect2D{{50, 10}, {60, 30}});
 
-    batch.pushClip({{500, 500}, {10, 10}}); // No toca al anterior: vacío
+    batch.pushClip({{500, 500}, {10, 10}}); // Disjoint from previous: empty
     batch.rect({0, 0}, {5, 5}, {1, 1, 1, 1});
     CHECK(batch.quadCount() == 3);
     batch.popClip();
@@ -198,10 +198,10 @@ TEST_CASE(
     batch.popClip();
     batch.rect({0, 0}, {5, 5}, {1, 1, 1, 1});
     CHECK_FALSE(batch.commands().back().clip.has_value());
-    batch.popClip(); // De más: no se rompe
+    batch.popClip(); // Extra pop: does not crash
 }
 
-// --- Renderer2D (#42): en la GPU ---
+// --- Renderer2D (#42): on the GPU ---
 
 namespace {
     mge_test::Image drawUi(GpuDevice& device, std::uint32_t width, std::uint32_t height, float scale,
@@ -215,7 +215,7 @@ namespace {
             ColorTarget clear;
             clear.texture = target.get();
             clear.clearColor = {0.08f, 0.09f, 0.12f, 1.0f};
-            RenderPass pass = cmd.beginRenderPass(clear); // La "escena" de fondo
+            RenderPass pass = cmd.beginRenderPass(clear); // Background "scene"
         }
         ui.begin(width, height, scale);
         build(ui);
@@ -226,7 +226,7 @@ namespace {
     }
 }
 
-TEST_CASE("Render: UI 2D en píxeles (rects, bordes, líneas, texto 1x/2x y recorte) (#42)") {
+TEST_CASE("Render: pixel-space 2D UI (rects, outlines, lines, 1x/2x text, and clipping) (#42)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     std::uint32_t drawCalls = 0;
@@ -242,19 +242,19 @@ TEST_CASE("Render: UI 2D en píxeles (rects, bordes, líneas, texto 1x/2x y reco
             for (int i = 0; i < 12; i++)
                 ui.rect({90.0f + float(i % 4) * 16.0f, 6.0f + float(i / 4) * 16.0f}, {12, 12},
                         {float(i) / 12.0f, 0.4f, 1.0f - float(i) / 12.0f, 1.0f});
-            ui.pushClip({{40, 80}, {60, 10}}); // Solo una franja del texto
+            ui.pushClip({{40, 80}, {60, 10}}); // Only a horizontal strip of the text
             ui.text({36, 78}, "RECORTADO", {1.0f, 0.4f, 0.4f, 1.0f}, 2.0f);
             ui.popClip();
         },
         &drawCalls);
-    CHECK(drawCalls == 2); // Todo menos el texto recortado en un lote
+    CHECK(drawCalls == 2); // Everything except clipped text in a single batch
 
-    // Esquina de arriba a la izquierda: el borde amarillo está arriba (y = 4), no abajo
+    // Top-left corner: yellow border is at the top (y = 4), not the bottom
     const std::uint8_t* border = image.pixel(30, 4);
     CHECK(border[0] > 200);
     CHECK(border[1] > 150);
     CHECK(border[2] < 100);
-    // Fuera del recorte no hay rojo del texto (y = 95 está debajo de la franja 80..90)
+    // Outside the clip rect there is no red from the text (y = 95 is below the 80..90 strip)
     for (std::uint32_t x = 36; x < 150; x++) CHECK(image.pixel(x, 95)[0] < 150);
 
     const mge_test::GoldenResult result = mge_test::compareWithGolden("ui_batch", image);
@@ -262,7 +262,7 @@ TEST_CASE("Render: UI 2D en píxeles (rects, bordes, líneas, texto 1x/2x y reco
     CHECK(result.passed);
 }
 
-TEST_CASE("Render: la escala (DPI) agranda la UI en píxeles físicos sin moverla del origen (#42)") {
+TEST_CASE("Render: DPI scale enlarges UI in physical pixels without shifting origin (#42)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     const auto build = [](Renderer2D& ui) {
@@ -273,33 +273,33 @@ TEST_CASE("Render: la escala (DPI) agranda la UI en píxeles físicos sin moverl
     const mge_test::Image x2 = drawUi(gpu.device(), 64, 64, 2.0f, build);
     CHECK(x1.pixel(10, 10)[0] > 200);
     CHECK(x1.pixel(15, 15)[0] < 100);
-    CHECK(x2.pixel(20, 20)[0] > 200); // Rect de 4..24 px físicos
+    CHECK(x2.pixel(20, 20)[0] > 200); // Rect from 4..24 physical px
     CHECK(x2.pixel(26, 26)[0] < 100);
     CHECK(x2.pixel(3, 3)[0] < 100);
 }
 
 // --- DebugOverlay (#43) ---
 
-TEST_CASE("DebugOverlay: FPS de los últimos ~0.5 s, promedio, máximo y espera del historial") {
+TEST_CASE("DebugOverlay: FPS over last ~0.5 s, average, max, and wait time from history") {
     DebugOverlay overlay;
     CHECK(overlay.fps() == doctest::Approx(0.0f));
     CHECK(overlay.averageMs() == doctest::Approx(0.0f));
     for (int i = 0; i < 100; i++) overlay.addFrame(10.0f, 4.0f); // 100 FPS
     CHECK(overlay.fps() == doctest::Approx(100.0f));
-    for (int i = 0; i < 30; i++) overlay.addFrame(20.0f); // Los últimos 0.5 s, a 50 FPS
+    for (int i = 0; i < 30; i++) overlay.addFrame(20.0f); // Last 0.5 s at 50 FPS
     CHECK(overlay.fps() == doctest::Approx(50.0f).epsilon(0.05));
     CHECK(overlay.maxMs() == doctest::Approx(20.0f));
     CHECK(overlay.averageMs() == doctest::Approx((100 * 10.0f + 30 * 20.0f) / 130.0f));
     CHECK(overlay.averageWaitMs() == doctest::Approx(100 * 4.0f / 130.0f));
 
-    // Historial circular: solo quedan los últimos kHistory frames
+    // Ring buffer history: only the last kHistory frames remain
     for (std::size_t i = 0; i < DebugOverlay::kHistory; i++) overlay.addFrame(5.0f, 50.0f);
     CHECK(overlay.sampleCount() == DebugOverlay::kHistory);
     CHECK(overlay.maxMs() == doctest::Approx(5.0f));
-    CHECK(overlay.averageWaitMs() == doctest::Approx(5.0f)); // La espera no pasa del frame
+    CHECK(overlay.averageWaitMs() == doctest::Approx(5.0f)); // Wait time is clamped to frame time
 }
 
-TEST_CASE("DebugOverlay: contadores en orden de alta, se actualizan en su lugar y se quitan") {
+TEST_CASE("DebugOverlay: counters preserve insertion order, update in place, and can be removed") {
     DebugOverlay overlay;
     overlay.setCounter("chunks", "10");
     overlay.setCounter("memoria", "3 MB");
@@ -312,7 +312,7 @@ TEST_CASE("DebugOverlay: contadores en orden de alta, se actualizan en su lugar 
     CHECK(overlay.counters()[0].first == "memoria");
 }
 
-TEST_CASE("DebugOverlay: el panel es un lote con una barra por frame del gráfico") {
+TEST_CASE("DebugOverlay: panel is a single batch with one bar per frame in the graph") {
     const Font font = Font::builtin();
     const Texture2D atlas;
     const auto quads = [&](int frames, bool counter) {
@@ -323,14 +323,14 @@ TEST_CASE("DebugOverlay: el panel es un lote con una barra por frame del gráfic
         const glm::vec2 size = overlay.build(batch, font, &atlas, {8, 8});
         CHECK(size.x >= float(DebugOverlay::kHistory));
         CHECK(size.y > DebugOverlay::kGraphHeight + 2 * font.lineHeight());
-        CHECK(batch.commands().size() == 1); // Todo en un draw call
+        CHECK(batch.commands().size() == 1); // Everything in one draw call
         return batch.quadCount();
     };
-    CHECK(quads(61, false) == quads(60, false) + 1); // Una barra más (mismo texto: 63 FPS, 16.0 ms)
-    CHECK(quads(60, true) == quads(60, false) + 9);  // "chunks: 10" = 9 glifos visibles
+    CHECK(quads(61, false) == quads(60, false) + 1); // One more bar (same text: 63 FPS, 16.0 ms)
+    CHECK(quads(60, true) == quads(60, false) + 9);  // "chunks: 10" = 9 visible glyphs
 }
 
-TEST_CASE("DebugOverlay: setProfile copia las entradas e indenta en build()") {
+TEST_CASE("DebugOverlay: setProfile copies entries and indents them in build()") {
     Profiler profiler;
     profiler.beginFrame();
     {
@@ -360,11 +360,11 @@ TEST_CASE("DebugOverlay: setProfile copia las entradas e indenta en build()") {
     CHECK(batchWithProfile.vertices().size() > batchWithoutProfile.vertices().size());
 }
 
-TEST_CASE("Render: overlay de rendimiento con tiempos fijos (#43)") {
+TEST_CASE("Render: performance overlay with fixed frame timings (#43)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     DebugOverlay overlay;
-    // 60 FPS con picos de 25 ms (amarillo) y 45 ms (rojo) cada tanto
+    // 60 FPS with occasional 25 ms (yellow) and 45 ms (red) spikes
     for (std::size_t i = 0; i < DebugOverlay::kHistory; i++)
         overlay.addFrame(i % 60 == 30 ? 45.0f : i % 20 == 10 ? 25.0f : 15.0f + float(i % 7) * 0.2f, 9.0f);
     overlay.setCounter("dibujo", "312 llamadas, 845k triangulos");
@@ -378,21 +378,21 @@ TEST_CASE("Render: overlay de rendimiento con tiempos fijos (#43)") {
     CHECK(result.passed);
 }
 
-// --- #44: los síntomas del HUD viejo (labels invisibles, al revés y sin color) no vuelven ---
+// --- #44: regression guard for old HUD bugs (invisible, upside-down, and colorless labels) ---
 
-TEST_CASE("Render: el texto del HUD se ve en píxeles, derecho, del color pedido y con cualquier sentido de "
-          "giro (#44)") {
+TEST_CASE("Render: HUD text renders in pixels, upright, in the requested color, regardless of winding "
+          "(#44)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     constexpr float kScale = 2.0f;
     const glm::vec4 yellow(1.0f, 0.9f, 0.2f, 1.0f);
     const mge_test::Image image = drawUi(gpu.device(), 64, 40, 1.0f, [&](Renderer2D& ui) {
-        ui.text({0, 0}, "F", yellow, kScale); // Arriba a la izquierda, en píxeles (KI#1)
+        ui.text({0, 0}, "F", yellow, kScale); // Top-left, in pixels (KI#1)
         ui.line({60, 36}, {20, 36}, yellow,
-                2.0f); // De derecha a izquierda: triángulos en el otro sentido (KI#2)
+                2.0f); // Right-to-left: opposite triangle winding (KI#2)
     });
-    // Cada píxel de la 'F' de la tabla, ampliado ×2, tiene que estar en su lugar: derecha (KI#18) y amarilla
-    // (KI#19); los apagados, con el fondo
+    // Every pixel of 'F' in the glyph table, scaled 2x, must be in place: upright (KI#18) and yellow
+    // (KI#19); unlit pixels must match the background
     const unsigned char* bits = builtinFontGlyphBits(U'F');
     REQUIRE(bits != nullptr);
     for (int y = 0; y < 8; y++)
@@ -412,16 +412,16 @@ TEST_CASE("Render: el texto del HUD se ve en píxeles, derecho, del color pedido
     CHECK(line[0] > 230);
 }
 
-// --- Plataformero 2D (#45): el camino 2D completo (niveles de assets/levels + Renderer2D) ---
+// --- 2D Platformer (#45): full 2D pipeline (levels from assets/levels + Renderer2D) ---
 
-TEST_CASE("Render: plataformero 2D, nivel 4 (hielo, nieve, agua, puente) (#45)") {
+TEST_CASE("Render: 2D platformer, level 4 (ice, snow, water, bridge) (#45)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     std::string error;
     auto level = platformer::loadLevel("levels/level4.txt", &error);
     REQUIRE_MESSAGE(level.has_value(), error);
     platformer::Platformer game(std::move(*level));
-    // Caminar un poco a la derecha y caer al piso: la cámara se mueve
+    // Walk right a bit and land on the ground: camera follows
     for (int i = 0; i < 90; i++) game.step({0.6f, false}, 1.0f / 60.0f);
     const mge_test::Image image =
         drawUi(gpu.device(), 960, 384, 1.0f, [&](Renderer2D& ui) { platformer::drawScene(ui, game, 4); });

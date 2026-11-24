@@ -11,14 +11,14 @@
 
 #include <doctest/doctest.h>
 
-// Device de GPU para los tests (sin ventana: se dibuja en texturas y se leen los píxeles).
-// - Usa el driver de video "offscreen" de SDL salvo que SDL_VIDEODRIVER diga otra cosa.
-// - Sin GPU compatible el test se saltea con un aviso; con MGE_REQUIRE_GPU=1 (CI) falla.
-// - Pide las capas de validación de Vulkan (modo debug). Los errores los imprime la capa en la salida
-//   (SDL no los recibe) y CTest falla el test si aparece "Validation Error" (FAIL_REGULAR_EXPRESSION):
-//   un uso incorrecto de la API o un recurso sin liberar al destruir el device hace fallar el test.
-//   Con MGE_REQUIRE_VALIDATION=1 (CI) falla si las capas no están activas.
-//   tests/gpu/ValidationProbe.cpp comprueba que los errores llegan a la salida.
+// GPU device for tests (headless: renders into textures and reads pixels back).
+// - Uses SDL's "offscreen" video driver unless SDL_VIDEODRIVER specifies otherwise.
+// - Without a compatible GPU, the test is skipped with a notice; with MGE_REQUIRE_GPU=1 (CI), it fails.
+// - Requests Vulkan validation layers (debug mode). Errors are printed by the layer to stdout/stderr
+//   (SDL does not receive them) and CTest fails the test if "Validation Error" appears (FAIL_REGULAR_EXPRESSION):
+//   incorrect API usage or unreleased resources when destroying the device will fail the test.
+//   With MGE_REQUIRE_VALIDATION=1 (CI), it fails if the layers are not active.
+//   tests/gpu/ValidationProbe.cpp verifies that validation errors reach the output.
 namespace mge_test {
 
     class GpuTestContext {
@@ -30,11 +30,11 @@ namespace mge_test {
             SDL_SetLogOutputFunction(&captureLog, nullptr);
             m_previousPriority = SDL_GetLogPriority(SDL_LOG_CATEGORY_GPU);
             SDL_SetLogPriority(SDL_LOG_CATEGORY_GPU,
-                               SDL_LOG_PRIORITY_INFO); // Para ver "Validation layers enabled"
+                               SDL_LOG_PRIORITY_INFO); // To see "Validation layers enabled"
             if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) return;
             m_videoInit = true;
             mge::GpuDeviceOptions options;
-            options.debug = true; // Validación si las capas están instaladas
+            options.debug = true; // Validation if layers are installed
             m_device = mge::GpuDevice::create(options);
         }
 
@@ -45,18 +45,18 @@ namespace mge_test {
             SDL_SetLogOutputFunction(s_previousLog, s_previousUserdata);
         }
 
-        // false = no hay GPU (o faltan las capas de validación exigidas): el test debe terminar
+        // false = no GPU available (or required validation layers missing): the test should return
         bool available() const {
             if (!m_device) {
                 if (envIs("MGE_REQUIRE_GPU", "1")) {
-                    FAIL("No hay GPU compatible y MGE_REQUIRE_GPU=1: ", SDL_GetError());
+                    FAIL("No compatible GPU found and MGE_REQUIRE_GPU=1: ", SDL_GetError());
                 } else {
-                    MESSAGE("Test salteado: no hay GPU compatible (", SDL_GetError(), ")");
+                    MESSAGE("Test skipped: no compatible GPU found (", SDL_GetError(), ")");
                 }
                 return false;
             }
             if (!s_validationActive && envIs("MGE_REQUIRE_VALIDATION", "1")) {
-                FAIL("MGE_REQUIRE_VALIDATION=1 pero las capas de validación de Vulkan no están activas");
+                FAIL("MGE_REQUIRE_VALIDATION=1 but Vulkan validation layers are not active");
                 return false;
             }
             return true;

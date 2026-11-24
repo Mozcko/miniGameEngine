@@ -14,7 +14,7 @@ using namespace mge;
 using mge_test::TestBlocks;
 
 namespace {
-    // Una cara por bloque (sin unir): los conteos son los del mallado "ingenuo"
+    // One face per block (no merging): counts match "naive" meshing
     ChunkMeshOptions naive() {
         ChunkMeshOptions options;
         options.greedy = false;
@@ -22,7 +22,7 @@ namespace {
     }
 }
 
-TEST_CASE("Mesher: un bloque suelto es un cubo cerrado de 6 caras") {
+TEST_CASE("Mesher: a single isolated block is a closed 6-face cube") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
@@ -34,27 +34,27 @@ TEST_CASE("Mesher: un bloque suelto es un cubo cerrado de 6 caras") {
     CHECK(mesh.opaque.triangleCount() == 12);
     CHECK(mge_test::isWatertight(mesh.opaque));
     CHECK(mge_test::windingMatchesNormals(mesh.opaque));
-    for (std::size_t i = 0; i < mesh.opaque.vertexCount(); i++) // Hacia afuera del centro del cubo
+    for (std::size_t i = 0; i < mesh.opaque.vertexCount(); i++) // Outward from the cube center
         CHECK(glm::dot(mesh.opaque.normals[i], mesh.opaque.positions[i] - glm::vec3(3.5f, 4.5f, 5.5f)) >
               0.0f);
     const Aabb box = mesh.opaque.bounds();
     CHECK(box.min == glm::vec3(3, 4, 5));
     CHECK(box.max == glm::vec3(4, 5, 6));
-    // Solo color: el color del bloque en cada vértice
+    // Color-only: the block's color at every vertex
     for (const glm::vec4& c : mesh.opaque.colors) CHECK(c == b.registry.get(b.stone).color);
 }
 
-TEST_CASE("Mesher: las caras tapadas entre bloques opacos no se emiten") {
+TEST_CASE("Mesher: hidden faces between opaque blocks are not emitted") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
     world.setBlock({0, 0, 0}, b.stone);
     world.setBlock({1, 0, 0}, b.stone);
     const ChunkMesh two = buildChunkMesh(world, {0, 0, 0}, naive());
-    CHECK(two.opaque.triangleCount() == 2 * (12 - 2)); // 10 caras visibles
+    CHECK(two.opaque.triangleCount() == 2 * (12 - 2)); // 10 visible faces
     CHECK(mge_test::isWatertight(two.opaque));
 
-    // Bloque 3×3×3 macizo: solo la superficie (6 lados × 9 caras)
+    // Solid 3x3x3 block: only the outer surface (6 sides x 9 faces)
     for (int x = 4; x < 7; x++)
         for (int y = 4; y < 7; y++)
             for (int z = 4; z < 7; z++) world.setBlock({x, y, z}, b.stone);
@@ -62,7 +62,7 @@ TEST_CASE("Mesher: las caras tapadas entre bloques opacos no se emiten") {
     CHECK(cube.opaque.triangleCount() == two.opaque.triangleCount() + 6 * 9 * 2);
 }
 
-TEST_CASE("Mesher: transparentes aparte; agua contra agua se oculta, contra vidrio no") {
+TEST_CASE("Mesher: transparent blocks separated; water-against-water is culled, against glass is not") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
@@ -72,38 +72,38 @@ TEST_CASE("Mesher: transparentes aparte; agua contra agua se oculta, contra vidr
     world.setBlock({3, 0, 0}, b.stone);
 
     const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, naive());
-    // Opaco: piedra con 6 caras (el vidrio no la tapa)
+    // Opaque: stone with 6 faces (glass does not occlude it)
     CHECK(mesh.opaque.triangleCount() == 12);
-    // Agua: 2 bloques × 6 caras − 2 (entre ellas) = 10. Vidrio: 6 − 1 (contra la piedra) = 5
+    // Water: 2 blocks x 6 faces - 2 (between them) = 10. Glass: 6 - 1 (against stone) = 5
     CHECK(mesh.transparent.triangleCount() == 2 * (10 + 5));
 }
 
-TEST_CASE("Mesher: los bloques en cruz son 4 quads (dos planos, dos caras)") {
+TEST_CASE("Mesher: cross-shaped blocks emit 4 quads (two planes, two sides)") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
     world.setBlock({2, 0, 2}, b.flower);
-    world.setBlock({2, 0, 3}, b.stone); // La flor no oculta caras de la piedra
+    world.setBlock({2, 0, 3}, b.stone); // Flower does not occlude stone faces
     const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, naive());
     CHECK(mesh.transparent.triangleCount() == 8);
     CHECK(mge_test::windingMatchesNormals(mesh.transparent));
     CHECK(mesh.opaque.triangleCount() == 12);
 }
 
-TEST_CASE("Mesher: los vecinos se leen del mundo (chunk de al lado cargado / sin cargar)") {
+TEST_CASE("Mesher: neighbors are read from the world (adjacent chunk loaded vs unloaded)") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
     world.setBlock({15, 0, 0}, b.stone);
-    CHECK(buildChunkMesh(world, {0, 0, 0}, naive()).opaque.triangleCount() == 12); // Vecino sin cargar = aire
+    CHECK(buildChunkMesh(world, {0, 0, 0}, naive()).opaque.triangleCount() == 12); // Unloaded neighbor = air
 
     world.loadChunk({1, 0, 0});
-    world.setBlock({16, 0, 0}, b.stone); // Al otro lado del borde
+    world.setBlock({16, 0, 0}, b.stone); // On the other side of the border
     CHECK(buildChunkMesh(world, {0, 0, 0}, naive()).opaque.triangleCount() == 10);
     CHECK(buildChunkMesh(world, {1, 0, 0}, naive()).opaque.triangleCount() == 10);
 }
 
-TEST_CASE("Mesher: tiles del atlas por cara; chunk sin cargar da mallas vacías") {
+TEST_CASE("Mesher: per-face atlas tiles; unloaded chunk produces empty meshes") {
     BlockRegistry registry;
     BlockDesc grass;
     grass.name = "grass";
@@ -117,7 +117,7 @@ TEST_CASE("Mesher: tiles del atlas por cara; chunk sin cargar da mallas vacías"
     options.atlas = {16, 16};
     const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, options);
     REQUIRE(mesh.opaque.vertexCount() == 24);
-    // Cada vértice cae dentro del tile de su cara según la normal
+    // Each vertex falls inside its face's tile according to its normal
     for (std::size_t i = 0; i < mesh.opaque.vertexCount(); i++) {
         const glm::vec3 n = mesh.opaque.normals[i];
         const int tile = n.y > 0.5f ? 0 : n.y < -0.5f ? 2 : 3;
@@ -133,7 +133,7 @@ TEST_CASE("Mesher: tiles del atlas por cara; chunk sin cargar da mallas vacías"
 }
 
 namespace {
-    // Área total de las caras de la malla por dirección de normal (para comparar greedy con ingenuo)
+    // Total mesh face area per normal direction (for comparing greedy against naive)
     std::array<float, 6> areaByNormal(const MeshData& mesh) {
         std::array<float, 6> area{};
         for (std::size_t t = 0; t + 2 < mesh.indices.size(); t += 3) {
@@ -148,7 +148,7 @@ namespace {
         return area;
     }
 
-    // Generador con bloques al azar (reproducible): sirve para buscar errores en los bordes
+    // Reproducible random block generator: useful for catching border bugs
     class NoiseGenerator : public TerrainGenerator {
     public:
         explicit NoiseGenerator(const TestBlocks& b) : m_b(b) {}
@@ -166,7 +166,7 @@ namespace {
         const TestBlocks& m_b;
     };
 
-    // Referencia independiente del mesher: caras visibles contando con world.getBlock en todo el mundo
+    // Independent mesher reference: visible faces counted via world.getBlock across the whole world
     std::size_t expectedFaces(const VoxelWorld& world, const ChunkCoord& coord, bool opaque) {
         const BlockRegistry& r = world.registry();
         const glm::ivec3 dirs[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
@@ -189,24 +189,24 @@ namespace {
     }
 }
 
-TEST_CASE("Mesher: sin costuras, cada chunk coincide con la referencia que mira todo el mundo") {
+TEST_CASE("Mesher: seamless, each chunk matches the reference that inspects the whole world") {
     TestBlocks b;
     VoxelWorld world(b.registry, std::make_unique<NoiseGenerator>(b));
     for (int x = -1; x <= 1; x++)
         for (int y = -1; y <= 1; y++)
             for (int z = -1; z <= 1; z++) world.loadChunk({x, y, z});
 
-    const ChunkCoord center{0, 0, 0}; // Todos sus vecinos (también en diagonal) están cargados
+    const ChunkCoord center{0, 0, 0}; // All neighbors (including diagonals) are loaded
     const ChunkMesh mesh = buildChunkMesh(world, center, naive());
     CHECK(mesh.opaque.triangleCount() == 2 * expectedFaces(world, center, true));
     CHECK(mesh.transparent.triangleCount() == 2 * expectedFaces(world, center, false));
-    // Y en un chunk de la esquina (vecinos sin cargar = aire en ambos lados)
+    // And on a corner chunk (unloaded neighbors = air on both sides)
     const ChunkCoord corner{1, 1, 1};
     CHECK(buildChunkMesh(world, corner, naive()).opaque.triangleCount() ==
           2 * expectedFaces(world, corner, true));
 }
 
-TEST_CASE("Mesher: cargar un vecino marca sucio al chunk y la nueva malla oculta la cara del borde") {
+TEST_CASE("Mesher: loading a neighbor dirties the chunk and the new mesh culls the border face") {
     TestBlocks b;
     VoxelWorld world(b.registry, std::make_unique<mge_test::FlatGenerator>(b.stone, 4));
     world.loadChunk({0, 0, 0});
@@ -216,16 +216,16 @@ TEST_CASE("Mesher: cargar un vecino marca sucio al chunk y la nueva malla oculta
     world.loadChunk({1, 0, 0});
     CHECK(world.isDirty({0, 0, 0}));
     const std::size_t withNeighbour = buildChunkMesh(world, {0, 0, 0}, naive()).opaque.triangleCount();
-    CHECK(alone - withNeighbour == 2 * 4 * kChunkSize); // Desaparece la pared +X (4 de alto × 16)
+    CHECK(alone - withNeighbour == 2 * 4 * kChunkSize); // The +X wall (4 high x 16) disappears
 }
 
-TEST_CASE("Greedy: menos triángulos que el ingenuo cubriendo la misma área") {
+TEST_CASE("Greedy: fewer triangles than naive while covering the same area") {
     TestBlocks b;
     VoxelWorld world(b.registry, std::make_unique<mge_test::FlatGenerator>(b.stone, 4));
     world.loadChunk({0, 0, 0});
     const MeshData flatNaive = buildChunkMesh(world, {0, 0, 0}, naive()).opaque;
     const MeshData flatGreedy = buildChunkMesh(world, {0, 0, 0}).opaque;
-    CHECK(flatGreedy.triangleCount() == 12); // Losa de 16×4×16: una cara por lado
+    CHECK(flatGreedy.triangleCount() == 12); // 16x4x16 slab: one quad per side
     CHECK(flatNaive.triangleCount() == 2 * (2 * 16 * 16 + 4 * 4 * 16));
     CHECK(flatGreedy.validate().empty());
     CHECK(mge_test::windingMatchesNormals(flatGreedy));
@@ -233,7 +233,7 @@ TEST_CASE("Greedy: menos triángulos que el ingenuo cubriendo la misma área") {
     const auto areaG = areaByNormal(flatGreedy);
     for (int i = 0; i < 6; i++) CHECK(areaG[i] == doctest::Approx(areaN[i]));
 
-    // Terreno irregular con varios bloques: misma área, menos triángulos
+    // Irregular terrain with multiple block types: same area, fewer triangles
     VoxelWorld rough(b.registry, std::make_unique<NoiseGenerator>(b));
     rough.loadChunk({0, 0, 0});
     const ChunkMesh n = buildChunkMesh(rough, {0, 0, 0}, naive());
@@ -245,7 +245,7 @@ TEST_CASE("Greedy: menos triángulos que el ingenuo cubriendo la misma área") {
     for (int i = 0; i < 6; i++) CHECK(roughG[i] == doctest::Approx(roughN[i]));
 }
 
-TEST_CASE("Greedy: los bloques con textura no se unen (un quad por cara)") {
+TEST_CASE("Greedy: textured blocks are not merged (one quad per face)") {
     BlockRegistry registry;
     BlockDesc brick;
     brick.name = "brick";
@@ -257,13 +257,13 @@ TEST_CASE("Greedy: los bloques con textura no se unen (un quad por cara)") {
           buildChunkMesh(world, {0, 0, 0}, naive()).opaque.triangleCount());
 }
 
-TEST_CASE("AO: oscurece las esquinas del piso junto a una pared; apagado no cambia el color") {
+TEST_CASE("AO: darkens floor corners next to a wall; disabled leaves color unchanged") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
     for (int x = 0; x < 3; x++)
-        for (int z = 0; z < 3; z++) world.setBlock({x, 0, z}, b.stone); // Piso 3×3
-    world.setBlock({0, 1, 1}, b.stone);                                 // Bloque sobre el piso
+        for (int z = 0; z < 3; z++) world.setBlock({x, 0, z}, b.stone); // 3x3 floor
+    world.setBlock({0, 1, 1}, b.stone);                                 // Block on top of the floor
 
     const glm::vec4 base = b.registry.get(b.stone).color;
     for (const glm::vec4& c : buildChunkMesh(world, {0, 0, 0}, naive()).opaque.colors) CHECK(c == base);
@@ -271,7 +271,7 @@ TEST_CASE("AO: oscurece las esquinas del piso junto a una pared; apagado no camb
     ChunkMeshOptions options = naive();
     options.ambientOcclusion = true;
     const MeshData mesh = buildChunkMesh(world, {0, 0, 0}, options).opaque;
-    // Vértice del techo del piso en (1, 1, 1): toca la pared → más oscuro. En (3, 1, 3): libre
+    // Floor top vertex at (1, 1, 1): touches the wall -> darker. At (3, 1, 3): unobstructed
     bool darkFound = false, brightFound = false;
     for (std::size_t i = 0; i < mesh.vertexCount(); i++) {
         if (mesh.normals[i].y < 0.5f) continue;
@@ -283,14 +283,14 @@ TEST_CASE("AO: oscurece las esquinas del piso junto a una pared; apagado no camb
     CHECK(brightFound);
     CHECK(mge_test::windingMatchesNormals(mesh));
 
-    // Con greedy + AO: sigue cubriendo lo mismo
+    // With greedy + AO: still covers the same area
     options.greedy = true;
     const auto areaG = areaByNormal(buildChunkMesh(world, {0, 0, 0}, options).opaque);
     const auto areaN = areaByNormal(mesh);
     for (int i = 0; i < 6; i++) CHECK(areaG[i] == doctest::Approx(areaN[i]));
 }
 
-TEST_CASE("Mesher: los bloques con textura van en blanco salvo con tintTextured") {
+TEST_CASE("Mesher: textured blocks use white unless tintTextured is enabled") {
     BlockRegistry registry;
     BlockDesc brick;
     brick.name = "brick";
@@ -315,12 +315,12 @@ TEST_CASE("Mesher: los bloques con textura van en blanco salvo con tintTextured"
     for (std::size_t i = 0; i < white.vertexCount(); i++) {
         const bool isBrick = white.positions[i].x <= 1.0f;
         CAPTURE(i);
-        CHECK(white.colors[i] == (isBrick ? glm::vec4(1.0f) : paint.color)); // Sin textura: siempre su color
+        CHECK(white.colors[i] == (isBrick ? glm::vec4(1.0f) : paint.color)); // Untextured: always its color
         CHECK(tinted.colors[i] == (isBrick ? brick.color : paint.color));
     }
 }
 
-TEST_CASE("Mesher: cada bloque va a la malla de su RenderLayer") {
+TEST_CASE("Mesher: each block goes to its RenderLayer mesh") {
     BlockRegistry registry;
     BlockDesc stone;
     stone.name = "stone";
@@ -330,7 +330,7 @@ TEST_CASE("Mesher: cada bloque va a la malla de su RenderLayer") {
     leaves.layer = RenderLayer::Cutout;
     BlockDesc water;
     water.name = "water";
-    water.opaque = false; // Sin layer: translúcido por defecto
+    water.opaque = false; // No explicit layer: translucent by default
     CHECK(stone.renderLayer() == RenderLayer::Opaque);
     CHECK(leaves.renderLayer() == RenderLayer::Cutout);
     CHECK(water.renderLayer() == RenderLayer::Translucent);
@@ -349,8 +349,8 @@ TEST_CASE("Mesher: cada bloque va a la malla de su RenderLayer") {
     CHECK(mesh.cutout.bounds().min.x == doctest::Approx(4.0f));
 }
 
-TEST_CASE("Mesher: sortQuadsBackToFront ordena 4 quads paralelos desde ambos lados (#180)") {
-    // 4 quads paralelos en z = 1, 3, 5, 7 con índices distintos por quad
+TEST_CASE("Mesher: sortQuadsBackToFront sorts 4 parallel quads from both sides (#180)") {
+    // 4 parallel quads at z = 1, 3, 5, 7 with distinct indices per quad
     std::vector<std::uint32_t> indices;
     std::vector<glm::vec3> centroids;
     const float zs[4] = {1.0f, 3.0f, 5.0f, 7.0f};
@@ -360,7 +360,7 @@ TEST_CASE("Mesher: sortQuadsBackToFront ordena 4 quads paralelos desde ambos lad
         centroids.emplace_back(4.0f, 4.0f, zs[q]);
     }
 
-    // Desde z = -5 (frente): más lejano es q=3 (z=7), más cercano q=0 (z=1)
+    // From z = -5 (front): farthest is q=3 (z=7), nearest is q=0 (z=1)
     const std::vector<std::uint32_t> fromFront =
         sortQuadsBackToFront(indices, centroids, {4.0f, 4.0f, -5.0f});
     REQUIRE(fromFront.size() == indices.size());
@@ -369,7 +369,7 @@ TEST_CASE("Mesher: sortQuadsBackToFront ordena 4 quads paralelos desde ambos lad
     CHECK(fromFront[12] == 4); // q=1
     CHECK(fromFront[18] == 0); // q=0
 
-    // Desde z = 15 (atrás): más lejano es q=0 (z=1), más cercano q=3 (z=7)
+    // From z = 15 (back): farthest is q=0 (z=1), nearest is q=3 (z=7)
     const std::vector<std::uint32_t> fromBack = sortQuadsBackToFront(indices, centroids, {4.0f, 4.0f, 15.0f});
     REQUIRE(fromBack.size() == indices.size());
     CHECK(fromBack[0] == 0);   // q=0

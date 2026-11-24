@@ -51,7 +51,7 @@ namespace mge_test {
 
         if (updateGoldens()) {
             result.passed = writePng(golden, image);
-            result.message = "MGE_UPDATE_GOLDEN=1: referencia reescrita en " + golden.string();
+            result.message = "MGE_UPDATE_GOLDEN=1: golden reference overwritten at " + golden.string();
             return result;
         }
 
@@ -59,14 +59,14 @@ namespace mge_test {
         stbi_uc* data = stbi_load(golden.string().c_str(), &w, &h, &channels, 4);
         if (!data) {
             writePng(outDir / (name + ".png"), image);
-            result.message = "No existe la referencia " + golden.string() +
-                             " (generarla con MGE_UPDATE_GOLDEN=1; lo dibujado quedó en " + outDir.string() +
-                             ")";
+            result.message = "Golden reference does not exist: " + golden.string() +
+                             " (generate it with MGE_UPDATE_GOLDEN=1; rendered output saved to " +
+                             outDir.string() + ")";
             return result;
         }
         if (static_cast<std::uint32_t>(w) != image.width || static_cast<std::uint32_t>(h) != image.height) {
             stbi_image_free(data);
-            result.message = "Tamaño distinto de la referencia " + golden.string();
+            result.message = "Image size differs from golden reference " + golden.string();
             return result;
         }
 
@@ -79,7 +79,7 @@ namespace mge_test {
                 maxDelta = std::max(maxDelta, std::abs(int(image.rgba[i * 4 + c]) - int(data[i * 4 + c])));
             if (maxDelta > options.channelTolerance) different++;
             diff.rgba[i * 4 + 0] =
-                static_cast<std::uint8_t>(std::min(255, maxDelta * 4)); // Rojo = diferencia
+                static_cast<std::uint8_t>(std::min(255, maxDelta * 4)); // Red = difference
             diff.rgba[i * 4 + 3] = 255;
         }
         stbi_image_free(data);
@@ -89,8 +89,8 @@ namespace mge_test {
         if (!result.passed) {
             writePng(outDir / (name + ".png"), image);
             writePng(outDir / (name + "_diff.png"), diff);
-            result.message = name + ": " + std::to_string(different) + " píxeles distintos (" +
-                             std::to_string(result.differentFraction * 100.0) + " %); ver " + outDir.string();
+            result.message = name + ": " + std::to_string(different) + " different pixels (" +
+                             std::to_string(result.differentFraction * 100.0) + " %); see " + outDir.string();
         }
         return result;
     }

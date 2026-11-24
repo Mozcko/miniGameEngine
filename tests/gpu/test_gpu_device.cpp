@@ -11,14 +11,14 @@
 using namespace mge;
 using mge_test::GpuTestContext;
 
-// Los handles son de dueño único: copiarlos está prohibido en tiempo de compilación
+// Handles are single-owner: copying is forbidden at compile time
 static_assert(!std::is_copy_constructible_v<GpuBuffer>);
 static_assert(!std::is_copy_assignable_v<GpuTexture>);
 static_assert(std::is_nothrow_move_constructible_v<GpuGraphicsPipeline>);
 static_assert(!std::is_copy_constructible_v<CommandBuffer>);
 static_assert(!std::is_copy_constructible_v<RenderPass>);
 
-TEST_CASE("GpuVertex: MeshData entrelazado con todos los atributos (también el color)") {
+TEST_CASE("GpuVertex: interleaved MeshData with all attributes (including color)") {
     MeshData mesh = primitives::box(glm::vec3(1.0f), {0.2f, 0.4f, 0.6f, 1.0f});
     const std::vector<GpuVertex> vertices = interleave(mesh);
     REQUIRE(vertices.size() == mesh.vertexCount());
@@ -31,10 +31,10 @@ TEST_CASE("GpuVertex: MeshData entrelazado con todos los atributos (también el 
     const auto attributes = gpuVertexAttributes();
     CHECK(gpuVertexBufferDescription().pitch == sizeof(GpuVertex));
     for (std::uint32_t i = 0; i < attributes.size(); i++) CHECK(attributes[i].location == i);
-    CHECK(attributes[2].offset == 24); // color después de posición y normal
+    CHECK(attributes[2].offset == 24); // color after position and normal
 }
 
-TEST_CASE("GPU: limpiar una textura y leerla de vuelta") {
+TEST_CASE("GPU: clear a texture and read it back") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
 
@@ -55,13 +55,13 @@ TEST_CASE("GPU: limpiar una textura y leerla de vuelta") {
     REQUIRE(pixels.size() == 16 * 8 * 4);
     for (std::size_t i = 0; i < pixels.size(); i += 4) {
         CHECK(pixels[i] == 255);
-        CHECK(int(pixels[i + 1]) == doctest::Approx(128).epsilon(0.01)); // 0.5 → 127 o 128
+        CHECK(int(pixels[i + 1]) == doctest::Approx(128).epsilon(0.01)); // 0.5 -> 127 or 128
         CHECK(pixels[i + 2] == 0);
         CHECK(pixels[i + 3] == 255);
     }
 }
 
-TEST_CASE("GPU: subir una malla y liberar todo sin errores de validación") {
+TEST_CASE("GPU: upload a mesh and release everything without validation errors") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     {
@@ -71,17 +71,17 @@ TEST_CASE("GPU: subir una malla y liberar todo sin errores de validación") {
         CHECK(mesh.indices);
         CHECK(mesh.indexCount % 3 == 0);
 
-        // Mover un handle transfiere el dueño: el original queda vacío y no se libera dos veces
+        // Moving a handle transfers ownership: the original becomes empty and is not freed twice
         GpuBuffer moved = std::move(mesh.vertices);
         CHECK(moved);
         CHECK_FALSE(mesh.vertices);
 
-        CHECK(gpu.device().uploadMesh(MeshData{}).empty()); // Malla vacía: nada que subir
+        CHECK(gpu.device().uploadMesh(MeshData{}).empty()); // Empty mesh: nothing to upload
         gpu.device().waitIdle();
     }
 }
 
-TEST_CASE("GPU: un command buffer sin enviar se cancela al destruirse") {
+TEST_CASE("GPU: an unsubmitted command buffer is cancelled on destruction") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     {
@@ -90,11 +90,11 @@ TEST_CASE("GPU: un command buffer sin enviar se cancela al destruirse") {
         CommandBuffer other = std::move(cmd);
         CHECK_FALSE(cmd);
         CHECK(other);
-    } // other se cancela aquí
+    } // other is cancelled here
     gpu.device().waitIdle();
 }
 
-TEST_CASE("GPU: GpuResourceTracker libera recursos antes de destruir el device y deja el handle inerte") {
+TEST_CASE("GPU: GpuResourceTracker releases resources before destroying device and leaves handle inert") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
 
@@ -115,14 +115,14 @@ TEST_CASE("GPU: GpuResourceTracker libera recursos antes de destruir el device y
     CHECK(gpu.device().tracker().trackedCount() == 1);
     CHECK(tracked->alive);
 
-    // Simular el releaseAll() de onShutdown antes de destruir el device
+    // Simulate releaseAll() from onShutdown before destroying the device
     gpu.device().tracker().releaseAll();
     CHECK(gpu.device().tracker().trackedCount() == 0);
     CHECK_FALSE(tracked->alive);
     CHECK(tracked->mesh.empty());
 }
 
-TEST_CASE("GPU: updateBuffer actualiza un rango con offset y el buffer completo in-place (#180)") {
+TEST_CASE("GPU: updateBuffer updates an offset range and the full buffer in-place (#180)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -132,7 +132,7 @@ TEST_CASE("GPU: updateBuffer actualiza un rango con offset y el buffer completo 
     REQUIRE(buf);
     REQUIRE(device.uploadToBuffer(buf, initial, sizeof(initial)));
 
-    // Actualización parcial con offset = 2 * sizeof(uint32_t)
+    // Partial update with offset = 2 * sizeof(uint32_t)
     const std::uint32_t patch[2] = {30, 40};
     REQUIRE(device.updateBuffer(buf, patch, sizeof(patch), 2 * sizeof(std::uint32_t)));
 
@@ -147,7 +147,7 @@ TEST_CASE("GPU: updateBuffer actualiza un rango con offset y el buffer completo 
     CHECK(readback[4] == 5);
     CHECK(readback[5] == 6);
 
-    // Actualización completa desde offset 0 con cycle = true
+    // Full update from offset 0 with cycle = true
     const std::uint32_t replaced[6] = {60, 50, 40, 30, 20, 10};
     REQUIRE(device.updateBuffer(buf, replaced, sizeof(replaced), 0, true));
     raw = device.downloadBuffer(buf, sizeof(replaced));

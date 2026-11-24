@@ -2,7 +2,7 @@
 
 #include <mge/voxel/VoxelWorld.h>
 
-// Registry y generadores mínimos para los tests de voxel
+// Minimal registry and generators for voxel tests
 namespace mge_test {
 
     struct TestBlocks {
@@ -35,7 +35,7 @@ namespace mge_test {
         }
     };
 
-    // Suelo plano: todo lo que está debajo de y = height es `block`
+    // Flat ground: everything below y = height is `block`
     class FlatGenerator : public mge::TerrainGenerator {
     public:
         FlatGenerator(mge::BlockId block, int height) : m_block(block), m_height(height) {}

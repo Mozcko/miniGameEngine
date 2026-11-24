@@ -20,7 +20,7 @@ namespace {
     }
 }
 
-TEST_CASE("addVertex/addQuad: conteos, índices y atributos alineados") {
+TEST_CASE("addVertex/addQuad: counts, indices, and aligned attributes") {
     MeshData mesh = unitQuad();
     CHECK(mesh.vertexCount() == 4);
     CHECK(mesh.triangleCount() == 2);
@@ -31,14 +31,14 @@ TEST_CASE("addVertex/addQuad: conteos, índices y atributos alineados") {
     CHECK(mesh.validate().empty());
 }
 
-TEST_CASE("addVertex con valores por defecto") {
+TEST_CASE("addVertex with default values") {
     MeshData mesh;
     mesh.addVertex({1, 2, 3});
     CHECK(mesh.colors[0] == glm::vec4(1.0f));
     CHECK(mesh.normals[0] == glm::vec3(0.0f));
 }
 
-TEST_CASE("validate detecta índices fuera de rango, largos distintos y triángulos incompletos") {
+TEST_CASE("validate detects out-of-range indices, mismatched lengths, and incomplete triangles") {
     MeshData bad = unitQuad();
     bad.indices.push_back(7);
     bad.indices.push_back(0);
@@ -53,10 +53,10 @@ TEST_CASE("validate detecta índices fuera de rango, largos distintos y triángu
     partial.indices.pop_back();
     CHECK(partial.validate().find("múltiplo de 3") != std::string::npos);
 
-    CHECK(MeshData{}.validate().empty()); // Una malla vacía es válida
+    CHECK(MeshData{}.validate().empty()); // An empty mesh is valid
 }
 
-TEST_CASE("bounds, clear y reserve") {
+TEST_CASE("bounds, clear, and reserve") {
     MeshData mesh = unitQuad();
     Aabb box = mesh.bounds();
     CHECK(box.min == glm::vec3(0, 0, 0));
@@ -68,7 +68,7 @@ TEST_CASE("bounds, clear y reserve") {
     CHECK(mesh.positions.capacity() >= 100);
 }
 
-TEST_CASE("writeObj escribe v/vt/vn/f con color y caras que empiezan en 1") {
+TEST_CASE("writeObj writes v/vt/vn/f with color and 1-based face indices") {
     fs::path path = fs::temp_directory_path() / "mge_test_quad.obj";
     REQUIRE(writeObj(unitQuad(), path));
 
@@ -90,8 +90,8 @@ TEST_CASE("writeObj escribe v/vt/vn/f con color y caras que empiezan en 1") {
     CHECK(vt == 4);
     CHECK(vn == 4);
     CHECK(f == 2);
-    CHECK(firstVertex == "v 0 0 0 1 0 0");     // posición + color rojo
-    CHECK(firstFace == "f 1/1/1 2/2/2 3/3/3"); // índices desde 1
+    CHECK(firstVertex == "v 0 0 0 1 0 0");     // position + red color
+    CHECK(firstFace == "f 1/1/1 2/2/2 3/3/3"); // 1-based indices
     fs::remove(path);
 
     CHECK_FALSE(writeObj(unitQuad(), "/no/existe/dir/x.obj"));

@@ -1,4 +1,4 @@
-// Escenas de referencia del renderer (golden images). Ver RenderTest.h.
+// Renderer reference scenes (golden images). See RenderTest.h.
 #include "../gpu/GpuTestContext.h"
 #include "RenderTest.h"
 
@@ -28,14 +28,14 @@ namespace {
     }
 }
 
-TEST_CASE("Render: limpiar la imagen") {
+TEST_CASE("Render: clear image") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     checkGolden("clear",
                 mge_test::renderOffscreen(gpu.device(), kSize, kSize, {0.2f, 0.4f, 0.6f, 1.0f}, false, {}));
 }
 
-TEST_CASE("Render: triángulo con colores por vértice interpolados") {
+TEST_CASE("Render: triangle with interpolated per-vertex colors") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -48,19 +48,19 @@ TEST_CASE("Render: triángulo con colores por vértice interpolados") {
     const GpuGraphicsPipeline pipeline = device.createGraphicsPipeline(desc);
     REQUIRE(pipeline);
 
-    // Back-face culling activo: el triángulo es antihorario, así que se tiene que ver
+    // Back-face culling enabled: the triangle is counter-clockwise, so it should be visible
     const auto image = mge_test::renderOffscreen(device, kSize, kSize, {0.0f, 0.0f, 0.0f, 1.0f}, false,
                                                  [&](CommandBuffer&, RenderPass& pass) {
                                                      SDL_BindGPUGraphicsPipeline(pass.get(), pipeline.get());
                                                      SDL_DrawGPUPrimitives(pass.get(), 3, 1, 0, 0);
                                                  });
-    // La punta (0, 0.8) es roja y está ARRIBA de la imagen: NDC con Y hacia arriba, fila 0 arriba
+    // The top vertex (0, 0.8) is red and at the TOP of the image: NDC Y-up, row 0 at top
     CHECK(int(image.pixel(64, 20)[0]) > 150);
-    CHECK(int(image.pixel(64, 120)[0]) == 0); // Abajo del triángulo: fondo
+    CHECK(int(image.pixel(64, 120)[0]) == 0); // Below the triangle: background
     checkGolden("vertex_colors_triangle", image);
 }
 
-TEST_CASE("Render: cubo con profundidad y luz (MeshData → GpuMesh)") {
+TEST_CASE("Render: lit cube with depth (MeshData -> GpuMesh)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -76,7 +76,7 @@ TEST_CASE("Render: cubo con profundidad y luz (MeshData → GpuMesh)") {
     const GpuGraphicsPipeline pipeline = device.createGraphicsPipeline(desc);
     REQUIRE(pipeline);
 
-    // Dos cajas que se cruzan: la profundidad decide qué se ve
+    // Two intersecting boxes: depth decides what is visible
     MeshData scene = primitives::box(glm::vec3(1.0f), {0.9f, 0.5f, 0.2f, 1.0f});
     MeshData second = primitives::box(glm::vec3(0.6f, 1.4f, 0.6f), {0.2f, 0.6f, 0.9f, 1.0f});
     transformMesh(second, glm::translate(glm::mat4(1.0f), {0.3f, 0.2f, 0.3f}));
@@ -88,7 +88,7 @@ TEST_CASE("Render: cubo con profundidad y luz (MeshData → GpuMesh)") {
         glm::mat4 viewProjection;
         glm::mat4 model;
     } transforms;
-    // Proyección con Z en [0, 1] (convención de SDL GPU)
+    // Projection with Z in [0, 1] (SDL GPU convention)
     const glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.1f, 20.0f);
     const glm::mat4 view =
         glm::lookAt(glm::vec3(2.2f, 1.8f, 2.6f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));

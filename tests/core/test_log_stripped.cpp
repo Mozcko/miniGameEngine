@@ -1,4 +1,4 @@
-// Este archivo compila el log con nivel mínimo Warn: Trace/Debug/Info desaparecen del binario.
+// This file compiles logging with minimum level Warn: Trace/Debug/Info are stripped from the binary.
 #define MGE_LOG_COMPILE_LEVEL 3
 #include <doctest/doctest.h>
 #include <mge/core/Log.h>
@@ -13,7 +13,7 @@ namespace {
     }
 }
 
-TEST_CASE("Los niveles compilados fuera no evalúan sus argumentos") {
+TEST_CASE("Compiled-out log levels do not evaluate their arguments") {
     LogLevel previous = Log::getMinLevel();
     Log::setMinLevel(LogLevel::Trace);
     Log::setSink([](const LogRecord&) {});

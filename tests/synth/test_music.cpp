@@ -1,4 +1,4 @@
-// Secuenciador de música (#49): notas en el tiempo exacto, loop, fundidos, parser de patrones
+// Music sequencer (#49): sample-accurate notes, looping, crossfades, pattern parser
 #include <doctest/doctest.h>
 #include <mge/synth/Mixer.h>
 #include <mge/synth/Music.h>
@@ -20,7 +20,7 @@ namespace {
         return in;
     }
 
-    // 120 BPM, 4 pasos por pulso → un paso = 0.125 s = 6000 frames
+    // 120 BPM, 4 steps per beat → one step = 0.125 s = 6000 frames
     Song clickSong(const std::string& pattern) {
         Song song(120.0f, 4);
         const int i = song.addInstrument(blip());
@@ -29,7 +29,7 @@ namespace {
     }
 }
 
-TEST_CASE("noteFromName y parsePattern") {
+TEST_CASE("noteFromName and parsePattern") {
     CHECK(noteFromName("C4") == 60.0f);
     CHECK(noteFromName("A4") == 69.0f);
     CHECK(noteFromName("C#3") == 49.0f);
@@ -47,7 +47,7 @@ TEST_CASE("noteFromName y parsePattern") {
     CHECK(p->notes[0].note == 60.0f);
     CHECK(p->notes[0].length == 2);
     CHECK(p->notes[1].step == 3);
-    CHECK(p->notes[2].note == 36.0f); // "x" = nota por defecto
+    CHECK(p->notes[2].note == 36.0f); // "x" = default note
     CHECK(p->notes[3].length == 3);
     CHECK(p->notes[3].velocity == doctest::Approx(0.8f));
 
@@ -56,7 +56,7 @@ TEST_CASE("noteFromName y parsePattern") {
     CHECK_FALSE(parsePattern("  |  ", 1.0f, 60.0f, &error));
 }
 
-TEST_CASE("Song: largo, eventos en orden, errores") {
+TEST_CASE("Song: length, ordered events, errors") {
     Song song(120.0f, 4);
     const int lead = song.addInstrument(blip());
     const int a = song.pattern("C4 . . . E4 . . .");
@@ -69,12 +69,12 @@ TEST_CASE("Song: largo, eventos en orden, errores") {
     const auto events = song.events();
     REQUIRE(events.size() == 6);
     CHECK(events[0].step == 0);
-    CHECK(events[1].step == 0); // Las dos pistas
+    CHECK(events[1].step == 0); // Both tracks
     CHECK(events.back().step == 16);
     for (std::size_t i = 1; i < events.size(); i++) CHECK(events[i].step >= events[i - 1].step);
 
     Song bad(120.0f);
-    CHECK_FALSE(bad.valid()); // Sin pistas
+    CHECK_FALSE(bad.valid()); // No tracks
     bad.addTrack(3, {0});
     CHECK(bad.error().find("instrumento") != std::string::npos);
     Song parseError;
@@ -86,22 +86,22 @@ TEST_CASE("Song: largo, eventos en orden, errores") {
     CHECK_FALSE(mixer.playSong(7));
 }
 
-TEST_CASE("Música: cada nota empieza en su muestra y la canción se repite desde el loop") {
+TEST_CASE("Music: each note starts on its sample and the song repeats from the loop point") {
     Mixer mixer(kRate);
     Song song = clickSong("C5 . C5 . | C5 C5 . .");
     song.setLoopStart(4);
     const SongId id = mixer.addSong(song);
     REQUIRE(id != kInvalidSong);
     REQUIRE(mixer.playSong(id));
-    // 8 pasos (1 s) + vuelta al paso 4: otros 4 pasos (0.5 s) → 1.5 s, dos veces el loop
+    // 8 steps (1 s) + return to step 4: another 4 steps (0.5 s) → 1.5 s, two loop iterations
     const std::vector<float> left = an::channel(renderOffline(mixer, 2.0f), 2, 0);
     const std::vector<std::size_t> onsets = an::onsets(left, kRate, 0.05f);
-    // Pasos 0, 2, 4, 5 | loop: 8→4: 8, 9 | 12, 13
+    // Steps 0, 2, 4, 5 | loop: 8→4: 8, 9 | 12, 13
     const std::vector<std::size_t> expected = {0, 2, 4, 5, 8, 9, 12, 13};
     REQUIRE(onsets.size() == expected.size());
     for (std::size_t i = 0; i < expected.size(); i++) {
         CAPTURE(i);
-        // Ventanas de 5 ms (240 frames): el comienzo cae en la ventana del paso
+        // 5 ms windows (240 frames): onset falls in the step's window
         CHECK(onsets[i] / 240 == expected[i] * 6000 / 240);
     }
     CHECK(mixer.musicStep() >= 0);
@@ -111,7 +111,7 @@ TEST_CASE("Música: cada nota empieza en su muestra y la canción se repite desd
     CHECK(an::peak(an::channel(renderOffline(mixer, 0.2f), 2, 0)) < 1e-4f);
 }
 
-TEST_CASE("Música: fundido cruzado sin saltos de volumen y grupo Music") {
+TEST_CASE("Music: crossfade without volume jumps and Music bus") {
     Mixer mixer(kRate);
     Instrument held;
     held.wave = Waveform::Sine;
@@ -125,7 +125,7 @@ TEST_CASE("Música: fundido cruzado sin saltos de volumen y grupo Music") {
     renderOffline(mixer, 0.5f);
     mixer.playSong(b, 1.0f);
     const std::vector<float> left = an::channel(renderOffline(mixer, 1.5f), 2, 0);
-    // Durante el fundido el nivel de A3 baja y el de A5 sube, de a poco
+    // During the crossfade, A3 fades out and A5 fades in gradually
     const std::size_t w = kRate / 10;
     float previousLow = an::toneAmplitude(left, 220.0f, kRate, 0, w);
     float previousHigh = an::toneAmplitude(left, 880.0f, kRate, 0, w);
@@ -135,7 +135,7 @@ TEST_CASE("Música: fundido cruzado sin saltos de volumen y grupo Music") {
         const float highLevel = an::toneAmplitude(left, 880.0f, kRate, i * w, (i + 1) * w);
         CHECK(lowLevel <= previousLow + 0.01f);
         CHECK(highLevel >= previousHigh - 0.01f);
-        CHECK(lowLevel > previousLow - 0.15f); // Sin saltos
+        CHECK(lowLevel > previousLow - 0.15f); // No jumps
         previousLow = lowLevel;
         previousHigh = highLevel;
     }
@@ -147,7 +147,7 @@ TEST_CASE("Música: fundido cruzado sin saltos de volumen y grupo Music") {
     CHECK(an::peak(muted) < 1e-4f);
 }
 
-TEST_CASE("Canciones de ejemplo: válidas, suenan y no saturan") {
+TEST_CASE("Built-in songs: valid, audible, and do not clip") {
     for (const Song& song : {songs::platformerTheme(), songs::sandboxAmbient(), songs::sandboxNight()}) {
         CAPTURE(song.bpm());
         REQUIRE_MESSAGE(song.valid(), song.error());

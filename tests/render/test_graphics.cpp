@@ -1,4 +1,4 @@
-// mge_graphics: Texture2D (orientación, regiones) y MeshRenderer, incluida la escena del sandbox.
+// mge_graphics: Texture2D (orientation, regions) and MeshRenderer, including the sandbox scene.
 #include "../gpu/GpuTestContext.h"
 #include "RenderTest.h"
 
@@ -27,7 +27,7 @@ using namespace mge;
 using mge_test::GpuTestContext;
 
 namespace {
-    // Quad que cubre toda la imagen (NDC), antihorario, UV con (0, 0) abajo a la izquierda
+    // Fullscreen quad (NDC), counter-clockwise, UV with (0, 0) at bottom-left
     MeshData fullscreenQuad() {
         MeshData quad;
         const glm::vec3 n(0.0f, 0.0f, 1.0f);
@@ -43,7 +43,7 @@ namespace {
         return pixel[0] == r && pixel[1] == g && pixel[2] == b;
     }
 
-    // Dibuja la textura en pantalla completa con el MeshRenderer y devuelve la imagen
+    // Renders the texture fullscreen with MeshRenderer and returns the image
     mge_test::Image renderTexture(GpuDevice& device, MeshRenderer& renderer, const GpuMesh& quad,
                                   const Texture2D& texture) {
         constexpr std::uint32_t kSize = 64;
@@ -59,7 +59,7 @@ namespace {
     }
 }
 
-TEST_CASE("Texture2D: la fila 0 de la imagen queda arriba en pantalla (UV con v hacia arriba)") {
+TEST_CASE("Texture2D: image row 0 appears at top of screen (UV with v-up)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -67,7 +67,7 @@ TEST_CASE("Texture2D: la fila 0 de la imagen queda arriba en pantalla (UV con v 
     REQUIRE(renderer.valid());
     const GpuMesh quad = device.uploadMesh(fullscreenQuad());
 
-    // Imagen 2×2, fila 0 arriba: rojo, verde / azul, blanco
+    // 2x2 image, row 0 at top: red, green / blue, white
     const std::uint8_t pixels[] = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
     Texture2D texture = Texture2D::fromPixels(device, 2, 2, pixels, true);
     REQUIRE(texture);
@@ -75,35 +75,35 @@ TEST_CASE("Texture2D: la fila 0 de la imagen queda arriba en pantalla (UV con v 
     CHECK(texture.originalPixels().size() == 16);
 
     auto image = renderTexture(device, renderer, quad, texture);
-    CHECK(isColor(image.pixel(8, 8), 255, 0, 0));       // Arriba a la izquierda
-    CHECK(isColor(image.pixel(56, 8), 0, 255, 0));      // Arriba a la derecha
-    CHECK(isColor(image.pixel(8, 56), 0, 0, 255));      // Abajo a la izquierda
-    CHECK(isColor(image.pixel(56, 56), 255, 255, 255)); // Abajo a la derecha
+    CHECK(isColor(image.pixel(8, 8), 255, 0, 0));       // Top-left
+    CHECK(isColor(image.pixel(56, 8), 0, 255, 0));      // Top-right
+    CHECK(isColor(image.pixel(8, 56), 0, 0, 255));      // Bottom-left
+    CHECK(isColor(image.pixel(56, 56), 255, 255, 255)); // Bottom-right
     CHECK(renderer.drawCalls() == 1);
     CHECK(renderer.triangles() == 2);
 
-    // updateRegion usa coordenadas de la imagen (fila 0 arriba)
+    // updateRegion uses image coordinates (row 0 at top)
     const std::uint8_t yellow[] = {255, 255, 0, 255};
     REQUIRE(texture.updateRegion(device, 1, 1, 1, 1, yellow));
     image = renderTexture(device, renderer, quad, texture);
     CHECK(isColor(image.pixel(56, 56), 255, 255, 0));
-    CHECK(isColor(image.pixel(8, 8), 255, 0, 0)); // El resto no cambia
+    CHECK(isColor(image.pixel(8, 8), 255, 0, 0)); // Rest unchanged
 
-    // copyFromOriginal copia de la imagen original (el blanco de abajo a la derecha, no el amarillo)
+    // copyFromOriginal copies from the original image (bottom-right white, not yellow)
     REQUIRE(texture.copyFromOriginal(device, 1, 1, 1, 1, 0, 0));
     image = renderTexture(device, renderer, quad, texture);
     CHECK(isColor(image.pixel(8, 8), 255, 255, 255));
-    CHECK_FALSE(texture.updateRegion(device, 2, 0, 1, 1, yellow)); // Fuera de la imagen
+    CHECK_FALSE(texture.updateRegion(device, 2, 0, 1, 1, yellow)); // Out of bounds
 }
 
-TEST_CASE("Texture2D: un archivo que no existe da una textura inválida") {
+TEST_CASE("Texture2D: non-existent file returns an invalid texture") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     CHECK_FALSE(Texture2D::fromFile(gpu.device(), "no/existe.png"));
 }
 
 namespace {
-    // Escena fija del sandbox (semilla por defecto) con el atlas dado
+    // Fixed sandbox scene (default seed) with the given atlas
     void sandboxScene(const char* golden, bool procedural) {
         GpuTestContext gpu;
         if (!gpu.available()) return;
@@ -122,7 +122,7 @@ namespace {
         if (procedural) {
             const Image image = sandbox::buildProceduralAtlas();
             writePng(image,
-                     std::filesystem::path(MGE_RENDER_OUTPUT_DIR) / "procedural_atlas.png"); // Para revisarlo
+                     std::filesystem::path(MGE_RENDER_OUTPUT_DIR) / "procedural_atlas.png"); // For inspection
             atlas = Texture2D::fromPixels(device, image.width(), image.height(), image.data());
         } else {
             atlas = Texture2D::fromFile(device, MGE_TEST_ASSET_DIR "/textures/Minecraft-like_3d_tileset.png");
@@ -168,27 +168,26 @@ namespace {
         renderer.end();
         REQUIRE(cmd.submitAndWait());
         CHECK(renderer.drawCalls() > 9);
-        CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Hojas y flores
+        CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Leaves and flowers
 
         const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
-        // Tolerancia por defecto (1 %): entre Intel y lavapipe difieren ~0.3 % (bordes de texel y de
-        // triángulos)
+        // Default tolerance (1%): Intel and lavapipe differ by ~0.3% (texel and triangle edges)
         const mge_test::GoldenResult result = mge_test::compareWithGolden(golden, image);
         if (!result.message.empty()) MESSAGE(result.message);
         CHECK(result.passed);
     }
 }
 
-TEST_CASE("Render: escena del sandbox (SandboxTerrain + atlas PNG + MeshRenderer)") {
+TEST_CASE("Render: sandbox scene (SandboxTerrain + PNG atlas + MeshRenderer)") {
     sandboxScene("sandbox_scene", false);
 }
 
-TEST_CASE("Render: escena del sandbox con el atlas procedural (sin imágenes, #34)") {
+TEST_CASE("Render: sandbox scene with procedural atlas (no image files, #34)") {
     sandboxScene("sandbox_scene_procedural", true);
 }
 
-TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparente atrás→adelante") {
-    // Mallas "no vacías" falsas: la cola solo mira indexCount
+TEST_CASE("RenderQueue: sorted by pass; opaque and cutout front-to-back, transparent back-to-front") {
+    // Fake "non-empty" meshes: the queue only inspects indexCount
     GpuMesh mesh;
     mesh.indexCount = 3;
     RenderQueue queue;
@@ -200,7 +199,7 @@ TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparen
     queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near, {}});
     queue.add({&mesh, glm::mat4(1.0f), nullptr, MeshPass::Cutout, near, {}});
     GpuMesh empty;
-    queue.add({&empty, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near, {}}); // Vacía: no entra
+    queue.add({&empty, glm::mat4(1.0f), nullptr, MeshPass::Opaque, near, {}}); // Empty: skipped
     CHECK(queue.size() == 6);
 
     queue.sort(glm::vec3(0.0f), glm::vec3(0, 0, -1));
@@ -212,11 +211,11 @@ TEST_CASE("RenderQueue: por pasada; opaco y cutout adelante→atrás, transparen
     CHECK(is(1, MeshPass::Opaque, far));
     CHECK(is(2, MeshPass::Cutout, near));
     CHECK(is(3, MeshPass::Cutout, mid));
-    CHECK(is(4, MeshPass::Transparent, far)); // Lo lejano primero
+    CHECK(is(4, MeshPass::Transparent, far)); // Farthest first
     CHECK(is(5, MeshPass::Transparent, near));
 }
 
-TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sobre el pasto") {
+TEST_CASE("Render: cutout leaves in front of transparent water and a flower on grass") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -228,8 +227,8 @@ TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sob
     for (int x = 0; x < 8; x++)
         for (int z = 0; z < 8; z++) world.setBlock({x, 0, z}, b.grass);
     for (int x = 4; x < 8; x++)
-        for (int z = 0; z < 4; z++) world.setBlock({x, 1, z}, b.water); // Charco al fondo
-    world.setBlock({5, 2, 5}, b.leaves);                                // Hojas entre la cámara y el agua
+        for (int z = 0; z < 4; z++) world.setBlock({x, 1, z}, b.water); // Pool in the back
+    world.setBlock({5, 2, 5}, b.leaves);                                // Leaves between camera and water
     world.setBlock({5, 3, 5}, b.leaves);
     world.setBlock({2, 1, 5}, b.flower);
     world.setBlock({3, 1, 4}, b.rose);
@@ -252,7 +251,7 @@ TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sob
                                      glm::lookAt(eye, target, glm::vec3(0, 1, 0));
 
     RenderQueue queue;
-    // Orden de alta al revés a propósito: la cola lo corrige
+    // Intentionally added in reverse order: the queue sorts them
     queue.add({&transparent, glm::mat4(1.0f), &atlas, MeshPass::Transparent, glm::vec3(6, 1, 2), {}});
     queue.add({&cutout, glm::mat4(1.0f), &atlas, MeshPass::Cutout, glm::vec3(5, 2, 5), {}});
     queue.add({&opaque, glm::mat4(1.0f), &atlas, MeshPass::Opaque, glm::vec3(4, 0, 4), {}});
@@ -274,12 +273,12 @@ TEST_CASE("Render: hojas (cutout) delante del agua (transparente) y una flor sob
     CHECK(result.passed);
 }
 
-TEST_CASE("Render: escena voxel de solo color, con luz, AO y niebla (#33)") {
+TEST_CASE("Render: untextured voxel scene with lighting, AO, and fog (#33)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
 
-    // Colinas de colores (sin texturas: solo luz y AO dan la forma)
+    // Colored hills (no textures: lighting and AO alone define the shape)
     BlockRegistry registry;
     BlockDesc grass;
     grass.name = "grass";
@@ -297,7 +296,7 @@ TEST_CASE("Render: escena voxel de solo color, con luz, AO y niebla (#33)") {
         }
 
     ChunkMeshOptions options;
-    options.ambientOcclusion = true; // Greedy activo: une las caras con AO uniforme
+    options.ambientOcclusion = true; // Greedy enabled: merges faces with uniform AO
     const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}, options);
     const GpuMesh terrain = device.uploadMesh(mesh.opaque);
 
@@ -326,7 +325,7 @@ TEST_CASE("Render: escena voxel de solo color, con luz, AO y niebla (#33)") {
     CHECK(result.passed);
 }
 
-TEST_CASE("Lighting::unlit deja la textura × color tal cual") {
+TEST_CASE("Lighting::unlit preserves texture * color unchanged") {
     const Lighting unlit = Lighting::unlit();
     CHECK(unlit.sunColor == glm::vec3(0.0f));
     CHECK(unlit.skyAmbient == glm::vec3(1.0f));
@@ -334,7 +333,7 @@ TEST_CASE("Lighting::unlit deja la textura × color tal cual") {
     CHECK_FALSE(unlit.fog);
 }
 
-TEST_CASE("Render: detalle procedural en bloques de solo color (MeshMaterial, #34)") {
+TEST_CASE("Render: procedural detail on solid-color blocks (MeshMaterial, #34)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -347,8 +346,8 @@ TEST_CASE("Render: detalle procedural en bloques de solo color (MeshMaterial, #3
     world.loadChunk({0, 0, 0});
     for (int x = 0; x < 8; x++)
         for (int z = 0; z < 8; z++)
-            for (int y = 0; y <= (x + z) / 4; y++) world.setBlock({x, y, z}, s); // Escalones
-    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}); // Greedy: caras grandes y planas
+            for (int y = 0; y <= (x + z) / 4; y++) world.setBlock({x, y, z}, s); // Steps
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}); // Greedy: large flat faces
     const GpuMesh gpuMesh = device.uploadMesh(mesh.opaque);
 
     MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
@@ -375,22 +374,22 @@ TEST_CASE("Render: detalle procedural en bloques de solo color (MeshMaterial, #3
     CHECK(result.passed);
 }
 
-TEST_CASE("DebugLines: cantidad de líneas por figura y esquinas del frustum") {
+TEST_CASE("DebugLines: line count per shape and frustum corners") {
     DebugLines lines;
     lines.line({0, 0, 0}, {1, 0, 0}, {1, 1, 1, 1});
     CHECK(lines.lineCount() == 1);
     lines.aabb(Aabb({0, 0, 0}, {1, 2, 3}), {1, 0, 0, 1});
     CHECK(lines.lineCount() == 1 + 12);
-    lines.aabb(Aabb(), {1, 0, 0, 1}); // Vacía: nada
+    lines.aabb(Aabb(), {1, 0, 0, 1}); // Empty: nothing
     CHECK(lines.lineCount() == 13);
     lines.sphere({0, 0, 0}, 1.0f, {0, 1, 0, 1}, 16);
     CHECK(lines.lineCount() == 13 + 3 * 16);
     lines.axes({0, 0, 0}, 2.0f);
     CHECK(lines.lineCount() == 13 + 48 + 3);
-    CHECK(lines.vertices().back().position == glm::vec3(0, 0, 2)); // Eje Z
+    CHECK(lines.vertices().back().position == glm::vec3(0, 0, 2)); // Z axis
     lines.clear();
 
-    // El frustum de una cámara en el origen mirando a -Z: el plano lejano queda a -far
+    // Frustum of a camera at the origin looking down -Z: far plane is at -far
     const glm::mat4 vp = glm::perspectiveRH_ZO(glm::radians(90.0f), 1.0f, 1.0f, 10.0f) *
                          glm::lookAt(glm::vec3(0.0f), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
     lines.frustum(vp, {1, 1, 0, 1});
@@ -404,13 +403,13 @@ TEST_CASE("DebugLines: cantidad de líneas por figura y esquinas del frustum") {
     CHECK(maxZ == doctest::Approx(-1.0f).epsilon(1e-3));
 }
 
-TEST_CASE("Render: líneas de depuración (caja, esfera, ejes) con prueba de profundidad (#38)") {
+TEST_CASE("Render: debug lines (box, sphere, axes) with depth testing (#38)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
     MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
     REQUIRE(renderer.valid());
-    // Un cubo sólido que tapa parte de las líneas
+    // Solid cube occluding part of the lines
     const GpuMesh cube = device.uploadMesh(primitives::box(glm::vec3(1.0f), {0.6f, 0.6f, 0.65f, 1.0f}));
     DebugDraw debug(device);
     debug.aabb(Aabb({-1.2f, -1.2f, -1.2f}, {1.2f, 1.2f, 1.2f}), {1.0f, 0.9f, 0.1f, 1.0f});
@@ -428,18 +427,18 @@ TEST_CASE("Render: líneas de depuración (caja, esfera, ejes) con prueba de pro
     renderer.draw(cube, glm::mat4(1.0f));
     debug.flush(renderer);
     renderer.draw(cube,
-                  glm::translate(glm::mat4(1.0f), {0, -3, 0})); // Mallas después de las líneas: siguen bien
+                  glm::translate(glm::mat4(1.0f), {0, -3, 0})); // Meshes after lines: still render fine
     renderer.end();
     REQUIRE(cmd.submitAndWait());
 
     const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
-    // Tolerancia por defecto: entre Intel y lavapipe las líneas difieren en ~0.5 % de los píxeles
+    // Default tolerance: Intel and lavapipe lines differ on ~0.5% of pixels
     const mge_test::GoldenResult result = mge_test::compareWithGolden("debug_lines", image);
     if (!result.message.empty()) MESSAGE(result.message);
     CHECK(result.passed);
 }
 
-TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada (#36)") {
+TEST_CASE("Render: SDF sphere intersecting and clipped by a rasterized box (#36)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -451,7 +450,7 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
                             shaders::kSdfClippedSphereFrag);
     REQUIRE(sdfRenderer.valid());
 
-    // Caja rasterizada azul grisácea centrada en (0, 0, 0) de tamaño 2x2x2 (tapa en y = 1.0)
+    // Grayish-blue rasterized box centered at (0, 0, 0) of size 2x2x2 (top at y = 1.0)
     const GpuMesh box =
         device.uploadMesh(primitives::box(glm::vec3(2.0f), glm::vec4(0.35f, 0.45f, 0.70f, 1.0f)));
 
@@ -476,10 +475,10 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
     renderer.setCamera(viewProj, eye);
     renderer.setLighting(lighting);
 
-    // 1. Dibujar caja opaca rasterizada
+    // 1. Draw opaque rasterized box
     renderer.draw(box, glm::mat4(1.0f));
 
-    // 2. Dibujar esfera SDF (DESPUÉS de lo opaco)
+    // 2. Draw SDF sphere (AFTER opaque geometry)
     SdfFrame frame;
     frame.viewProjection = viewProj;
     frame.inverseViewProjection = invViewProj;
@@ -492,14 +491,14 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
 
     const mge_test::Image image{kSize, kSize, device.downloadTexture(colorTarget, kSize, kSize)};
 
-    // Verificación en CPU: raymarching analítico y con mge::sdf::sphere para varios píxeles en la cúpula
+    // CPU verification: analytical raymarching and mge::sdf::sphere for several dome pixels
     for (auto [px, py] : {std::pair{64u, 42u}, std::pair{58u, 48u}, std::pair{70u, 45u}}) {
-        // En estos píxeles debe verse el color naranja de la esfera (R alto, B bajo)
+        // These pixels should show the sphere's orange color (high R, low B)
         const std::uint8_t* p = image.pixel(px, py);
         CHECK(p[0] > 140);
         CHECK(p[2] < 100);
 
-        // Comprobación de profundidad CPU con mge::sdf::sphere vs analítica
+        // CPU depth check using mge::sdf::sphere vs analytical intersection
         const float u = (float(px) + 0.5f) / float(kSize);
         const float v = 1.0f - (float(py) + 0.5f) / float(kSize);
         const glm::vec2 ndc(u * 2.0f - 1.0f, v * 2.0f - 1.0f);
@@ -508,7 +507,7 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
         const glm::vec3 ro = eye;
         const glm::vec3 rd = glm::normalize(worldFar - ro);
 
-        // Raymarching CPU con mge::sdf
+        // CPU raymarching with mge::sdf
         const glm::vec3 sphereCenter(0.0f, 1.0f, 0.0f);
         constexpr float kSphereRadius = 1.0f;
         auto sphereSdf = mge::sdf::opTranslate(mge::sdf::sphere(kSphereRadius), sphereCenter);
@@ -525,7 +524,7 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
         }
         REQUIRE(hitCpu);
 
-        // Intersección analítica rayo-esfera
+        // Analytical ray-sphere intersection
         const glm::vec3 oc = ro - sphereCenter;
         const float b = glm::dot(rd, oc);
         const float c = glm::dot(oc, oc) - kSphereRadius * kSphereRadius;
@@ -535,7 +534,7 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
 
         CHECK(tCpu == doctest::Approx(tExact).epsilon(0.002f));
 
-        // Profundidad en clip space calculada por la GPU (gl_FragDepth)
+        // Clip-space depth computed by the GPU (gl_FragDepth)
         const glm::vec3 hitPoint = ro + rd * tCpu;
         const glm::vec4 clipPos = viewProj * glm::vec4(hitPoint, 1.0f);
         const float depthCpu = clipPos.z / clipPos.w;
@@ -546,8 +545,8 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
         CHECK(depthCpu == doctest::Approx(depthExact).epsilon(0.002f));
     }
 
-    // Píxel donde la esfera está sumergida dentro de la caja (ej: x=64, y=75):
-    // La caja debe haber ocluido la esfera (se ve el color de la caja: R bajo/medio, B más alto)
+    // Pixel where the sphere is submerged inside the box (e.g., x=64, y=75):
+    // The box must have occluded the sphere (box color visible: low/medium R, higher B)
     const std::uint8_t* submergedPixel = image.pixel(64, 75);
     CHECK(submergedPixel[2] > submergedPixel[0]);
 
@@ -556,12 +555,12 @@ TEST_CASE("Render: esfera SDF intersectando y recortada por una caja rasterizada
     CHECK(result.passed);
 }
 
-TEST_CASE("Render: ordenamiento de caras transparentes dentro de un chunk (frente y atrás, #180)") {
+TEST_CASE("Render: transparent face sorting within a chunk (front and back views, #180)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
 
-    // Un solo chunk con dos capas de vidrio de distinto color y agua detrás (tres capas translúcidas)
+    // Single chunk with two differently colored glass layers and water behind them (three translucent layers)
     BlockRegistry registry;
     BlockDesc stone;
     stone.name = "stone";
@@ -592,7 +591,7 @@ TEST_CASE("Render: ordenamiento de caras transparentes dentro de un chunk (frent
     world.loadChunk({0, 0, 0});
     for (int x = 2; x <= 13; ++x)
         for (int z = 4; z <= 12; ++z) world.setBlock({x, 0, z}, sId);
-    // Capa 1 (z = 6): vidrio rojo; Capa 2 (z = 8): vidrio verde; Capa 3 (z = 10): agua azul
+    // Layer 1 (z = 6): red glass; Layer 2 (z = 8): green glass; Layer 3 (z = 10): blue water
     for (int y = 2; y <= 9; ++y) {
         for (int x = 3; x <= 10; ++x) world.setBlock({x, y, 6}, rId);
         for (int x = 4; x <= 11; ++x) world.setBlock({x, y, 8}, gId);
@@ -637,15 +636,15 @@ TEST_CASE("Render: ordenamiento de caras transparentes dentro de un chunk (frent
         return image;
     };
 
-    // Vista frontal (z < 6): vidrio rojo al frente → el rojo domina en la zona superpuesta
+    // Front view (z < 6): red glass in front -> red dominates in the overlap area
     const mge_test::Image front = renderFrom(glm::vec3(7.5f, 7.5f, -5.0f), "transparent_sort_front");
-    // Vista trasera (z > 10): agua azul al frente → el azul domina en la zona superpuesta
+    // Back view (z > 10): blue water in front -> blue dominates in the overlap area
     const mge_test::Image back = renderFrom(glm::vec3(7.5f, 7.5f, 22.0f), "transparent_sort_back");
 
     const std::uint8_t* frontPx = front.pixel(kSize / 2, kSize / 2);
     const std::uint8_t* backPx = back.pixel(kSize / 2, kSize / 2);
-    CHECK(frontPx[0] > frontPx[2]); // Rojo > Azul en la vista frontal
-    CHECK(backPx[2] > backPx[0]);   // Azul > Rojo en la vista trasera
-    CHECK(frontPx[0] > backPx[0]);  // Más rojo desde el frente que desde atrás
-    CHECK(backPx[2] > frontPx[2]);  // Más azul desde atrás que desde el frente
+    CHECK(frontPx[0] > frontPx[2]); // Red > Blue in front view
+    CHECK(backPx[2] > backPx[0]);   // Blue > Red in back view
+    CHECK(frontPx[0] > backPx[0]);  // More red from the front than from the back
+    CHECK(backPx[2] > frontPx[2]);  // More blue from the back than from the front
 }

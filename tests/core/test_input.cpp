@@ -3,7 +3,7 @@
 
 using namespace mge;
 
-TEST_CASE("Flancos de tecla: pressed solo el primer frame, held después, released al soltar") {
+TEST_CASE("Key edges: pressed only on first frame, held after, released on release") {
     InputState input;
 
     input.beginFrame();
@@ -12,7 +12,7 @@ TEST_CASE("Flancos de tecla: pressed solo el primer frame, held después, releas
     CHECK(input.wasPressed(Key::W));
     CHECK_FALSE(input.wasReleased(Key::W));
 
-    input.beginFrame(); // sigue apretada
+    input.beginFrame(); // still held
     CHECK(input.isDown(Key::W));
     CHECK_FALSE(input.wasPressed(Key::W));
 
@@ -25,7 +25,7 @@ TEST_CASE("Flancos de tecla: pressed solo el primer frame, held después, releas
     CHECK_FALSE(input.wasReleased(Key::W));
 }
 
-TEST_CASE("Apretar y soltar dentro del mismo frame no deja flancos") {
+TEST_CASE("Pressing and releasing within the same frame leaves no edges") {
     InputState input;
     input.beginFrame();
     input.setKey(Key::P, true);
@@ -34,7 +34,7 @@ TEST_CASE("Apretar y soltar dentro del mismo frame no deja flancos") {
     CHECK_FALSE(input.wasPressed(Key::P));
 }
 
-TEST_CASE("Botones del ratón tienen los mismos flancos") {
+TEST_CASE("Mouse buttons have the same edges") {
     InputState input;
     input.beginFrame();
     input.setMouseButton(MouseButton::Right, true);
@@ -45,7 +45,7 @@ TEST_CASE("Botones del ratón tienen los mismos flancos") {
     CHECK_FALSE(input.isDown(MouseButton::Left));
 }
 
-TEST_CASE("Delta del ratón y rueda se acumulan en el frame y se reinician en beginFrame") {
+TEST_CASE("Mouse delta and wheel accumulate within the frame and reset in beginFrame") {
     InputState input;
     input.beginFrame();
     input.addMouseDelta(3.0f, -1.0f);
@@ -59,10 +59,10 @@ TEST_CASE("Delta del ratón y rueda se acumulan en el frame y se reinician en be
     input.beginFrame();
     CHECK(input.mouseDelta().x == doctest::Approx(0.0f));
     CHECK(input.wheel() == doctest::Approx(0.0f));
-    CHECK(input.mousePosition().x == doctest::Approx(100.0f)); // La posición se mantiene
+    CHECK(input.mousePosition().x == doctest::Approx(100.0f)); // Position is preserved
 }
 
-TEST_CASE("clear suelta todo (pérdida de foco)") {
+TEST_CASE("clear releases everything (focus loss)") {
     InputState input;
     input.beginFrame();
     input.setKey(Key::A, true);
@@ -72,7 +72,7 @@ TEST_CASE("clear suelta todo (pérdida de foco)") {
     CHECK_FALSE(input.isDown(MouseButton::Left));
 }
 
-TEST_CASE("Unknown y Count se ignoran sin romper nada") {
+TEST_CASE("Unknown and Count are ignored safely") {
     InputState input;
     input.setKey(Key::Unknown, true);
     input.setKey(Key::Count, true);
@@ -80,7 +80,7 @@ TEST_CASE("Unknown y Count se ignoran sin romper nada") {
     CHECK_FALSE(input.isDown(Key::Unknown));
 }
 
-TEST_CASE("ActionMap: una acción con varios bindings") {
+TEST_CASE("ActionMap: an action with multiple bindings") {
     InputState input;
     ActionMap actions;
     actions.bind("Jump", Key::Space);
@@ -92,30 +92,30 @@ TEST_CASE("ActionMap: una acción con varios bindings") {
     CHECK(actions.isDown(input, "Jump"));
     CHECK(actions.wasPressed(input, "Jump"));
 
-    // Con el botón todavía apretado, apretar Espacio no es un nuevo "pressed"
+    // With button still held, pressing Space is not a new "pressed" edge
     input.beginFrame();
     input.setKey(Key::Space, true);
     CHECK_FALSE(actions.wasPressed(input, "Jump"));
 
-    // Soltar solo uno: la acción sigue abajo
+    // Releasing only one: action stays down
     input.beginFrame();
     input.setMouseButton(MouseButton::Right, false);
     CHECK(actions.isDown(input, "Jump"));
     CHECK_FALSE(actions.wasReleased(input, "Jump"));
 
-    // Soltar el último: released
+    // Releasing the last one: released
     input.beginFrame();
     input.setKey(Key::Space, false);
     CHECK(actions.wasReleased(input, "Jump"));
 
-    CHECK_FALSE(actions.isDown(input, "NoExiste"));
+    CHECK_FALSE(actions.isDown(input, "NonExistent"));
 }
 
-TEST_CASE("ActionMap: ejes suman +1/-1 y se cancelan") {
+TEST_CASE("ActionMap: axes sum +1/-1 and cancel out") {
     InputState input;
     ActionMap actions;
     actions.bindAxis("MoveForward", Key::W, Key::S);
-    actions.bindAxis("MoveForward", Key::Up, Key::Down); // Flechas también
+    actions.bindAxis("MoveForward", Key::Up, Key::Down); // Arrow keys too
 
     input.beginFrame();
     CHECK(actions.axis(input, "MoveForward") == doctest::Approx(0.0f));
@@ -125,7 +125,7 @@ TEST_CASE("ActionMap: ejes suman +1/-1 y se cancelan") {
     CHECK(actions.axis(input, "MoveForward") == doctest::Approx(0.0f));
     input.setKey(Key::W, false);
     CHECK(actions.axis(input, "MoveForward") == doctest::Approx(-1.0f));
-    input.setKey(Key::Down, true); // -2 se recorta a -1
+    input.setKey(Key::Down, true); // -2 clamps to -1
     CHECK(actions.axis(input, "MoveForward") == doctest::Approx(-1.0f));
-    CHECK(actions.axis(input, "NoExiste") == doctest::Approx(0.0f));
+    CHECK(actions.axis(input, "NonExistent") == doctest::Approx(0.0f));
 }

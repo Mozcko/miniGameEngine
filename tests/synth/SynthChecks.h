@@ -1,6 +1,6 @@
 #pragma once
 
-// Medidas simples sobre señales para los tests de audio (frecuencia, nivel)
+// Simple signal measurements for audio tests (frequency, level)
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -8,7 +8,7 @@
 
 namespace synth_test {
 
-    // Cruces por cero subiendo → Hz
+    // Rising zero-crossings → Hz
     inline float frequency(const std::vector<float>& mono, int sampleRate) {
         int crossings = 0;
         for (std::size_t i = 1; i < mono.size(); i++)
@@ -30,7 +30,7 @@ namespace synth_test {
         return p;
     }
 
-    // Canal izquierdo de un buffer estéreo intercalado
+    // Left channel of an interleaved stereo buffer
     inline std::vector<float> left(const std::vector<float>& stereo) {
         std::vector<float> out(stereo.size() / 2);
         for (std::size_t i = 0; i < out.size(); i++) out[i] = stereo[i * 2];

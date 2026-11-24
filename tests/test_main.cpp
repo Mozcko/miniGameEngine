@@ -1,3 +1,3 @@
-// Punto de entrada de los tests: doctest genera el main()
+// Entry point for unit tests: doctest generates main()
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>

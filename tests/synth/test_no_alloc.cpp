@@ -1,5 +1,5 @@
-// El hilo de audio no reserva memoria (#47): se reemplaza operator new en este programa de tests y se cuenta
-// lo que se reserva mientras corre Mixer::render
+// Audio thread does not allocate memory (#47): replace operator new in this test binary and count
+// allocations made while Mixer::render runs
 #include <doctest/doctest.h>
 #include <mge/synth/Mixer.h>
 
@@ -25,7 +25,7 @@ void operator delete(void* p, std::size_t) noexcept {
     std::free(p);
 }
 
-TEST_CASE("Mixer::render no reserva memoria (notas, samples, tonos, eco, robo de voces, música)") {
+TEST_CASE("Mixer::render does not allocate memory (notes, samples, tones, delay, voice stealing, music)") {
     using namespace mge;
     Mixer mixer(48000);
     Sample s;
@@ -48,13 +48,13 @@ TEST_CASE("Mixer::render no reserva memoria (notas, samples, tonos, eco, robo de
     tCounting = true;
     for (int i = 0; i < 20; i++) mixer.render(out.data(), 4096);
     tCounting = false;
-    mixer.playSong(theme); // De nuevo desde el principio, y después el fundido a la otra
+    mixer.playSong(theme); // Restart from the beginning, then crossfade to the other song
     tCounting = true;
-    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: pasa por el loop del tema
+    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: crosses the song's loop point
     tCounting = false;
     mixer.playSong(ambient, 0.5f);
     tCounting = true;
-    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: pasa por el loop del tema
+    for (int i = 0; i < 100; i++) mixer.render(out.data(), 4096); // ~8.5 s: crosses the song's loop point
     tCounting = false;
     CHECK(gAllocations.load() == 0);
 }

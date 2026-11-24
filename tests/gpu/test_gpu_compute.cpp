@@ -13,7 +13,7 @@
 using namespace mge;
 using mge_test::GpuTestContext;
 
-TEST_CASE("GPU compute: shader que escribe i*i en un buffer de 1024 uints") {
+TEST_CASE("GPU compute: shader writes i*i into a buffer of 1024 uints") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -53,7 +53,7 @@ TEST_CASE("GPU compute: shader que escribe i*i en un buffer de 1024 uints") {
     }
 }
 
-TEST_CASE("GPU compute: dispatch usando métodos directos de CommandBuffer") {
+TEST_CASE("GPU compute: dispatch using direct CommandBuffer methods") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -94,7 +94,7 @@ TEST_CASE("GPU compute: dispatch usando métodos directos de CommandBuffer") {
     }
 }
 
-TEST_CASE("GPU compute: pushComputeUniform con multiplicador") {
+TEST_CASE("GPU compute: pushComputeUniform with multiplier") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();

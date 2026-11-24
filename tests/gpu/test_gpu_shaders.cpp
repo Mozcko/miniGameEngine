@@ -15,8 +15,8 @@
 using namespace mge;
 using mge_test::GpuTestContext;
 
-TEST_CASE("Shaders embebidos: SPIR-V válido con la etapa correcta") {
-    // Número mágico de SPIR-V (little endian): 0x07230203
+TEST_CASE("Embedded shaders: valid SPIR-V with the expected stage") {
+    // SPIR-V magic number (little endian): 0x07230203
     const ShaderCode& vertex = shaders::kTestTriangleVert;
     REQUIRE(vertex.size >= 20);
     CHECK(vertex.size % 4 == 0);
@@ -27,10 +27,10 @@ TEST_CASE("Shaders embebidos: SPIR-V válido con la etapa correcta") {
     CHECK(vertex.stage == ShaderStage::Vertex);
     CHECK(shaders::kTestTriangleFrag.stage == ShaderStage::Fragment);
     CHECK(shaders::kTestSdfRaymarchComp.stage == ShaderStage::Compute);
-    CHECK(reinterpret_cast<std::uintptr_t>(vertex.code) % 4 == 0); // Alineado a palabras de 32 bits
+    CHECK(reinterpret_cast<std::uintptr_t>(vertex.code) % 4 == 0); // Aligned to 32-bit words
 }
 
-TEST_CASE("GPU: triángulo con un uniform del fragmento, dibujado y leído de vuelta") {
+TEST_CASE("GPU: triangle with a fragment uniform, drawn and read back") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -68,7 +68,7 @@ TEST_CASE("GPU: triángulo con un uniform del fragmento, dibujado y leído de vu
     const auto pixels = device.downloadTexture(target, kSize, kSize);
     REQUIRE(pixels.size() == kSize * kSize * 4);
     auto pixel = [&](std::uint32_t x, std::uint32_t y) { return &pixels[(y * kSize + x) * 4]; };
-    // Centro: el triángulo (verde, del uniform). Esquinas: el fondo (azul)
+    // Center: the triangle (green, from the uniform). Corners: the background (blue)
     CHECK(pixel(16, 16)[0] == 0);
     CHECK(pixel(16, 16)[1] == 255);
     CHECK(pixel(16, 16)[2] == 0);
@@ -78,7 +78,7 @@ TEST_CASE("GPU: triángulo con un uniform del fragmento, dibujado y leído de vu
     }
 }
 
-TEST_CASE("GPU compute: SDF y raymarching ejecutados en GPU con acuerdo matemático") {
+TEST_CASE("GPU compute: SDF and raymarching executed on GPU with analytical agreement") {
     const ShaderCode& computeShader = shaders::kTestSdfRaymarchComp;
     REQUIRE(computeShader.size >= 20);
     CHECK(computeShader.stage == ShaderStage::Compute);
@@ -118,7 +118,7 @@ TEST_CASE("GPU compute: SDF y raymarching ejecutados en GPU con acuerdo matemát
     std::vector<float> results(kFloatCount);
     std::memcpy(results.data(), bytes.data(), kByteSize);
 
-    // Primitivas SDF
+    // SDF primitives
     CHECK(results[0] == doctest::Approx(1.0f));  // sdSphere({2, 0, 0}, 1.0)
     CHECK(results[1] == doctest::Approx(-1.0f)); // sdSphere({0, 0, 0}, 1.0)
     CHECK(results[2] == doctest::Approx(2.0f));  // sdBox({3, 0, 0}, {1, 1, 1})
@@ -127,26 +127,26 @@ TEST_CASE("GPU compute: SDF y raymarching ejecutados en GPU con acuerdo matemát
     CHECK(results[5] == doctest::Approx(1.0f));  // sdCylinder({0, 3, 0}, 1.0, 2.0)
     CHECK(results[6] == doctest::Approx(3.0f));  // sdPlane({0, 4, 0}, ...)
 
-    // Booleanas
+    // Boolean operations
     CHECK(results[7] == doctest::Approx(1.0f));  // opUnion
     CHECK(results[8] == doctest::Approx(2.0f));  // opSubtract
     CHECK(results[9] == doctest::Approx(2.0f));  // opIntersect
     CHECK(results[10] == doctest::Approx(1.0f)); // opRound
-    CHECK(results[11] == doctest::Approx(1.0f)); // opSmoothUnion con k=0
+    CHECK(results[11] == doctest::Approx(1.0f)); // opSmoothUnion with k=0
 
-    // Raymarching: rayo desde (0, 1, -5) hacia esfera en (0, 1, 0) radio 1 -> t debe ser ~4.0
+    // Raymarching: ray from (0, 1, -5) toward sphere at (0, 1, 0) radius 1 -> t should be ~4.0
     CHECK(results[12] == doctest::Approx(4.0f).epsilon(0.01f));
     CHECK(results[13] > 0.0f); // steps
 
-    // Normal en la cara frontal de la esfera -> (0, 0, -1)
+    // Normal on the front face of the sphere -> (0, 0, -1)
     CHECK(results[14] == doctest::Approx(0.0f).epsilon(0.02f));
     CHECK(results[15] == doctest::Approx(0.0f).epsilon(0.02f));
     CHECK(results[16] == doctest::Approx(-1.0f).epsilon(0.02f));
 
-    // AO en plano despejado -> 1.0
+    // AO on unobstructed plane -> 1.0
     CHECK(results[17] == doctest::Approx(1.0f).epsilon(0.01f));
 
-    // Sombra suave despejada -> 1.0; sombra oculta -> 0.0
+    // Unobstructed soft shadow -> 1.0; occluded shadow -> 0.0
     CHECK(results[18] == doctest::Approx(1.0f).epsilon(0.01f));
     CHECK(results[19] == doctest::Approx(0.0f));
 }

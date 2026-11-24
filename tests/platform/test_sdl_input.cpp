@@ -3,7 +3,7 @@
 
 using namespace mge;
 
-// Eventos construidos a mano: no hace falta SDL_Init ni ventana
+// Hand-crafted events: no SDL_Init or window required
 
 namespace {
     SDL_Event keyEvent(SDL_Scancode scancode, bool down, bool repeat = false) {
@@ -16,7 +16,7 @@ namespace {
     }
 }
 
-TEST_CASE("Traducción de scancodes") {
+TEST_CASE("Scancode translation") {
     CHECK(keyFromScancode(SDL_SCANCODE_A) == Key::A);
     CHECK(keyFromScancode(SDL_SCANCODE_Z) == Key::Z);
     CHECK(keyFromScancode(SDL_SCANCODE_1) == Key::Num1);
@@ -29,14 +29,14 @@ TEST_CASE("Traducción de scancodes") {
     CHECK(keyFromScancode(SDL_SCANCODE_KP_PLUS) == Key::Unknown);
 }
 
-TEST_CASE("Botones del ratón") {
+TEST_CASE("Mouse buttons") {
     CHECK(mouseButtonFromSdl(SDL_BUTTON_LEFT) == MouseButton::Left);
     CHECK(mouseButtonFromSdl(SDL_BUTTON_RIGHT) == MouseButton::Right);
     CHECK(mouseButtonFromSdl(SDL_BUTTON_X2) == MouseButton::X2);
     CHECK(mouseButtonFromSdl(99) == MouseButton::Count);
 }
 
-TEST_CASE("Eventos de teclado actualizan el estado; las repeticiones no generan flancos") {
+TEST_CASE("Keyboard events update state; key repeats do not trigger edges") {
     InputState input;
     input.beginFrame();
     applySdlEvent(input, keyEvent(SDL_SCANCODE_W, true));
@@ -52,7 +52,7 @@ TEST_CASE("Eventos de teclado actualizan el estado; las repeticiones no generan 
     CHECK(input.wasReleased(Key::W));
 }
 
-TEST_CASE("Movimiento, botones y rueda del ratón") {
+TEST_CASE("Mouse motion, buttons, and wheel") {
     InputState input;
     input.beginFrame();
 
@@ -82,7 +82,7 @@ TEST_CASE("Movimiento, botones y rueda del ratón") {
     CHECK(input.wheel() == doctest::Approx(1.0f));
 }
 
-TEST_CASE("Perder el foco suelta todas las teclas") {
+TEST_CASE("Losing focus releases all keys") {
     InputState input;
     input.beginFrame();
     applySdlEvent(input, keyEvent(SDL_SCANCODE_LCTRL, true));
