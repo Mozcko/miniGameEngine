@@ -1,6 +1,6 @@
 .github/workflows/ci.yml 1e51f7708bb53770
 .gitignore 668d7124ecd80892
-CMakeLists.txt 41234a2295bad327
+CMakeLists.txt 6d59b094fc092b66
 CMakePresets.json a3baee64ebbfd7d2
 README.md b15d848054eb05ed
 mge.project a366971ca865bad1
