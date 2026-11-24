@@ -10,7 +10,7 @@ namespace mge {
         const float rate = float(sampleRate);
         const float fc = std::clamp(cutoff, 10.0f, 0.45f * rate);
         m_g = std::tan(3.14159265f * fc / rate);
-        // Q de 0.5 (sin pico) a ~20; k = 1/Q
+        // Q from 0.5 (no peak) to ~20; k = 1/Q
         const float q = 0.5f + std::clamp(resonance, 0.0f, 1.0f) * 19.5f;
         m_k = 1.0f / q;
         m_a1 = 1.0f / (1.0f + m_g * (m_g + m_k));

@@ -7,7 +7,7 @@ namespace mge {
 
     namespace {
         constexpr double kTwoPi = 6.283185307179586;
-        constexpr float kFadeSeconds = 0.005f; // Rampa de entrada/salida de los tonos (sin chasquidos)
+        constexpr float kFadeSeconds = 0.005f; // Tone fade-in/fade-out ramp (no clicks)
         constexpr float kSqrt2 = 1.41421356f;
     }
 
@@ -41,7 +41,7 @@ namespace mge {
         if (sample.empty() || sample.channels < 1 || sample.channels > 2 || index >= kMaxSamples)
             return kInvalidSample;
         m_samples[index] = std::move(sample);
-        m_sampleCount.store(index + 1, std::memory_order_release); // Publica el sample antes que su id
+        m_sampleCount.store(index + 1, std::memory_order_release); // Publish sample before its id
         return static_cast<SampleId>(index);
     }
 
@@ -131,7 +131,7 @@ namespace mge {
         return stats;
     }
 
-    // Una libre; si no hay, la más baja de las que se están apagando; si no, la más vieja
+    // A free voice; otherwise the quietest releasing voice; otherwise the oldest voice
     Mixer::Voice& Mixer::allocateVoice() {
         Voice* oldest = nullptr;
         Voice* quietest = nullptr;
@@ -169,7 +169,7 @@ namespace mge {
         voice.pitchSlide = in.pitchSlide;
         voice.delaySend = std::clamp(in.delaySend, 0.0f, 1.0f);
         panGains(in.pan, voice.gainLeft, voice.gainRight);
-        const float gain = in.gain * velocity * kSqrt2; // Centro = ganancia del instrumento
+        const float gain = in.gain * velocity * kSqrt2; // Center = instrument gain
         voice.gainLeft *= gain;
         voice.gainRight *= gain;
         voice.startOrder = m_nextOrder++;
@@ -220,7 +220,7 @@ namespace mge {
     std::size_t Mixer::framesUntilMusicEvent() const {
         double until = 1e18;
         for (const MusicPlayer& player : m_players) {
-            if (!player.active || player.target == 0.0f) continue; // Uno que se funde ya no dispara notas
+            if (!player.active || player.target == 0.0f) continue; // A fading-out player triggers no more notes
             const CompiledSong& song = *player.song;
             const double nextFrame = player.next < song.events.size()
                                          ? double(song.events[player.next].step) * song.framesPerStep
@@ -242,7 +242,7 @@ namespace mge {
                     startVoice(song.instruments[std::size_t(e.instrument)], e.frequency, e.velocity,
                                e.seconds, AudioBus::Music, 0, int(p));
                 }
-                // Fin de la canción: vuelve al inicio del loop (y dispara lo que toca ahí)
+                // End of song: wrap back to loop start (and trigger notes due there)
                 const double end = double(song.lengthSteps) * song.framesPerStep;
                 if (player.position + 0.5 < end) break;
                 player.position -= double(song.lengthSteps - song.loopStart) * song.framesPerStep;
@@ -282,7 +282,7 @@ namespace mge {
                 for (MusicPlayer& player : m_players) player.active = false;
                 break;
             case CommandType::PlaySong: {
-                // La que suena se funde (o se corta); la nueva arranca desde el principio
+                // Fade out (or cut) the currently playing song; start the new one from the beginning
                 const float fade = command.duration;
                 std::size_t slot = 0;
                 for (std::size_t p = 0; p < m_players.size(); p++) {
@@ -291,7 +291,7 @@ namespace mge {
                         slot = 1 - p;
                     }
                 }
-                if (m_players[slot].active) stopPlayer(m_players[slot], 0.0f); // Un fundido viejo a medias
+                if (m_players[slot].active) stopPlayer(m_players[slot], 0.0f); // Stale half-finished fade
                 MusicPlayer& player = m_players[slot];
                 player.song = &m_songs[command.sample];
                 player.position = 0.0;
@@ -354,8 +354,7 @@ namespace mge {
                 voice.totalFrames = data->frameCount();
                 voice.delaySend = 0.0f;
                 panGains(command.pan, voice.gainLeft, voice.gainRight);
-                // Pan de potencia constante con el centro a 1 (un sample mono al centro suena como el
-                // original)
+                // Constant-power pan with gain 1 at center (a centered mono sample plays at original level)
                 voice.gainLeft *= command.gain * kSqrt2;
                 voice.gainRight *= command.gain * kSqrt2;
                 voice.startOrder = m_nextOrder++;
@@ -441,7 +440,7 @@ namespace mge {
                 mixVoice(voice, out, frames, busGain[std::size_t(voice.bus)] * fade);
             }
 
-        // Eco: entra el envío, sale la parte con eco (aunque no haya envío, la cola del eco sigue sonando)
+        // Echo: send goes in, wet echo comes out (even with no new send, the echo tail keeps ringing)
         if (m_delay.settings().mix > 0.0f) {
             for (std::size_t i = 0; i < frames; i++) {
                 float echoLeft = 0.0f, echoRight = 0.0f;
@@ -451,7 +450,7 @@ namespace mge {
             }
         }
 
-        // Volumen general: rampa lineal del valor actual al pedido a lo largo del bloque, y saturación suave
+        // Master volume: linear ramp from current to target over the block, followed by soft clipping
         const float target =
             m_muted.load(std::memory_order_relaxed) ? 0.0f : m_masterVolume.load(std::memory_order_relaxed);
         const float step = (target - m_currentGain) / float(frames);
@@ -465,7 +464,7 @@ namespace mge {
 
     void Mixer::render(float* out, std::size_t frames) {
         applyCommands();
-        // Bloques cortados en cada nota de la música: las notas empiezan en la muestra exacta
+        // Blocks split at each music note: notes start on the exact sample
         for (std::size_t done = 0; done < frames;) {
             triggerMusic();
             const std::size_t block =

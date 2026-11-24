@@ -49,16 +49,16 @@ namespace mge {
         const std::size_t n = positions.size();
         if (normals.size() != n || colors.size() != n || uvs.size() != n) {
             std::ostringstream error;
-            error << "atributos de distinto largo: positions=" << n << " normals=" << normals.size()
+            error << "mismatched attribute lengths: positions=" << n << " normals=" << normals.size()
                   << " colors=" << colors.size() << " uvs=" << uvs.size();
             return error.str();
         }
-        if (indices.size() % 3 != 0) return "la cantidad de índices no es múltiplo de 3";
+        if (indices.size() % 3 != 0) return "index count is not a multiple of 3";
         for (std::size_t i = 0; i < indices.size(); i++) {
             if (indices[i] >= n) {
                 std::ostringstream error;
-                error << "índice " << indices[i] << " fuera de rango en la posición " << i
-                      << " (vértices: " << n << ")";
+                error << "index " << indices[i] << " out of range at position " << i
+                      << " (vertices: " << n << ")";
                 return error.str();
             }
         }
@@ -68,15 +68,15 @@ namespace mge {
     bool writeObj(const MeshData& mesh, const std::filesystem::path& path) {
         std::ofstream file(path);
         if (!file) {
-            MGE_LOG_ERROR("Procgen", "No se pudo escribir ", path.string());
+            MGE_LOG_ERROR("Procgen", "Could not write ", path.string());
             return false;
         }
-        file << "# miniGameEngine MeshData: " << mesh.vertexCount() << " vértices, " << mesh.triangleCount()
-             << " triángulos\n";
+        file << "# miniGameEngine MeshData: " << mesh.vertexCount() << " vertices, " << mesh.triangleCount()
+             << " triangles\n";
         for (std::size_t i = 0; i < mesh.vertexCount(); i++) {
             const glm::vec3& p = mesh.positions[i];
             const glm::vec4& c = mesh.colors[i];
-            // Extensión común de OBJ: color por vértice después de la posición
+            // Common OBJ extension: per-vertex color after position
             file << "v " << p.x << ' ' << p.y << ' ' << p.z << ' ' << c.r << ' ' << c.g << ' ' << c.b << '\n';
         }
         for (const glm::vec2& uv : mesh.uvs) file << "vt " << uv.x << ' ' << uv.y << '\n';
@@ -85,7 +85,7 @@ namespace mge {
             file << 'f';
             for (int k = 0; k < 3; k++) {
                 const std::uint32_t index =
-                    mesh.indices[i + static_cast<std::size_t>(k)] + 1; // OBJ cuenta desde 1
+                    mesh.indices[i + static_cast<std::size_t>(k)] + 1; // OBJ is 1-based
                 file << ' ' << index << '/' << index << '/' << index;
             }
             file << '\n';

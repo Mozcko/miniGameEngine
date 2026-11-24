@@ -10,43 +10,43 @@
 
 namespace mge::sdf {
 
-    // Función de distancia con signo: negativa adentro, 0 en la superficie, positiva afuera.
-    // Se componen con los operadores op* para describir formas con pura matemática.
+    // Signed distance function: negative inside, 0 on the surface, positive outside.
+    // Composed with op* operators to describe shapes using pure math.
     using Sdf = std::function<float(const glm::vec3&)>;
 
-    // --- Primitivas (centradas en el origen) ---
+    // --- Primitives (centered at the origin) ---
     Sdf sphere(float radius);
     Sdf box(const glm::vec3& halfExtents);
     Sdf roundBox(const glm::vec3& halfExtents, float cornerRadius);
-    Sdf torus(float majorRadius, float minorRadius); // En el plano XZ
+    Sdf torus(float majorRadius, float minorRadius); // In the XZ plane
     Sdf capsule(const glm::vec3& a, const glm::vec3& b, float radius);
-    Sdf cylinder(float radius, float halfHeight);     // Eje Y, con tapas
-    Sdf plane(const glm::vec3& normal, float offset); // dot(n, p) + offset (medio espacio)
+    Sdf cylinder(float radius, float halfHeight);     // Y axis, with caps
+    Sdf plane(const glm::vec3& normal, float offset); // dot(n, p) + offset (half-space)
 
-    // --- Booleanas ---
+    // --- Booleans ---
     Sdf opUnion(Sdf a, Sdf b);
-    Sdf opSubtract(Sdf a, Sdf b); // a sin b
+    Sdf opSubtract(Sdf a, Sdf b); // a minus b
     Sdf opIntersect(Sdf a, Sdf b);
-    // Versiones suaves: k = radio de la transición (0 = dura)
+    // Smooth variants: k = blend radius (0 = hard)
     Sdf opSmoothUnion(Sdf a, Sdf b, float k);
     Sdf opSmoothSubtract(Sdf a, Sdf b, float k);
     Sdf opSmoothIntersect(Sdf a, Sdf b, float k);
 
-    // --- Transformaciones (se aplican al punto con la transformación inversa) ---
+    // --- Transforms (applied to the query point via the inverse transform) ---
     Sdf opTranslate(Sdf a, const glm::vec3& offset);
     Sdf opRotate(Sdf a, const glm::quat& rotation);
-    Sdf opScale(Sdf a, float scale);              // Uniforme (mantiene distancias correctas)
-    Sdf opRepeat(Sdf a, const glm::vec3& period); // Repetición infinita en cada eje (0 = sin repetir)
-    Sdf opTwist(Sdf a, float radiansPerUnit);     // Torsión alrededor de Y (distancia aproximada)
-    Sdf opRound(Sdf a, float radius);             // Engrosa y redondea
+    Sdf opScale(Sdf a, float scale);              // Uniform (preserves exact distances)
+    Sdf opRepeat(Sdf a, const glm::vec3& period); // Infinite repetition per axis (0 = no repeat)
+    Sdf opTwist(Sdf a, float radiansPerUnit);     // Twist around Y (approximate distance)
+    Sdf opRound(Sdf a, float radius);             // Thickens and rounds
 
-    // Normal en p (gradiente por diferencias centrales, normalizado)
+    // Surface normal at p (normalized central-difference gradient)
     glm::vec3 normal(const Sdf& sdf, const glm::vec3& p, float epsilon = 1e-3f);
 
-    // Superficie de nivel 0 -> malla, con "naive surface nets": un vértice por celda que cruza la
-    // superficie (promedio de los cruces en sus aristas) y un quad por arista de la grilla que cambia
-    // de signo. Hermética si la forma queda completamente dentro de bounds.
-    // resolution = celdas en el eje más largo de bounds.
+    // Zero level set -> mesh via "naive surface nets": one vertex per cell crossed by the
+    // surface (average of its edge crossings) and one quad per sign-changing grid edge.
+    // Watertight when the shape lies completely inside bounds.
+    // resolution = cells along the longest axis of bounds.
     MeshData surfaceNets(const Sdf& sdf, const Aabb& bounds, int resolution = 64,
                          const glm::vec4& color = glm::vec4(1.0f));
 }

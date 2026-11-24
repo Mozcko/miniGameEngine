@@ -20,7 +20,7 @@ namespace mge::primitives {
         constexpr float kTwoPi = glm::two_pi<float>();
         constexpr float kPi = glm::pi<float>();
 
-        // Tapa plana horizontal (disco) a la altura y, mirando hacia normalY (+1 o -1)
+        // Flat horizontal cap (disk) at height y, facing normalY (+1 or -1)
         void addCap(MeshData& mesh, float radius, float y, float normalY, int segments,
                     const glm::vec4& color) {
             const glm::vec3 normal(0.0f, normalY, 0.0f);
@@ -65,7 +65,7 @@ namespace mge::primitives {
         MeshData mesh;
         mesh.reserve(24, 12);
         const glm::vec3 h = size * 0.5f;
-        // Cada cara: normal y dos ejes de la cara (u, v)
+        // Each face: normal and two face axes (u, v)
         const glm::vec3 faces[6][3] = {
             {{1, 0, 0}, {0, 0, -1}, {0, 1, 0}}, {{-1, 0, 0}, {0, 0, 1}, {0, 1, 0}},
             {{0, 1, 0}, {1, 0, 0}, {0, 0, -1}}, {{0, -1, 0}, {1, 0, 0}, {0, 0, 1}},
@@ -90,7 +90,7 @@ namespace mge::primitives {
         std::vector<Row> rows;
         for (int r = 0; r <= rings; r++) {
             const float v = static_cast<float>(r) / static_cast<float>(rings);
-            const float theta = v * kPi; // 0 = polo norte
+            const float theta = v * kPi; // 0 = north pole
             const float ringRadius = (r == 0 || r == rings) ? 0.0f : std::sin(theta) * radius;
             rows.push_back(
                 {ringRadius, std::cos(theta) * radius, {std::sin(theta), std::cos(theta)}, 1.0f - v});
@@ -134,7 +134,7 @@ namespace mge::primitives {
         MeshData mesh;
         mesh.reserve(points.size(), faces.size());
         for (const glm::vec3& p : points) {
-            // UV esférico (con costura: suficiente para mallas de color/normal)
+            // Spherical UV (with seam: sufficient for color/normal meshes)
             const glm::vec2 uv(0.5f + std::atan2(p.z, p.x) / kTwoPi, 0.5f + std::asin(p.y) / kPi);
             mesh.addVertex(p * radius, p, color, uv);
         }
@@ -157,7 +157,7 @@ namespace mge::primitives {
     MeshData cone(float radius, float height, int segments, const glm::vec4& color) {
         segments = std::max(segments, 3);
         const float h = height * 0.5f;
-        // Normal de la superficie lateral: perpendicular a la generatriz
+        // Lateral surface normal: perpendicular to the generatrix
         const glm::vec2 slope = glm::normalize(glm::vec2(height, radius));
         MeshData mesh;
         revolve(mesh, {{0.0f, h, slope, 1.0f}, {radius, -h, slope, 0.0f}}, segments, color);
@@ -168,7 +168,7 @@ namespace mge::primitives {
     MeshData torus(float majorRadius, float minorRadius, int segments, int sides, const glm::vec4& color) {
         segments = std::max(segments, 3);
         sides = std::max(sides, 3);
-        // El toro es un círculo (el tubo) revolucionado alrededor del eje Y
+        // A torus is a circle (the tube) revolved around the Y axis
         std::vector<Row> rows;
         for (int i = 0; i <= sides; i++) {
             const float v = static_cast<float>(i) / static_cast<float>(sides);
@@ -187,7 +187,7 @@ namespace mge::primitives {
         const float h = height * 0.5f;
         const float totalHeight = height + 2.0f * radius;
         std::vector<Row> rows;
-        // Semiesfera de arriba (del polo al ecuador) y de abajo (del ecuador al polo)
+        // Upper hemisphere (from pole to equator) and lower hemisphere (from equator to pole)
         for (int hemisphere = 0; hemisphere < 2; hemisphere++) {
             for (int r = 0; r <= rings; r++) {
                 const float t = static_cast<float>(r) / static_cast<float>(rings);

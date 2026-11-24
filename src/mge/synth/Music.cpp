@@ -62,15 +62,15 @@ namespace mge {
                 token == "x" ? std::optional<float>(defaultNote) : noteFromName(token);
             if (!note) {
                 if (error)
-                    *error = "paso " + std::to_string(pattern.steps + 1) + ": '" + std::string(token) +
-                             "' no es una nota";
+                    *error = "step " + std::to_string(pattern.steps + 1) + ": '" + std::string(token) +
+                             "' is not a valid note";
                 return std::nullopt;
             }
             pattern.notes.push_back({pattern.steps, *note, velocity, 1});
             pattern.steps++;
         }
         if (pattern.steps == 0) {
-            if (error) *error = "el patrón está vacío";
+            if (error) *error = "pattern is empty";
             return std::nullopt;
         }
         return pattern;
@@ -113,17 +113,17 @@ namespace mge {
 
     std::string Song::error() const {
         if (!m_parseError.empty()) return m_parseError;
-        if (!(m_bpm > 0.0f) || m_stepsPerBeat <= 0) return "tempo inválido";
-        if (m_tracks.empty()) return "la canción no tiene pistas";
+        if (!(m_bpm > 0.0f) || m_stepsPerBeat <= 0) return "invalid tempo";
+        if (m_tracks.empty()) return "song has no tracks";
         for (const Track& track : m_tracks) {
             if (track.instrument < 0 || track.instrument >= int(m_instruments.size()))
-                return "pista con un instrumento que no existe";
+                return "track references a non-existent instrument";
             for (int p : track.patterns)
-                if (p < 0 || p >= int(m_patterns.size())) return "pista con un patrón que no existe";
+                if (p < 0 || p >= int(m_patterns.size())) return "track references a non-existent pattern";
         }
-        if (lengthSteps() == 0) return "la canción no dura nada";
+        if (lengthSteps() == 0) return "song has zero length";
         if (m_loopStart < 0 || m_loopStart >= lengthSteps())
-            return "el inicio del loop está fuera de la canción";
+            return "loop start is outside the song";
         return {};
     }
 
@@ -142,7 +142,7 @@ namespace mge {
                     e.instrument = track.instrument;
                     e.frequency = midiToHz(n.note);
                     e.velocity = std::clamp(n.velocity * track.gain, 0.0f, 1.0f);
-                    e.seconds = float(std::max(n.length, 1)) * stepSeconds * 0.92f; // Un poco separado
+                    e.seconds = float(std::max(n.length, 1)) * stepSeconds * 0.92f; // Slight separation
                     events.push_back(e);
                 }
                 offset += pattern.steps;
@@ -222,7 +222,7 @@ namespace mge {
             const int iPadHigh = song.addInstrument(padHigh);
             const int iBell = song.addInstrument(bell);
 
-            // Cuatro acordes lentos (Do, La menor, Fa, Sol) de 8 pasos cada uno
+            // Four slow chords (C, Am, F, G), 8 steps each
             const int low =
                 song.pattern("C3 - - - - - - - | A2 - - - - - - - | F2 - - - - - - - | G2 - - - - - - -");
             const int high =
@@ -236,7 +236,7 @@ namespace mge {
         }
 
         Song sandboxNight() {
-            // Canción nocturna calmada: tempo lento (52 BPM), pads oscuros y campanillas dispersas
+            // Calm nocturnal song: slow tempo (52 BPM), dark pads, and sparse chimes
             Song song(52.0f, 2);
             Instrument pad;
             pad.wave = Waveform::Sine;
@@ -268,7 +268,7 @@ namespace mge {
             const int iPadHigh = song.addInstrument(padHigh);
             const int iChime = song.addInstrument(chime);
 
-            // Progresión menor nocturna y contemplativa (La menor, Fa, Do, Mi menor)
+            // Contemplative nocturnal minor progression (Am, F, C, Em)
             const int low =
                 song.pattern("A2 - - - - - - - | F2 - - - - - - - | C3 - - - - - - - | E2 - - - - - - -");
             const int high =

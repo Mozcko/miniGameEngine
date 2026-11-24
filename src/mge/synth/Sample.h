@@ -6,12 +6,12 @@
 
 namespace mge {
 
-    // Formato del audio del motor: float32 en [-1, 1], estéreo intercalado (L, R, L, R…)
+    // Engine audio format: float32 in [-1, 1], interleaved stereo (L, R, L, R…)
     constexpr int kAudioChannels = 2;
     constexpr int kDefaultSampleRate = 48000;
 
-    // Un sonido ya en memoria (de un WAV o generado por código), a la frecuencia del mixer.
-    // 1 canal (mono) o 2 (estéreo intercalado)
+    // A sound already in memory (from a WAV or procedurally generated), at the mixer's sample rate.
+    // 1 channel (mono) or 2 (interleaved stereo)
     struct Sample {
         std::vector<float> data;
         int channels = 1;

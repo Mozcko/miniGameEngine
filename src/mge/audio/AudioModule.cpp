@@ -13,9 +13,9 @@
 namespace mge {
 
     namespace {
-        constexpr std::size_t kBlockFrames = 1024; // Frames por llamada a Mixer::render
+        constexpr std::size_t kBlockFrames = 1024; // Frames per Mixer::render call
 
-        // Libera el subsistema de audio; si era el último de SDL, cierra SDL por completo
+        // Shuts down the audio subsystem; if it was the last SDL subsystem, quits SDL completely
         void quitAudioSubsystem() {
             SDL_QuitSubSystem(SDL_INIT_AUDIO);
             if (SDL_WasInit(0) == 0) SDL_Quit();
@@ -25,7 +25,7 @@ namespace mge {
     AudioModule::AudioModule(int sampleRate) : m_mixer(sampleRate) {}
 
     AudioModule::~AudioModule() {
-        // Por si el módulo se destruye sin onShutdown (init fallido de otro módulo)
+        // In case the module is destroyed without onShutdown (failed init of another module)
         if (m_stream) SDL_DestroyAudioStream(m_stream);
     }
 
@@ -34,7 +34,7 @@ namespace mge {
             m_mixer.setMuted(true);
         if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
             MGE_LOG_ERROR("Audio",
-                          "No se pudo iniciar el audio de SDL (el juego sigue sin sonido): ", SDL_GetError());
+                          "Could not initialize SDL audio (continuing without sound): ", SDL_GetError());
             return true;
         }
         m_subsystem = true;
@@ -44,29 +44,29 @@ namespace mge {
         m_stream =
             SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &AudioModule::feed, this);
         if (!m_stream) {
-            MGE_LOG_ERROR("Audio", "No se pudo abrir el dispositivo de audio (el juego sigue sin sonido): ",
+            MGE_LOG_ERROR("Audio", "Could not open audio device (continuing without sound): ",
                           SDL_GetError());
             return true;
         }
-        SDL_ResumeAudioStreamDevice(m_stream); // Los streams de dispositivo arrancan en pausa
+        SDL_ResumeAudioStreamDevice(m_stream); // Device streams start paused
         MGE_LOG_INFO("Audio", "Audio: ", SDL_GetCurrentAudioDriver(), ", ", m_mixer.sampleRate(),
-                     " Hz estéreo float32", m_mixer.muted() ? " (silenciado: MGE_MUTE=1)" : "");
+                     " Hz stereo float32", m_mixer.muted() ? " (muted: MGE_MUTE=1)" : "");
         return true;
     }
 
     void AudioModule::onShutdown(Application& /*app*/) {
         if (m_stream) {
-            SDL_DestroyAudioStream(m_stream); // Cierra el dispositivo; el callback ya no corre
+            SDL_DestroyAudioStream(m_stream); // Closes the device; the callback stops running
             m_stream = nullptr;
         }
         if (m_subsystem) {
             quitAudioSubsystem();
             m_subsystem = false;
-            MGE_LOG_INFO("Audio", "Audio cerrado");
+            MGE_LOG_INFO("Audio", "Audio closed");
         }
     }
 
-    // Hilo de audio de SDL: pide additionalBytes más. Se mezcla en bloques en m_scratch (ya reservado)
+    // SDL audio thread: requests additionalBytes more. Mixed in blocks into m_scratch (preallocated)
     void AudioModule::feed(void* userdata, SDL_AudioStream* stream, int additionalBytes, int /*totalBytes*/) {
         auto* self = static_cast<AudioModule*>(userdata);
         constexpr int kFrameBytes = int(sizeof(float)) * kAudioChannels;
@@ -85,10 +85,10 @@ namespace mge {
         Uint8* data = nullptr;
         Uint32 length = 0;
         if (!SDL_LoadWAV(full.string().c_str(), &source, &data, &length)) {
-            MGE_LOG_ERROR("Audio", "No se pudo cargar ", full.string(), ": ", SDL_GetError());
+            MGE_LOG_ERROR("Audio", "Could not load ", full.string(), ": ", SDL_GetError());
             return kInvalidSample;
         }
-        // A float32 a la frecuencia del mezclador; mono se queda mono (el mezclador lo pone en los dos lados)
+        // Convert to float32 at the mixer's rate; mono stays mono (the mixer plays it on both channels)
         const int channels = std::min(source.channels, kAudioChannels);
         const SDL_AudioSpec target{SDL_AUDIO_F32, channels, m_mixer.sampleRate()};
         Uint8* converted = nullptr;
@@ -97,7 +97,7 @@ namespace mge {
             SDL_ConvertAudioSamples(&source, data, int(length), &target, &converted, &convertedLength);
         SDL_free(data);
         if (!ok) {
-            MGE_LOG_ERROR("Audio", "No se pudo convertir ", full.string(), ": ", SDL_GetError());
+            MGE_LOG_ERROR("Audio", "Could not convert ", full.string(), ": ", SDL_GetError());
             return kInvalidSample;
         }
         Sample sample;
@@ -107,7 +107,7 @@ namespace mge {
         SDL_free(converted);
         const SampleId id = m_mixer.addSample(std::move(sample));
         if (id == kInvalidSample)
-            MGE_LOG_ERROR("Audio", "No entran más sonidos en el banco: ", full.string());
+            MGE_LOG_ERROR("Audio", "Sample bank is full: ", full.string());
         return id;
     }
 }

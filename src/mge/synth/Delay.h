@@ -6,25 +6,25 @@
 namespace mge {
 
     struct DelaySettings {
-        float time = 0.3f;      // Segundos (hasta el máximo del Delay)
+        float time = 0.3f;      // Seconds (up to the Delay's maximum)
         float feedback = 0.35f; // 0..0.95
-        float mix = 0.0f;       // Cuánto de la línea se suma a la salida (0 = apagado)
+        float mix = 0.0f;       // How much of the delay line is added to output (0 = off)
     };
 
-    // Eco estéreo (#47) con una línea de largo máximo fija: la memoria se reserva al construirlo (hilo del
-    // juego); process() no reserva nada. El mezclador tiene uno como envío ("send")
+    // Stereo echo (#47) with a fixed maximum delay line: memory is preallocated on construction (game
+    // thread); process() does not allocate. The mixer owns one as a send effect
     class Delay {
     public:
         Delay(float maxSeconds, int sampleRate);
 
         void setSettings(const DelaySettings& settings);
         const DelaySettings& settings() const { return m_settings; }
-        // Entra (inLeft, inRight); devuelve la parte con eco a sumar (ya × mix)
+        // Input (inLeft, inRight); returns the wet echo signal to add (already scaled by mix)
         void process(float inLeft, float inRight, float& outLeft, float& outRight);
         void clear();
 
     private:
-        std::vector<float> m_buffer; // Estéreo intercalado
+        std::vector<float> m_buffer; // Interleaved stereo
         std::size_t m_frames = 0;
         std::size_t m_write = 0;
         std::size_t m_delayFrames = 1;

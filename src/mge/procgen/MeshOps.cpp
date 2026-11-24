@@ -14,7 +14,7 @@ namespace mge {
     using detail::addOrientedTriangle;
 
     namespace {
-        // Área con signo (positiva = antihorario)
+        // Signed area (positive = counter-clockwise)
         float signedArea(const std::vector<glm::vec2>& polygon) {
             float area = 0.0f;
             for (std::size_t i = 0; i < polygon.size(); i++) {
@@ -34,14 +34,14 @@ namespace mge {
             return d1 >= 0.0f && d2 >= 0.0f && d3 >= 0.0f;
         }
 
-        // Normal hacia afuera de cada vértice de un polígono antihorario (promedio de sus dos aristas)
+        // Outward normal at each vertex of a CCW polygon (average of its two adjacent edges)
         std::vector<glm::vec2> polygonVertexNormals(const std::vector<glm::vec2>& ccw) {
             const std::size_t n = ccw.size();
             std::vector<glm::vec2> normals(n);
             for (std::size_t i = 0; i < n; i++) {
                 const glm::vec2 prevEdge = ccw[i] - ccw[(i + n - 1) % n];
                 const glm::vec2 nextEdge = ccw[(i + 1) % n] - ccw[i];
-                // En un polígono antihorario la normal exterior de la arista (dx, dy) es (dy, -dx)
+                // In a CCW polygon, the outward normal of edge (dx, dy) is (dy, -dx)
                 const glm::vec2 a = glm::normalize(glm::vec2(prevEdge.y, -prevEdge.x));
                 const glm::vec2 b = glm::normalize(glm::vec2(nextEdge.y, -nextEdge.x));
                 normals[i] = glm::normalize(a + b);
@@ -55,7 +55,7 @@ namespace mge {
         }
     }
 
-    // --- Transformar y combinar ---
+    // --- Transform and combine ---
 
     void transformMesh(MeshData& mesh, const glm::mat4& matrix) {
         const glm::mat3 normalMatrix = glm::inverseTranspose(glm::mat3(matrix));
@@ -131,8 +131,8 @@ namespace mge {
             mesh = std::move(flat);
             return;
         }
-        // Smooth: acumular la normal de cada cara (su largo es 2 × área) en todos los vértices que
-        // comparten posición, así las costuras de UV no quedan marcadas
+        // Smooth: accumulate each face's normal (length is 2 × area) across all vertices sharing
+        // the same position, so UV seams do not show up
         std::map<std::tuple<long, long, long>, glm::vec3> accumulated;
         auto key = [](const glm::vec3& p) {
             return std::make_tuple(std::lround(p.x * 1e5f), std::lround(p.y * 1e5f), std::lround(p.z * 1e5f));
@@ -149,14 +149,14 @@ namespace mge {
         }
     }
 
-    // --- Perfiles 2D ---
+    // --- 2D profiles ---
 
     std::vector<std::uint32_t> triangulatePolygon(const std::vector<glm::vec2>& input) {
         std::vector<std::uint32_t> triangles;
         const std::size_t n = input.size();
         if (n < 3) return triangles;
 
-        // Trabajar en antihorario; los índices se refieren siempre al polígono original
+        // Work in counter-clockwise order; indices always refer to the original polygon
         std::vector<std::uint32_t> remaining(n);
         for (std::size_t i = 0; i < n; i++) remaining[i] = static_cast<std::uint32_t>(i);
         if (signedArea(input) < 0.0f) std::reverse(remaining.begin(), remaining.end());
@@ -169,7 +169,7 @@ namespace mge {
                 const std::uint32_t curr = remaining[i];
                 const std::uint32_t next = remaining[(i + 1) % remaining.size()];
                 const glm::vec2 &a = input[prev], &b = input[curr], &c = input[next];
-                if (cross2(b - a, c - b) <= 0.0f) continue; // Vértice reflejo (cóncavo): no es oreja
+                if (cross2(b - a, c - b) <= 0.0f) continue; // Reflex (concave) vertex: not an ear
                 bool containsOther = false;
                 for (std::uint32_t other : remaining) {
                     if (other == prev || other == curr || other == next) continue;
@@ -184,7 +184,7 @@ namespace mge {
                 clipped = true;
                 break;
             }
-            if (!clipped) break; // Polígono degenerado o con auto-intersecciones
+            if (!clipped) break; // Degenerate or self-intersecting polygon
         }
         if (remaining.size() == 3)
             triangles.insert(triangles.end(), {remaining[0], remaining[1], remaining[2]});
@@ -199,7 +199,7 @@ namespace mge {
         const float h = depth * 0.5f;
         const std::vector<std::uint32_t> capTriangles = triangulatePolygon(ccw);
 
-        // Tapas: frente (+Z) y atrás (-Z)
+        // Caps: front (+Z) and back (-Z)
         for (int side = 0; side < 2; side++) {
             const float z = side == 0 ? h : -h;
             const glm::vec3 normal(0.0f, 0.0f, side == 0 ? 1.0f : -1.0f);
@@ -210,7 +210,7 @@ namespace mge {
                                     base + capTriangles[t + 2]);
             }
         }
-        // Lados: un quad por arista con su propia normal (aristas duras)
+        // Sides: one quad per edge with its own normal (hard edges)
         for (std::size_t i = 0; i < n; i++) {
             const glm::vec2 a = ccw[i], b = ccw[(i + 1) % n];
             const glm::vec2 edge = b - a;
@@ -236,7 +236,7 @@ namespace mge {
             lengths[i] = totalLength;
         }
         for (std::size_t i = 0; i < profile.size(); i++) {
-            // Tangente por diferencias centradas; normal = tangente girada (x = radial, y = vertical)
+            // Central-difference tangent; normal = rotated tangent (x = radial, y = vertical)
             const glm::vec2 prev = profile[i == 0 ? 0 : i - 1];
             const glm::vec2 next = profile[std::min(i + 1, profile.size() - 1)];
             glm::vec2 tangent = next - prev;
@@ -258,18 +258,18 @@ namespace mge {
         const std::size_t ringSize = ccw.size();
         const std::size_t count = path.size();
 
-        // Tangente en cada punto del camino
+        // Tangent at each point along the path
         std::vector<glm::vec3> tangents(count);
         for (std::size_t i = 0; i < count; i++) {
             glm::vec3 prev = path[i == 0 ? (closedPath ? count - 1 : 0) : i - 1];
             glm::vec3 next = path[i + 1 == count ? (closedPath ? 0 : i) : i + 1];
             tangents[i] = glm::normalize(next - prev);
         }
-        // Marco inicial: un vector perpendicular cualquiera a la primera tangente
+        // Initial frame: any vector perpendicular to the first tangent
         glm::vec3 helper = std::abs(tangents[0].y) < 0.99f ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
         std::vector<glm::vec3> normals(count), binormals(count);
         normals[0] = glm::normalize(glm::cross(glm::cross(tangents[0], helper), tangents[0]));
-        // Transporte paralelo: rotar el marco con el mínimo giro que lleva una tangente a la siguiente
+        // Parallel transport: rotate the frame by the minimal rotation from one tangent to the next
         for (std::size_t i = 1; i < count; i++) {
             glm::vec3 axis = glm::cross(tangents[i - 1], tangents[i]);
             glm::vec3 n = normals[i - 1];
@@ -285,7 +285,7 @@ namespace mge {
         }
         for (std::size_t i = 0; i < count; i++) binormals[i] = glm::cross(tangents[i], normals[i]);
 
-        // Anillos: el perfil (x, y) va sobre (normal, binormal) de cada punto
+        // Rings: the profile (x, y) is mapped onto (normal, binormal) at each point
         for (std::size_t i = 0; i < count; i++) {
             const float v = static_cast<float>(i) / static_cast<float>(count - 1);
             for (std::size_t k = 0; k <= ringSize; k++) {
@@ -306,7 +306,7 @@ namespace mge {
                 addOrientedQuad(mesh, ringA + k, ringA + k + 1, ringB + k + 1, ringB + k);
             }
         }
-        // Tapas en los extremos
+        // End caps
         if (caps && !closedPath) {
             const std::vector<std::uint32_t> capTriangles = triangulatePolygon(ccw);
             for (std::size_t end = 0; end < 2; end++) {

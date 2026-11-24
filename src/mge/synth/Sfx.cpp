@@ -10,7 +10,7 @@
 namespace mge {
 
     namespace {
-        constexpr int kFilterUpdate = 32; // Recalcular los filtros cada tantas muestras (barrido)
+        constexpr int kFilterUpdate = 32; // Recompute filter coefficients every N samples (sweep)
     }
 
     Sample renderSfx(const SfxParams& p, int sampleRate, std::uint64_t seed) {
@@ -24,7 +24,7 @@ namespace mge {
         osc.setWaveform(p.wave);
         osc.reset(seed);
         Filter lowPass, highPass;
-        std::vector<float> phaser(std::size_t(rate * 0.05f) + 2, 0.0f); // Hasta 50 ms
+        std::vector<float> phaser(std::size_t(rate * 0.05f) + 2, 0.0f); // Up to 50 ms
         std::size_t phaserWrite = 0;
 
         float slide = p.slide;
@@ -34,7 +34,7 @@ namespace mge {
         const float dt = 1.0f / rate;
         for (std::size_t i = 0; i < total; i++) {
             const float t = float(i) * dt;
-            // Repetición: vuelve al tono de partida
+            // Repeat: reset back to starting pitch
             if (p.repeatTime > 0.0f && sinceRepeat >= p.repeatTime) {
                 sinceRepeat = 0.0f;
                 frequency = p.baseFrequency;
@@ -48,7 +48,7 @@ namespace mge {
             sinceRepeat += dt;
             slide += p.deltaSlide * dt;
             frequency *= std::exp2(slide * dt);
-            if (frequency < p.minFrequency) break; // Bajó del mínimo: termina (el resto queda en silencio)
+            if (frequency < p.minFrequency) break; // Dropped below minimum: stop (remainder stays silent)
             float hz = frequency;
             if (p.vibratoDepth != 0.0f)
                 hz *= std::exp2(p.vibratoDepth * std::sin(6.2831853f * p.vibratoSpeed * t) / 12.0f);
@@ -74,7 +74,7 @@ namespace mge {
                 value = 0.5f * (value + phaser[read]);
             }
 
-            // Envolvente
+            // Envelope
             float envelope = 0.0f;
             if (t < p.attack) {
                 envelope = t / p.attack;
@@ -91,7 +91,7 @@ namespace mge {
 
     namespace sfx {
         namespace {
-            // Variación leve para seed != 0
+            // Slight variation when seed != 0
             SfxParams vary(const SfxParams& p, std::uint64_t seed) {
                 return seed == 0 ? p : mutate(p, 0.1f, seed);
             }
@@ -102,7 +102,7 @@ namespace mge {
             p.wave = Waveform::Square;
             p.duty = 0.35f;
             p.baseFrequency = 330.0f;
-            p.slide = 7.0f; // Sube: casi dos octavas en el sonido
+            p.slide = 7.0f; // Rises nearly two octaves over the sound
             p.sustain = 0.06f;
             p.decay = 0.16f;
             p.highPassCutoff = 120.0f;
@@ -114,8 +114,8 @@ namespace mge {
             SfxParams p;
             p.wave = Waveform::Square;
             p.duty = 0.5f;
-            p.baseFrequency = 987.77f;     // Si 5
-            p.arpeggioMultiplier = 1.335f; // → Mi 6
+            p.baseFrequency = 987.77f;     // B5
+            p.arpeggioMultiplier = 1.335f; // → E6
             p.arpeggioTime = 0.07f;
             p.sustain = 0.08f;
             p.punch = 0.4f;
@@ -128,7 +128,7 @@ namespace mge {
             SfxParams p;
             p.wave = Waveform::Saw;
             p.baseFrequency = 520.0f;
-            p.slide = -7.0f; // Cae rápido
+            p.slide = -7.0f; // Falls fast
             p.sustain = 0.04f;
             p.punch = 0.3f;
             p.decay = 0.18f;
@@ -140,13 +140,13 @@ namespace mge {
         SfxParams explosion(std::uint64_t seed) {
             SfxParams p;
             p.wave = Waveform::Noise;
-            p.baseFrequency = 140.0f; // Ruido "afinado" grave: retumba
+            p.baseFrequency = 140.0f; // Low pitched noise: rumbles
             p.slide = -1.0f;
             p.sustain = 0.15f;
             p.punch = 0.6f;
             p.decay = 0.65f;
             p.lowPassCutoff = 4000.0f;
-            p.lowPassSweep = -4.0f; // Se oscurece
+            p.lowPassSweep = -4.0f; // Darkens over time
             p.phaserOffset = 3.0f;
             p.phaserSweep = 8.0f;
             p.gain = 0.6f;
@@ -159,7 +159,7 @@ namespace mge {
             p.duty = 0.3f;
             p.baseFrequency = 330.0f;
             p.slide = 6.0f;
-            p.repeatTime = 0.11f; // Tres o cuatro subidas
+            p.repeatTime = 0.11f; // Three or four rises
             p.vibratoDepth = 0.4f;
             p.vibratoSpeed = 14.0f;
             p.sustain = 0.32f;
@@ -211,7 +211,7 @@ namespace mge {
         SfxParams mutate(const SfxParams& params, float amount, std::uint64_t seed) {
             Pcg32 rng(seed, 0xA5A5u);
             const float a = std::clamp(amount, 0.0f, 1.0f);
-            // Multiplicador cerca de 1 y desplazamiento cerca de 0
+            // Multiplier near 1 and offset near 0
             const auto scale = [&](float v) { return v * std::exp2((rng.nextFloat01() * 2.0f - 1.0f) * a); };
             const auto shift = [&](float v, float span) {
                 return v + (rng.nextFloat01() * 2.0f - 1.0f) * a * span;

@@ -8,8 +8,8 @@
 
 namespace mge {
 
-    // Imagen RGBA8 en la CPU (fila 0 arriba), para generar texturas por código (#34). Se sube a la GPU con
-    // Texture2D::fromPixels(device, w, h, image.data()). Headless: sin dependencias.
+    // RGBA8 CPU image (row 0 at the top), for procedural textures (#34). Uploaded to the GPU via
+    // Texture2D::fromPixels(device, w, h, image.data()). Headless: no dependencies.
     class Image {
     public:
         Image() = default;
@@ -21,7 +21,7 @@ namespace mge {
         const std::uint8_t* data() const { return m_pixels.data(); }
         const std::vector<std::uint8_t>& pixels() const { return m_pixels; }
 
-        // Color en [0, 1] (se recorta). Fuera de la imagen: get = transparente, set = se ignora
+        // Color in [0, 1] (clamped). Out of bounds: get = transparent, set = ignored
         glm::vec4 get(int x, int y) const;
         void set(int x, int y, const glm::vec4& color);
         void fill(const glm::vec4& color);
@@ -32,7 +32,7 @@ namespace mge {
         std::vector<std::uint8_t> m_pixels;
     };
 
-    // PNG sin comprimir (bloques "stored" de deflate): válido para cualquier visor, sin librerías.
-    // Para inspeccionar texturas generadas. false si no se pudo escribir.
+    // Uncompressed PNG (deflate "stored" blocks): valid in any viewer, dependency-free.
+    // For inspecting generated textures. Returns false if writing failed.
     bool writePng(const Image& image, const std::filesystem::path& path);
 }
