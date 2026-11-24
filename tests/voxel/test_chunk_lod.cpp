@@ -424,3 +424,108 @@ TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 
         }
     }
 }
+
+TEST_CASE(
+    "voxel:ChunkLod: agua poco profunda (piedra y<=6, agua y=7) queda sobre la cara opaca en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            for (int y = 0; y <= 6; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+            world.setBlock({x, 7, z}, tb.water);
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+        REQUIRE_FALSE(mesh.transparent.empty());
+
+        float minWaterY = 1e9f;
+        for (const auto& pos : mesh.transparent.positions) {
+            minWaterY = std::min(minWaterY, pos.y);
+            CHECK(pos.y == doctest::Approx(8.0f));
+        }
+        CHECK(minWaterY == doctest::Approx(8.0f));
+
+        float maxOpaqueTopY = -1e9f;
+        for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+            if (mesh.opaque.normals[i].y > 0.9f) {
+                maxOpaqueTopY = std::max(maxOpaqueTopY, mesh.opaque.positions[i].y);
+            }
+        }
+        CHECK(maxOpaqueTopY == doctest::Approx(7.0f));
+        CHECK(maxOpaqueTopY < minWaterY);
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra y<=5 en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Mitad izquierda (x < 8): tierra opaca 0..7 (tope en 8)
+    // Mitad derecha (x >= 8): piedra 0..5 (tope opaco en 6) + agua 6..7 (quad transparente en 8)
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            if (x < 8) {
+                for (int y = 0; y <= 7; ++y) {
+                    world.setBlock({x, y, z}, tb.stone);
+                }
+            } else {
+                for (int y = 0; y <= 5; ++y) {
+                    world.setBlock({x, y, z}, tb.stone);
+                }
+                world.setBlock({x, 6, z}, tb.water);
+                world.setBlock({x, 7, z}, tb.water);
+            }
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+        REQUIRE_FALSE(mesh.transparent.empty());
+
+        // Quad de agua solo en la mitad derecha a y = 8
+        for (const auto& pos : mesh.transparent.positions) {
+            CHECK(pos.x >= 7.99f);
+            CHECK(pos.y == doctest::Approx(8.0f));
+        }
+
+        // Raycast hacia abajo sobre la malla opaca: x < 8 golpea a y = 8; x >= 8 golpea a y = 6
+        for (int z = 0; z < kChunkSize; z += 2) {
+            for (int x = 0; x < kChunkSize; x += 2) {
+                const float expectedOpaqueY = (x < 8) ? 8.0f : 6.0f;
+                const Ray ray{glm::vec3(static_cast<float>(x) + 0.5f, 20.0f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(0.0f, -1.0f, 0.0f)};
+                float bestHitY = -1.0f;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].y <= 0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit) {
+                        bestHitY = std::max(bestHitY, ray.at(*hit).y);
+                    }
+                }
+                CHECK(bestHitY == doctest::Approx(expectedOpaqueY));
+            }
+        }
+    }
+}
