@@ -10,8 +10,12 @@ add_library(mge_core STATIC
     Random.h
     SpscQueue.h
     Clock.h Clock.cpp
+    Coroutine.h Coroutine.cpp
+    EventBus.h
     FlyController.h FlyController.cpp
     Time.h
+    Timer.h Timer.cpp
+    Tween.h Tween.cpp
     math/Geometry.h math/Geometry.cpp
     ecs/Camera.h ecs/Camera.cpp
     ecs/Entity.h
@@ -60,8 +64,12 @@ mge_install_headers(core
     Random.h
     SpscQueue.h
     Clock.h
+    Coroutine.h
+    EventBus.h
     FlyController.h
     Time.h
+    Timer.h
+    Tween.h
     math/Geometry.h
     ecs/Camera.h
     ecs/Entity.h

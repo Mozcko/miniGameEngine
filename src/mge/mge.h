@@ -10,6 +10,8 @@
 #include <mge/core/Application.h>
 #include <mge/core/Assets.h>
 #include <mge/core/Clock.h>
+#include <mge/core/Coroutine.h>
+#include <mge/core/EventBus.h>
 #include <mge/core/FlyController.h>
 #include <mge/core/Input.h>
 #include <mge/core/Log.h>
@@ -17,6 +19,8 @@
 #include <mge/core/Random.h>
 #include <mge/core/SpscQueue.h>
 #include <mge/core/Time.h>
+#include <mge/core/Timer.h>
+#include <mge/core/Tween.h>
 #include <mge/core/ecs/Camera.h>
 #include <mge/core/ecs/Entity.h>
 #include <mge/core/ecs/Registry.h>

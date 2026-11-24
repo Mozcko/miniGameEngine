@@ -22,7 +22,9 @@ add_executable(mge_core_tests
     core/test_application.cpp
     core/test_assets.cpp
     core/test_camera.cpp
+    core/test_coroutine.cpp
     core/test_ecs.cpp
+    core/test_event_bus.cpp
     core/test_geometry.cpp
     core/test_input.cpp
     core/test_jobs.cpp
@@ -32,6 +34,8 @@ add_executable(mge_core_tests
     core/test_log_stripped.cpp
     core/test_profiler.cpp
     core/test_time.cpp
+    core/test_timer.cpp
+    core/test_tween.cpp
     core/test_umbrella.cpp
     core/test_version.cpp
 )
