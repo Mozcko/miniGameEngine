@@ -15,20 +15,20 @@
 namespace mge {
 
     struct PhysicsSettings {
-        glm::vec3 gravity{0.0f, -28.0f, 0.0f}; // Igual que el personaje
+        glm::vec3 gravity{0.0f, -28.0f, 0.0f}; // Same as character controller
         int solverIterations = 4;
-        float positionCorrection = 0.8f; // Fracción de la penetración que se corrige por paso (Baumgarte)
+        float positionCorrection = 0.8f; // Fraction of penetration corrected per step (Baumgarte)
         float penetrationSlop = 0.005f;
-        float sleepVelocity = 0.0f; // 0 = sin sleep (opcional)
-        float cellSize = 2.0f;      // Del SpatialHash
+        float sleepVelocity = 0.0f; // 0 = no sleep (optional)
+        float cellSize = 2.0f;      // For SpatialHash
     };
 
     class PhysicsWorld {
     public:
-        // voxels vacío = sin mundo voxel
+        // Empty voxels = no voxel world
         explicit PhysicsWorld(PhysicsSettings initialSettings = {}, SolidQuery initialVoxels = {});
 
-        // Un paso fijo sobre todas las entidades <RigidBody, Transform> del registry
+        // One fixed step over all <RigidBody, Transform> entities in the registry
         void step(Registry& registry, float dt);
 
         PhysicsSettings& settings() { return m_settings; }
@@ -37,7 +37,7 @@ namespace mge {
         void setVoxels(SolidQuery voxels) { m_voxels = std::move(voxels); }
         const SolidQuery& voxels() const { return m_voxels; }
 
-        // Pares del broadphase en el último paso (para el overlay de rendimiento)
+        // Broadphase pairs from the last step (for the performance overlay)
         std::size_t lastPairCount() const { return m_lastPairCount; }
 
     private:
@@ -66,13 +66,13 @@ namespace mge {
         std::size_t m_lastPairCount = 0;
         SpatialHash m_spatialHash;
 
-        // Buffers miembros para evitar asignaciones de memoria por paso
+        // Member buffers to avoid memory allocations per step
         std::vector<BodyEntry> m_bodies;
         std::vector<std::pair<std::uint32_t, std::uint32_t>> m_pairs;
         std::vector<SolverContact> m_contacts;
     };
 
-    // Registra el sistema en SystemPhase::Fixed; physics debe vivir más que el World
+    // Registers the system in SystemPhase::Fixed; physics must outlive the World
     void addPhysicsSystem(World& world, PhysicsWorld& physics);
 
 } // namespace mge

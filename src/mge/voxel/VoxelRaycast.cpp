@@ -7,14 +7,14 @@
 namespace mge {
 
     namespace {
-        // Asocia la normal entera de la cara con el enum BlockFace
+        // Maps the integer face normal to the BlockFace enum
         BlockFace faceFromNormal(const glm::ivec3& normal) {
             if (normal.x < 0) return BlockFace::Left;
             if (normal.x > 0) return BlockFace::Right;
             if (normal.y < 0) return BlockFace::Bottom;
             if (normal.y > 0) return BlockFace::Top;
             if (normal.z < 0) return BlockFace::Back;
-            return BlockFace::Front; // normal.z > 0 o caso por defecto
+            return BlockFace::Front; // normal.z > 0 or default case
         }
     } // namespace
 
@@ -39,7 +39,7 @@ namespace mge {
             return pickable ? pickable(id) : world.registry().isSolid(id);
         };
 
-        // Si el rayo nace dentro de un bloque objetivo, reporta impacto inmediato a distancia 0
+        // If the ray starts inside a target block, report an immediate hit at distance 0
         if (isTarget(currentBlock)) {
             VoxelRaycastHit hit;
             hit.block = currentBlock;
@@ -57,7 +57,7 @@ namespace mge {
 
         constexpr float kEpsilon = 1e-8f;
 
-        // Parámetros de Amanatides-Woo por cada eje cartesiano
+        // Amanatides-Woo parameters per Cartesian axis
         glm::ivec3 step(0);
         glm::vec3 tDelta(std::numeric_limits<float>::infinity());
         glm::vec3 tMax(std::numeric_limits<float>::infinity());
@@ -82,13 +82,13 @@ namespace mge {
             }
         }
 
-        // Límite conservador de pasos para garantizar terminación ante valores extremos
+        // Conservative step limit to guarantee termination on extreme values
         const int maxSteps = static_cast<int>(std::ceil(maxDistance * 3.5f)) + 32;
         int lastStepAxis = -1;
 
         for (int s = 0; s < maxSteps; ++s) {
-            // Identificar el eje por el cual el rayo cruza antes al siguiente bloque.
-            // Los desempates prefieren X, luego Y, luego Z (<= determinista).
+            // Identify the axis along which the ray crosses into the next block first.
+            // Tie-breaking prefers X, then Y, then Z (deterministic <=).
             int hitAxis = 0;
             if (tMax.x <= tMax.y) {
                 if (tMax.x <= tMax.z) {
@@ -106,7 +106,7 @@ namespace mge {
 
             const float t = tMax[hitAxis];
 
-            // Si el siguiente límite está más allá de la distancia pedida, no hay impacto
+            // If the next boundary is beyond the requested distance, there is no hit
             if (t > maxDistance) {
                 break;
             }
@@ -114,7 +114,7 @@ namespace mge {
             currentBlock[hitAxis] += step[hitAxis];
             lastStepAxis = hitAxis;
 
-            // Al entrar al nuevo bloque comprobamos si cumple el predicado
+            // Upon entering the new block, check if it matches the predicate
             if (isTarget(currentBlock)) {
                 VoxelRaycastHit hit;
                 hit.block = currentBlock;

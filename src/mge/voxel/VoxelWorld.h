@@ -9,55 +9,56 @@
 
 namespace mge {
 
-    // Llena un chunk recién creado. Debe ser determinista (mismo coord → mismos bloques) y no depender
-    // de qué otros chunks estén cargados: así el mundo no cambia según el orden de carga.
+    // Populates a newly created chunk. Must be deterministic (same coord → same blocks) and not depend
+    // on which other chunks are loaded, so the world does not vary with load order.
     class TerrainGenerator {
     public:
         virtual ~TerrainGenerator() = default;
         virtual void generate(const ChunkCoord& coord, ChunkData& chunk) const = 0;
     };
 
-    // Mundo voxel: chunks cargados (sin límite de tamaño, también en vertical), acceso por coordenadas
-    // de mundo y marcas de "sucio" para saber qué chunks hay que volver a mallar.
+    // Voxel world: loaded chunks (unbounded in size, including vertically), world-coordinate access,
+    // and dirty flags to track which chunks need remeshing.
     class VoxelWorld {
     public:
-        // El registry debe vivir más que el mundo. Sin generador, los chunks nuevos quedan vacíos.
+        // The registry must outlive the world. Without a generator, new chunks start empty.
         explicit VoxelWorld(const BlockRegistry& registry,
                             std::unique_ptr<TerrainGenerator> generator = nullptr);
 
         const BlockRegistry& registry() const { return m_registry; }
-        // El generador (nullptr si no hay). generate() es const y no debe tener estado: se puede llamar
-        // desde otros hilos para generar chunks en paralelo e insertarlos después con insertChunk.
+        // The generator (nullptr if none). generate() is const and must be stateless: it can be called
+        // from worker threads to generate chunks in parallel and insert them later with insertChunk.
         const TerrainGenerator* generator() const { return m_generator.get(); }
 
-        // Crea y genera el chunk si no existe; si ya existe lo devuelve tal cual. El chunk nuevo queda
-        // sucio, y también sus 6 vecinos cargados: su malla veía aire en ese lado y ahora hay datos.
+        // Creates and generates the chunk if it doesn't exist; if it already exists, returns it as-is.
+        // The new chunk starts dirty, along with its 6 loaded neighbours: their meshes saw air on that side
+        // and now there is data.
         ChunkData& loadChunk(const ChunkCoord& coord);
-        // Agrega un chunk ya generado (ej: en un JobSystem). Si ya existía, se conserva el existente.
-        // Igual que loadChunk: queda sucio y ensucia a sus vecinos cargados.
+        // Inserts an already-generated chunk (e.g. from a JobSystem). If it already exists, keeps the existing one.
+        // Same as loadChunk: starts dirty and marks its loaded neighbours dirty.
         ChunkData& insertChunk(const ChunkCoord& coord, const ChunkData& data);
         void unloadChunk(const ChunkCoord& coord);
         bool isLoaded(const ChunkCoord& coord) const { return m_chunks.count(coord) != 0; }
         ChunkData* chunk(const ChunkCoord& coord);
         const ChunkData* chunk(const ChunkCoord& coord) const;
         std::size_t chunkCount() const { return m_chunks.size(); }
-        // Pool de chunks descargados (se reutiliza su memoria al cargar otros): cuántos hay y cuántas
-        // cargas lo aprovecharon
+        // Pool of unloaded chunks (their memory is reused when loading others): how many are pooled
+        // and how many loads reused one
         std::size_t pooledCount() const { return m_pool.size(); }
         std::size_t reusedCount() const { return m_reused; }
         std::vector<ChunkCoord> loadedChunks() const;
 
-        // Coordenadas de bloque del mundo. Chunk sin cargar → aire.
+        // World block coordinates. Unloaded chunk → air.
         BlockId getBlock(const glm::ivec3& block) const;
         BlockId getBlock(int x, int y, int z) const { return getBlock({x, y, z}); }
-        // false si el chunk no está cargado. Marca sucio el chunk y, si el bloque está en un borde,
-        // también el vecino de ese lado (su malla mira este bloque).
+        // Returns false if the chunk is not loaded. Marks the chunk dirty and, if the block is on a border,
+        // also marks the neighbour on that side dirty (its mesh inspects this block).
         bool setBlock(const glm::ivec3& block, BlockId id);
         bool isSolid(const glm::ivec3& block) const { return m_registry.isSolid(getBlock(block)); }
 
-        // --- Sucios: chunks cuyo contenido (o el de un vecino en el borde) cambió ---
+        // --- Dirty chunks: chunks whose contents (or a border neighbour's) changed ---
         bool isDirty(const ChunkCoord& coord) const;
-        void markDirty(const ChunkCoord& coord); // Ignora chunks no cargados
+        void markDirty(const ChunkCoord& coord); // Ignores unloaded chunks
         void clearDirty(const ChunkCoord& coord);
         std::vector<ChunkCoord> dirtyChunks() const;
 
@@ -68,7 +69,7 @@ namespace mge {
         };
 
         void markFaceNeighboursDirty(const ChunkCoord& coord);
-        std::unique_ptr<Entry> takeEntry(); // Del pool si hay, si no uno nuevo
+        std::unique_ptr<Entry> takeEntry(); // From the pool if available, otherwise allocate a new one
 
         static constexpr std::size_t kMaxPooled = 256;
         std::vector<std::unique_ptr<Entry>> m_pool;
@@ -76,7 +77,7 @@ namespace mge {
 
         const BlockRegistry& m_registry;
         std::unique_ptr<TerrainGenerator> m_generator;
-        // unique_ptr: direcciones estables aunque el mapa crezca
+        // unique_ptr: stable addresses even if the map rehashes
         std::unordered_map<ChunkCoord, std::unique_ptr<Entry>, ChunkCoordHash> m_chunks;
     };
 }

@@ -13,10 +13,10 @@ namespace mge {
 
         struct TopOpaqueSample {
             BlockId id = kAir;
-            int topY = 0; // y + 1 del bloque opaco más alto en la celda (en espacio local del chunk)
+            int topY = 0; // y + 1 of the highest opaque block in the cell (in chunk-local space)
         };
 
-        // Escanea una celda de arriba hacia abajo (en Y) buscando el primer bloque opaco no-aire y su altura.
+        // Scans a cell from top to bottom (along Y) looking for the first non-air opaque block and its height.
         inline TopOpaqueSample pickTopOpaqueSample(const ChunkSnapshot& snapshot,
                                                    const BlockRegistry* registry, int startX, int endX,
                                                    int startY, int endY, int startZ, int endZ) {
@@ -38,9 +38,9 @@ namespace mge {
             return {kAir, startY};
         }
 
-        // Grilla 3D de super-bloques incluyendo un borde de 1 super-bloque en cada dirección.
-        // Coordenadas locales en [-1, dim] para x, y, z. Almacena también topY por celda para emitir
-        // caras superiores a la altura real del bloque opaco más alto (sin escalón de f-1 bloques).
+        // 3D grid of super-blocks including a 1-super-block border in every direction.
+        // Local coordinates in [-1, dim] for x, y, z. Also stores topY per cell to emit
+        // top faces at the actual height of the highest opaque block (without an f-1 block step).
         class PaddedLodGrid {
         public:
             PaddedLodGrid(const ChunkSnapshot& snapshot, const BlockRegistry& registry, int factor, int dim)
@@ -111,9 +111,9 @@ namespace mge {
 
             BlockId get(const glm::ivec3& p) const { return get(p.x, p.y, p.z); }
 
-            // Altura superior efectiva de una celda sólida: solo la celda opaca más alta de la columna
-            // (expuesta al cielo, sin bloques opacos encima en el chunk) se recorta a su topY real;
-            // las celdas debajo (incluidas cuevas) conservan la altura completa (sy + 1) * factor.
+            // Effective top height of a solid cell: only the highest opaque cell in the column
+            // (exposed to the sky, with no opaque blocks above in the chunk) is trimmed to its real topY;
+            // cells below (including caves) keep their full height (sy + 1) * factor.
             int cellTop(int sx, int sy, int sz) const {
                 if (sx < -1 || sx > m_dim || sy < -1 || sy > m_dim || sz < -1 || sz > m_dim) {
                     return sy * m_factor;
@@ -146,13 +146,13 @@ namespace mge {
             std::vector<int> m_highestSy;
         };
 
-        // Celda de máscara greedy para LOD: además de bloque y AO, distingue altura y0/y1 para fusionar
-        // caras superiores con el mismo y_top y caras laterales con el mismo rango vertical.
+        // Greedy mask cell for LOD: besides block and AO, tracks y0/y1 height to merge
+        // top faces with the same y_top and side faces with the same vertical range.
         struct LodMaskCell {
             BlockId id = kAir;
             int ao = 0;
-            int y0 = 0; // Top: yTop; lateral parcial: base; lateral completa o Bottom: 0
-            int y1 = 0; // Top: yTop; lateral parcial: tope (> 0); lateral completa o Bottom: 0
+            int y0 = 0; // Top: yTop; partial side: bottom; full side or Bottom: 0
+            int y1 = 0; // Top: yTop; partial side: top (> 0); full side or Bottom: 0
             bool operator==(const LodMaskCell& o) const {
                 return id == o.id && ao == o.ao && y0 == o.y0 && y1 == o.y1;
             }
@@ -265,10 +265,10 @@ namespace mge {
 
         ChunkMesh result;
 
-        // 1. Caras superiores de líquidos transparentes (agua) para LOD > 0.
-        // Se calculan primero para registrar la altura de agua por columna y garantizar que ninguna
-        // cara opaca quede a la misma altura o por encima del quad de agua (evita fallo de depth test
-        // en agua poco profunda sin recurrir a un epsilon de profundidad).
+        // 1. Top faces of transparent liquids (water) for LOD > 0.
+        // Computed first to record the water height per column and ensure no opaque face
+        // sits at the same height as or above the water quad (avoids depth-test failures
+        // in shallow water without resorting to a depth epsilon).
         std::vector<int> columnWaterTopY(static_cast<std::size_t>(dim * dim), -1);
         const int topFaceIndex = static_cast<int>(BlockFace::Top);
         const FaceDef& topFace = kFaces[topFaceIndex];
@@ -284,7 +284,7 @@ namespace mge {
                     const int startY = sy * factor;
                     const int endY = startY + factor;
 
-                    // Buscar el bloque no-aire más alto dentro del super-bloque
+                    // Find the highest non-air block inside the super-block
                     BlockId topBlockId = kAir;
                     int highestNonAirY = -1;
                     bool hasNonLiquidAtHighest = false;
@@ -318,7 +318,7 @@ namespace mge {
                         continue;
                     }
 
-                    // Verificar que la celda de arriba sea aire
+                    // Verify that the cell above is air
                     int aboveStartY;
                     int aboveEndY;
                     if (sy + 1 < dim) {
@@ -342,7 +342,7 @@ namespace mge {
 
                     if (!cellAboveIsAir) continue;
 
-                    // Emitir un quad plano de f × f a la altura del bloque líquido más alto
+                    // Emit a flat f × f quad at the height of the highest liquid block
                     const int waterTopY = highestNonAirY + 1;
                     const std::size_t colIdx = static_cast<std::size_t>(sz * dim + sx);
                     columnWaterTopY[colIdx] = std::max(columnWaterTopY[colIdx], waterTopY);
@@ -374,7 +374,7 @@ namespace mge {
             for (int slice = 0; slice < dim; ++slice) {
                 std::fill(mask.begin(), mask.end(), LodMaskCell{});
 
-                // 1. Caras visibles de esta capa
+                // 1. Visible faces in this slice
                 for (int j = 0; j < dim; ++j) {
                     for (int i = 0; i < dim; ++i) {
                         glm::ivec3 cellPos(0);
@@ -395,8 +395,8 @@ namespace mge {
                         if (isTopFace) {
                             if (!isFaceVisible(id, neighborId, registry)) continue;
                             faceY0 = grid.cellTop(cellPos.x, cellPos.y, cellPos.z);
-                            // Resguardo: omitir solo la cara opaca que empata con el quad de agua;
-                            // las caras por encima, p. ej. terreno sobre un lago subterráneo, se mantienen.
+                            // Safeguard: omit only the opaque face that matches the water quad height;
+                            // faces above it, e.g. terrain over an underground lake, are kept.
                             const int waterTop =
                                 columnWaterTopY[static_cast<std::size_t>(cellPos.z * dim + cellPos.x)];
                             if (waterTop >= 0 && faceY0 == waterTop) continue;
@@ -404,16 +404,16 @@ namespace mge {
                         } else if (isBottomFace) {
                             if (!isFaceVisible(id, neighborId, registry)) continue;
                         } else {
-                            // Caras laterales: llegan hasta cellTop y cubren desniveles entre columnas
-                            // vecinas
+                            // Side faces: reach up to cellTop and cover height steps between
+                            // neighbouring columns
                             const int cellBottom = cellPos.y * factor;
                             const int cellTopY = grid.cellTop(cellPos.x, cellPos.y, cellPos.z);
                             const bool neighborOpaque = !isFaceVisible(id, neighborId, registry);
                             if (!neighborOpaque) {
                                 faceY0 = cellBottom;
                                 faceY1 = cellTopY;
-                                // Si la celda de abajo (mismo bloque) tenía un escalón parcial contra el
-                                // vecino, absorberlo aquí para emitir un solo quad vertical en lugar de dos.
+                                // If the cell below (same block) had a partial step against the
+                                // neighbour, absorb it here to emit a single vertical quad instead of two.
                                 if (cellPos.y > 0) {
                                     const glm::ivec3 belowPos(cellPos.x, cellPos.y - 1, cellPos.z);
                                     const glm::ivec3 belowNeighbor = belowPos + face.offset;
@@ -430,8 +430,7 @@ namespace mge {
                                 const int neighborTopY =
                                     grid.cellTop(neighborPos.x, neighborPos.y, neighborPos.z);
                                 if (neighborTopY >= cellTopY) continue;
-                                // Si la celda de arriba (mismo bloque) da al aire, ella absorberá este
-                                // escalón
+                                // If the cell above (same block) faces air, it will absorb this step
                                 if (cellPos.y + 1 < dim && cellTopY == cellBottom + factor) {
                                     const glm::ivec3 abovePos(cellPos.x, cellPos.y + 1, cellPos.z);
                                     const glm::ivec3 aboveNeighbor = abovePos + face.offset;
@@ -475,8 +474,7 @@ namespace mge {
                             }
                             emitQuad(result.opaque, desc, face, faceIndex, worldPos, worldSize, ao, options);
 
-                            // Faldas en los 4 bordes laterales expuestos al aire si no hay bloque sólido
-                            // debajo
+                            // Skirts on the 4 side borders exposed to air if there is no solid block below
                             if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim) &&
                                 isFaceVisible(id, neighborId, registry)) {
                                 if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
@@ -488,7 +486,7 @@ namespace mge {
                     }
                 }
 
-                // 2. Greedy meshing en rectángulos máximos
+                // 2. Greedy meshing into maximal rectangles
                 solveLodGreedyMask(
                     mask.data(), dim, dim, [&](const LodMaskCell& cell, int i, int j, int width, int height) {
                         glm::ivec3 cellPos(0);
@@ -512,7 +510,7 @@ namespace mge {
                         emitQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos, worldSize,
                                  AoValues{cell.ao, cell.ao, cell.ao, cell.ao}, options);
 
-                        // Faldas en los 4 bordes laterales
+                        // Skirts on the 4 side borders
                         if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim)) {
                             if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
                                 emitSkirtQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos,

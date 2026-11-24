@@ -7,48 +7,47 @@
 namespace mge {
 
     struct ChunkMeshOptions {
-        TextureAtlas atlas; // Para los bloques con tiles; los de solo color tienen UV (0, 0)
-        // Une caras vecinas iguales en un solo quad (solo bloques de color, sin textura: los tiles de un
-        // atlas no se pueden repetir sobre un quad grande hasta el renderer nuevo, M3)
+        TextureAtlas atlas; // For blocks with tiles; colour-only blocks have UV (0, 0)
+        // Merges equal neighbouring faces into a single quad (colour-only blocks, untextured: atlas tiles
+        // cannot repeat across a large quad until the new renderer, M3)
         bool greedy = true;
-        // Oclusión ambiental por vértice: oscurece el color en rincones y bordes (0 a 3 vecinos opacos).
-        // Con greedy, solo se unen caras con la misma oclusión en sus 4 esquinas.
+        // Per-vertex ambient occlusion: darkens vertex colour in corners and edges (0 to 3 opaque neighbours).
+        // With greedy enabled, only faces with the same occlusion on all 4 corners are merged.
         bool ambientOcclusion = false;
-        float aoStrength = 0.5f; // Color en un rincón cerrado = 1 - aoStrength
-        // Bloques con textura: false (por defecto) = color de vértice blanco (la textura tal cual, más el
-        // AO); true = la textura se tiñe con BlockDesc::color. Los bloques sin textura usan siempre su color.
+        float aoStrength = 0.5f; // Colour in an enclosed corner = 1 - aoStrength
+        // Textured blocks: false (default) = white vertex colour (texture as-is, plus AO);
+        // true = texture is tinted with BlockDesc::color. Untextured blocks always use their colour.
         bool tintTextured = false;
-        // Faldas en los 4 bordes laterales (±X, ±Z) para chunks LOD > 0 (#61). Oculta grietas entre LODs
-        // distintos.
+        // Skirts on the 4 side borders (±X, ±Z) for LOD > 0 chunks (#61). Hides cracks between different LODs.
         bool lodSkirts = true;
     };
 
-    // Malla de un chunk en coordenadas locales (0..16): dibujar con model = translate(chunkOrigin).
-    // Una malla por pasada de dibujo (BlockDesc::renderLayer): opaque (sólidos), cutout (hojas, plantas:
-    // prueba alfa) y transparent (translúcidos: agua, vidrio, lava; mezcla alfa).
+    // Mesh of a chunk in local coordinates (0..16): draw with model = translate(chunkOrigin).
+    // One mesh per render pass (BlockDesc::renderLayer): opaque (solids), cutout (leaves, plants:
+    // alpha test), and transparent (translucent: water, glass, lava; alpha blending).
     struct ChunkMesh {
         MeshData opaque;
         MeshData cutout;
         MeshData transparent;
-        // Centroide en espacio local del chunk de cada quad transparente (1 por cada 6 índices)
+        // Chunk-local centroid of each transparent quad (1 per 6 indices)
         std::vector<glm::vec3> transparentFaceCentroids;
     };
 
-    // Reordena los índices de quads (6 índices = 2 triángulos por quad) de atrás hacia adelante respecto
-    // a cameraLocal (más lejano primero), usando los centroides por cara. Si los tamaños no coinciden o
-    // hay menos de dos quads, devuelve una copia de indices sin cambios.
+    // Reorders quad indices (6 indices = 2 triangles per quad) back-to-front relative to
+    // cameraLocal (farthest first), using per-face centroids. If sizes do not match or
+    // there are fewer than two quads, returns a copy of indices unchanged.
     std::vector<std::uint32_t> sortQuadsBackToFront(const std::vector<std::uint32_t>& indices,
                                                     const std::vector<glm::vec3>& centroids,
                                                     const glm::vec3& cameraLocal);
 
-    // Construye la malla de un chunk cargado (vacía si no lo está). Solo emite caras visibles:
-    // una cara se oculta si el vecino es un cubo opaco, o si ambos son el mismo bloque transparente
-    // (agua contra agua). Los vecinos se leen del mundo, también los de otros chunks; un chunk vecino
-    // sin cargar cuenta como aire (VoxelWorld marca sucio al chunk cuando ese vecino se carga).
+    // Builds the mesh for a loaded chunk (empty if not loaded). Only emits visible faces:
+    // a face is hidden if the neighbour is an opaque cube, or if both are the same transparent block
+    // (water against water). Neighbours are read from the world, including across chunk borders; an
+    // unloaded neighbour chunk counts as air (VoxelWorld marks the chunk dirty when that neighbour loads).
     ChunkMesh buildChunkMesh(const VoxelWorld& world, const ChunkCoord& coord,
                              const ChunkMeshOptions& options = {});
-    // Igual, desde una copia (ChunkSnapshot::capture). Solo lee el snapshot y el registry (que no debe
-    // cambiar mientras tanto): se puede llamar desde otro hilo (JobSystem).
+    // Same, from a snapshot copy (ChunkSnapshot::capture). Only reads the snapshot and the registry (which
+    // must not change in the meantime): safe to call from another thread (JobSystem).
     ChunkMesh buildChunkMesh(const ChunkSnapshot& snapshot, const BlockRegistry& registry,
                              const ChunkMeshOptions& options = {});
 }

@@ -48,7 +48,7 @@ namespace mge {
         }
 
         if (controller.mode == CharacterMode::Walk) {
-            // Velocidad horizontal deseada en el plano XZ
+            // Desired horizontal velocity on the XZ plane
             glm::vec3 wishDir = controller.flatForward() * controller.input.moveForward +
                                 controller.right() * controller.input.moveRight;
             if (glm::dot(wishDir, wishDir) > 1e-6f) {
@@ -61,7 +61,7 @@ namespace mge {
                 controller.walkSpeed * (controller.input.sprint ? controller.sprintMultiplier : 1.0f);
             const glm::vec3 wishVel = wishDir * speed;
 
-            // Aceleración hacia wishVel (en el aire se reduce a 1/4)
+            // Acceleration towards wishVel (reduced to 1/4 in the air)
             const float accelRate =
                 controller.grounded ? controller.acceleration : (controller.acceleration * 0.25f);
             const float maxAccel = accelRate * dt;
@@ -78,7 +78,7 @@ namespace mge {
             controller.velocity.x = currHoriz.x;
             controller.velocity.z = currHoriz.y;
 
-            // Salto si está apoyado e input.jump está activo; si no, aplicar gravedad
+            // Jump if grounded and input.jump is active; otherwise apply gravity
             const bool wasGrounded = controller.grounded;
             if (controller.grounded && controller.input.jump) {
                 controller.velocity.y = controller.jumpSpeed;
@@ -90,7 +90,7 @@ namespace mge {
                 }
             }
 
-            // Mover caja con colisiones
+            // Move box with collision detection
             const Aabb startBox = characterAabb(feet, controller.halfExtents);
             MoveOptions moveOpts;
             moveOpts.stepHeight = wasGrounded ? controller.stepHeight : 0.0f;
