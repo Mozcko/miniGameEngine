@@ -9,18 +9,18 @@
 
 namespace platformer {
 
-    constexpr float kTilePixels = 32.0f; // Píxeles lógicos por casilla
+    constexpr float kTilePixels = 32.0f; // Logical pixels per tile
 
-    // Colores de un bioma (#BIOME del archivo)
+    // Biome colors (#BIOME in the level file)
     struct Palette {
         glm::vec4 sky, ground, dirt, bridge;
     };
     Palette paletteFor(const std::string& biome);
 
-    // Escala entera para que el nivel (más un margen) entre a lo alto: píxeles nítidos
+    // Integer scale so the level (plus margin) fits vertically: crisp pixels
     float viewScale(const Level& level, std::uint32_t framebufferHeight);
 
-    // Dibuja el nivel, los objetos, los enemigos, el jugador y el HUD en ui (entre begin y flush), con rects
-    // de colores y la fuente embebida: no usa texturas. La cámara sigue al jugador en x
+    // Draws the level, items, enemies, player, and HUD into ui (between begin and flush), using colored
+    // rects and the embedded font: no textures. The camera follows the player along x
     void drawScene(mge::Renderer2D& ui, const Platformer& game, int levelNumber);
 }

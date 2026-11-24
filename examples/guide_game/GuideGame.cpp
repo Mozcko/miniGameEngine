@@ -36,7 +36,7 @@ namespace {
             m_audio = getModule<mge::AudioModule>();
             if (!m_platform || !m_gpu || !m_audio) return false;
 
-            // 1. Acciones de entrada desacopladas del teclado
+            // 1. Input actions decoupled from the keyboard
             auto& actions = m_platform->actions();
             actions.bindAxis("MoveX", mge::Key::D, mge::Key::A);
             actions.bindAxis("MoveZ", mge::Key::S, mge::Key::W);
@@ -44,17 +44,17 @@ namespace {
             actions.bind("Restart", mge::Key::R);
             actions.bind("Quit", mge::Key::Escape);
 
-            // 2. Renderizadores (MeshRenderer 3D y Renderer2D para HUD)
+            // 2. Renderers (3D MeshRenderer and Renderer2D for HUD)
             mge::GpuDevice& device = m_gpu->device();
             m_renderer = std::make_unique<mge::MeshRenderer>(device, m_gpu->swapchainFormat());
             m_ui = std::make_unique<mge::Renderer2D>(device, m_gpu->swapchainFormat());
 
             if (!m_renderer || !m_ui || !m_ui->valid()) {
-                MGE_LOG_ERROR("GuideGame", "Fallo al inicializar los renderizadores GPU");
+                MGE_LOG_ERROR("GuideGame", "Failed to initialize GPU renderers");
                 return false;
             }
 
-            // 3. Mallas geométricas generadas en código puro (cero archivos de assets)
+            // 3. Geometric meshes generated in pure code (zero asset files)
             m_floorMesh = device.uploadMesh(
                 mge::primitives::plane(36.0f, 36.0f, 6, 6, glm::vec4(0.22f, 0.28f, 0.35f, 1.0f)));
             m_wallMesh = device.uploadMesh(
@@ -66,7 +66,7 @@ namespace {
             m_hazardMesh = device.uploadMesh(
                 mge::primitives::cone(0.65f, 1.2f, 16, glm::vec4(0.95f, 0.25f, 0.25f, 1.0f)));
 
-            // 4. Iluminación atmosférica (sol, hemisferio y niebla)
+            // 4. Atmospheric lighting (sun, hemisphere ambient, and fog)
             m_lighting.sunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
             m_lighting.sunColor = glm::vec3(1.0f, 0.95f, 0.85f);
             m_lighting.skyAmbient = glm::vec3(0.40f, 0.45f, 0.55f);
@@ -76,7 +76,7 @@ namespace {
             m_lighting.fogStart = 20.0f;
             m_lighting.fogEnd = 50.0f;
 
-            // 5. Audio procedural sintetizado
+            // 5. Procedural synthesized audio
             m_coinSfx = m_audio->addSfx(mge::sfx::coin());
             m_jumpSfx = m_audio->addSfx(mge::sfx::jump());
             m_hurtSfx = m_audio->addSfx(mge::sfx::hurt());
@@ -106,25 +106,25 @@ namespace {
 
             reset();
             MGE_LOG_INFO("GuideGame",
-                         "Juego iniciado. WASD: mover, Espacio: saltar, R: reiniciar, Esc: salir");
+                         "Game started. WASD: move, Space: jump, R: restart, Esc: quit");
             return true;
         }
 
         void onFixedUpdate(float fixedDt) override {
             if (m_gameOver) return;
 
-            // Simulación física de paso fijo (60 Hz determinista)
+            // Fixed-step physics simulation (deterministic 60 Hz)
             const float moveX = m_platform->axis("MoveX");
             const float moveZ = m_platform->axis("MoveZ");
 
-            // Aceleración horizontal y fricción
+            // Horizontal acceleration and friction
             const glm::vec3 targetHorizontalVel(moveX * 12.0f, 0.0f, moveZ * 12.0f);
             m_playerVel.x =
                 glm::mix(m_playerVel.x, targetHorizontalVel.x, std::clamp(10.0f * fixedDt, 0.0f, 1.0f));
             m_playerVel.z =
                 glm::mix(m_playerVel.z, targetHorizontalVel.z, std::clamp(10.0f * fixedDt, 0.0f, 1.0f));
 
-            // Gravedad y salto
+            // Gravity and jump
             m_playerVel.y -= 26.0f * fixedDt;
             const bool grounded = (m_playerPos.y <= 0.61f);
             if (grounded && m_platform->isActionDown("Jump")) {
@@ -132,21 +132,21 @@ namespace {
                 m_audio->play(m_jumpSfx);
             }
 
-            // Integración de posición
+            // Position integration
             m_playerPos += m_playerVel * fixedDt;
 
-            // Colisión con el piso
+            // Floor collision
             if (m_playerPos.y < 0.6f) {
                 m_playerPos.y = 0.6f;
                 m_playerVel.y = 0.0f;
             }
 
-            // Límites de la arena (paredes)
+            // Arena bounds (walls)
             constexpr float kArenaBound = 16.5f;
             m_playerPos.x = glm::clamp(m_playerPos.x, -kArenaBound, kArenaBound);
             m_playerPos.z = glm::clamp(m_playerPos.z, -kArenaBound, kArenaBound);
 
-            // Colección de gemas
+            // Gem collection
             for (auto& gem : m_gems) {
                 const float dist = glm::distance(m_playerPos, gem.position);
                 if (dist < 1.1f) {
@@ -155,13 +155,13 @@ namespace {
                     m_combo++;
                     m_audio->play(m_coinSfx);
 
-                    // Reubicar gema en una nueva posición aleatoria
+                    // Relocate gem to a new random position
                     gem.position.x = randomRange(-14.0f, 14.0f);
                     gem.position.z = randomRange(-14.0f, 14.0f);
                 }
             }
 
-            // Colisión con obstáculos peligrosos
+            // Hazard collision
             if (m_invulnerableTimer <= 0.0f) {
                 for (const auto& hazard : m_hazards) {
                     const float dist = glm::distance(glm::vec2(m_playerPos.x, m_playerPos.z),
@@ -172,7 +172,7 @@ namespace {
                         m_invulnerableTimer = 1.0f;
                         m_audio->play(m_hurtSfx);
 
-                        // Impulso de rebote fuera del peligro
+                        // Knockback impulse away from the hazard
                         const glm::vec3 knockback = glm::normalize(m_playerPos - hazard.position);
                         m_playerVel.x = knockback.x * 12.0f;
                         m_playerVel.z = knockback.z * 12.0f;
@@ -201,7 +201,7 @@ namespace {
                 m_invulnerableTimer = std::max(0.0f, m_invulnerableTimer - dt);
             }
 
-            // Animación visual de flotación de gemas
+            // Visual floating animation for gems
             for (auto& gem : m_gems) {
                 gem.bobPhase += 3.5f * dt;
                 gem.position.y = gem.baseHeight + std::sin(gem.bobPhase) * 0.25f;
@@ -212,7 +212,7 @@ namespace {
             const mge::GpuFrame* frame = m_gpu->frame();
             if (!frame || !m_renderer) return;
 
-            // 1. Renderizado 3D de la escena con cámara y sombras aproximadas
+            // 1. 3D scene rendering with camera and approximate shading
             const float aspect =
                 static_cast<float>(frame->width) / static_cast<float>(frame->height > 0 ? frame->height : 1);
             const glm::mat4 proj = glm::perspectiveRH_ZO(glm::radians(55.0f), aspect, 0.1f, 100.0f);
@@ -226,10 +226,10 @@ namespace {
                 m_renderer->setCamera(proj * view, cameraPos);
                 m_renderer->setLighting(m_lighting);
 
-                // Suelo de la arena
+                // Arena floor
                 m_renderer->draw(m_floorMesh, glm::mat4(1.0f));
 
-                // Columnas de borde
+                // Border pillars
                 constexpr float kBound = 17.5f;
                 for (float coord = -kBound; coord <= kBound; coord += 3.5f) {
                     m_renderer->draw(m_wallMesh,
@@ -242,45 +242,45 @@ namespace {
                                      glm::translate(glm::mat4(1.0f), glm::vec3(kBound, 1.25f, coord)));
                 }
 
-                // Obstáculos peligrosos
+                // Hazards
                 for (const auto& hazard : m_hazards) {
                     const glm::mat4 model = glm::translate(glm::mat4(1.0f), hazard.position);
                     m_renderer->draw(m_hazardMesh, model);
                 }
 
-                // Gemas giratorias
+                // Spinning gems
                 for (const auto& gem : m_gems) {
                     glm::mat4 model = glm::translate(glm::mat4(1.0f), gem.position);
                     model = glm::rotate(model, gem.bobPhase * 1.5f, glm::vec3(0.0f, 1.0f, 0.0f));
                     m_renderer->draw(m_gemMesh, model);
                 }
 
-                // Orbe del jugador
+                // Player orb
                 const glm::mat4 playerModel = glm::translate(glm::mat4(1.0f), m_playerPos);
                 m_renderer->draw(m_playerMesh, playerModel);
 
                 m_renderer->end();
             }
 
-            // 2. HUD 2D inmediato en espacio de pantalla (Renderer2D)
+            // 2. Immediate 2D HUD in screen space (Renderer2D)
             m_ui->begin(frame->width, frame->height, 1.0f);
 
-            // Panel superior izquierdo: Puntaje y combo
-            std::string scoreStr = "PUNTAJE: " + std::to_string(m_score);
+            // Top-left panel: Score and combo
+            std::string scoreStr = "SCORE: " + std::to_string(m_score);
             if (m_combo > 1) scoreStr += "  (x" + std::to_string(m_combo) + ")";
             m_ui->text({20.0f, 20.0f}, scoreStr, glm::vec4(1.0f), 2.0f);
-            m_ui->text({20.0f, 48.0f}, "GEMAS: " + std::to_string(m_gemsCollected),
+            m_ui->text({20.0f, 48.0f}, "GEMS: " + std::to_string(m_gemsCollected),
                        glm::vec4(0.9f, 0.9f, 0.4f, 1.0f), 2.0f);
 
-            // Panel superior derecho: Salud
-            std::string healthStr = "SALUD: ";
+            // Top-right panel: Health
+            std::string healthStr = "HEALTH: ";
             for (int h = 0; h < m_health; ++h) healthStr += "[#] ";
             for (int h = m_health; h < 3; ++h) healthStr += "[ ] ";
             const glm::vec4 healthColor =
                 (m_health > 1) ? glm::vec4(0.3f, 1.0f, 0.4f, 1.0f) : glm::vec4(1.0f, 0.3f, 0.3f, 1.0f);
             m_ui->text({float(frame->width) - 220.0f, 20.0f}, healthStr, healthColor, 2.0f);
 
-            // Banner central de Game Over
+            // Center Game Over banner
             if (m_gameOver) {
                 const float cx = float(frame->width) * 0.5f;
                 const float cy = float(frame->height) * 0.5f;
@@ -288,16 +288,16 @@ namespace {
                            glm::vec4(0.06f, 0.08f, 0.12f, 0.92f));
                 m_ui->rectOutline({cx - 180.0f, cy - 60.0f}, {360.0f, 120.0f},
                                   glm::vec4(1.0f, 0.3f, 0.3f, 1.0f));
-                m_ui->text({cx - 85.0f, cy - 35.0f}, "FIN DEL JUEGO", glm::vec4(1.0f, 0.3f, 0.3f, 1.0f),
+                m_ui->text({cx - 85.0f, cy - 35.0f}, "GAME OVER", glm::vec4(1.0f, 0.3f, 0.3f, 1.0f),
                            2.5f);
-                m_ui->text({cx - 130.0f, cy + 15.0f}, "PULSA 'R' PARA REINICIAR", glm::vec4(1.0f), 1.8f);
+                m_ui->text({cx - 130.0f, cy + 15.0f}, "PRESS 'R' TO RESTART", glm::vec4(1.0f), 1.8f);
             }
 
             m_ui->flush(*frame->cmd, frame->swapchain);
         }
 
         void onShutdown() override {
-            // Liberar recursos de GPU antes de que el dispositivo GPU sea destruido
+            // Release GPU resources before the GPU device is destroyed
             m_floorMesh = {};
             m_wallMesh = {};
             m_playerMesh = {};
@@ -306,7 +306,7 @@ namespace {
             m_renderer.reset();
             m_ui.reset();
 
-            MGE_LOG_INFO("GuideGame", "Juego cerrado limpiamente");
+            MGE_LOG_INFO("GuideGame", "Game closed cleanly");
         }
 
     private:
@@ -346,7 +346,7 @@ namespace {
             for (int i = 0; i < 4; ++i) {
                 Hazard h;
                 h.position = glm::vec3(randomRange(-11.0f, 11.0f), 0.6f, randomRange(-11.0f, 11.0f));
-                // Asegurar distancia mínima de inicio al jugador
+                // Ensure minimum starting distance from the player
                 if (glm::length(h.position) < 3.0f) {
                     h.position.x += 5.0f;
                 }

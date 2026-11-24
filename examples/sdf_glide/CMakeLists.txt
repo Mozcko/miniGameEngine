@@ -1,5 +1,5 @@
-# Demo SDF Glide (#66): juego SDF infinito donde navegas un orbe en un cañón procedural.
-# La lógica matemática y de juego (SdfGlideLogic) es headless y se prueba en tests/examples/test_sdf_glide.cpp.
+# SDF Glide demo (#66): endless SDF game where you steer an orb through a procedural canyon.
+# Math and game logic (SdfGlideLogic) are headless and tested in tests/examples/test_sdf_glide.cpp.
 add_library(sdf_glide_logic STATIC SdfGlideLogic.h SdfGlideLogic.cpp)
 target_link_libraries(sdf_glide_logic PUBLIC mge_core mge_synth)
 target_include_directories(sdf_glide_logic PUBLIC ${PROJECT_SOURCE_DIR})

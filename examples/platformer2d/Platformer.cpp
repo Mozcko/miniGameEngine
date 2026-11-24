@@ -17,14 +17,14 @@ namespace platformer {
 
     Platformer::Platformer(Level level)
         : m_level(std::move(level)), m_collected(m_level.items.size(), false) {
-        // Los enemigos caen hasta el piso o el agua (en el archivo están en la fila de los objetos)
+        // Enemies drop down to the ground or water (in the file they sit on the items row)
         for (glm::ivec2& enemy : m_level.enemies)
             while (enemy.y + 1 < m_level.height && m_level.at(enemy.x, enemy.y + 1) == Tile::Empty) enemy.y++;
         respawn();
     }
 
     void Platformer::respawn() {
-        // Parado en el fondo de la casilla de inicio, centrado
+        // Standing at the bottom of the spawn cell, centered
         const glm::vec2 cell(m_level.spawn);
         m_position = {cell.x + (1.0f - kPlayerSize.x) * 0.5f, cell.y + 1.0f - kPlayerSize.y};
         m_velocity = glm::vec2(0.0f);
@@ -48,7 +48,7 @@ namespace platformer {
             m_position = next;
             return false;
         }
-        // Pegarse al borde de la casilla con la que choca
+        // Snap flush against the edge of the colliding tile
         if (delta > 0.0f)
             next[axis] = std::floor(next[axis] + kPlayerSize[axis] - kEpsilon) - kPlayerSize[axis];
         else
@@ -67,7 +67,7 @@ namespace platformer {
         m_velocity.y = std::min(m_velocity.y + kGravity * dt, kMaxFallSpeed);
 
         moveAxis(0, m_velocity.x * dt);
-        m_position.x = std::max(m_position.x, 0.0f); // Pared invisible a la izquierda
+        m_position.x = std::max(m_position.x, 0.0f); // Invisible wall on the left
         const bool hitY = moveAxis(1, m_velocity.y * dt);
         m_grounded = hitY && m_velocity.y > 0.0f;
         if (hitY) m_velocity.y = 0.0f;
@@ -80,7 +80,7 @@ namespace platformer {
                 events.coins++;
             }
         }
-        // ¿Los pies en el agua?
+        // Are the player's feet in water?
         const glm::vec2 feet = m_position + glm::vec2(kPlayerSize.x * 0.5f, kPlayerSize.y - 0.1f);
         const bool inWater = m_level.at(int(std::floor(feet.x)), int(std::floor(feet.y))) == Tile::Water;
         bool hitEnemy = false;

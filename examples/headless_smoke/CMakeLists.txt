@@ -1,5 +1,5 @@
-# Smoke test headless: Application sin módulos + generación de chunks del sandbox (sin ventana ni GPU).
-# El programa fija sus propios 1000 frames (config.maxFrames).
+# Headless smoke test: Application without modules + sandbox chunk generation (no window or GPU).
+# The program sets its own 1000 frames (config.maxFrames).
 mge_add_game(headless_smoke
     HEADLESS
     SOURCES HeadlessSmoke.cpp

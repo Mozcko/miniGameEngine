@@ -27,7 +27,7 @@ namespace {
             m_audio = getModule<mge::AudioModule>();
             if (!m_platform || !m_gpu || !m_audio) return false;
 
-            // 1. Controles
+            // 1. Controls
             auto& actions = m_platform->actions();
             actions.bindAxis("SteerX", mge::Key::D, mge::Key::A);
             actions.bindAxis("SteerY", mge::Key::W, mge::Key::S);
@@ -37,7 +37,7 @@ namespace {
 
             m_platform->setCursorLocked(true);
 
-            // 2. Renderizadores (Renderer rasterizado + SDF raymarching pass + UI 2D)
+            // 2. Renderers (rasterized MeshRenderer + SDF raymarching pass + 2D UI)
             mge::GpuDevice& device = m_gpu->device();
             m_renderer = std::make_unique<mge::MeshRenderer>(device, m_gpu->swapchainFormat());
             m_sdfRenderer = std::make_unique<mge::SdfRenderer>(
@@ -45,11 +45,11 @@ namespace {
             m_ui = std::make_unique<mge::Renderer2D>(device, m_gpu->swapchainFormat());
 
             if (!m_renderer || !m_sdfRenderer || !m_sdfRenderer->valid() || !m_ui || !m_ui->valid()) {
-                MGE_LOG_ERROR("SdfGlide", "Fallo al inicializar los renderizadores GPU");
+                MGE_LOG_ERROR("SdfGlide", "Failed to initialize GPU renderers");
                 return false;
             }
 
-            // 3. Mallas rasterizadas: orbe del jugador y motes de luz
+            // 3. Rasterized meshes: player orb and light motes
             const mge::MeshData orbData =
                 mge::primitives::uvSphere(0.32f, 16, 16, glm::vec4(1.0f, 0.85f, 0.30f, 1.0f));
             const mge::MeshData moteData =
@@ -58,7 +58,7 @@ namespace {
             m_orbMesh = device.uploadMesh(orbData);
             m_moteMesh = device.uploadMesh(moteData);
 
-            // 4. Iluminación atmosférica del cañón
+            // 4. Atmospheric canyon lighting
             m_lighting.sunDirection = glm::normalize(glm::vec3(-0.3f, -1.0f, -0.4f));
             m_lighting.sunColor = glm::vec3(1.0f, 0.92f, 0.85f);
             m_lighting.skyAmbient = glm::vec3(0.50f, 0.45f, 0.55f);
@@ -68,7 +68,7 @@ namespace {
             m_lighting.fogStart = 40.0f;
             m_lighting.fogEnd = 160.0f;
 
-            // 5. Audio procedural sintetizado
+            // 5. Procedural synthesized audio
             m_audioParams = sdf_glide::GlideAudioParams::create();
             for (std::size_t i = 0; i < m_audioParams.moteSounds.size(); ++i) {
                 m_moteSampleIds[i] = m_audio->addSfx(m_audioParams.moteSounds[i]);
@@ -82,7 +82,7 @@ namespace {
             m_audio->playSong(m_themeSongId, 1.0f);
 
             MGE_LOG_INFO("SdfGlide",
-                         "SDF Glide iniciado. WASD/Raton: virar, Espacio: boost, R: reiniciar, Esc: salir");
+                         "SDF Glide started. WASD/Mouse: steer, Space: boost, R: restart, Esc: quit");
             return true;
         }
 
@@ -92,7 +92,7 @@ namespace {
                 return;
             }
 
-            // Lectura continua de controles
+            // Continuous control reading
             m_pendingInput.steerX = m_platform->axis("SteerX");
             m_pendingInput.steerY = m_platform->axis("SteerY");
 
@@ -102,7 +102,7 @@ namespace {
             }
             m_pendingInput.boost = m_platform->isActionDown("Boost");
 
-            // Enganche de acciones de borde (edge actions) para el paso fijo
+            // Latch edge-triggered actions for the fixed step
             if (m_platform->wasActionPressed("Restart")) {
                 m_latchedRestart = true;
             }
@@ -125,7 +125,7 @@ namespace {
 
             m_game.update(fixedDt, input);
 
-            // Procesar eventos sonoros ocurridos durante la simulación
+            // Process audio events emitted during simulation
             for (const auto event : m_game.audioEvents()) {
                 switch (event) {
                 case sdf_glide::AudioEvent::CollectMote: {
@@ -147,7 +147,7 @@ namespace {
 
             const float aspect = float(frame->width) / float(std::max(1u, frame->height));
 
-            // Cámara en tercera persona siguiendo al orbe (interpolada entre pasos de simulación)
+            // Third-person camera following the orb (interpolated between simulation steps)
             const float alpha = time().alpha();
             const glm::vec3 renderPos = glm::mix(m_game.previousPosition(), m_game.playerPosition(), alpha);
             const glm::vec3 eye = renderPos + glm::vec3(0.0f, 1.2f, 3.8f);
@@ -159,7 +159,7 @@ namespace {
             const glm::mat4 viewProj = proj * view;
             const glm::mat4 invViewProj = glm::inverse(viewProj);
 
-            // 1. Pase 3D rasterizado (orbe y motes)
+            // 1. Rasterized 3D pass (orb and motes)
             if (!m_renderer->begin(*frame->cmd, frame->swapchain, frame->width, frame->height,
                                    glm::vec4(m_lighting.fogColor, 1.0f))) {
                 return;
@@ -167,7 +167,7 @@ namespace {
             m_renderer->setCamera(viewProj, eye);
             m_renderer->setLighting(m_lighting);
 
-            // A. Dibujar orbe del jugador (titila si está en periodo de invulnerabilidad)
+            // A. Draw player orb (blinks while invulnerable)
             const bool visible =
                 (m_game.invulnerableTimer() <= 0.0f) || (int(m_game.invulnerableTimer() * 15.0f) % 2 == 0);
             if (visible && !m_game.isGameOver()) {
@@ -175,7 +175,7 @@ namespace {
                 m_renderer->draw(m_orbMesh, orbModel);
             }
 
-            // B. Dibujar motes de luz activos dentro del rango visual
+            // B. Draw active light motes within view range
             for (const auto& mote : m_game.motes()) {
                 if (mote.collected) continue;
                 if (mote.position.z > eye.z + 5.0f || mote.position.z < renderPos.z - 120.0f) continue;
@@ -183,18 +183,18 @@ namespace {
                 m_renderer->draw(m_moteMesh, moteModel);
             }
 
-            // 2. Pase SDF Raymarching (Cañón procedural, se mezcla por profundidad con los orbes)
+            // 2. SDF raymarching pass (procedural canyon, depth-composited with the orbs)
             mge::SdfFrame sdfFrame;
             sdfFrame.viewProjection = viewProj;
             sdfFrame.inverseViewProjection = invViewProj;
             sdfFrame.cameraPosition = eye;
             sdfFrame.time = static_cast<float>(time().unscaledElapsed());
-            sdfFrame.params[0] = glm::vec4(renderPos, 1.0f); // Luz del orbe hacia las paredes
+            sdfFrame.params[0] = glm::vec4(renderPos, 1.0f); // Orb light onto canyon walls
 
             m_sdfRenderer->draw(*m_renderer, sdfFrame, m_lighting);
             m_renderer->end();
 
-            // 3. HUD 2D (Renderer2D con fuente integrada)
+            // 3. 2D HUD (Renderer2D with built-in font)
             m_ui->begin(frame->width, frame->height, 1.0f);
 
             const int score = m_game.score();
@@ -203,7 +203,7 @@ namespace {
             const int combo = m_game.combo();
             const int distMeters = static_cast<int>(m_game.distanceTraveled());
 
-            // Panel superior izquierdo
+            // Top-left panel
             std::string scoreStr = "SCORE: " + std::to_string(score);
             if (combo > 1) scoreStr += "  (x" + std::to_string(combo) + ")";
             m_ui->text({20.0f, 20.0f}, scoreStr, glm::vec4(1.0f), 2.0f);
@@ -215,7 +215,7 @@ namespace {
                        shields > 1 ? glm::vec4(0.3f, 1.0f, 0.4f, 1.0f) : glm::vec4(1.0f, 0.3f, 0.3f, 1.0f),
                        2.0f);
 
-            // Panel superior derecho
+            // Top-right panel
             const std::string bestStr = "BEST: " + std::to_string(best);
             const std::string distStr = "DIST: " + std::to_string(distMeters) + " m";
             m_ui->text({float(frame->width) - 200.0f, 20.0f}, bestStr, glm::vec4(0.9f, 0.9f, 0.5f, 1.0f),
@@ -223,7 +223,7 @@ namespace {
             m_ui->text({float(frame->width) - 200.0f, 45.0f}, distStr, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f),
                        2.0f);
 
-            // Barra de energía (inferior central)
+            // Energy bar (bottom center)
             constexpr float kBarW = 240.0f;
             constexpr float kBarH = 14.0f;
             const float barX = (float(frame->width) - kBarW) * 0.5f;
@@ -237,7 +237,7 @@ namespace {
             m_ui->rect({barX, barY}, {kBarW * energyRatio, kBarH}, energyColor);
             m_ui->rectOutline({barX, barY}, {kBarW, kBarH}, glm::vec4(0.8f, 0.8f, 0.9f, 1.0f));
 
-            // Cartel de fin de partida
+            // Game Over banner
             if (m_game.isGameOver()) {
                 const float centerX = float(frame->width) * 0.5f;
                 const float centerY = float(frame->height) * 0.5f;
@@ -261,7 +261,7 @@ namespace {
             m_sdfRenderer.reset();
             m_renderer.reset();
 
-            MGE_LOG_INFO("SdfGlide", "SDF Glide cerrado");
+            MGE_LOG_INFO("SdfGlide", "SDF Glide closed");
         }
 
     private:
