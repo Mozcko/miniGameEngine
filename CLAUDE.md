@@ -5,9 +5,11 @@ and a `README.md` inside every folder of `src/` and `assets/`.
 
 ## Direction (read before changing anything)
 - Goal: **headless C++ core** + optional modules; games built from **pure math/code** *or* with regular asset files
-  (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (GitHub milestones M0–M10, issues #1–#67, #96–#107 and #160–#164,
-  epics #68–#76, #101, #107, #164 on Mozcko/miniGameEngine). **M0–M10 are done = release 1.0.x (current 1.0.2; engine MVP, package, templates,
-  `mge` CLI and wizard, C API and Python bindings); next: more languages on the C API if C/Python work well.** Version lives in `project(... VERSION)`; every release
+  (both supported; ADR 0004). Full plan: `docs/ROADMAP.md` (milestones M0–M12 and the release plan; epics #68–#76, #101, #107,
+  #164, #189, #199, #190 on Mozcko/miniGameEngine). **M0–M10 + 1.0.x polish are done = release 1.0.x (current 1.0.2; engine MVP, package,
+  templates, `mge` CLI and wizard, C API and Python bindings). Next: M11 game-ready features (#199: glTF, skeletal animation, mesh
+  collision, gamepad, UI, saves, navigation, 2D toolkit…) with the English-everywhere cleanup (#236), then M12 platforms and
+  languages (#190).** Version lives in `project(... VERSION)`; every release
   needs a pushed tag `vX.Y.Z` (templates and FetchContent fetch it) and a CHANGELOG entry.
 - **GPU API: SDL3 GPU API (Vulkan/Metal/D3D12). Never add OpenGL** – the GL renderer was deleted in #40. Platform is SDL3.
 - Workflow & conventions: `CONTRIBUTING.md` (branch `type/<issue>-slug`, conventional commits, one issue
