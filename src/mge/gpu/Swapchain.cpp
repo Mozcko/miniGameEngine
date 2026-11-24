@@ -14,7 +14,7 @@ namespace mge {
                                             SDL_GPU_TEXTUREFORMAT_D16_UNORM}) {
             if (supported(format)) return format;
         }
-        return SDL_GPU_TEXTUREFORMAT_D16_UNORM; // Obligatorio en todos los backends de SDL GPU
+        return SDL_GPU_TEXTUREFORMAT_D16_UNORM; // Required on all SDL GPU backends
     }
 
     const char* presentModeName(SDL_GPUPresentMode mode) {

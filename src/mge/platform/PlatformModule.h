@@ -10,8 +10,8 @@
 
 namespace mge {
 
-    // Módulo de plataforma: crea la ventana (con el título/tamaño del ApplicationConfig) y traduce los
-    // eventos de SDL3 al input del core cada frame. Para dibujar, agregar después un GpuModule.
+    // Platform module: creates the window (with title/size from ApplicationConfig) and translates
+    // SDL3 events into core input each frame. To render, add a GpuModule afterwards.
     class PlatformModule : public Module {
     public:
         using EventCallback = std::function<void(const SDL_Event&)>;
@@ -22,13 +22,13 @@ namespace mge {
         void onFrameBegin(Application& app) override;
         void onShutdown(Application& app) override;
 
-        // Input del frame actual (independiente de SDL) y las acciones del juego
+        // Current frame input (SDL-independent) and game actions
         InputState& input() { return m_input; }
         const InputState& input() const { return m_input; }
         ActionMap& actions() { return m_actions; }
         const ActionMap& actions() const { return m_actions; }
 
-        // Atajos: acción del ActionMap evaluada sobre el input actual
+        // Shortcuts: ActionMap action evaluated against the current input
         bool isActionDown(const std::string& action) const { return m_actions.isDown(m_input, action); }
         bool wasActionPressed(const std::string& action) const {
             return m_actions.wasPressed(m_input, action);
@@ -38,15 +38,15 @@ namespace mge {
         }
         float axis(const std::string& axisName) const { return m_actions.axis(m_input, axisName); }
 
-        // Cursor capturado: oculto, movimiento relativo y confinado a la ventana (cámaras FPS)
+        // Locked cursor: hidden, relative motion, and confined to the window (FPS cameras)
         void setCursorLocked(bool locked);
         bool isCursorLocked() const { return m_cursorLocked; }
 
-        // Eventos crudos de SDL para lo que no es input (ej: cambio de tamaño de la ventana).
-        // Se llama antes de actualizar el input.
+        // Raw SDL events for non-input handling (e.g., window resize).
+        // Called before updating input.
         void setEventCallback(EventCallback callback) { m_eventCallback = std::move(callback); }
 
-        // Válido entre onInit y onShutdown
+        // Valid between onInit and onShutdown
         Window& getWindow() { return *m_window; }
 
     private:

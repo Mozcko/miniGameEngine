@@ -15,29 +15,29 @@ namespace mge {
 
     using ShaderBytecode = ShaderCode;
 
-    // Parámetros por frame para el pase de SDF raymarching (#36)
+    // Per-frame parameters for the SDF raymarching pass (#36)
     struct SdfFrame {
         glm::mat4 viewProjection{1.0f};
         glm::mat4 inverseViewProjection{1.0f};
         glm::vec3 cameraPosition{0.0f};
         float time = 0.0f;
-        glm::vec4 params[4]{}; // Libres para el juego (posiciones, colores…)
+        glm::vec4 params[4]{}; // Free for game use (positions, colors...)
     };
 
-    // Renderizador de campos de distancia con signo (SDF raymarching pass, #36).
-    // Dibuja un triángulo de pantalla completa dentro del render pass de MeshRenderer,
-    // DESPUÉS de los objetos opacos y ANTES de los transparentes, con prueba y escritura de
-    // profundidad (gl_FragDepth) para intersección correcta con geometría rasterizada.
+    // Signed distance field renderer (SDF raymarching pass, #36).
+    // Draws a fullscreen triangle inside MeshRenderer's render pass,
+    // AFTER opaque objects and BEFORE transparent ones, with depth test and depth write
+    // (gl_FragDepth) for proper intersection with rasterized geometry.
     class SdfRenderer {
     public:
-        // fragment = shader del juego (mge_add_shaders) que define map() y material() e incluye
+        // fragment = game shader (mge_add_shaders) that defines map() and material() and includes
         // mge/sdf_pass.glsl
         SdfRenderer(GpuDevice& device, SDL_GPUTextureFormat colorFormat, SDL_GPUTextureFormat depthFormat,
                     const ShaderBytecode& fragment);
 
         bool valid() const { return static_cast<bool>(m_pipeline); }
 
-        // Dentro del render pass de MeshRenderer, DESPUÉS de lo opaco y antes de lo transparente
+        // Inside MeshRenderer's render pass, AFTER opaque and before transparent
         void draw(MeshRenderer& renderer, const SdfFrame& frame, const Lighting& lighting);
 
         float maxDistance = 200.0f;

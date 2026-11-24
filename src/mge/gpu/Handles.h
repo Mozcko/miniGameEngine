@@ -6,8 +6,8 @@
 
 namespace mge {
 
-    // Recurso de la GPU con dueño único: se libera solo (con el device que lo creó) y no se puede copiar,
-    // así que no hay dobles liberaciones. Se puede mover. Debe destruirse antes que su GpuDevice.
+    // Uniquely owned GPU resource: releases itself (using the device that created it) and is non-copyable,
+    // preventing double frees. Move-only. Must be destroyed before its GpuDevice.
     template <typename T, void (*Release)(SDL_GPUDevice*, T*)> class GpuHandle {
     public:
         GpuHandle() = default;
@@ -28,7 +28,7 @@ namespace mge {
             return *this;
         }
 
-        // Libera ya (SDL espera a que la GPU termine de usarlo antes de borrarlo de verdad)
+        // Releases immediately (SDL waits until the GPU is done using it before actually freeing it)
         void reset() {
             if (m_handle) Release(m_device, m_handle);
             m_handle = nullptr;

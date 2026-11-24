@@ -13,16 +13,16 @@ namespace mge {
 
     class MeshRenderer;
 
-    // Líneas de depuración armadas en la CPU (#38): se testean sin GPU. Pares de vértices (lista de líneas).
+    // Debug lines built on the CPU (#38): testable without GPU. Pairs of vertices (line list).
     class DebugLines {
     public:
         void clear() { m_vertices.clear(); }
         void line(const glm::vec3& a, const glm::vec3& b, const glm::vec4& color);
-        void aabb(const Aabb& box, const glm::vec4& color); // 12 aristas
+        void aabb(const Aabb& box, const glm::vec4& color); // 12 edges
         void sphere(const glm::vec3& center, float radius, const glm::vec4& color,
-                    int segments = 24);                 // 3 círculos
-        void axes(const glm::vec3& origin, float size); // X rojo, Y verde, Z azul
-        // Las 12 aristas del volumen visible de una cámara (Z en [0, 1]: proyecciones del motor)
+                    int segments = 24);                 // 3 circles
+        void axes(const glm::vec3& origin, float size); // X red, Y green, Z blue
+        // The 12 edges of a camera's visible volume (Z in [0, 1]: engine projections)
         void frustum(const glm::mat4& viewProjection, const glm::vec4& color);
 
         const std::vector<GpuVertex>& vertices() const { return m_vertices; }
@@ -32,9 +32,9 @@ namespace mge {
         std::vector<GpuVertex> m_vertices;
     };
 
-    // DebugLines + su buffer en la GPU. Uso por frame: armar las líneas, y dentro del render pass del
-    // MeshRenderer (después de submit) llamar a flush(renderer). Las líneas tienen prueba de profundidad
-    // (se tapan con la escena) pero no la escriben.
+    // DebugLines + its GPU buffer. Per-frame usage: build the lines, and inside the MeshRenderer render pass
+    // (after submit) call flush(renderer). Lines are depth-tested (occluded by the scene) without writing
+    // depth.
     class DebugDraw : public DebugLines {
     public:
         explicit DebugDraw(GpuDevice& device) : m_device(device) {}
@@ -43,6 +43,6 @@ namespace mge {
     private:
         GpuDevice& m_device;
         GpuBuffer m_buffer;
-        std::uint32_t m_capacity = 0; // Vértices
+        std::uint32_t m_capacity = 0; // Vertices
     };
 }

@@ -1,6 +1,6 @@
 #version 450
-// UI 2D (#42): textura × color. UV negativa (Batch2D::kNoTexture) = sin textura (blanco): así los
-// rectángulos no cortan el lote de texto
+// 2D UI (#42): texture × color. Negative UV (Batch2D::kNoTexture) = untextured (white), so
+// rectangles don't break the text batch
 layout(location = 0) in vec4 inColor;
 layout(location = 1) in vec2 inUv;
 

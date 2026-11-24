@@ -14,8 +14,8 @@ namespace mge {
         };
         std::stable_sort(m_items.begin(), m_items.end(), [&](const DrawItem& a, const DrawItem& b) {
             if (a.pass != b.pass) return a.pass < b.pass;
-            if (a.pass == MeshPass::Transparent) return depth(a) > depth(b); // Atrás → adelante
-            return depth(a) < depth(b);                                      // Adelante → atrás
+            if (a.pass == MeshPass::Transparent) return depth(a) > depth(b); // Back -> front
+            return depth(a) < depth(b);                                      // Front -> back
         });
     }
 }

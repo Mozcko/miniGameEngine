@@ -90,20 +90,20 @@ struct mge_app {
     mge::GpuModule* gpu = nullptr;
     mge::AudioModule* audio = nullptr;
 
-    // Renderizadores creados en demanda cuando hay GPU
+    // Renderers created on demand when GPU is available
     std::unique_ptr<mge::MeshRenderer> meshRenderer;
     std::unique_ptr<mge::SkyRenderer> skyRenderer;
     mge::DayNight dayNight;
     std::unique_ptr<mge::Renderer2D> uiRenderer;
 
-    // Vista y proyección de la cámara
+    // Camera view and projection
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projMatrix{1.0f};
     bool customCamera = false;
     mge::Lighting currentLighting{};
     bool inRenderPass = false;
 
-    // Mapeo de acciones y ejes de input
+    // Input action and axis bindings
     std::unordered_map<std::string, std::string> actionBindings;
     struct AxisBinding {
         std::string negKey;
@@ -205,7 +205,7 @@ namespace mge::c_impl {
             if (m_callbacks.on_shutdown) {
                 m_callbacks.on_shutdown(&m_cApp, m_callbacks.user_data);
             }
-            // Destruir renderizadores antes de que GpuModule destruya el device
+            // Destroy renderers before GpuModule destroys the device
             m_cApp.meshRenderer.reset();
             m_cApp.skyRenderer.reset();
             m_cApp.uiRenderer.reset();

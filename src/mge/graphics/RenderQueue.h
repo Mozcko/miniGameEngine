@@ -11,41 +11,41 @@ namespace mge {
 
     class Texture2D;
 
-    // Cómo se dibuja una malla (el orden del enum es el orden de dibujo)
+    // How a mesh is drawn (the enum order is the draw order)
     enum class MeshPass {
-        Opaque,      // Prueba y escritura de profundidad, sin mezcla
-        Cutout,      // Como Opaque, pero descarta los píxeles con alfa < 0.5 (hojas, plantas)
-        Transparent, // Mezcla alfa, prueba de profundidad SIN escritura (después de lo opaco)
+        Opaque,      // Depth test and write, no blending
+        Cutout,      // Like Opaque, but discards pixels with alpha < 0.5 (leaves, plants)
+        Transparent, // Alpha blending, depth test WITHOUT write (after opaque)
     };
     inline constexpr std::size_t kMeshPassCount = 3;
 
-    // Material procedural por malla (#34): ruido de brillo en el espacio del mundo, para mallas de solo color
-    // (bloques sin textura) que con greedy son caras grandes y planas
+    // Procedural per-mesh material (#34): world-space brightness noise, for solid-color meshes
+    // (untextured blocks) which with greedy meshing produce large flat faces
     struct MeshMaterial {
-        float detailScale = 4.0f;    // Celdas del ruido por unidad del mundo
-        float detailStrength = 0.0f; // 0 = sin detalle; 0.1–0.3 = sutil
+        float detailScale = 4.0f;    // Noise cells per world unit
+        float detailStrength = 0.0f; // 0 = no detail; 0.1–0.3 = subtle
     };
 
-    // Una malla a dibujar en el frame
+    // A mesh to draw in the frame
     struct DrawItem {
         const GpuMesh* mesh = nullptr;
         glm::mat4 model{1.0f};
-        const Texture2D* texture = nullptr; // nullptr = blanca
+        const Texture2D* texture = nullptr; // nullptr = white
         MeshPass pass = MeshPass::Opaque;
-        glm::vec3 center{0.0f}; // Centro en el mundo (para ordenar)
+        glm::vec3 center{0.0f}; // World-space center (for sorting)
         MeshMaterial material;
     };
 
-    // Cola de dibujo del frame. sort() la ordena para dibujar bien y rápido:
-    //   1. por pasada (opaco, cutout, transparente);
-    //   2. opaco y cutout de adelante hacia atrás (la profundidad descarta lo tapado antes de sombrear);
-    //   3. transparente de atrás hacia adelante (la mezcla alfa necesita ese orden).
-    // El orden es por centro de cada item (ej: un chunk); dentro de una malla no se ordena.
+    // Per-frame draw queue. sort() orders it for correct and fast rendering:
+    //   1. by pass (opaque, cutout, transparent);
+    //   2. opaque and cutout front-to-back (depth test rejects occluded fragments before shading);
+    //   3. transparent back-to-front (alpha blending requires this order).
+    // Sorting is per item center (e.g. a chunk); triangles within a mesh are not sorted.
     class RenderQueue {
     public:
         void add(const DrawItem& item);
         void clear() { m_items.clear(); }
-        // depth = distancia a lo largo de la vista: dot(center - cameraPosition, cameraForward)
+        // depth = distance along the view direction: dot(center - cameraPosition, cameraForward)
         void sort(const glm::vec3& cameraPosition, const glm::vec3& cameraForward);
 
         const std::vector<DrawItem>& items() const { return m_items; }

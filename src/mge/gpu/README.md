@@ -69,7 +69,7 @@ unknown), for `Renderer2D::begin` (#42). `frame()->acquireMs` is how long this f
   (`chooseDepthFormat`). `createDepthTarget(w, h)` creates a depth buffer, passed to
   `beginRenderPass(color, &depth)`.
 - **Startup log:** the GPU name, driver, version and depth format, e.g.
-  `Device vulkan: Intel(R) Iris(R) Xe Graphics (… Mesa 26.2.3), profundidad D32`.
+  `Device vulkan: Intel(R) Iris(R) Xe Graphics (… Mesa 26.2.3), depth D32`.
 - **Validation:** `MGE_GPU_DEBUG=0|1` overrides `GpuDeviceOptions::debug` (on by default in Debug builds).
 
 ## Shaders and pipelines (#29)

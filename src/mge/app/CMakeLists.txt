@@ -1,6 +1,6 @@
-# main() del motor: llama a mge::createApplication() del juego y devuelve el código de salida de run().
-# OBJECT para que el main() se enlace siempre en el ejecutable. Solo depende del core (sin SDL),
-# así que sirve también para programas headless.
+# Engine main(): calls the game's mge::createApplication() and returns the exit code of run().
+# OBJECT library so main() is always linked into the executable. Depends only on core (no SDL),
+# so it also works for headless programs.
 add_library(mge_main OBJECT Main.cpp)
 add_library(mge::main ALIAS mge_main)
 set_target_properties(mge_main PROPERTIES EXPORT_NAME main)

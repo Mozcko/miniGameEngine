@@ -16,33 +16,33 @@ namespace mge {
     class Renderer2D;
     class Profiler;
 
-    // Overlay de rendimiento (#43): FPS, gráfico de tiempos de frame y contadores con nombre. No sabe nada
-    // del juego: el juego le pasa los tiempos y los contadores que quiera mostrar. Uso por frame:
+    // Performance overlay (#43): FPS, frame-time graph, and named counters. Knows nothing about the game:
+    // the game feeds it frame timings and any counters it wants to display. Per-frame usage:
     //   overlay.addFrame(time().unscaledDelta() * 1000, frame->acquireMs);
     //   overlay.setCounter("chunks", std::to_string(n));
-    //   overlay.draw(ui);  // dentro de ui.begin ... ui.flush
-    // La GPU de SDL no tiene consultas de tiempo (timestamps): se muestra el tiempo de CPU y la espera por la
-    // imagen del swapchain (vsync / GPU ocupada), no el tiempo de GPU.
+    //   overlay.draw(ui);  // inside ui.begin ... ui.flush
+    // SDL GPU has no timestamp queries: shows CPU time and swapchain image wait time (vsync / GPU busy),
+    // not GPU execution time.
     class DebugOverlay {
     public:
-        static constexpr std::size_t kHistory = 240; // Frames del gráfico (un píxel por frame)
+        static constexpr std::size_t kHistory = 240; // Graph frames (one pixel per frame)
         static constexpr float kGraphHeight = 48.0f;
-        static constexpr float kGraphMaxMs = 50.0f; // Arriba del gráfico (las barras más altas se recortan)
+        static constexpr float kGraphMaxMs = 50.0f; // Top of the graph (taller bars are clipped)
 
         bool visible() const { return m_visible; }
         void setVisible(bool visible) { m_visible = visible; }
         void toggle() { m_visible = !m_visible; }
 
-        // frameMs: duración total del frame; waitMs: la parte esperando la imagen del swapchain
+        // frameMs: total frame duration; waitMs: portion spent waiting for the swapchain image
         void addFrame(float frameMs, float waitMs = 0.0f);
         std::size_t sampleCount() const { return m_count; }
-        // Del historial: FPS de los últimos ~0.5 s, promedio y máximo
+        // From history: FPS over the last ~0.5 s, average, and max
         float fps() const;
         float averageMs() const;
         float maxMs() const;
         float averageWaitMs() const;
 
-        // Línea "nombre: valor" (en el orden en que se agregaron; nombre vacío = solo el valor)
+        // "name: value" line (in insertion order; empty name = value only)
         void setCounter(std::string_view name, std::string value);
         void removeCounter(std::string_view name);
         const std::vector<std::pair<std::string, std::string>>& counters() const { return m_counters; }
@@ -54,24 +54,24 @@ namespace mge {
             int depth = 0;
         };
 
-        // Copia las entradas del Profiler para dibujarlas bajo los contadores
+        // Copies entries from Profiler to draw below the counters
         void setProfile(const Profiler& profiler);
         const std::vector<ProfileEntry>& profileEntries() const { return m_profile; }
 
-        // Arma el panel en batch con la fuente dada (su atlas ya en la GPU como atlasTexture). Devuelve el
-        // tamaño. Testeable sin GPU
+        // Builds the panel into batch using the given font (its atlas already on the GPU as atlasTexture).
+        // Returns the panel size. Testable without GPU
         glm::vec2 build(Batch2D& batch, const Font& font, const Texture2D* atlasTexture,
                         const glm::vec2& pos = glm::vec2(8.0f), float scale = 1.0f) const;
-        // Con la fuente embebida del renderer; no dibuja nada si no está visible
+        // Uses the renderer's built-in font; draws nothing if not visible
         glm::vec2 draw(Renderer2D& ui, const glm::vec2& pos = glm::vec2(8.0f), float scale = 1.0f) const;
 
     private:
-        // i = 0 → el frame más viejo del historial
+        // i = 0 → oldest frame in history
         float sample(std::size_t i) const { return m_frameMs[(m_head + kHistory - m_count + i) % kHistory]; }
 
         std::array<float, kHistory> m_frameMs{};
         std::array<float, kHistory> m_waitMs{};
-        std::size_t m_head = 0; // Próxima posición a escribir
+        std::size_t m_head = 0; // Next write position
         std::size_t m_count = 0;
         std::vector<std::pair<std::string, std::string>> m_counters;
         std::vector<ProfileEntry> m_profile;

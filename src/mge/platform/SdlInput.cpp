@@ -3,11 +3,11 @@
 namespace mge {
 
     Key keyFromScancode(SDL_Scancode scancode) {
-        // Letras y números son contiguos tanto en SDL como en mge::Key
+        // Letters and digits are contiguous in both SDL and mge::Key
         if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z) {
             return static_cast<Key>(static_cast<int>(Key::A) + (scancode - SDL_SCANCODE_A));
         }
-        // En SDL el orden es 1..9 y luego 0
+        // In SDL the order is 1..9 followed by 0
         if (scancode >= SDL_SCANCODE_1 && scancode <= SDL_SCANCODE_9) {
             return static_cast<Key>(static_cast<int>(Key::Num1) + (scancode - SDL_SCANCODE_1));
         }
@@ -50,7 +50,7 @@ namespace mge {
         switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
-            // Las repeticiones automáticas no cambian el estado (la tecla ya está abajo)
+            // Auto-repeats do not change state (the key is already down)
             if (!event.key.repeat) input.setKey(keyFromScancode(event.key.scancode), event.key.down);
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -63,7 +63,7 @@ namespace mge {
             break;
         case SDL_EVENT_MOUSE_WHEEL: input.addWheel(event.wheel.y); break;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            // Sin foco no llegan los "key up": soltar todo para no quedar con teclas pegadas
+            // Without focus, "key up" events are missed: release everything to avoid stuck keys
             input.clear();
             break;
         default: break;

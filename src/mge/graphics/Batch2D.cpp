@@ -23,9 +23,9 @@ namespace mge {
         if (!m_commands.empty()) {
             Draw2DCommand& last = m_commands.back();
             if (last.clip == clip) {
-                if (!textured) return last; // Blanco por UV: entra en cualquier lote
+                if (!textured) return last; // White via UV: fits in any batch
                 if (last.texture == texture && last.nearest == nearest) return last;
-                if (!last.texture) { // Hasta ahora solo quads sin textura: el lote adopta esta
+                if (!last.texture) { // Only untextured quads so far: the batch adopts this texture
                     last.texture = texture;
                     last.nearest = nearest;
                     return last;
@@ -43,7 +43,7 @@ namespace mge {
 
     void Batch2D::quadCorners(bool textured, const Texture2D* texture, bool nearest,
                               const glm::vec2 corners[4], const glm::vec2 uvs[4], const glm::vec4& color) {
-        // Todo recortado: no gasta vértices
+        // Fully clipped: do not emit vertices
         if (!m_clipStack.empty() && m_clipStack.back().empty()) return;
         Draw2DCommand& command = commandFor(textured, texture, nearest);
         constexpr int kOrder[6] = {0, 1, 2, 0, 2, 3};
@@ -61,7 +61,7 @@ namespace mge {
                        const glm::vec2& p1, const glm::vec2& uv0, const glm::vec2& uv1,
                        const glm::vec4& color) {
         if (p1.x <= p0.x || p1.y <= p0.y) return;
-        // Esquinas: arriba izq., arriba der., abajo der., abajo izq. (uv0 = arriba a la izquierda)
+        // Corners: top-left, top-right, bottom-right, bottom-left (uv0 = top-left)
         const glm::vec2 corners[4] = {p0, {p1.x, p0.y}, p1, {p0.x, p1.y}};
         const glm::vec2 uvs[4] = {uv0, {uv1.x, uv0.y}, uv1, {uv0.x, uv1.y}};
         quadCorners(textured, texture, nearest, corners, uvs, color);
@@ -75,10 +75,10 @@ namespace mge {
                               float thickness) {
         const float t = std::min({thickness, size.x * 0.5f, size.y * 0.5f});
         if (t <= 0.0f) return;
-        rect(pos, {size.x, t}, color);                                        // Arriba
-        rect({pos.x, pos.y + size.y - t}, {size.x, t}, color);                // Abajo
-        rect({pos.x, pos.y + t}, {t, size.y - 2.0f * t}, color);              // Izquierda
-        rect({pos.x + size.x - t, pos.y + t}, {t, size.y - 2.0f * t}, color); // Derecha
+        rect(pos, {size.x, t}, color);                                        // Top
+        rect({pos.x, pos.y + size.y - t}, {size.x, t}, color);                // Bottom
+        rect({pos.x, pos.y + t}, {t, size.y - 2.0f * t}, color);              // Left
+        rect({pos.x + size.x - t, pos.y + t}, {t, size.y - 2.0f * t}, color); // Right
     }
 
     void Batch2D::line(const glm::vec2& a, const glm::vec2& b, const glm::vec4& color, float thickness) {
@@ -93,7 +93,7 @@ namespace mge {
 
     void Batch2D::image(const Texture2D* texture, const glm::vec2& pos, const glm::vec2& size,
                         const glm::vec2& uvMin, const glm::vec2& uvMax, const glm::vec4& tint, bool nearest) {
-        // Arriba a la izquierda en pantalla = (uMin, vMax) en la convención de Texture2D (v hacia arriba)
+        // Top-left on screen = (uMin, vMax) in Texture2D convention (v pointing up)
         quad(true, texture, nearest, pos, pos + size, {uvMin.x, uvMax.y}, {uvMax.x, uvMin.y}, tint);
     }
 
@@ -102,7 +102,7 @@ namespace mge {
         if (!font.valid() || str.empty()) return glm::vec2(0.0f);
         const glm::vec2 atlasSize(float(font.atlas().width()), float(font.atlas().height()));
         const bool nearest = font.isPixelFont();
-        // Fuente de píxeles: el lápiz en píxeles enteros, para que no se deforme al muestrear sin filtro
+        // Pixel font: snap pen to integer pixels so nearest sampling does not distort glyphs
         const glm::vec2 origin = nearest ? glm::round(pos) : pos;
         glm::vec2 pen = origin;
         float widest = 0.0f;
@@ -121,7 +121,7 @@ namespace mge {
                 glm::vec2 p0 = pen + g.offset * scale;
                 if (nearest) p0 = glm::round(p0);
                 const glm::vec2 p1 = p0 + glm::vec2(g.size) * scale;
-                // Atlas con fila 0 arriba; Texture2D lo guarda invertido (v = 1 arriba)
+                // Atlas has row 0 at top; Texture2D stores it flipped (v = 1 at top)
                 const glm::vec2 a = glm::vec2(g.atlasPos) / atlasSize;
                 const glm::vec2 b = glm::vec2(g.atlasPos + g.size) / atlasSize;
                 quad(true, atlasTexture, nearest, p0, p1, {a.x, 1.0f - a.y}, {b.x, 1.0f - b.y}, color);
