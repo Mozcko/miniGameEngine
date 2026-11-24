@@ -1,7 +1,7 @@
-# Herramienta de línea de comandos del motor (mge CLI)
+# Engine command-line tool (mge CLI)
 
 if(WIN32)
-    message(STATUS "mge CLI: no está soportado en Windows todavía")
+    message(STATUS "mge CLI: not yet supported on Windows")
     return()
 endif()
 

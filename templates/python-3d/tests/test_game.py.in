@@ -1,4 +1,4 @@
-"""Tests unitarios para la logica de @GAME_TITLE@."""
+"""Unit tests for @GAME_TITLE@ logic."""
 from game.logic import GameLogic
 
 
@@ -11,13 +11,13 @@ def test_initial_state() -> None:
 
 def test_jump_physics() -> None:
     logic = GameLogic()
-    # Iniciar salto
+    # Start jump
     logic.update(0.016, want_jump=True)
     assert logic.player.grounded is False
     assert logic.player.vy > 0.0
     assert logic.player.y > 0.0
 
-    # Simular hasta que vuelva al suelo
+    # Simulate until returning to the ground
     for _ in range(100):
         logic.update(0.016, want_jump=False)
 

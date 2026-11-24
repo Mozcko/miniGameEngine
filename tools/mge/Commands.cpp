@@ -33,7 +33,7 @@ namespace mge::cli {
                 }
             }
 
-            // Búsqueda recursiva dentro de carpetas de compilación
+            // Recursive search inside build directories
             std::vector<std::filesystem::path> buildDirs = {rootDir / "build", rootDir / ("build-" + preset)};
 
             for (const auto& bDir : buildDirs) {
@@ -81,7 +81,7 @@ namespace mge::cli {
         bool hasExplicitLang = false;
         bool hasExplicitTemplate = false;
 
-        // Si se llama sin argumentos
+        // If called with no arguments
         if (argc == 0) {
             if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
                 wizard::WizardModel model;
@@ -99,9 +99,9 @@ namespace mge::cli {
                 return status;
             }
 
-            std::cerr << "Error: se requiere el nombre del proyecto en entornos no interactivos.\n"
-                      << "Uso: mge new <nombre> [opciones]\n"
-                      << "Consulte 'mge new --help' para ver las opciones disponibles.\n";
+            std::cerr << "Error: project name is required in non-interactive environments.\n"
+                      << "Usage: mge new <name> [options]\n"
+                      << "Run 'mge new --help' to see available options.\n";
             return 1;
         }
 
@@ -109,22 +109,19 @@ namespace mge::cli {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
                 std::cout
-                    << "Uso: mge new [nombre] [opciones]\n\n"
-                    << "Crea un nuevo proyecto a partir de una plantilla estándar.\n"
-                    << "Si se ejecuta sin argumentos en una terminal interactiva, inicia el asistente "
-                       "TUI.\n\n"
-                    << "Opciones:\n"
-                    << "  --lang <c|cpp|python>        Lenguaje del proyecto (por defecto: cpp)\n"
-                    << "  --template <3d|2d|headless>  Plantilla a emplear (por defecto: 3d)\n"
-                    << "  --audio / --no-audio         Activa o desactiva el módulo de audio (por defecto: "
-                       "sí)\n"
-                    << "  --license <mit|apache|none>  Licencia a generar (por defecto: mit)\n"
-                    << "  --git / --no-git             Inicializa un repositorio Git (por defecto: sí)\n"
-                    << "  --vscode / --no-vscode       Configura tareas de VS Code en .vscode/ (por defecto: "
-                       "sí)\n"
-                    << "  --dir <ruta>                 Carpeta de destino donde inicializar el proyecto\n"
-                    << "  -y, --yes                    Acepta los valores por defecto sin preguntar\n"
-                    << "  -h, --help                   Muestra esta ayuda\n";
+                    << "Usage: mge new [name] [options]\n\n"
+                    << "Creates a new project from a standard template.\n"
+                    << "When run without arguments in an interactive terminal, launches the TUI wizard.\n\n"
+                    << "Options:\n"
+                    << "  --lang <c|cpp|python>        Project language (default: cpp)\n"
+                    << "  --template <3d|2d|headless>  Template to use (default: 3d)\n"
+                    << "  --audio / --no-audio         Enable or disable the audio module (default: yes)\n"
+                    << "  --license <mit|apache|none>  License to generate (default: mit)\n"
+                    << "  --git / --no-git             Initialize a Git repository (default: yes)\n"
+                    << "  --vscode / --no-vscode       Configure VS Code tasks in .vscode/ (default: yes)\n"
+                    << "  --dir <path>                 Target directory to initialize the project\n"
+                    << "  -y, --yes                    Accept default values without prompting\n"
+                    << "  -h, --help                   Show this help message\n";
                 return 0;
             }
             if (arg == "--lang" || arg == "--language") {
@@ -132,14 +129,14 @@ namespace mge::cli {
                     std::string lStr = argv[++i];
                     ProjectLanguage l = ProjectLanguage::Cpp;
                     if (!parseLanguage(lStr, l)) {
-                        std::cerr << "Error: lenguaje desconocido '" << lStr
-                                  << "'. Opciones válidas: cpp, c, python.\n";
+                        std::cerr << "Error: unknown language '" << lStr
+                                  << "'. Valid options: cpp, c, python.\n";
                         return 1;
                     }
                     options.language = l;
                     hasExplicitLang = true;
                 } else {
-                    std::cerr << "Error: --lang requiere un lenguaje (cpp, c, python).\n";
+                    std::cerr << "Error: --lang requires a language (cpp, c, python).\n";
                     return 1;
                 }
             } else if (arg == "--template") {
@@ -147,7 +144,7 @@ namespace mge::cli {
                     options.templateName = argv[++i];
                     hasExplicitTemplate = true;
                 } else {
-                    std::cerr << "Error: --template requiere un argumento (3d, 2d, headless).\n";
+                    std::cerr << "Error: --template requires an argument (3d, 2d, headless).\n";
                     return 1;
                 }
             } else if (arg == "--audio") {
@@ -164,11 +161,11 @@ namespace mge::cli {
                     } else if (lic == "none" || lic == "None") {
                         options.license = LicenseType::None;
                     } else {
-                        std::cerr << "Error: licencia desconocida '" << lic << "'. Use mit, apache o none.\n";
+                        std::cerr << "Error: unknown license '" << lic << "'. Use mit, apache, or none.\n";
                         return 1;
                     }
                 } else {
-                    std::cerr << "Error: --license requiere un tipo (mit, apache, none).\n";
+                    std::cerr << "Error: --license requires a type (mit, apache, none).\n";
                     return 1;
                 }
             } else if (arg == "--git") {
@@ -187,18 +184,18 @@ namespace mge::cli {
                 if (i + 1 < argc) {
                     options.targetDir = argv[++i];
                 } else {
-                    std::cerr << "Error: --dir requiere una ruta como argumento.\n";
+                    std::cerr << "Error: --dir requires a path argument.\n";
                     return 1;
                 }
             } else if (arg.rfind("-", 0) == 0) {
-                std::cerr << "Error: opción desconocida '" << arg
-                          << "'. Ejecute 'mge new --help' para ayuda.\n";
+                std::cerr << "Error: unknown option '" << arg
+                          << "'. Run 'mge new --help' for help.\n";
                 return 1;
             } else {
                 if (options.name.empty()) {
                     options.name = std::string(arg);
                 } else {
-                    std::cerr << "Error: argumento posicional inesperado '" << arg << "'.\n";
+                    std::cerr << "Error: unexpected positional argument '" << arg << "'.\n";
                     return 1;
                 }
             }
@@ -220,12 +217,12 @@ namespace mge::cli {
 
         if (options.name.empty()) {
             if (acceptDefaults || !isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
-                std::cerr << "Error: se requiere el nombre del proyecto.\n"
-                          << "Uso: mge new <nombre> [opciones]\n";
+                std::cerr << "Error: project name is required.\n"
+                          << "Usage: mge new <name> [options]\n";
                 return 1;
             }
 
-            // Iniciar asistente interactivo con las opciones preconfiguradas
+            // Launch interactive wizard with preconfigured options
             wizard::WizardModel model;
             if (hasExplicitLang) {
                 switch (options.language) {
@@ -270,12 +267,12 @@ namespace mge::cli {
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
-                std::cout << "Uso: mge build [opciones]\n\n"
-                          << "Compila el proyecto actual mediante presets de CMake.\n\n"
-                          << "Opciones:\n"
-                          << "  --release      Compila utilizando el preset 'release'\n"
-                          << "  --preset <p>   Especifica el preset de compilación (ej: dev, release, ci)\n"
-                          << "  -h, --help     Muestra esta ayuda\n";
+                std::cout << "Usage: mge build [options]\n\n"
+                          << "Builds the current project using CMake presets.\n\n"
+                          << "Options:\n"
+                          << "  --release      Build using the 'release' preset\n"
+                          << "  --preset <p>   Specify the build preset (e.g., dev, release, ci)\n"
+                          << "  -h, --help     Show this help message\n";
                 return 0;
             }
             if (arg == "--release") {
@@ -284,19 +281,19 @@ namespace mge::cli {
                 if (i + 1 < argc) {
                     preset = argv[++i];
                 } else {
-                    std::cerr << "Error: --preset requiere el nombre de un preset.\n";
+                    std::cerr << "Error: --preset requires a preset name.\n";
                     return 1;
                 }
             } else {
-                std::cerr << "Error: opción desconocida '" << arg << "'.\n";
+                std::cerr << "Error: unknown option '" << arg << "'.\n";
                 return 1;
             }
         }
 
         ProjectInfo proj = detectProject(std::filesystem::current_path());
         if (proj.type == ProjectType::None) {
-            std::cerr << "Error: no se detectó ningún proyecto miniGameEngine en la ruta actual ni en sus "
-                         "ancestros.\n";
+            std::cerr << "Error: no miniGameEngine project detected in the current directory or its "
+                         "ancestors.\n";
             return 1;
         }
 
@@ -307,11 +304,11 @@ namespace mge::cli {
             if (std::filesystem::is_regular_file(pyproject) || std::filesystem::is_regular_file(setupPy)) {
                 return runCommand({py, "-m", "pip", "install", "-e", "."}, proj.rootDir);
             }
-            std::cout << "No hay nada que compilar para el proyecto de Python.\n";
+            std::cout << "Nothing to build for the Python project.\n";
             return 0;
         }
 
-        // Si la carpeta de build del preset no contiene CMakeCache.txt, configurar previamente
+        // If the preset build directory does not contain CMakeCache.txt, configure first
         std::filesystem::path cacheA = proj.rootDir / "build" / "CMakeCache.txt";
         std::filesystem::path cacheB = proj.rootDir / ("build-" + preset) / "CMakeCache.txt";
         if (!std::filesystem::exists(cacheA) && !std::filesystem::exists(cacheB)) {
@@ -343,13 +340,13 @@ namespace mge::cli {
 
             if (arg == "--help" || arg == "-h") {
                 std::cout
-                    << "Uso: mge run [opciones] [-- <argumentos del juego...>]\n\n"
-                    << "Compila y ejecuta el objetivo principal del proyecto.\n\n"
-                    << "Opciones:\n"
-                    << "  --release      Ejecuta la versión compilada con el preset 'release'\n"
-                    << "  --preset <p>   Especifica el preset (por defecto: dev)\n"
-                    << "  --             Los argumentos siguientes se transfieren directamente al juego\n"
-                    << "  -h, --help     Muestra esta ayuda\n";
+                    << "Usage: mge run [options] [-- <game arguments...>]\n\n"
+                    << "Builds and runs the main project target.\n\n"
+                    << "Options:\n"
+                    << "  --release      Run the version built with the 'release' preset\n"
+                    << "  --preset <p>   Specify the preset (default: dev)\n"
+                    << "  --             Following arguments are passed directly to the game\n"
+                    << "  -h, --help     Show this help message\n";
                 return 0;
             }
 
@@ -359,19 +356,19 @@ namespace mge::cli {
                 if (i + 1 < argc) {
                     preset = argv[++i];
                 } else {
-                    std::cerr << "Error: --preset requiere el nombre de un preset.\n";
+                    std::cerr << "Error: --preset requires a preset name.\n";
                     return 1;
                 }
             } else {
-                std::cerr << "Error: opción desconocida '" << arg
-                          << "'. Use '--' para argumentos del juego.\n";
+                std::cerr << "Error: unknown option '" << arg
+                          << "'. Use '--' for game arguments.\n";
                 return 1;
             }
         }
 
         ProjectInfo proj = detectProject(std::filesystem::current_path());
         if (proj.type == ProjectType::None) {
-            std::cerr << "Error: no se detectó ningún proyecto miniGameEngine.\n";
+            std::cerr << "Error: no miniGameEngine project detected.\n";
             return 1;
         }
 
@@ -382,7 +379,7 @@ namespace mge::cli {
                 mainPy = proj.rootDir / "src" / "main.py";
             }
             if (!std::filesystem::is_regular_file(mainPy)) {
-                std::cerr << "Error: no se encontró 'main.py' en el proyecto de Python.\n";
+                std::cerr << "Error: 'main.py' not found in the Python project.\n";
                 return 1;
             }
             std::vector<std::string> runArgs = {py, mainPy.string()};
@@ -395,7 +392,7 @@ namespace mge::cli {
             target = "sandbox";
         }
 
-        // Configurar si aún no se ha generado la caché de CMake
+        // Configure if the CMake cache has not been generated yet
         std::filesystem::path cacheA = proj.rootDir / "build" / "CMakeCache.txt";
         std::filesystem::path cacheB = proj.rootDir / ("build-" + preset) / "CMakeCache.txt";
         if (!std::filesystem::exists(cacheA) && !std::filesystem::exists(cacheB)) {
@@ -405,17 +402,16 @@ namespace mge::cli {
             }
         }
 
-        // Compilar el objetivo específico
+        // Build the specific target
         int buildRc = runCommand({"cmake", "--build", "--preset", preset, "--target", target}, proj.rootDir);
         if (buildRc != 0) {
             return buildRc;
         }
 
-        // Localizar el binario compilado
+        // Locate the compiled binary
         std::filesystem::path binary = findExecutableBinary(proj.rootDir, target, preset);
         if (binary.empty() || !std::filesystem::exists(binary)) {
-            std::cerr << "Error: no se pudo encontrar el ejecutable '" << target
-                      << "' en las carpetas de compilación.\n";
+            std::cerr << "Error: could not find executable '" << target << "' in build directories.\n";
             return 1;
         }
 
@@ -431,12 +427,12 @@ namespace mge::cli {
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
-                std::cout << "Uso: mge test [opciones]\n\n"
-                          << "Ejecuta los tests unitarios mediante CTest y los presets del proyecto.\n\n"
-                          << "Opciones:\n"
-                          << "  --release      Ejecuta los tests con el preset 'release'\n"
-                          << "  --preset <p>   Especifica el preset de tests (por defecto: dev)\n"
-                          << "  -h, --help     Muestra esta ayuda\n";
+                std::cout << "Usage: mge test [options]\n\n"
+                          << "Runs unit tests using CTest and the project presets.\n\n"
+                          << "Options:\n"
+                          << "  --release      Run tests with the 'release' preset\n"
+                          << "  --preset <p>   Specify the test preset (default: dev)\n"
+                          << "  -h, --help     Show this help message\n";
                 return 0;
             }
             if (arg == "--release") {
@@ -445,18 +441,18 @@ namespace mge::cli {
                 if (i + 1 < argc) {
                     preset = argv[++i];
                 } else {
-                    std::cerr << "Error: --preset requiere el nombre de un preset.\n";
+                    std::cerr << "Error: --preset requires a preset name.\n";
                     return 1;
                 }
             } else {
-                std::cerr << "Error: opción desconocida '" << arg << "'.\n";
+                std::cerr << "Error: unknown option '" << arg << "'.\n";
                 return 1;
             }
         }
 
         ProjectInfo proj = detectProject(std::filesystem::current_path());
         if (proj.type == ProjectType::None) {
-            std::cerr << "Error: no se detectó ningún proyecto miniGameEngine.\n";
+            std::cerr << "Error: no miniGameEngine project detected.\n";
             return 1;
         }
 
@@ -465,7 +461,7 @@ namespace mge::cli {
             return runCommand({py, "-m", "pytest"}, proj.rootDir);
         }
 
-        // Configurar si no existe la caché
+        // Configure if cache does not exist
         std::filesystem::path cacheA = proj.rootDir / "build" / "CMakeCache.txt";
         std::filesystem::path cacheB = proj.rootDir / ("build-" + preset) / "CMakeCache.txt";
         if (!std::filesystem::exists(cacheA) && !std::filesystem::exists(cacheB)) {
@@ -485,28 +481,28 @@ namespace mge::cli {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
                 std::cout
-                    << "Uso: mge check [opciones]\n\n"
-                    << "Comprueba formato y directrices de código mediante clang-format y clang-tidy.\n\n"
-                    << "Opciones:\n"
-                    << "  --fix       Corrige automáticamente errores de formato con clang-format\n"
-                    << "  -h, --help  Muestra esta ayuda\n";
+                    << "Usage: mge check [options]\n\n"
+                    << "Checks code formatting and guidelines using clang-format and clang-tidy.\n\n"
+                    << "Options:\n"
+                    << "  --fix       Automatically fix formatting errors with clang-format\n"
+                    << "  -h, --help  Show this help message\n";
                 return 0;
             }
             if (arg == "--fix") {
                 fix = true;
             } else {
-                std::cerr << "Error: opción desconocida '" << arg << "'.\n";
+                std::cerr << "Error: unknown option '" << arg << "'.\n";
                 return 1;
             }
         }
 
         ProjectInfo proj = detectProject(std::filesystem::current_path());
         if (proj.type == ProjectType::None) {
-            std::cerr << "Error: no se detectó ningún proyecto miniGameEngine.\n";
+            std::cerr << "Error: no miniGameEngine project detected.\n";
             return 1;
         }
 
-        // Si estamos dentro del repositorio del motor, delegar en scripts/lint.sh
+        // If inside the engine repository, delegate to scripts/lint.sh
         if (proj.type == ProjectType::EngineRepo) {
             std::filesystem::path lintScript = proj.rootDir / "scripts" / "lint.sh";
             if (std::filesystem::is_regular_file(lintScript)) {
@@ -518,7 +514,7 @@ namespace mge::cli {
             }
         }
 
-        // En proyectos generados, comprobar código con clang-format si está disponible
+        // In generated projects, check code with clang-format if available
         if (commandExists("clang-format")) {
             std::vector<std::string> fmtArgs = {"clang-format"};
             if (fix) {
@@ -544,18 +540,18 @@ namespace mge::cli {
             }
 
             if (fmtArgs.size() > 2) {
-                std::cout << "Comprobando formato con clang-format...\n";
+                std::cout << "Checking formatting with clang-format...\n";
                 int rc = runCommand(fmtArgs, proj.rootDir);
                 if (rc != 0) {
                     return rc;
                 }
             }
         } else {
-            std::cout << "Aviso: clang-format no está instalado en el sistema.\n";
+            std::cout << "Warning: clang-format is not installed on the system.\n";
         }
 
-        std::cout << colors::green() << colors::bold() << "OK: comprobaciones de formato completadas."
-                  << colors::reset() << "\n";
+        std::cout << colors::green() << colors::bold() << "OK: format checks completed." << colors::reset()
+                  << "\n";
         return 0;
     }
 
@@ -563,15 +559,15 @@ namespace mge::cli {
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
-                std::cout << "Uso: mge clean\n\n"
-                          << "Elimina las carpetas de compilación generadas en el proyecto actual.\n";
+                std::cout << "Usage: mge clean\n\n"
+                          << "Removes generated build directories in the current project.\n";
                 return 0;
             }
         }
 
         ProjectInfo proj = detectProject(std::filesystem::current_path());
         if (proj.type == ProjectType::None) {
-            std::cerr << "Error: no se detectó ningún proyecto miniGameEngine.\n";
+            std::cerr << "Error: no miniGameEngine project detected.\n";
             return 1;
         }
 
@@ -583,7 +579,7 @@ namespace mge::cli {
                     std::error_code ec;
                     std::filesystem::remove_all(entry.path(), ec);
                     if (!ec) {
-                        std::cout << "Eliminada carpeta: " << name << "\n";
+                        std::cout << "Removed directory: " << name << "\n";
                         ++count;
                     }
                 }
@@ -591,26 +587,26 @@ namespace mge::cli {
         }
 
         if (count == 0) {
-            std::cout << "No se encontraron carpetas de compilación para limpiar.\n";
+            std::cout << "No build directories found to clean.\n";
         }
         return 0;
     }
 
     void printGeneralHelp() {
-        std::cout << "mge - Herramienta de línea de comandos de miniGameEngine\n\n"
-                  << "Uso: mge <comando> [opciones]\n\n"
-                  << "Comandos disponibles:\n"
-                  << "  new       Crea un nuevo proyecto a partir de una plantilla estándar\n"
-                  << "  build     Compila el proyecto mediante CMake presets\n"
-                  << "  run       Compila y ejecuta el objetivo principal del juego\n"
-                  << "  test      Ejecuta los tests del proyecto con CTest\n"
-                  << "  check     Verifica el formato de código (usa --fix para corregir)\n"
-                  << "  clean     Elimina carpetas de compilación generadas (build*)\n"
-                  << "  doctor    Comprueba el estado y versiones de las herramientas del sistema\n\n"
-                  << "Opciones globales:\n"
-                  << "  -h, --help       Muestra esta ayuda\n"
-                  << "  -v, --version    Muestra la versión instalada del motor\n\n"
-                  << "Ejecute 'mge <comando> --help' para consultar la ayuda específica de cada comando.\n";
+        std::cout << "mge - miniGameEngine command-line tool\n\n"
+                  << "Usage: mge <command> [options]\n\n"
+                  << "Available commands:\n"
+                  << "  new       Create a new project from a standard template\n"
+                  << "  build     Build the project using CMake presets\n"
+                  << "  run       Build and run the main game target\n"
+                  << "  test      Run project tests with CTest\n"
+                  << "  check     Check code formatting (use --fix to auto-format)\n"
+                  << "  clean     Remove generated build directories (build*)\n"
+                  << "  doctor    Check status and versions of system tools\n\n"
+                  << "Global options:\n"
+                  << "  -h, --help       Show this help message\n"
+                  << "  -v, --version    Show the installed engine version\n\n"
+                  << "Run 'mge <command> --help' for command-specific help.\n";
     }
 
     void printVersion() {

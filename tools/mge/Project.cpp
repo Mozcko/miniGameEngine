@@ -141,20 +141,21 @@ namespace mge::cli {
                 return true;
             }
             outError =
-                "Plantilla '" + templateName + "' no válida para C++ (plantillas válidas: 3d, 2d, headless).";
+                "Template '" + templateName + "' is not valid for C++ (valid templates: 3d, 2d, headless).";
             return false;
         case ProjectLanguage::C:
             if (tmpl == "3d" || tmpl == "headless") {
                 return true;
             }
             outError =
-                "Plantilla '" + templateName + "' no válida para C (plantillas válidas: 3d, headless).";
+                "Template '" + templateName + "' is not valid for C (valid templates: 3d, headless).";
             return false;
         case ProjectLanguage::Python:
             if (tmpl == "3d" || tmpl == "2d") {
                 return true;
             }
-            outError = "Plantilla '" + templateName + "' no válida para Python (plantillas válidas: 3d, 2d).";
+            outError =
+                "Template '" + templateName + "' is not valid for Python (valid templates: 3d, 2d).";
             return false;
         }
         return false;
@@ -174,8 +175,8 @@ namespace mge::cli {
         outError.clear();
         const char* minVer = minEngineVersionForLanguage(lang);
         if (compareSemver(engineVersion, minVer) < 0) {
-            outError = "El lenguaje '" + languageToString(lang) + "' requiere miniGameEngine >= " + minVer +
-                       " (la versión a fijar es " + engineVersion + ").";
+            outError = "Language '" + languageToString(lang) + "' requires miniGameEngine >= " + minVer +
+                       " (pinned version is " + engineVersion + ").";
             return false;
         }
         return true;
@@ -184,31 +185,31 @@ namespace mge::cli {
     bool validateProjectName(const std::string& name, std::string& outError) {
         outError.clear();
         if (name.empty()) {
-            outError = "El nombre del proyecto no puede estar vacío.";
+            outError = "Project name cannot be empty.";
             return false;
         }
 
-        // Primer carácter: letra minúscula a-z
+        // First character: lowercase letter a-z
         char first = name.front();
         if (first < 'a' || first > 'z') {
-            outError = "Nombre inválido '" + name + "': debe comenzar con una letra minúscula (a-z).";
+            outError = "Invalid name '" + name + "': must start with a lowercase letter (a-z).";
             return false;
         }
 
-        // Resto de caracteres: a-z, 0-9, o _
+        // Remaining characters: a-z, 0-9, or _
         for (char ch : name) {
             bool valid = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '_');
             if (!valid) {
-                outError =
-                    "Nombre inválido '" + name + "': solo se admiten minúsculas, números y guión bajo (_).";
+                outError = "Invalid name '" + name +
+                           "': only lowercase letters, numbers, and underscore (_) are allowed.";
                 return false;
             }
         }
 
-        // Comprobación de palabras reservadas
+        // Check reserved names
         for (const auto& reserved : kReservedNames) {
             if (name == reserved) {
-                outError = "El nombre '" + name + "' está reservado por el motor.";
+                outError = "The name '" + name + "' is reserved by the engine.";
                 return false;
             }
         }
@@ -272,7 +273,7 @@ namespace mge::cli {
                            "m_audio = getModule<mge::AudioModule>();\n"
                            "            if (!m_platform || !m_gpu || !m_audio) return false;");
                 replaceAll(result, "@AUDIO_LOAD_SFX@",
-                           "// 3. Audio procedural sintetizado\n"
+                           "// 3. Synthesized procedural audio\n"
                            "            m_coinSfx = m_audio->addSfx(mge::sfx::coin());");
                 replaceAll(result, "@AUDIO_PLAY_SFX@",
                            "if (collected > 0) {\n"
@@ -283,11 +284,11 @@ namespace mge::cli {
                            "        mge::SampleId m_coinSfx{};");
             } else {
                 replaceAll(result, "@GAME_MODULES@", "platform gpu graphics");
-                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Módulo de audio desactivado");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Audio module disabled");
                 replaceAll(result, "@AUDIO_INIT_MODULE@", "if (!m_platform || !m_gpu) return false;");
-                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio desactivado");
-                replaceAll(result, "@AUDIO_PLAY_SFX@", "// Audio desactivado");
-                replaceAll(result, "@AUDIO_MEMBER@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio disabled");
+                replaceAll(result, "@AUDIO_PLAY_SFX@", "// Audio disabled");
+                replaceAll(result, "@AUDIO_MEMBER@", "// Audio disabled");
             }
         } else if (options.templateName == "3d") {
             if (options.audio) {
@@ -297,7 +298,7 @@ namespace mge::cli {
                            "m_audio = getModule<mge::AudioModule>();\n"
                            "            if (!m_platform || !m_gpu || !m_audio) return false;");
                 replaceAll(result, "@AUDIO_LOAD_SFX@",
-                           "// 4. Audio sintetizado procedural\n"
+                           "// 4. Synthesized procedural audio\n"
                            "            m_jumpSfx = m_audio->addSfx(mge::sfx::jump());");
                 replaceAll(result, "@AUDIO_PLAY_SFX@",
                            "const bool wantJump = m_platform->wasActionPressed(\"Jump\");\n"
@@ -309,13 +310,13 @@ namespace mge::cli {
                            "        mge::SampleId m_jumpSfx{};");
             } else {
                 replaceAll(result, "@GAME_MODULES@", "platform gpu graphics physics procgen");
-                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Módulo de audio desactivado");
+                replaceAll(result, "@AUDIO_ADD_MODULE@", "// Audio module disabled");
                 replaceAll(result, "@AUDIO_INIT_MODULE@", "if (!m_platform || !m_gpu) return false;");
-                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_LOAD_SFX@", "// Audio disabled");
                 replaceAll(result, "@AUDIO_PLAY_SFX@",
                            "const bool wantJump = m_platform->wasActionPressed(\"Jump\");\n"
                            "            (void)wantJump;");
-                replaceAll(result, "@AUDIO_MEMBER@", "// Audio desactivado");
+                replaceAll(result, "@AUDIO_MEMBER@", "// Audio disabled");
             }
         }
 
@@ -333,7 +334,7 @@ namespace mge::cli {
     }
 
     std::filesystem::path findTemplatesDir(const std::filesystem::path& exePath) {
-        // 1. Variable de entorno MGE_TEMPLATES_DIR
+        // 1. MGE_TEMPLATES_DIR environment variable
         const char* envTmpl = std::getenv("MGE_TEMPLATES_DIR");
         if (envTmpl != nullptr && *envTmpl != '\0') {
             std::filesystem::path envPath(envTmpl);
@@ -342,7 +343,7 @@ namespace mge::cli {
             }
         }
 
-        // 2. Ruta instalada relativa al binario (<exe_dir>/../share/mge/templates)
+        // 2. Installed path relative to the binary (<exe_dir>/../share/mge/templates)
         if (!exePath.empty()) {
             std::filesystem::path sharePath = exePath.parent_path() / ".." / "share" / "mge" / "templates";
             if (std::filesystem::is_directory(sharePath)) {
@@ -350,7 +351,7 @@ namespace mge::cli {
             }
         }
 
-        // 3. Directorio del árbol de código fuente (compilaciones de desarrollo)
+        // 3. Source tree directory (development builds)
 #ifdef MGE_SOURCE_TEMPLATES_DIR
         std::filesystem::path srcTmplPath(MGE_SOURCE_TEMPLATES_DIR);
         if (std::filesystem::is_directory(srcTmplPath)) {
@@ -358,7 +359,7 @@ namespace mge::cli {
         }
 #endif
 
-        // 4. Búsqueda relativa en el directorio de trabajo actual
+        // 4. Relative search in the current working directory
         if (std::filesystem::is_directory("templates")) {
             return std::filesystem::canonical("templates");
         }
@@ -373,7 +374,7 @@ namespace mge::cli {
         std::filesystem::path current = std::filesystem::canonical(startDir);
 
         while (true) {
-            // Comprobar archivo mge.project
+            // Check mge.project file
             std::filesystem::path projFile = current / "mge.project";
             if (std::filesystem::is_regular_file(projFile)) {
                 std::ifstream in(projFile);
@@ -397,7 +398,7 @@ namespace mge::cli {
                 return ProjectInfo{ProjectType::GameProject, name, templateType, current, lang};
             }
 
-            // Comprobar CMakeLists.txt del repositorio del motor
+            // Check engine repository CMakeLists.txt
             std::filesystem::path cmakeFile = current / "CMakeLists.txt";
             if (std::filesystem::is_regular_file(cmakeFile)) {
                 std::ifstream in(cmakeFile);
@@ -427,7 +428,7 @@ namespace mge::cli {
                 }
 
                 if (content.find("mge_add_game(") != std::string::npos) {
-                    // Extraer nombre del juego del comando mge_add_game(nombre ...)
+                    // Extract game name from the mge_add_game(name ...) command
                     size_t pos = content.find("mge_add_game(");
                     size_t start = pos + 13;
                     while (start < content.size() &&
@@ -477,7 +478,7 @@ namespace mge::cli {
 
         std::filesystem::path tmplBase = findTemplatesDir(exePath);
         if (tmplBase.empty() || !std::filesystem::is_directory(tmplBase)) {
-            outMessage = "Error: no se pudo localizar la carpeta de plantillas.";
+            outMessage = "Error: could not locate the templates directory.";
             return 1;
         }
 
@@ -498,7 +499,7 @@ namespace mge::cli {
             if (std::filesystem::is_directory(tmplBase / tmplName)) {
                 tmplDir = tmplBase / tmplName;
             } else {
-                outMessage = "Error: no existe la plantilla '" + tmplName + "' en " + tmplBase.string();
+                outMessage = "Error: template '" + tmplName + "' does not exist in " + tmplBase.string();
                 return 1;
             }
         }
@@ -509,20 +510,20 @@ namespace mge::cli {
         }
 
         if (std::filesystem::exists(dest)) {
-            outMessage = "Error: la ruta de destino ya existe: " + dest.string();
+            outMessage = "Error: target path already exists: " + dest.string();
             return 1;
         }
 
         std::error_code ec;
         if (!std::filesystem::create_directories(dest, ec)) {
-            outMessage = "Error al crear la carpeta destino '" + dest.string() + "': " + ec.message();
+            outMessage = "Error creating target directory '" + dest.string() + "': " + ec.message();
             return 1;
         }
 
         std::string className = toPascalCase(options.name);
         std::string title = toTitleCase(options.name);
 
-        // Recorrer y copiar archivos de la plantilla recursivamente
+        // Traverse and copy template files recursively
         for (const auto& entry : std::filesystem::recursive_directory_iterator(tmplDir)) {
             if (!entry.is_regular_file()) {
                 continue;
@@ -531,7 +532,7 @@ namespace mge::cli {
             std::filesystem::path rel = std::filesystem::relative(entry.path(), tmplDir);
             std::string relStr = rel.string();
 
-            // Reemplazo de comodines en rutas
+            // Replace placeholders in file paths
             replaceAll(relStr, "@GAME_CLASS@", className);
             replaceAll(relStr, "@GAME_NAME@", options.name);
             if (rel.filename().string() == "Game.cpp.in" || rel.filename().string() == "Game.cpp") {
@@ -562,14 +563,14 @@ namespace mge::cli {
                                            std::filesystem::copy_options::overwrite_existing, ec);
             }
 
-            // Formatear archivos C++ y C generados si clang-format está disponible
+            // Format generated C++ and C files if clang-format is available
             std::string ext = targetFile.extension().string();
             if ((ext == ".cpp" || ext == ".h" || ext == ".c") && commandExists("clang-format")) {
                 runCommand({"clang-format", "-i", targetFile.string()});
             }
         }
 
-        // Crear archivo de licencia LICENSE si no es None
+        // Create LICENSE file if not None
         if (options.license != LicenseType::None) {
             std::string author;
             runCommandCapture({"git", "config", "user.name"}, author);
@@ -631,7 +632,7 @@ namespace mge::cli {
             }
         }
 
-        // Crear configuración de VS Code (.vscode/) si está activada
+        // Create VS Code configuration (.vscode/) if enabled
         if (options.vscode) {
             std::filesystem::path vscodeDir = dest / ".vscode";
             std::filesystem::create_directories(vscodeDir, ec);
@@ -683,7 +684,7 @@ namespace mge::cli {
                          << "}\n";
         }
 
-        // Crear archivo de metadata mge.project
+        // Create mge.project metadata file
         {
             std::string licName = (options.license == LicenseType::Mit)
                                       ? "mit"
@@ -696,7 +697,7 @@ namespace mge::cli {
             projFile << "license=" << licName << "\n";
         }
 
-        // Si se crea en una subcarpeta de un repo CMake (ej: examples/), registrar en el CMakeLists padre
+        // If created in a subfolder of a CMake repo (e.g., examples/), register in parent CMakeLists
         std::filesystem::path parentCmake = dest.parent_path() / "CMakeLists.txt";
         std::string registeredMsg;
         if (std::filesystem::is_regular_file(parentCmake)) {
@@ -709,19 +710,19 @@ namespace mge::cli {
                 std::ofstream out(parentCmake, std::ios::app);
                 out << subCmd << "\n";
             }
-            registeredMsg = " Registrado en " + parentCmake.string() + ".";
+            registeredMsg = " Registered in " + parentCmake.string() + ".";
         }
 
-        // Inicializar repositorio Git salvo que se indique --no-git o git=false
+        // Initialize Git repository unless --no-git or git=false is specified
         bool wantGit = options.git && !options.noGit;
         if (wantGit && commandExists("git")) {
             runCommand({"git", "init", "-q"}, dest);
         }
 
         std::stringstream out;
-        out << "Creado '" << dest.string() << "' (plantilla " << tmplName << ", clase " << className << ")."
+        out << "Created '" << dest.string() << "' (template " << tmplName << ", class " << className << ")."
             << registeredMsg << "\n\n"
-            << "Siguientes pasos:\n"
+            << "Next steps:\n"
             << "  cd " << dest.string() << "\n"
             << "  mge run\n";
 

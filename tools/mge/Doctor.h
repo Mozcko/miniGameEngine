@@ -13,13 +13,13 @@ namespace mge::cli {
         std::string hint;
     };
 
-    // Ejecuta las comprobaciones de dependencias del sistema y devuelve su estado
+    // Runs system dependency checks and returns their status
     std::vector<DoctorItem> runDoctorChecks();
 
-    // Ejecuta las comprobaciones de dependencias para proyectos de Python
+    // Runs dependency checks for Python projects
     std::vector<DoctorItem> runPythonDoctorChecks();
 
-    // Comando 'mge doctor' interactivo que formatea e imprime los resultados
+    // Interactive 'mge doctor' command that formats and prints results
     int cmdDoctor(int argc = 0, char* argv[] = nullptr);
 
 } // namespace mge::cli

@@ -7,19 +7,19 @@
 namespace mge::cli::colors {
 
     inline bool areEnabled() {
-        // Desactivado si NO_COLOR está definido en el entorno
+        // Disabled if NO_COLOR is set in the environment
         const char* noColor = std::getenv("NO_COLOR");
         if (noColor != nullptr && noColor[0] != '\0') {
             return false;
         }
 
-        // Desactivado si la terminal es de tipo 'dumb'
+        // Disabled if the terminal type is 'dumb'
         const char* term = std::getenv("TERM");
         if (term != nullptr && std::string_view(term) == "dumb") {
             return false;
         }
 
-        // Solo activar si stdout es efectivamente una terminal interactiva (TTY)
+        // Only enable if stdout is actually an interactive terminal (TTY)
         return isatty(STDOUT_FILENO) != 0;
     }
 

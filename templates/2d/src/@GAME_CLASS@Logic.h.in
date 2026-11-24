@@ -6,7 +6,7 @@
 namespace @GAME_NAME@ {
 
     struct Rect2D {
-        glm::vec2 position{0.0f}; // Esquina superior izquierda
+        glm::vec2 position{0.0f}; // Top-left corner
         glm::vec2 size{0.0f};
 
         bool intersects(const Rect2D& other) const {
@@ -20,7 +20,7 @@ namespace @GAME_NAME@ {
     struct Player2D {
         glm::vec2 position{100.0f, 100.0f};
         glm::vec2 size{32.0f, 32.0f};
-        float speed = 250.0f; // píxeles por segundo
+        float speed = 250.0f; // pixels per second
     };
 
     struct Coin2D {
@@ -37,14 +37,14 @@ namespace @GAME_NAME@ {
         int score = 0;
     };
 
-    // Actualiza la posición del jugador con colisión contra obstáculos y bordes
+    // Updates player position with collision against obstacles and bounds
     void movePlayer(Player2D& player, const glm::vec2& inputDir, float dt,
                     const std::vector<Rect2D>& obstacles, const glm::vec2& bounds);
 
-    // Comprueba colisiones con monedas y acumula el puntaje; retorna cuántas monedas se recolectaron
+    // Checks coin collisions and accumulates score; returns how many coins were collected
     int collectCoins(World2D& world);
 
-    // Genera un mundo inicial con obstáculos en los bordes y monedas distribuidas
+    // Generates an initial world with obstacles and distributed coins
     World2D createDefaultWorld(const glm::vec2& bounds);
 
 } // namespace @GAME_NAME@

@@ -6,7 +6,7 @@ namespace @GAME_NAME@ {
 
     void stepSimulation(SimulationState& state, float dt) {
         state.stepCount++;
-        // Oscilador armónico determinista
+        // Deterministic harmonic oscillator
         constexpr float kOmega = 1.0f;
         const glm::vec3 acceleration = -kOmega * kOmega * state.position;
         state.velocity += acceleration * dt;

@@ -80,7 +80,7 @@ namespace mge::cli::wizard {
         const WizardAnswers& answers() const { return m_answers; }
         WizardAnswers& answers() { return m_answers; }
 
-        // Modificadores de campos
+        // Field modifiers
         void selectNextLanguage();
         void selectPrevLanguage();
         void setLanguage(LanguageChoice choice);
@@ -110,11 +110,11 @@ namespace mge::cli::wizard {
 
         void setTargetDir(const std::filesystem::path& dir) { m_answers.targetDir = dir; }
 
-        // Validación de nombres
+        // Name validation
         bool isNameValid() const;
         std::string nameError() const { return m_nameError; }
 
-        // Planificación determinista del árbol de archivos para pruebas snapshot
+        // Deterministic file tree planning for snapshot tests
         std::vector<PlannedFile> planFileTree(const std::filesystem::path& tmplBase) const;
 
     private:
@@ -124,7 +124,7 @@ namespace mge::cli::wizard {
         mutable std::string m_nameError;
     };
 
-    // Funciones de utilidad para licencias, VS Code y metadata
+    // Utility functions for licenses, VS Code, and metadata
     uint64_t hashContent(std::string_view content);
     std::string hashToHex(uint64_t hash);
     std::string generateLicenseText(LicenseChoice license, int year, const std::string& author);

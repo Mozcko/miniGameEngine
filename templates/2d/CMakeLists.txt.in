@@ -1,4 +1,4 @@
-# @GAME_TITLE@ (plantilla 2D)
+# @GAME_TITLE@ (2D template)
 cmake_minimum_required(VERSION 3.25)
 project(@GAME_NAME@ LANGUAGES CXX)
 
@@ -17,7 +17,7 @@ if(NOT mge_FOUND AND NOT TARGET mge::core)
     FetchContent_MakeAvailable(mge)
 endif()
 
-# Lógica del juego desacoplada
+# Decoupled game logic
 add_library(@GAME_NAME@_logic STATIC
     src/@GAME_CLASS@Logic.cpp
     src/@GAME_CLASS@Logic.h
@@ -25,7 +25,7 @@ add_library(@GAME_NAME@_logic STATIC
 target_include_directories(@GAME_NAME@_logic PUBLIC src)
 target_link_libraries(@GAME_NAME@_logic PUBLIC mge::core)
 
-# Juego con ventana, GPU y audio
+# Game with window, GPU, and audio
 mge_add_game(@GAME_NAME@
     SOURCES src/@GAME_CLASS@.cpp
     LIBRARIES @GAME_NAME@_logic
@@ -33,7 +33,7 @@ mge_add_game(@GAME_NAME@
     SMOKE_FRAMES 60
 )
 
-# Pruebas unitarias doctest
+# doctest unit tests
 if(NOT TARGET @GAME_NAME@_doctest)
     find_package(doctest 2.4 QUIET)
     if(NOT doctest_FOUND AND NOT TARGET doctest_header)

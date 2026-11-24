@@ -5,7 +5,7 @@
 
 using namespace @GAME_NAME@;
 
-TEST_CASE("@GAME_NAME@: interseccion de rectangulos 2D") {
+TEST_CASE("@GAME_NAME@: 2D rectangle intersection") {
     Rect2D a{{0.0f, 0.0f}, {10.0f, 10.0f}};
     Rect2D b{{5.0f, 5.0f}, {10.0f, 10.0f}};
     Rect2D c{{20.0f, 20.0f}, {10.0f, 10.0f}};
@@ -16,32 +16,32 @@ TEST_CASE("@GAME_NAME@: interseccion de rectangulos 2D") {
     CHECK(b.intersects(c) == false);
 }
 
-TEST_CASE("@GAME_NAME@: movimiento y colision de jugador contra obstaculo") {
+TEST_CASE("@GAME_NAME@: player movement and obstacle collision") {
     Player2D player;
     player.position = {10.0f, 10.0f};
     player.size = {20.0f, 20.0f};
     player.speed = 100.0f;
 
     std::vector<Rect2D> obstacles = {
-        Rect2D{{40.0f, 10.0f}, {20.0f, 20.0f}} // Obstáculo a la derecha
+        Rect2D{{40.0f, 10.0f}, {20.0f, 20.0f}} // Obstacle to the right
     };
     glm::vec2 bounds{200.0f, 200.0f};
 
-    // Moverse hacia la derecha durante 1 segundo (intentaría avanzar 100 px hasta x=110)
+    // Move right for 1 second (would try to advance 100 px to x=110)
     movePlayer(player, glm::vec2(1.0f, 0.0f), 1.0f, obstacles, bounds);
 
-    // Debe detenerse justo antes del obstáculo (x + size <= 40 => x == 20)
+    // Should stop right before the obstacle (x + size <= 40 => x == 20)
     CHECK(player.position.x == doctest::Approx(20.0f));
     CHECK(player.position.y == doctest::Approx(10.0f));
 }
 
-TEST_CASE("@GAME_NAME@: recoleccion de monedas y puntaje") {
+TEST_CASE("@GAME_NAME@: coin collection and score") {
     World2D world;
     world.player.position = {50.0f, 50.0f};
     world.player.size = {20.0f, 20.0f};
     world.coins = {
-        Coin2D{{55.0f, 55.0f}, {10.0f, 10.0f}, false}, // En contacto
-        Coin2D{{150.0f, 150.0f}, {10.0f, 10.0f}, false} // Lejos
+        Coin2D{{55.0f, 55.0f}, {10.0f, 10.0f}, false}, // Overlapping
+        Coin2D{{150.0f, 150.0f}, {10.0f, 10.0f}, false} // Far away
     };
     world.score = 0;
 

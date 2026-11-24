@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-/* Estado del jugador y de la escena 3D */
+/* Player and 3D scene state */
 typedef struct GamePlayer {
     float x;
     float y;
@@ -18,10 +18,10 @@ typedef struct GameLogicState {
     int score;
 } GameLogicState;
 
-/* Inicializa el estado inicial del juego */
+/* Initializes the initial game state */
 void game_logic_init(GameLogicState* state);
 
-/* Actualiza la fisica basica y rotacion en paso fijo o variable */
+/* Updates basic physics and rotation on a fixed or variable step */
 void game_logic_update(GameLogicState* state, float dt, bool wantJump);
 
 #endif /* @GAME_NAME@_LOGIC_H */

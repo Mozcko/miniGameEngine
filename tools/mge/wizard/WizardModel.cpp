@@ -22,7 +22,7 @@ namespace mge::cli::wizard {
     } // namespace
 
     uint64_t hashContent(std::string_view content) {
-        // Algoritmo FNV-1a de 64 bits para hashes deterministas multiplataforma
+        // 64-bit FNV-1a algorithm for deterministic cross-platform hashes
         uint64_t hash = 14695981039346656037ULL;
         for (unsigned char ch : content) {
             hash ^= ch;
@@ -107,7 +107,7 @@ namespace mge::cli::wizard {
         case WizardStep::Name: m_step = WizardStep::Template; break;
         case WizardStep::Template:
             if (m_answers.templateChoice == TemplateChoice::Headless) {
-                m_answers.audio = false; // Sin audio en modo headless
+                m_answers.audio = false; // No audio in headless mode
                 m_step = WizardStep::License;
             } else {
                 m_step = WizardStep::Audio;
@@ -454,7 +454,7 @@ namespace mge::cli::wizard {
             std::filesystem::path rel = std::filesystem::relative(entry.path(), tmplDir);
             std::string relStr = rel.generic_string();
 
-            // Reemplazo de comodines en rutas
+            // Replace placeholders in file paths
             size_t pos = 0;
             while ((pos = relStr.find("@GAME_CLASS@", pos)) != std::string::npos) {
                 relStr.replace(pos, 12, className);
@@ -493,16 +493,16 @@ namespace mge::cli::wizard {
             files.push_back({std::filesystem::path(relStr), hashContent(content)});
         }
 
-        // Archivo mge.project
+        // mge.project file
         files.push_back({std::filesystem::path("mge.project"), hashContent(generateMgeProject(m_answers))});
 
-        // Archivo LICENSE
+        // LICENSE file
         if (m_answers.license != LicenseChoice::None) {
             std::string licText = generateLicenseText(m_answers.license, 2026, "MiniGameEngine Contributor");
             files.push_back({std::filesystem::path("LICENSE"), hashContent(licText)});
         }
 
-        // Configuración de VS Code (.vscode/)
+        // VS Code configuration (.vscode/)
         if (m_answers.vscode) {
             files.push_back(
                 {std::filesystem::path(".vscode/tasks.json"), hashContent(generateVsCodeTasksJson())});
@@ -510,7 +510,7 @@ namespace mge::cli::wizard {
                 {std::filesystem::path(".vscode/settings.json"), hashContent(generateVsCodeSettingsJson())});
         }
 
-        // Ordenar alfabéticamente por ruta relativa
+        // Sort alphabetically by relative path
         std::sort(files.begin(), files.end(), [](const PlannedFile& a, const PlannedFile& b) {
             return a.relativePath.generic_string() < b.relativePath.generic_string();
         });

@@ -1,25 +1,25 @@
-// @GAME_TITLE@: juego generado con scripts/new-game.sh (plantilla "window").
-// Una ventana cuyo color de fondo late. Muestra: módulos, acciones de input, una entidad del ECS
-// actualizada en el paso fijo, texto 2D, el overlay de rendimiento y el log. Esc sale, Espacio (mantener)
-// acelera, F1 muestra FPS y tiempos.
-#include <mge/mge.h> // API del motor (core + los módulos que enlaza este juego)
+// @GAME_TITLE@: game generated with scripts/new-game.sh ("window" template).
+// A window whose background color pulses. Demonstrates: modules, input actions, an ECS entity
+// updated in the fixed step, 2D text, the performance overlay, and logging. Esc quits, Space (hold)
+// speeds up, F1 shows FPS and timings.
+#include <mge/mge.h> // Engine API (core + the modules linked by this game)
 
 #include <algorithm>
 #include <cmath>
 #include <memory>
 
 namespace {
-    // Componente del ECS: fase de una oscilación
+    // ECS component: oscillation phase
     struct Pulse {
         float phase = 0.0f;
-        float speed = 1.0f; // radianes por segundo
+        float speed = 1.0f; // radians per second
     };
 
     class @GAME_CLASS@ : public mge::Application {
     public:
         @GAME_CLASS@() : mge::Application(makeConfig()) {
-            addModule<mge::PlatformModule>(); // ventana e input
-            addModule<mge::GpuModule>();      // GPU (Vulkan/Metal/D3D12): después de la plataforma
+            addModule<mge::PlatformModule>(); // window and input
+            addModule<mge::GpuModule>();      // GPU (Vulkan/Metal/D3D12): after platform
             addModule<mge::AudioModule>();
         }
 
@@ -31,11 +31,11 @@ namespace {
             m_platform->actions().bind("Faster", mge::Key::Space);
             m_platform->actions().bind("Overlay", mge::Key::F1);
 
-            // UI 2D en píxeles (texto con la fuente embebida: no hace falta ningún archivo)
+            // 2D UI in pixels (text with the built-in font: no files needed)
             m_ui = std::make_unique<mge::Renderer2D>(m_gpu->device(), m_gpu->swapchainFormat());
             if (!m_ui->valid()) return false;
 
-            // Una entidad con su componente, y un sistema que la avanza en cada paso fijo
+            // An entity with its component, and a system that advances it each fixed step
             mge::Registry& registry = world().registry();
             m_pulse = registry.create();
             registry.add<Pulse>(m_pulse);
@@ -44,11 +44,11 @@ namespace {
                     [dt](mge::Entity, Pulse& pulse) { pulse.phase += pulse.speed * dt; });
             });
 
-            MGE_LOG_INFO("@GAME_NAME@", "Esc: salir, Espacio (mantener): más rápido, F1: rendimiento");
+            MGE_LOG_INFO("@GAME_NAME@", "Esc: quit, Space (hold): faster, F1: performance");
             return true;
         }
 
-        // Los recursos de la GPU se liberan antes que el device (el GpuModule se cierra después del juego)
+        // GPU resources are released before the device (GpuModule shuts down after the game)
         void onShutdown() override { m_ui.reset(); }
 
         void onUpdate(float /*dt*/) override {
@@ -59,18 +59,18 @@ namespace {
 
         void onRender() override {
             const mge::GpuFrame* frame = m_gpu->frame();
-            if (!frame) return; // Ventana minimizada: no hay imagen este frame
+            if (!frame) return; // Window minimized: no image this frame
 
             const float phase = world().registry().get<Pulse>(m_pulse).phase;
             mge::ColorTarget target;
             target.texture = frame->swapchain;
             target.clearColor = {0.5f + 0.4f * std::sin(phase), 0.25f, 0.5f + 0.4f * std::cos(phase), 1.0f};
             {
-                mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Limpia la imagen
-                // Para dibujar mallas: mge::MeshRenderer (src/mge/graphics/README.md)
-            } // El pass se cierra al salir del bloque
+                mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Clears the image
+                // To draw meshes: mge::MeshRenderer (src/mge/graphics/README.md)
+            } // The pass closes on scope exit
 
-            // Encima: texto y overlay (píxeles lógicos, origen arriba a la izquierda; escala entera = nítido)
+            // On top: text and overlay (logical pixels, origin top-left; integer scale = crisp)
             m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
             m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));
             m_ui->text({16.0f, m_ui->size().y - 40.0f}, "@GAME_TITLE@", {1.0f, 1.0f, 1.0f, 1.0f}, 3.0f);

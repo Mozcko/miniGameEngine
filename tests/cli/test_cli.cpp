@@ -103,13 +103,13 @@ TEST_CASE("cli: validación de plantillas según el lenguaje") {
     CHECK(validateLanguageTemplate(ProjectLanguage::C, "3d", err));
     CHECK(validateLanguageTemplate(ProjectLanguage::C, "headless", err));
     CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::C, "2d", err));
-    CHECK(err.find("no válida para C") != std::string::npos);
+    CHECK(err.find("not valid for C") != std::string::npos);
 
     // Python: 3d, 2d
     CHECK(validateLanguageTemplate(ProjectLanguage::Python, "3d", err));
     CHECK(validateLanguageTemplate(ProjectLanguage::Python, "2d", err));
     CHECK_FALSE(validateLanguageTemplate(ProjectLanguage::Python, "headless", err));
-    CHECK(err.find("no válida para Python") != std::string::npos);
+    CHECK(err.find("not valid for Python") != std::string::npos);
 }
 
 TEST_CASE("cli: detección de proyectos") {
@@ -183,7 +183,7 @@ TEST_CASE("cli: diagnósticos doctor") {
     bool foundGlm = false;
 
     for (const auto& item : items) {
-        if (item.name == "Compilador C++") {
+        if (item.name == "C++ Compiler") {
             foundCompiler = true;
             CHECK(item.required);
         } else if (item.name == "CMake") {
@@ -201,7 +201,7 @@ TEST_CASE("cli: diagnósticos doctor") {
         } else if (item.name == "Vulkan Loader & ICD") {
             foundVulkan = true;
             CHECK(item.required);
-        } else if (item.name == "Cabeceras GLM") {
+        } else if (item.name == "GLM Headers") {
             foundGlm = true;
             CHECK(item.required);
         }
