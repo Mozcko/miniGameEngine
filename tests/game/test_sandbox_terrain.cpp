@@ -1,6 +1,8 @@
 #include <doctest/doctest.h>
 #include <game/SandboxBlocks.h>
 #include <game/SandboxTerrain.h>
+#include <mge/voxel/ChunkLod.h>
+#include <mge/voxel/ChunkSnapshot.h>
 
 #include <array>
 #include <cstdlib>
@@ -230,4 +232,42 @@ TEST_CASE("Terreno: el mundo es igual sin importar el orden de carga") {
     const auto a = f.world(2, false);
     const auto b = f.world(2, true);
     for (const ChunkCoord& c : a->loadedChunks()) CHECK(a->chunk(c)->blocks() == b->chunk(c)->blocks());
+}
+
+TEST_CASE("Terreno: conteo de triangulos LOD 1 y LOD 2 (seed 1337, 9 columnas)") {
+    Fixture f;
+    // Cargar radio 2 para que las 9 columnas centrales (-1..1 x -1..1) tengan vecinos completos
+    const auto world = f.world(2, false, withSeed(SandboxTerrain::kDefaultSeed));
+
+    ChunkMeshOptions options;
+    options.atlas = {sandbox::kAtlasColumns, sandbox::kAtlasRows};
+    options.ambientOcclusion = true;
+    options.lodSkirts = true;
+
+    std::size_t trisLod1 = 0;
+    std::size_t trisLod2 = 0;
+    for (int cx = -1; cx <= 1; ++cx) {
+        for (int cz = -1; cz <= 1; ++cz) {
+            for (int cy = 0; cy < SandboxTerrain::kWorldChunksY; ++cy) {
+                const ChunkSnapshot snap = ChunkSnapshot::capture(*world, {cx, cy, cz});
+                REQUIRE(snap.valid());
+                const ChunkMesh m1 = buildLodChunkMesh(snap, f.registry, 1, options);
+                const ChunkMesh m2 = buildLodChunkMesh(snap, f.registry, 2, options);
+                CHECK(m1.opaque.validate().empty());
+                CHECK(m2.opaque.validate().empty());
+                trisLod1 += m1.opaque.triangleCount();
+                trisLod2 += m2.opaque.triangleCount();
+            }
+        }
+    }
+
+    MESSAGE("SandboxTerrain seed 1337 (9 columnas): LOD 1 = ", trisLod1, " tris, LOD 2 = ", trisLod2,
+            " tris");
+    // Línea base en main (seed 1337, 9 columnas): LOD 1 = 2934 tris, LOD 2 = 730 tris.
+    // LOD 1 queda dentro de +10 % (<= 3227); en LOD 2 (f = 4) los desniveles de 1..3 bloques dentro
+    // de cada banda añaden ~90 quads laterales obligatorios para evitar grietas (<= 950).
+    CHECK(trisLod1 > 0);
+    CHECK(trisLod1 <= 3227);
+    CHECK(trisLod2 > 0);
+    CHECK(trisLod2 <= 950);
 }

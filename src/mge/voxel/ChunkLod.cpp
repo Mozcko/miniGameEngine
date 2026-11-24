@@ -11,9 +11,15 @@ namespace mge {
     namespace {
         using namespace detail;
 
-        // Escanea una celda de arriba hacia abajo (en Y) buscando el primer bloque opaco no-aire.
-        inline BlockId pickTopOpaque(const ChunkSnapshot& snapshot, const BlockRegistry* registry, int startX,
-                                     int endX, int startY, int endY, int startZ, int endZ) {
+        struct TopOpaqueSample {
+            BlockId id = kAir;
+            int topY = 0; // y + 1 del bloque opaco más alto en la celda (en espacio local del chunk)
+        };
+
+        // Escanea una celda de arriba hacia abajo (en Y) buscando el primer bloque opaco no-aire y su altura.
+        inline TopOpaqueSample pickTopOpaqueSample(const ChunkSnapshot& snapshot,
+                                                   const BlockRegistry* registry, int startX, int endX,
+                                                   int startY, int endY, int startZ, int endZ) {
             auto isOpaque = [&](BlockId id) {
                 if (id == kAir) return false;
                 if (!registry) return true;
@@ -25,20 +31,24 @@ namespace mge {
                 for (int z = startZ; z < endZ; ++z) {
                     for (int x = startX; x < endX; ++x) {
                         const BlockId id = snapshot.get(x, y, z);
-                        if (isOpaque(id)) return id;
+                        if (isOpaque(id)) return {id, y + 1};
                     }
                 }
             }
-            return kAir;
+            return {kAir, startY};
         }
 
         // Grilla 3D de super-bloques incluyendo un borde de 1 super-bloque en cada dirección.
-        // Coordenadas locales en [-1, dim] para x, y, z.
+        // Coordenadas locales en [-1, dim] para x, y, z. Almacena también topY por celda para emitir
+        // caras superiores a la altura real del bloque opaco más alto (sin escalón de f-1 bloques).
         class PaddedLodGrid {
         public:
             PaddedLodGrid(const ChunkSnapshot& snapshot, const BlockRegistry& registry, int factor, int dim)
-                : m_dim(dim), m_paddedDim(dim + 2) {
-                m_blocks.assign(static_cast<std::size_t>(m_paddedDim * m_paddedDim * m_paddedDim), kAir);
+                : m_factor(factor), m_dim(dim), m_paddedDim(dim + 2) {
+                const std::size_t total = static_cast<std::size_t>(m_paddedDim * m_paddedDim * m_paddedDim);
+                m_blocks.assign(total, kAir);
+                m_topY.assign(total, 0);
+                m_highestSy.assign(static_cast<std::size_t>(m_paddedDim * m_paddedDim), -2);
 
                 for (int sy = -1; sy <= dim; ++sy) {
                     int startY, endY;
@@ -79,9 +89,14 @@ namespace mge {
                                 endX = startX + factor;
                             }
 
-                            const BlockId id =
-                                pickTopOpaque(snapshot, &registry, startX, endX, startY, endY, startZ, endZ);
-                            set(sx, sy, sz, id);
+                            const TopOpaqueSample sample = pickTopOpaqueSample(
+                                snapshot, &registry, startX, endX, startY, endY, startZ, endZ);
+                            set(sx, sy, sz, sample.id, sample.topY);
+                            if (sample.id != kAir) {
+                                const std::size_t colIdx =
+                                    static_cast<std::size_t>((sz + 1) * m_paddedDim + (sx + 1));
+                                m_highestSy[colIdx] = sy;
+                            }
                         }
                     }
                 }
@@ -91,24 +106,87 @@ namespace mge {
                 if (sx < -1 || sx > m_dim || sy < -1 || sy > m_dim || sz < -1 || sz > m_dim) {
                     return kAir;
                 }
-                const std::size_t idx =
-                    static_cast<std::size_t>(((sy + 1) * m_paddedDim + (sz + 1)) * m_paddedDim + (sx + 1));
-                return m_blocks[idx];
+                return m_blocks[index(sx, sy, sz)];
             }
 
             BlockId get(const glm::ivec3& p) const { return get(p.x, p.y, p.z); }
 
-        private:
-            void set(int sx, int sy, int sz, BlockId id) {
-                const std::size_t idx =
-                    static_cast<std::size_t>(((sy + 1) * m_paddedDim + (sz + 1)) * m_paddedDim + (sx + 1));
-                m_blocks[idx] = id;
+            // Altura superior efectiva de una celda sólida: solo la celda opaca más alta de la columna
+            // (expuesta al cielo, sin bloques opacos encima en el chunk) se recorta a su topY real;
+            // las celdas debajo (incluidas cuevas) conservan la altura completa (sy + 1) * factor.
+            int cellTop(int sx, int sy, int sz) const {
+                if (sx < -1 || sx > m_dim || sy < -1 || sy > m_dim || sz < -1 || sz > m_dim) {
+                    return sy * m_factor;
+                }
+                const std::size_t idx = index(sx, sy, sz);
+                if (m_blocks[idx] == kAir) return sy * m_factor;
+                const std::size_t colIdx = static_cast<std::size_t>((sz + 1) * m_paddedDim + (sx + 1));
+                if (sy != m_highestSy[colIdx]) {
+                    return (sy + 1) * m_factor;
+                }
+                return m_topY[idx];
             }
 
+        private:
+            std::size_t index(int sx, int sy, int sz) const {
+                return static_cast<std::size_t>(((sy + 1) * m_paddedDim + (sz + 1)) * m_paddedDim + (sx + 1));
+            }
+
+            void set(int sx, int sy, int sz, BlockId id, int topY) {
+                const std::size_t idx = index(sx, sy, sz);
+                m_blocks[idx] = id;
+                m_topY[idx] = topY;
+            }
+
+            int m_factor;
             int m_dim;
             int m_paddedDim;
             std::vector<BlockId> m_blocks;
+            std::vector<int> m_topY;
+            std::vector<int> m_highestSy;
         };
+
+        // Celda de máscara greedy para LOD: además de bloque y AO, distingue altura y0/y1 para fusionar
+        // caras superiores con el mismo y_top y caras laterales con el mismo rango vertical.
+        struct LodMaskCell {
+            BlockId id = kAir;
+            int ao = 0;
+            int y0 = 0; // Top: yTop; lateral parcial: base; lateral completa o Bottom: 0
+            int y1 = 0; // Top: yTop; lateral parcial: tope (> 0); lateral completa o Bottom: 0
+            bool operator==(const LodMaskCell& o) const {
+                return id == o.id && ao == o.ao && y0 == o.y0 && y1 == o.y1;
+            }
+        };
+
+        template <typename Callback>
+        inline void solveLodGreedyMask(LodMaskCell* mask, int w, int h, Callback&& onRect) {
+            for (int j = 0; j < h; ++j) {
+                for (int i = 0; i < w;) {
+                    const LodMaskCell cell = mask[j * w + i];
+                    if (cell.id == kAir) {
+                        ++i;
+                        continue;
+                    }
+                    int width = 1;
+                    while (i + width < w && mask[j * w + i + width] == cell) ++width;
+                    int height = 1;
+                    for (; j + height < h; ++height) {
+                        bool rowMatches = true;
+                        for (int k = 0; k < width && rowMatches; ++k) {
+                            rowMatches = mask[(j + height) * w + i + k] == cell;
+                        }
+                        if (!rowMatches) break;
+                    }
+                    for (int dj = 0; dj < height; ++dj) {
+                        for (int di = 0; di < width; ++di) {
+                            mask[(j + dj) * w + i + di] = LodMaskCell{};
+                        }
+                    }
+                    onRect(cell, i, j, width, height);
+                    i += width;
+                }
+            }
+        }
 
         inline bool isSideBorder(int faceIndex, const glm::ivec3& cellPos, int dim) {
             switch (static_cast<BlockFace>(faceIndex)) {
@@ -142,7 +220,7 @@ namespace mge {
                     const int startX = sx * factor;
                     const int endX = startX + factor;
                     const BlockId id =
-                        pickTopOpaque(snapshot, &registry, startX, endX, startY, endY, startZ, endZ);
+                        pickTopOpaqueSample(snapshot, &registry, startX, endX, startY, endY, startZ, endZ).id;
                     result.set(sx, sy, sz, id);
                 }
             }
@@ -166,7 +244,7 @@ namespace mge {
                     const int startX = sx * factor;
                     const int endX = startX + factor;
                     const BlockId id =
-                        pickTopOpaque(snapshot, nullptr, startX, endX, startY, endY, startZ, endZ);
+                        pickTopOpaqueSample(snapshot, nullptr, startX, endX, startY, endY, startZ, endZ).id;
                     result.set(sx, sy, sz, id);
                 }
             }
@@ -186,85 +264,12 @@ namespace mge {
         const PaddedLodGrid grid(snapshot, registry, factor, dim);
 
         ChunkMesh result;
-        auto occludes = [&](const glm::ivec3& p) {
-            const BlockDesc& d = registry.get(grid.get(p));
-            return d.opaque && d.shape == BlockShape::Cube;
-        };
 
-        std::vector<MaskCell> mask(static_cast<std::size_t>(dim * dim));
-
-        for (int faceIndex = 0; faceIndex < kBlockFaceCount; ++faceIndex) {
-            const FaceDef& face = kFaces[faceIndex];
-            const int u = (face.axis + 1) % 3;
-            const int v = (face.axis + 2) % 3;
-
-            for (int slice = 0; slice < dim; ++slice) {
-                std::fill(mask.begin(), mask.end(), MaskCell{});
-
-                // 1. Caras visibles de esta capa
-                for (int j = 0; j < dim; ++j) {
-                    for (int i = 0; i < dim; ++i) {
-                        glm::ivec3 cellPos(0);
-                        cellPos[face.axis] = slice;
-                        cellPos[u] = i;
-                        cellPos[v] = j;
-
-                        const BlockId id = grid.get(cellPos);
-                        if (id == kAir) continue;
-                        const BlockDesc& desc = registry.get(id);
-                        if (desc.shape != BlockShape::Cube || !desc.opaque) continue;
-
-                        const BlockId neighborId = grid.get(cellPos + face.offset);
-                        if (!isFaceVisible(id, neighborId, registry)) continue;
-
-                        const AoValues ao = computeAo(cellPos, face, options.ambientOcclusion, occludes);
-
-                        if (options.greedy && !desc.textured() && uniform(ao)) {
-                            mask[static_cast<std::size_t>(j * dim + i)] = {id, ao[0]};
-                        } else {
-                            const glm::vec3 worldPos = glm::vec3(cellPos) * static_cast<float>(factor);
-                            const glm::vec3 worldSize = glm::vec3(factor);
-                            emitQuad(result.opaque, desc, face, faceIndex, worldPos, worldSize, ao, options);
-
-                            // Faldas en los 4 bordes laterales si no hay bloque sólido debajo
-                            if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim)) {
-                                if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
-                                    emitSkirtQuad(result.opaque, desc, face, faceIndex, worldPos, worldSize,
-                                                  static_cast<float>(factor), options);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 2. Greedy meshing en rectángulos máximos
-                solveGreedyMask(
-                    mask.data(), dim, dim, [&](const MaskCell& cell, int i, int j, int width, int height) {
-                        glm::ivec3 cellPos(0);
-                        cellPos[face.axis] = slice;
-                        cellPos[u] = i;
-                        cellPos[v] = j;
-
-                        glm::vec3 worldSize(factor);
-                        worldSize[u] = static_cast<float>(width * factor);
-                        worldSize[v] = static_cast<float>(height * factor);
-                        const glm::vec3 worldPos = glm::vec3(cellPos) * static_cast<float>(factor);
-
-                        emitQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos, worldSize,
-                                 AoValues{cell.ao, cell.ao, cell.ao, cell.ao}, options);
-
-                        // Faldas en los 4 bordes laterales
-                        if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim)) {
-                            if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
-                                emitSkirtQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos,
-                                              worldSize, static_cast<float>(factor), options);
-                            }
-                        }
-                    });
-            }
-        }
-
-        // 3. Caras superiores de líquidos transparentes (agua) para LOD > 0
+        // 1. Caras superiores de líquidos transparentes (agua) para LOD > 0.
+        // Se calculan primero para registrar la altura de agua por columna y garantizar que ninguna
+        // cara opaca quede a la misma altura o por encima del quad de agua (evita fallo de depth test
+        // en agua poco profunda sin recurrir a un epsilon de profundidad).
+        std::vector<int> columnWaterTopY(static_cast<std::size_t>(dim * dim), -1);
         const int topFaceIndex = static_cast<int>(BlockFace::Top);
         const FaceDef& topFace = kFaces[topFaceIndex];
         constexpr AoValues kLiquidAo = {3, 3, 3, 3};
@@ -338,14 +343,183 @@ namespace mge {
                     if (!cellAboveIsAir) continue;
 
                     // Emitir un quad plano de f × f a la altura del bloque líquido más alto
-                    const float waterHeight = static_cast<float>(highestNonAirY + 1);
-                    const glm::vec3 worldPos(static_cast<float>(startX), waterHeight,
+                    const int waterTopY = highestNonAirY + 1;
+                    const std::size_t colIdx = static_cast<std::size_t>(sz * dim + sx);
+                    columnWaterTopY[colIdx] = std::max(columnWaterTopY[colIdx], waterTopY);
+
+                    const glm::vec3 worldPos(static_cast<float>(startX), static_cast<float>(waterTopY),
                                              static_cast<float>(startZ));
                     const glm::vec3 worldSize(static_cast<float>(factor), 0.0f, static_cast<float>(factor));
 
                     emitQuad(result.transparent, topDesc, topFace, topFaceIndex, worldPos, worldSize,
                              kLiquidAo, options);
                 }
+            }
+        }
+
+        auto occludes = [&](const glm::ivec3& p) {
+            const BlockDesc& d = registry.get(grid.get(p));
+            return d.opaque && d.shape == BlockShape::Cube;
+        };
+
+        std::vector<LodMaskCell> mask(static_cast<std::size_t>(dim * dim));
+
+        for (int faceIndex = 0; faceIndex < kBlockFaceCount; ++faceIndex) {
+            const FaceDef& face = kFaces[faceIndex];
+            const int u = (face.axis + 1) % 3;
+            const int v = (face.axis + 2) % 3;
+            const bool isTopFace = (faceIndex == static_cast<int>(BlockFace::Top));
+            const bool isBottomFace = (faceIndex == static_cast<int>(BlockFace::Bottom));
+
+            for (int slice = 0; slice < dim; ++slice) {
+                std::fill(mask.begin(), mask.end(), LodMaskCell{});
+
+                // 1. Caras visibles de esta capa
+                for (int j = 0; j < dim; ++j) {
+                    for (int i = 0; i < dim; ++i) {
+                        glm::ivec3 cellPos(0);
+                        cellPos[face.axis] = slice;
+                        cellPos[u] = i;
+                        cellPos[v] = j;
+
+                        const BlockId id = grid.get(cellPos);
+                        if (id == kAir) continue;
+                        const BlockDesc& desc = registry.get(id);
+                        if (desc.shape != BlockShape::Cube || !desc.opaque) continue;
+
+                        const glm::ivec3 neighborPos = cellPos + face.offset;
+                        const BlockId neighborId = grid.get(neighborPos);
+
+                        int faceY0 = 0;
+                        int faceY1 = 0;
+                        if (isTopFace) {
+                            if (!isFaceVisible(id, neighborId, registry)) continue;
+                            faceY0 = grid.cellTop(cellPos.x, cellPos.y, cellPos.z);
+                            // Resguardo: omitir solo la cara opaca que empata con el quad de agua;
+                            // las caras por encima, p. ej. terreno sobre un lago subterráneo, se mantienen.
+                            const int waterTop =
+                                columnWaterTopY[static_cast<std::size_t>(cellPos.z * dim + cellPos.x)];
+                            if (waterTop >= 0 && faceY0 == waterTop) continue;
+                            faceY1 = faceY0;
+                        } else if (isBottomFace) {
+                            if (!isFaceVisible(id, neighborId, registry)) continue;
+                        } else {
+                            // Caras laterales: llegan hasta cellTop y cubren desniveles entre columnas
+                            // vecinas
+                            const int cellBottom = cellPos.y * factor;
+                            const int cellTopY = grid.cellTop(cellPos.x, cellPos.y, cellPos.z);
+                            const bool neighborOpaque = !isFaceVisible(id, neighborId, registry);
+                            if (!neighborOpaque) {
+                                faceY0 = cellBottom;
+                                faceY1 = cellTopY;
+                                // Si la celda de abajo (mismo bloque) tenía un escalón parcial contra el
+                                // vecino, absorberlo aquí para emitir un solo quad vertical en lugar de dos.
+                                if (cellPos.y > 0) {
+                                    const glm::ivec3 belowPos(cellPos.x, cellPos.y - 1, cellPos.z);
+                                    const glm::ivec3 belowNeighbor = belowPos + face.offset;
+                                    if (grid.get(belowPos) == id &&
+                                        !isFaceVisible(id, grid.get(belowNeighbor), registry)) {
+                                        const int belowNeighborTop =
+                                            grid.cellTop(belowNeighbor.x, belowNeighbor.y, belowNeighbor.z);
+                                        if (belowNeighborTop < cellBottom) {
+                                            faceY0 = belowNeighborTop;
+                                        }
+                                    }
+                                }
+                            } else {
+                                const int neighborTopY =
+                                    grid.cellTop(neighborPos.x, neighborPos.y, neighborPos.z);
+                                if (neighborTopY >= cellTopY) continue;
+                                // Si la celda de arriba (mismo bloque) da al aire, ella absorberá este
+                                // escalón
+                                if (cellPos.y + 1 < dim && cellTopY == cellBottom + factor) {
+                                    const glm::ivec3 abovePos(cellPos.x, cellPos.y + 1, cellPos.z);
+                                    const glm::ivec3 aboveNeighbor = abovePos + face.offset;
+                                    if (grid.get(abovePos) == id &&
+                                        isFaceVisible(id, grid.get(aboveNeighbor), registry)) {
+                                        continue;
+                                    }
+                                }
+                                faceY0 = neighborTopY;
+                                faceY1 = cellTopY;
+                            }
+                            if (faceY1 <= faceY0) continue;
+                        }
+
+                        const AoValues ao = computeAo(cellPos, face, options.ambientOcclusion, occludes);
+
+                        if (options.greedy && !desc.textured() && uniform(ao)) {
+                            if (isTopFace) {
+                                mask[static_cast<std::size_t>(j * dim + i)] = {id, ao[0], faceY0, faceY0};
+                            } else if (isBottomFace) {
+                                mask[static_cast<std::size_t>(j * dim + i)] = {id, ao[0], 0, 0};
+                            } else {
+                                const int cellBottom = cellPos.y * factor;
+                                const bool fullHeight =
+                                    (faceY0 == cellBottom && faceY1 == cellBottom + factor);
+                                if (fullHeight) {
+                                    mask[static_cast<std::size_t>(j * dim + i)] = {id, ao[0], 0, 0};
+                                } else {
+                                    mask[static_cast<std::size_t>(j * dim + i)] = {id, ao[0], faceY0, faceY1};
+                                }
+                            }
+                        } else {
+                            glm::vec3 worldPos = glm::vec3(cellPos) * static_cast<float>(factor);
+                            glm::vec3 worldSize(static_cast<float>(factor));
+                            if (isTopFace) {
+                                worldPos.y = static_cast<float>(faceY0);
+                                worldSize.y = 0.0f;
+                            } else if (!isBottomFace) {
+                                worldPos.y = static_cast<float>(faceY0);
+                                worldSize.y = static_cast<float>(faceY1 - faceY0);
+                            }
+                            emitQuad(result.opaque, desc, face, faceIndex, worldPos, worldSize, ao, options);
+
+                            // Faldas en los 4 bordes laterales expuestos al aire si no hay bloque sólido
+                            // debajo
+                            if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim) &&
+                                isFaceVisible(id, neighborId, registry)) {
+                                if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
+                                    emitSkirtQuad(result.opaque, desc, face, faceIndex, worldPos, worldSize,
+                                                  static_cast<float>(factor), options);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Greedy meshing en rectángulos máximos
+                solveLodGreedyMask(
+                    mask.data(), dim, dim, [&](const LodMaskCell& cell, int i, int j, int width, int height) {
+                        glm::ivec3 cellPos(0);
+                        cellPos[face.axis] = slice;
+                        cellPos[u] = i;
+                        cellPos[v] = j;
+
+                        glm::vec3 worldSize(static_cast<float>(factor));
+                        worldSize[u] = static_cast<float>(width * factor);
+                        worldSize[v] = static_cast<float>(height * factor);
+                        glm::vec3 worldPos = glm::vec3(cellPos) * static_cast<float>(factor);
+
+                        if (isTopFace) {
+                            worldPos.y = static_cast<float>(cell.y0);
+                            worldSize.y = 0.0f;
+                        } else if (!isBottomFace && cell.y1 > 0) {
+                            worldPos.y = static_cast<float>(cell.y0);
+                            worldSize.y = static_cast<float>(cell.y1 - cell.y0);
+                        }
+
+                        emitQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos, worldSize,
+                                 AoValues{cell.ao, cell.ao, cell.ao, cell.ao}, options);
+
+                        // Faldas en los 4 bordes laterales
+                        if (options.lodSkirts && isSideBorder(faceIndex, cellPos, dim)) {
+                            if (cellPos.y == 0 || grid.get(cellPos.x, cellPos.y - 1, cellPos.z) == kAir) {
+                                emitSkirtQuad(result.opaque, registry.get(cell.id), face, faceIndex, worldPos,
+                                              worldSize, static_cast<float>(factor), options);
+                            }
+                        }
+                    });
             }
         }
 

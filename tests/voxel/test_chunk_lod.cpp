@@ -1,6 +1,7 @@
 #include "VoxelTestWorld.h"
 
 #include <doctest/doctest.h>
+#include <mge/core/math/Geometry.h>
 #include <mge/voxel/ChunkLod.h>
 #include <mge/voxel/ChunkSnapshot.h>
 #include <mge/voxel/VoxelWorld.h>
@@ -312,5 +313,256 @@ TEST_CASE("voxel:ChunkLod: agua en LOD > 0 genera malla transparente en la super
 
     for (const auto& pos : meshLod1.transparent.positions) {
         CHECK(pos.y == doctest::Approx(8.0f));
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: superficie plana emite caras superiores a y_top exacto (y=5 -> 6, y=4 -> 5)") {
+    TestBlocks tb;
+
+    for (const int topBlockY : {5, 4}) {
+        const float expectedTopY = static_cast<float>(topBlockY + 1);
+        VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, topBlockY + 1));
+        world.loadChunk({0, 0, 0});
+        const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+        REQUIRE(snap.valid());
+
+        for (const int lod : {1, 2}) {
+            for (const bool greedy : {false, true}) {
+                ChunkMeshOptions opt;
+                opt.greedy = greedy;
+                opt.lodSkirts = false;
+                const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+                CHECK(mesh.opaque.validate().empty());
+
+                int topVertices = 0;
+                for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+                    if (mesh.opaque.normals[i].y > 0.9f) {
+                        CHECK(mesh.opaque.positions[i].y == doctest::Approx(expectedTopY));
+                        topVertices++;
+                    }
+                }
+                CHECK(topVertices > 0);
+                // Con greedy en superficie plana homogénea, la cara superior se fusiona en 1 quad (4
+                // vértices)
+                if (greedy) {
+                    CHECK(topVertices == 4);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 1 y LOD 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Mitad izquierda (x < 8): bloques 0..4 (tope en y = 5); mitad derecha (x >= 8): bloques 0..9 (tope en y
+    // = 10)
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            const int maxY = (x < 8) ? 4 : 9;
+            for (int y = 0; y <= maxY; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+
+        // 1. Raycast vertical hacia abajo en 256 puntos (16x16): siempre golpea una cara superior a la altura
+        // exacta
+        for (int z = 0; z < kChunkSize; ++z) {
+            for (int x = 0; x < kChunkSize; ++x) {
+                const float expectedY = (x < 8) ? 5.0f : 10.0f;
+                const Ray ray{glm::vec3(static_cast<float>(x) + 0.5f, 20.0f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(0.0f, -1.0f, 0.0f)};
+                float bestHitY = -1.0f;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].y <= 0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit) {
+                        const float hitY = ray.at(*hit).y;
+                        if (hitY > bestHitY) bestHitY = hitY;
+                    }
+                }
+                CHECK(bestHitY == doctest::Approx(expectedY));
+            }
+        }
+
+        // 2. Raycast horizontal contra el escalón en x = 8 entre y = 5 y y = 10: sin grietas
+        for (int yStep = 5; yStep < 10; ++yStep) {
+            for (int z = 0; z < kChunkSize; z += 2) {
+                const Ray ray{glm::vec3(7.5f, static_cast<float>(yStep) + 0.5f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(1.0f, 0.0f, 0.0f)};
+                bool hitStep = false;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].x >= -0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit && std::abs(ray.at(*hit).x - 8.0f) < 1e-3f) {
+                        hitStep = true;
+                        break;
+                    }
+                }
+                CHECK(hitStep);
+            }
+        }
+    }
+}
+
+TEST_CASE(
+    "voxel:ChunkLod: agua poco profunda (piedra y<=6, agua y=7) queda sobre la cara opaca en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            for (int y = 0; y <= 6; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+            world.setBlock({x, 7, z}, tb.water);
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+        REQUIRE_FALSE(mesh.transparent.empty());
+
+        float minWaterY = 1e9f;
+        for (const auto& pos : mesh.transparent.positions) {
+            minWaterY = std::min(minWaterY, pos.y);
+            CHECK(pos.y == doctest::Approx(8.0f));
+        }
+        CHECK(minWaterY == doctest::Approx(8.0f));
+
+        float maxOpaqueTopY = -1e9f;
+        for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+            if (mesh.opaque.normals[i].y > 0.9f) {
+                maxOpaqueTopY = std::max(maxOpaqueTopY, mesh.opaque.positions[i].y);
+            }
+        }
+        CHECK(maxOpaqueTopY == doctest::Approx(7.0f));
+        CHECK(maxOpaqueTopY < minWaterY);
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra y<=5 en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Mitad izquierda (x < 8): tierra opaca 0..7 (tope en 8)
+    // Mitad derecha (x >= 8): piedra 0..5 (tope opaco en 6) + agua 6..7 (quad transparente en 8)
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            if (x < 8) {
+                for (int y = 0; y <= 7; ++y) {
+                    world.setBlock({x, y, z}, tb.stone);
+                }
+            } else {
+                for (int y = 0; y <= 5; ++y) {
+                    world.setBlock({x, y, z}, tb.stone);
+                }
+                world.setBlock({x, 6, z}, tb.water);
+                world.setBlock({x, 7, z}, tb.water);
+            }
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+        REQUIRE_FALSE(mesh.transparent.empty());
+
+        // Quad de agua solo en la mitad derecha a y = 8
+        for (const auto& pos : mesh.transparent.positions) {
+            CHECK(pos.x >= 7.99f);
+            CHECK(pos.y == doctest::Approx(8.0f));
+        }
+
+        // Raycast hacia abajo sobre la malla opaca: x < 8 golpea a y = 8; x >= 8 golpea a y = 6
+        for (int z = 0; z < kChunkSize; z += 2) {
+            for (int x = 0; x < kChunkSize; x += 2) {
+                const float expectedOpaqueY = (x < 8) ? 8.0f : 6.0f;
+                const Ray ray{glm::vec3(static_cast<float>(x) + 0.5f, 20.0f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(0.0f, -1.0f, 0.0f)};
+                float bestHitY = -1.0f;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].y <= 0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit) {
+                        bestHitY = std::max(bestHitY, ray.at(*hit).y);
+                    }
+                }
+                CHECK(bestHitY == doctest::Approx(expectedOpaqueY));
+            }
+        }
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: terreno sobre un lago subterráneo conserva su cara superior en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            for (int y = 0; y <= 2; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+            world.setBlock({x, 3, z}, tb.water);
+            // y 4..11: aire (por defecto)
+            world.setBlock({x, 12, z}, tb.stone);
+            world.setBlock({x, 13, z}, tb.stone);
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+
+        int topVerticesAt14 = 0;
+        for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+            if (mesh.opaque.normals[i].y > 0.9f && mesh.opaque.positions[i].y == doctest::Approx(14.0f)) {
+                ++topVerticesAt14;
+            }
+        }
+        CHECK(topVerticesAt14 > 0);
     }
 }
