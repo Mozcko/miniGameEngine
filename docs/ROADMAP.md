@@ -2,6 +2,10 @@
 
 Goal: a **heavily optimizable C++ engine** whose **core runs headless** (no window/GPU), with rendering, input and audio as optional modules. Games can be built from **pure math and code** (procedural meshes and shaders, SDF raymarching, synthesized audio, embedded font; even a single executable with no files) **or** use regular assets. Both paths are supported and can be mixed.
 
+**Current release: 1.0.2.** M0–M10 and the 1.0.x polish are done. The engine is great today for voxel, procedural/SDF and
+simple 2D games written in C++, C or Python. **Next:** make it able to ship full asset-based 2D and 3D games (M11), with the
+codebase in one language, and then bring it to more platforms and languages (M12).
+
 ## Key decisions
 
 Recorded as ADRs in [docs/adr/](adr/README.md). Contribution rules are in [CONTRIBUTING.md](../CONTRIBUTING.md).
@@ -10,15 +14,12 @@ Recorded as ADRs in [docs/adr/](adr/README.md). Contribution rules are in [CONTR
 |---|---|
 | Headless ([ADR 0003](adr/0003-headless-core.md)) | `mge_core` builds/runs without SDL or a GPU; platform/render/audio are optional modules |
 | Visuals | Hybrid: CPU procedural meshes + procedural shaders + optional SDF raymarching |
-| Assets ([ADR 0004](adr/0004-procedural-first-assets-optional.md), supersedes 0002) | **Procedural‑first, assets optional**: every system has a code/math path; loading textures, fonts, sounds… is supported; a zero‑asset single‑binary build stays possible |
-| GPU API ([ADR 0001](adr/0001-sdl3-gpu-api.md)) | **SDL3 GPU API** (Vulkan on Linux/Windows, Metal on macOS, D3D12 on Windows/Xbox). **No new work on OpenGL**; the GL renderer is removed after parity (#40) |
-| Platform | **SDL3** (migration in #9) |
-
-## Migration path OpenGL → SDL3 GPU
-
-1. M1: port window, events, input and timer to SDL3 (#9). The legacy GL renderer keeps running through `SDL_GL_*`.
-2. M3: SDL GPU wrappers (#28), then a build-time shader toolchain that embeds the bytecode (#29), then parity with the current sandbox (#30).
-3. Delete OpenGL and GLEW (#40). Offscreen render tests run on lavapipe in CI (#39).
+| Assets ([ADR 0004](adr/0004-procedural-first-assets-optional.md), supersedes 0002) | **Procedural‑first, assets optional**: every system has a code/math path; loading textures, fonts, sounds, models… is supported; a zero‑asset single‑binary build stays possible |
+| GPU API ([ADR 0001](adr/0001-sdl3-gpu-api.md)) | **SDL3 GPU API** (Vulkan on Linux/Windows, Metal on macOS, D3D12 on Windows/Xbox). No OpenGL |
+| Platform | **SDL3** |
+| Languages ([ADR 0006](adr/0006-language-bindings.md)) | The C API is the stable ABI for other languages; Python binds the C++ API through nanobind |
+| Project language ([#236](https://github.com/Mozcko/miniGameEngine/issues/236)) | **English** for code comments, log messages, test names and docs |
+| Priorities | **Game-ready features (M11) before new platforms and languages (M12)**, so new targets ship an engine that can make full games |
 
 ## Labels
 
@@ -27,7 +28,167 @@ Recorded as ADRs in [docs/adr/](adr/README.md). Contribution rules are in [CONTR
 - **Priority:** `priority:critical|high|medium|low`
 - **Size:** `size:S` (≤1 day), `size:M` (a few days), `size:L` (a week or more)
 
+## Release plan
+
+| Release | Contents | Status |
+|---|---|---|
+| 0.9.0 | M0–M9: headless core, SDL3 GPU renderer, procedural generation, voxels, physics, audio, UI/text, performance, showcase, package + CLI | ✅ |
+| 1.0.0 | M10: C API and Python bindings | ✅ |
+| 1.0.1 | M10 review fixes (bindings memory safety) | ✅ |
+| 1.0.2 | 1.0.x polish epic [#189](https://github.com/Mozcko/miniGameEngine/issues/189) | ✅ |
+| 1.1.0 | M11 phase 1: third-person 3D action features + the KayKit vertical slice | planned |
+| 1.2.0 | M11 phase 2: 2D toolkit, dialogue, asset manager + the 2D vertical slice | planned |
+| 1.3.0 | M11 phase 3: post-processing, full rigid-body physics, large worlds, networking | planned |
+| 1.4.0+ | M12: Windows CLI, macOS/Metal, PyPI wheels, more languages | planned |
+
+Bug-fix releases (1.x.y) go out whenever fixes land after a tag. Every release needs a CHANGELOG entry and a pushed `vX.Y.Z`
+tag on the release PR's merge commit.
+
 ## Milestones
+
+### 1.0.x · Polish — [epic #189](https://github.com/Mozcko/miniGameEngine/issues/189)
+
+**Done — released as 1.0.1 and 1.0.2.** Bindings safety fixes, stable ECS pointers, better rigid-body contacts, correct LOD
+terrain and water, per-face transparency sorting.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#175](https://github.com/Mozcko/miniGameEngine/issues/175) | ✅ Release 1.0.1 with the M10 review fixes | chore, priority:high, size:S |
+| [#176](https://github.com/Mozcko/miniGameEngine/issues/176) | ✅ Stable storage for runtime ECS components (pointers survive adds) | refactor, priority:medium, size:M |
+| [#177](https://github.com/Mozcko/miniGameEngine/issues/177) | ✅ sdf_glide: accumulate mouse steering between fixed steps | bug, good first issue, size:S |
+| [#178](https://github.com/Mozcko/miniGameEngine/issues/178) | ✅ LOD: distant shallow water renders as ground | bug, priority:low, size:S |
+| [#179](https://github.com/Mozcko/miniGameEngine/issues/179) | ✅ LOD: distant terrain looks up to f−1 blocks taller | enhancement, priority:low, size:M |
+| [#180](https://github.com/Mozcko/miniGameEngine/issues/180) | ✅ Transparent pass: sort faces inside a chunk | bug, priority:low, size:M |
+| [#181](https://github.com/Mozcko/miniGameEngine/issues/181) | ✅ Rigid bodies: resting-contact friction and true sphere vs voxel collision | enhancement, priority:low, size:M |
+
+### M11.0 · English everywhere — [issue #236](https://github.com/Mozcko/miniGameEngine/issues/236)
+
+_One language for the whole codebase._ First a small PR changes the convention (`CONTRIBUTING.md`, `CLAUDE.md`, PR template),
+then the existing Spanish comments, log messages and test names are translated area by area. Every sub-issue is a good first
+issue. Can run in parallel with M11; new code is written in English from the convention change on.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#237](https://github.com/Mozcko/miniGameEngine/issues/237) | Translate to English: `src/mge/core` | chore, good first issue, size:S |
+| [#238](https://github.com/Mozcko/miniGameEngine/issues/238) | Translate to English: `procgen`, `synth`, `audio` | chore, good first issue, size:S |
+| [#239](https://github.com/Mozcko/miniGameEngine/issues/239) | Translate to English: `voxel`, `physics` | chore, good first issue, size:S |
+| [#240](https://github.com/Mozcko/miniGameEngine/issues/240) | Translate to English: `gpu`, `graphics` (+ shaders), `platform`, `app`, `c`, Python bindings | chore, good first issue, size:S |
+| [#241](https://github.com/Mozcko/miniGameEngine/issues/241) | Translate to English: `game/` and `examples/` | chore, good first issue, size:S |
+| [#242](https://github.com/Mozcko/miniGameEngine/issues/242) | Translate to English: `tools/mge` and `templates/` | chore, good first issue, size:S |
+| [#243](https://github.com/Mozcko/miniGameEngine/issues/243) | Translate to English: `tests/` (test names and comments) | chore, testing, good first issue, size:M |
+| [#244](https://github.com/Mozcko/miniGameEngine/issues/244) | Translate to English: CMake files, scripts and bench | chore, good first issue, size:S |
+
+### M11 · Game-ready features — [epic #199](https://github.com/Mozcko/miniGameEngine/issues/199)
+
+_Everything an asset-based 2D or 3D game needs, from platformers to a third-person soulslike._ Headless first: parsing,
+animation sampling, collision, navigation, serialization, UI layout and AI live in headless libraries with tests, and only
+upload/draw touches the GPU. Asset formats (glTF, Tiled, OGG) are optional loaders in modules. Public game APIs also land
+in the C API and Python bindings. Done when both vertical slices ([#225](https://github.com/Mozcko/miniGameEngine/issues/225), [#226](https://github.com/Mozcko/miniGameEngine/issues/226)) build and run in CI. The epic has a table
+of the 30 genres this unlocks and what each one needs.
+
+#### Phase 1 · 3D third-person action (→ 1.1.0)
+
+| # | Issue | Labels |
+|---|---|---|
+| [#206](https://github.com/Mozcko/miniGameEngine/issues/206) | Gamepad input, rebinding and text input | enhancement, priority:high, size:M |
+| [#200](https://github.com/Mozcko/miniGameEngine/issues/200) | glTF 2.0 model import (meshes, materials, node hierarchy) | enhancement, priority:high, size:L |
+| [#201](https://github.com/Mozcko/miniGameEngine/issues/201) | Skeletal animation and GPU skinning | enhancement, priority:high, size:L |
+| [#202](https://github.com/Mozcko/miniGameEngine/issues/202) | Animator: crossfades, state machine, animation events, root motion | enhancement, priority:high, size:M |
+| [#203](https://github.com/Mozcko/miniGameEngine/issues/203) | Collision shapes and queries for non-voxel worlds (meshes, capsules, triggers, layers) | enhancement, priority:high, size:L |
+| [#204](https://github.com/Mozcko/miniGameEngine/issues/204) | Capsule character controller for mesh worlds (slopes, steps, ground snapping) | enhancement, priority:high, size:M |
+| [#205](https://github.com/Mozcko/miniGameEngine/issues/205) | Third-person camera rig: orbit, collision, target lock-on | enhancement, priority:high, size:S |
+| [#207](https://github.com/Mozcko/miniGameEngine/issues/207) | UI toolkit: widgets, layout, focus navigation, menus, HUD | enhancement, priority:high, size:L |
+| [#208](https://github.com/Mozcko/miniGameEngine/issues/208) | Scene/prefab serialization and save games | enhancement, priority:high, size:L |
+| [#209](https://github.com/Mozcko/miniGameEngine/issues/209) | Navigation and pathfinding: grid/hex A*, flow fields, navmesh, steering | enhancement, priority:high, size:L |
+| [#210](https://github.com/Mozcko/miniGameEngine/issues/210) | Gameplay AI toolkit: state machines, behaviour trees, perception | enhancement, priority:medium, size:M |
+| [#211](https://github.com/Mozcko/miniGameEngine/issues/211) | Shadows: directional shadow maps (cascaded) | enhancement, priority:medium, size:L |
+| [#212](https://github.com/Mozcko/miniGameEngine/issues/212) | Point and spot lights | enhancement, priority:medium, size:M |
+| [#213](https://github.com/Mozcko/miniGameEngine/issues/213) | Particle system (2D and 3D) | enhancement, priority:medium, size:M |
+| [#218](https://github.com/Mozcko/miniGameEngine/issues/218) | 3D positional audio and OGG music streaming | enhancement, priority:medium, size:M |
+| [#225](https://github.com/Mozcko/miniGameEngine/issues/225) | **Vertical slice:** third-person action RPG sample with KayKit assets | enhancement, priority:high, size:L |
+
+#### Phase 2 · 2D and management games (→ 1.2.0)
+
+| # | Issue | Labels |
+|---|---|---|
+| [#216](https://github.com/Mozcko/miniGameEngine/issues/216) | 2D toolkit: sprites, sprite-sheet animation, 2D camera, tilemaps (Tiled import) | enhancement, priority:high, size:M |
+| [#217](https://github.com/Mozcko/miniGameEngine/issues/217) | 2D collision and a kinematic platformer controller in the engine | enhancement, priority:medium, size:M |
+| [#220](https://github.com/Mozcko/miniGameEngine/issues/220) | Gameplay utilities: tweens, timers, coroutines, event bus | enhancement, priority:low, size:S |
+| [#221](https://github.com/Mozcko/miniGameEngine/issues/221) | Dialogue runtime and localization | enhancement, priority:medium, size:M |
+| [#214](https://github.com/Mozcko/miniGameEngine/issues/214) | GPU instancing for repeated meshes and sprites | enhancement, performance, priority:medium, size:M |
+| [#219](https://github.com/Mozcko/miniGameEngine/issues/219) | Asset manager: handles, caching, async loading, hot reload, release packaging | enhancement, priority:medium, size:M |
+| [#226](https://github.com/Mozcko/miniGameEngine/issues/226) | **Vertical slice:** 2D action-platformer sample (metroidvania room set) | enhancement, priority:medium, size:M |
+
+#### Phase 3 · Heavier genres (→ 1.3.0)
+
+| # | Issue | Labels |
+|---|---|---|
+| [#215](https://github.com/Mozcko/miniGameEngine/issues/215) | Post-processing chain (bloom, tonemapping, retro filters) | enhancement, priority:low, size:M |
+| [#222](https://github.com/Mozcko/miniGameEngine/issues/222) | Rotational rigid bodies and joints (evaluate Jolt as an optional module) | enhancement, priority:low, size:L |
+| [#224](https://github.com/Mozcko/miniGameEngine/issues/224) | Large worlds: floating origin and streaming of non-voxel scenes | enhancement, priority:low, size:M |
+| [#223](https://github.com/Mozcko/miniGameEngine/issues/223) | Networking: transport, replication, lobbies (rollback as an option) | enhancement, priority:low, size:L |
+
+#### Good first issues
+
+Small, self-contained pieces of M11 for new contributors (most build headless, without SDL or a GPU):
+
+| # | Issue | Feeds |
+|---|---|---|
+| [#227](https://github.com/Mozcko/miniGameEngine/issues/227) | Easing functions (`mge::ease`) | #220 |
+| [#228](https://github.com/Mozcko/miniGameEngine/issues/228) | Timer and Cooldown helpers | #220 |
+| [#229](https://github.com/Mozcko/miniGameEngine/issues/229) | Frame-rate independent smoothing (`damp`, `smoothDamp`) | #205, #216 |
+| [#230](https://github.com/Mozcko/miniGameEngine/issues/230) | Stick deadzones and response curves | #206 |
+| [#231](https://github.com/Mozcko/miniGameEngine/issues/231) | Grid A* pathfinding | #209 |
+| [#232](https://github.com/Mozcko/miniGameEngine/issues/232) | Camera2D: transforms, zoom, follow with deadzone, screen shake | #216 |
+| [#233](https://github.com/Mozcko/miniGameEngine/issues/233) | Batch2D: rotated, scaled and flipped sprites | #216 |
+| [#234](https://github.com/Mozcko/miniGameEngine/issues/234) | Example: zero-asset Breakout using Renderer2D | #199 |
+| [#235](https://github.com/Mozcko/miniGameEngine/issues/235) | Load OGG Vorbis sound effects | #218 |
+
+### M12 · Platforms & more languages — [epic #190](https://github.com/Mozcko/miniGameEngine/issues/190)
+
+_Windows and macOS as first-class targets, prebuilt Python wheels, and more languages on the C API._ Starts after M11's
+vertical slices.
+
+| # | Issue | Labels |
+|---|---|---|
+| [#182](https://github.com/Mozcko/miniGameEngine/issues/182) | mge CLI on Windows | enhancement, priority:medium, size:M |
+| [#183](https://github.com/Mozcko/miniGameEngine/issues/183) | macOS support verified in CI (Metal via SDL3 GPU) | enhancement, priority:medium, size:M |
+| [#184](https://github.com/Mozcko/miniGameEngine/issues/184) | Prebuilt Python wheels and PyPI publishing | enhancement, priority:medium, size:M |
+| [#186](https://github.com/Mozcko/miniGameEngine/issues/186) | Zig and Odin examples on the C API | enhancement, priority:low, size:S |
+| [#185](https://github.com/Mozcko/miniGameEngine/issues/185) | Rust bindings on the C API (mge-sys + safe wrapper) | enhancement, priority:low, size:L |
+| [#187](https://github.com/Mozcko/miniGameEngine/issues/187) | C# bindings on the C API | enhancement, priority:low, size:L |
+| [#188](https://github.com/Mozcko/miniGameEngine/issues/188) | Lua scripting for C++ games | enhancement, priority:low, size:M |
+
+## Suggested order
+
+1. **M11.0 step 1** (the English convention change, [#236](https://github.com/Mozcko/miniGameEngine/issues/236)); the translation sub-issues can then run in parallel with everything else.
+2. **M11 phase 1**, roughly in the order of its table: gamepad and glTF first, then animation, collision and the controller,
+   then UI, saves, navigation and AI, then the rendering/audio polish, and finally the KayKit vertical slice ([#225](https://github.com/Mozcko/miniGameEngine/issues/225)). The good first
+   issues can be picked up at any time. Release **1.1.0**.
+3. **M11 phase 2**, ending with the 2D vertical slice ([#226](https://github.com/Mozcko/miniGameEngine/issues/226)). Release **1.2.0**.
+4. **M11 phase 3.** Release **1.3.0**.
+5. **M12** ([#190](https://github.com/Mozcko/miniGameEngine/issues/190)): Windows CLI and macOS first (they unlock wheels for those platforms), then PyPI wheels, then Zig/Odin,
+   Rust, C# and Lua.
+
+Each issue's **Depends on** section on GitHub lists its prerequisites.
+
+## Completed milestones (M0–M10)
+
+✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50),
+✅ M6 (#51–#54), ✅ M7 (#55–#61), ✅ M8 (#35, #36, #62–#67) and ✅ M9 (#103–#106) were released as **0.9.0**; ✅ M10 (#160–#163)
+completed **1.0.0**. The tables below are kept as the project's history.
+
+<details>
+<summary>History: the OpenGL → SDL3 GPU migration</summary>
+
+1. M1: port window, events, input and timer to SDL3 (#9). The legacy GL renderer keeps running through `SDL_GL_*`.
+2. M3: SDL GPU wrappers (#28), then a build-time shader toolchain that embeds the bytecode (#29), then parity with the current sandbox (#30).
+3. Delete OpenGL and GLEW (#40). Offscreen render tests run on lavapipe in CI (#39).
+
+</details>
+
+<details>
+<summary>History: milestones M0–M10 with every issue</summary>
 
 ### M0 · Foundation — [epic #68](https://github.com/Mozcko/miniGameEngine/issues/68)
 
@@ -197,6 +358,4 @@ _Write games in **C** and **Python**, not only C++._ A stable C API (`mge_c`) is
 | [#162](https://github.com/Mozcko/miniGameEngine/issues/162) | ✅ [Python bindings v1 (`import mge`)](PYTHON.md) via nanobind | enhancement, priority:high, size:L |
 | [#163](https://github.com/Mozcko/miniGameEngine/issues/163) | ✅ `mge new --lang c\|python`: project templates for C and Python | enhancement, priority:medium, size:M |
 
-## Suggested order
-
-✅ M0 (#1–#7), ✅ M1 (#8–#18), ✅ M1.5 (#96–#100), ✅ M2 (#19–#27), ✅ M3 (#28–#34, #37–#40), ✅ M4 (#41–#45), ✅ M5 (#46–#50), ✅ M6 (#51–#54), ✅ M7 (#55–#61), ✅ M8 (#35, #36, #62–#67) and ✅ M9 (#103–#106) were released as **0.9.0**; ✅ M10 (#160–#163, C API + Python bindings) completes **1.0.0**. Next: more languages on the C API (Rust, Zig, Odin, C#, Lua) if C and Python work well. Each issue's **Depends on** section on GitHub lists its prerequisites.
+</details>
