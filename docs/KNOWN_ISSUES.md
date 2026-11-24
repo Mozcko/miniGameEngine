@@ -60,5 +60,3 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
   loses the depth test and distant shallow water looks like ground. Purely visual.
 - LOD cells are solid if they contain any opaque block, so distant terrain looks up to f−1 blocks taller (f = 2 or 4); skirts hide the
   cracks between rings.
-- Rigid bodies: friction between two bodies only applies while they push into each other (no resting‑contact friction), and
-  spheres collide with voxels as their AABB.

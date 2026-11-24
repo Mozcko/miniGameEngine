@@ -145,6 +145,115 @@ namespace mge {
             return contact;
         }
 
+        Contact collideBodies(const RigidBody& bodyA, const Transform& transformA, const RigidBody& bodyB,
+                              const Transform& transformB) {
+            if (bodyA.shape == ShapeType::Box && bodyB.shape == ShapeType::Box) {
+                return collideBoxBox(transformA.position, bodyA.halfExtents, transformB.position,
+                                     bodyB.halfExtents);
+            }
+            if (bodyA.shape == ShapeType::Sphere && bodyB.shape == ShapeType::Sphere) {
+                return collideSphereSphere(transformA.position, bodyA.radius, transformB.position,
+                                           bodyB.radius);
+            }
+            if (bodyA.shape == ShapeType::Sphere && bodyB.shape == ShapeType::Box) {
+                return collideSphereBox(transformA.position, bodyA.radius, transformB.position,
+                                        bodyB.halfExtents);
+            }
+            Contact contact =
+                collideSphereBox(transformB.position, bodyB.radius, transformA.position, bodyA.halfExtents);
+            contact.normal = -contact.normal;
+            return contact;
+        }
+
+        // Cubo inscrito en la esfera (semilado = r / sqrt(3)): barrido anti-túnel que nunca bloquea
+        // prematuramente en aristas o esquinas donde la esfera real todavía no toca el bloque.
+        Aabb sphereInnerBounds(const glm::vec3& center, float radius) {
+            constexpr float kInvSqrt3 = 0.57735027f;
+            const glm::vec3 half(radius * kInvSqrt3);
+            return Aabb(center - half, center + half);
+        }
+
+        // Narrowphase esfera vs voxeles sólidos cercanos (punto más cercano por bloque, más profundo primero)
+        void resolveSphereVoxels(RigidBody& body, Transform& transform, const SolidQuery& voxels,
+                                 const glm::vec3& gravity, float dt, const MoveOptions& moveOpts) {
+            constexpr int kMaxSphereVoxelIters = 4;
+            constexpr float kRestThreshold = 0.5f;
+            constexpr float kFlatFloorNormalY = 0.99f;
+
+            body.grounded = false;
+            const float radius = body.radius;
+
+            for (int iter = 0; iter < kMaxSphereVoxelIters; ++iter) {
+                const glm::vec3 center = transform.position;
+                const int minX = static_cast<int>(std::floor(center.x - radius));
+                const int maxX = static_cast<int>(std::floor(center.x + radius));
+                const int minY = static_cast<int>(std::floor(center.y - radius));
+                const int maxY = static_cast<int>(std::floor(center.y + radius));
+                const int minZ = static_cast<int>(std::floor(center.z - radius));
+                const int maxZ = static_cast<int>(std::floor(center.z + radius));
+
+                bool found = false;
+                float bestPenetration = 0.0f;
+                glm::vec3 bestNormal(0.0f, 1.0f, 0.0f); // Del bloque hacia la esfera
+
+                for (int by = minY; by <= maxY; ++by) {
+                    for (int bz = minZ; bz <= maxZ; ++bz) {
+                        for (int bx = minX; bx <= maxX; ++bx) {
+                            if (!voxels(glm::ivec3(bx, by, bz))) {
+                                continue;
+                            }
+                            const glm::vec3 blockCenter(static_cast<float>(bx) + 0.5f,
+                                                        static_cast<float>(by) + 0.5f,
+                                                        static_cast<float>(bz) + 0.5f);
+                            const Contact c = collideSphereBox(center, radius, blockCenter, glm::vec3(0.5f));
+                            if (c.hasContact && c.penetration > bestPenetration) {
+                                found = true;
+                                bestPenetration = c.penetration;
+                                // collideSphereBox apunta de esfera hacia bloque; invertir para empujar fuera
+                                bestNormal = -c.normal;
+                            }
+                        }
+                    }
+                }
+
+                if (!found || bestPenetration <= 0.0f) {
+                    break;
+                }
+
+                // Empujar fuera pasando por moveAabb para nunca introducir la esfera en otro bloque sólido
+                const MoveResult pushRes = moveAabb(sphereInnerBounds(center, radius),
+                                                    bestNormal * bestPenetration, voxels, moveOpts);
+                transform.position += pushRes.moved;
+
+                const float vn = glm::dot(body.velocity, bestNormal);
+                float jn = 0.0f;
+                if (vn < 0.0f) {
+                    const float e = (-vn >= kRestThreshold) ? body.restitution : 0.0f;
+                    jn = -(1.0f + e) * vn;
+                    body.velocity += bestNormal * jn;
+                }
+
+                // Fricción de Coulomb sobre suelo plano (en aristas inclinadas la esfera rueda hacia afuera)
+                if (bestNormal.y > kFlatFloorNormalY) {
+                    if (body.velocity.y <= 0.0f) {
+                        body.grounded = true;
+                    }
+                    if (body.friction > 0.0f) {
+                        const float gn = -glm::dot(gravity * body.gravityScale, bestNormal) * dt;
+                        const float normalSupport = std::max(jn, std::max(gn, 0.0f));
+                        const glm::vec3 vTan =
+                            body.velocity - glm::dot(body.velocity, bestNormal) * bestNormal;
+                        const float tanSpeedSq = glm::dot(vTan, vTan);
+                        if (tanSpeedSq > 1e-12f && normalSupport > 0.0f) {
+                            const float tanSpeed = std::sqrt(tanSpeedSq);
+                            const float reduction = std::min(body.friction * normalSupport, tanSpeed);
+                            body.velocity -= (vTan / tanSpeed) * reduction;
+                        }
+                    }
+                }
+            }
+        }
+
     } // namespace
 
     PhysicsWorld::PhysicsWorld(PhysicsSettings initialSettings, SolidQuery initialVoxels)
@@ -187,7 +296,7 @@ namespace mge {
             body.velocity *= dampingFactor;
         }
 
-        // 3) Mover cuerpos dinámicos contra el mundo voxel (moveAabb)
+        // 3) Mover cuerpos dinámicos contra el mundo voxel (moveAabb + narrowphase esfera-voxel)
         const MoveOptions moveOpts{0.0f, 1e-4f}; // stepHeight = 0 (los cuerpos rígidos no suben escalones)
         for (auto& entry : m_bodies) {
             RigidBody& body = *entry.body;
@@ -197,50 +306,58 @@ namespace mge {
             }
 
             if (m_voxels) {
-                const Aabb currentBounds = body.bounds(transform.position);
-                const MoveResult res = moveAabb(currentBounds, body.velocity * dt, m_voxels, moveOpts);
-                transform.position += res.moved;
+                if (body.shape == ShapeType::Sphere) {
+                    // Barrido anti-túnel con el cubo inscrito y luego narrowphase esfera vs bloques sólidos
+                    const MoveResult sweepRes = moveAabb(sphereInnerBounds(transform.position, body.radius),
+                                                         body.velocity * dt, m_voxels, moveOpts);
+                    transform.position += sweepRes.moved;
+                    resolveSphereVoxels(body, transform, m_voxels, m_settings.gravity, dt, moveOpts);
+                } else {
+                    const Aabb currentBounds = body.bounds(transform.position);
+                    const MoveResult res = moveAabb(currentBounds, body.velocity * dt, m_voxels, moveOpts);
+                    transform.position += res.moved;
 
-                // En los ejes bloqueados, rebotar según restitución y detener micro-rebotes si |v| < 0.5
-                constexpr float kRestThreshold = 0.5f;
+                    // En los ejes bloqueados, rebotar según restitución y detener micro-rebotes si |v| < 0.5
+                    constexpr float kRestThreshold = 0.5f;
 
-                if (res.blocked.x) {
-                    body.velocity.x = -body.velocity.x * body.restitution;
-                    if (std::abs(body.velocity.x) < kRestThreshold) {
-                        body.velocity.x = 0.0f;
-                    }
-                }
-                if (res.blocked.y) {
-                    body.velocity.y = -body.velocity.y * body.restitution;
-                    if (std::abs(body.velocity.y) < kRestThreshold) {
-                        body.velocity.y = 0.0f;
-                    }
-                }
-                if (res.blocked.z) {
-                    body.velocity.z = -body.velocity.z * body.restitution;
-                    if (std::abs(body.velocity.z) < kRestThreshold) {
-                        body.velocity.z = 0.0f;
-                    }
-                }
-
-                body.grounded = res.grounded && (body.velocity.y <= 0.0f);
-
-                // Si está apoyado en el suelo voxel, aplicar fricción de Coulomb horizontal
-                if (body.grounded) {
-                    const float g = std::abs(m_settings.gravity.y) * body.gravityScale;
-                    const float frictionDecel = body.friction * g;
-                    const float speedReduction = frictionDecel * dt;
-
-                    const float horizSpeed =
-                        std::sqrt(body.velocity.x * body.velocity.x + body.velocity.z * body.velocity.z);
-                    if (horizSpeed > 0.0f) {
-                        if (horizSpeed <= speedReduction) {
+                    if (res.blocked.x) {
+                        body.velocity.x = -body.velocity.x * body.restitution;
+                        if (std::abs(body.velocity.x) < kRestThreshold) {
                             body.velocity.x = 0.0f;
+                        }
+                    }
+                    if (res.blocked.y) {
+                        body.velocity.y = -body.velocity.y * body.restitution;
+                        if (std::abs(body.velocity.y) < kRestThreshold) {
+                            body.velocity.y = 0.0f;
+                        }
+                    }
+                    if (res.blocked.z) {
+                        body.velocity.z = -body.velocity.z * body.restitution;
+                        if (std::abs(body.velocity.z) < kRestThreshold) {
                             body.velocity.z = 0.0f;
-                        } else {
-                            const float factor = (horizSpeed - speedReduction) / horizSpeed;
-                            body.velocity.x *= factor;
-                            body.velocity.z *= factor;
+                        }
+                    }
+
+                    body.grounded = res.grounded && (body.velocity.y <= 0.0f);
+
+                    // Si está apoyado en el suelo voxel, aplicar fricción de Coulomb horizontal
+                    if (body.grounded) {
+                        const float g = std::abs(m_settings.gravity.y) * body.gravityScale;
+                        const float frictionDecel = body.friction * g;
+                        const float speedReduction = frictionDecel * dt;
+
+                        const float horizSpeed =
+                            std::sqrt(body.velocity.x * body.velocity.x + body.velocity.z * body.velocity.z);
+                        if (horizSpeed > 0.0f) {
+                            if (horizSpeed <= speedReduction) {
+                                body.velocity.x = 0.0f;
+                                body.velocity.z = 0.0f;
+                            } else {
+                                const float factor = (horizSpeed - speedReduction) / horizSpeed;
+                                body.velocity.x *= factor;
+                                body.velocity.z *= factor;
+                            }
                         }
                     }
                 }
@@ -264,124 +381,161 @@ namespace mge {
         m_spatialHash.computePairs(m_pairs);
         m_lastPairCount = m_pairs.size();
 
-        // 5) Narrowphase + Resolución de contactos: repetir solverIterations veces
+        // 5) Narrowphase + Resolución por impulsos secuenciales con impulsos acumulados
         if (m_pairs.empty() || m_settings.solverIterations <= 0) {
             return;
         }
 
-        const float posCorrFraction =
-            m_settings.positionCorrection / static_cast<float>(m_settings.solverIterations);
+        m_contacts.clear();
+        constexpr float kRestitutionThreshold = 0.5f;
 
+        for (const auto& [idxA, idxB] : m_pairs) {
+            BodyEntry& entryA = m_bodies[idxA];
+            BodyEntry& entryB = m_bodies[idxB];
+            RigidBody& bodyA = *entryA.body;
+            RigidBody& bodyB = *entryB.body;
+            const Transform& transformA = *entryA.transform;
+            const Transform& transformB = *entryB.transform;
+
+            const float invMassA = bodyA.inverseMass();
+            const float invMassB = bodyB.inverseMass();
+            if (invMassA <= 0.0f && invMassB <= 0.0f) {
+                continue; // Ambos estáticos: no se mueven
+            }
+
+            const Contact contact = collideBodies(bodyA, transformA, bodyB, transformB);
+            if (!contact.hasContact || contact.penetration <= 0.0f) {
+                continue;
+            }
+
+            // Soporte del suelo: si un cuerpo está apoyado en el suelo (o es estático) y soporta al otro
+            // verticalmente, actúa con masa infinita (effInv = 0) para no hundirse en el suelo voxel
+            float effInvA = invMassA;
+            float effInvB = invMassB;
+            if ((invMassA <= 0.0f || bodyA.grounded) && contact.normal.y > 0.7f) {
+                effInvA = 0.0f;
+                bodyB.grounded = true;
+            } else if ((invMassB <= 0.0f || bodyB.grounded) && contact.normal.y < -0.7f) {
+                effInvB = 0.0f;
+                bodyA.grounded = true;
+            }
+
+            const float effSum = effInvA + effInvB;
+            if (effSum <= 0.0f) {
+                continue;
+            }
+
+            SolverContact sc;
+            sc.idxA = idxA;
+            sc.idxB = idxB;
+            sc.normal = contact.normal;
+            sc.effInvA = effInvA;
+            sc.effInvB = effInvB;
+            sc.effSum = effSum;
+            sc.mu = std::sqrt(bodyA.friction * bodyB.friction);
+
+            const float vn0 = glm::dot(bodyB.velocity - bodyA.velocity, contact.normal);
+            if (vn0 < -kRestitutionThreshold) {
+                const float e = std::min(bodyA.restitution, bodyB.restitution);
+                sc.velocityBias = -e * vn0;
+            }
+
+            // Contribución de la gravedad para contactos en reposo (impulso normal mínimo para la fricción)
+            if (vn0 <= 1e-3f) {
+                const glm::vec3 accA =
+                    (effInvA > 0.0f) ? (m_settings.gravity * bodyA.gravityScale) : glm::vec3(0.0f);
+                const glm::vec3 accB =
+                    (effInvB > 0.0f) ? (m_settings.gravity * bodyB.gravityScale) : glm::vec3(0.0f);
+                const float gRel = glm::dot(accB - accA, contact.normal);
+                if (gRel < 0.0f) {
+                    sc.minNormalImpulse = (-gRel * dt) / effSum;
+                }
+            }
+
+            m_contacts.push_back(sc);
+        }
+
+        // Iteraciones de impulsos secuenciales (normal y tangencial acumulados por contacto)
         for (int iter = 0; iter < m_settings.solverIterations; ++iter) {
-            for (const auto& [idxA, idxB] : m_pairs) {
-                BodyEntry& entryA = m_bodies[idxA];
-                BodyEntry& entryB = m_bodies[idxB];
-                RigidBody& bodyA = *entryA.body;
-                RigidBody& bodyB = *entryB.body;
-                Transform& transformA = *entryA.transform;
-                Transform& transformB = *entryB.transform;
+            for (SolverContact& sc : m_contacts) {
+                RigidBody& bodyA = *m_bodies[sc.idxA].body;
+                RigidBody& bodyB = *m_bodies[sc.idxB].body;
 
-                const float invMassA = bodyA.inverseMass();
-                const float invMassB = bodyB.inverseMass();
-                if (invMassA <= 0.0f && invMassB <= 0.0f) {
-                    continue; // Ambos estáticos: no se mueven
-                }
-
-                Contact contact;
-                if (bodyA.shape == ShapeType::Box && bodyB.shape == ShapeType::Box) {
-                    contact = collideBoxBox(transformA.position, bodyA.halfExtents, transformB.position,
-                                            bodyB.halfExtents);
-                } else if (bodyA.shape == ShapeType::Sphere && bodyB.shape == ShapeType::Sphere) {
-                    contact = collideSphereSphere(transformA.position, bodyA.radius, transformB.position,
-                                                  bodyB.radius);
-                } else if (bodyA.shape == ShapeType::Sphere && bodyB.shape == ShapeType::Box) {
-                    contact = collideSphereBox(transformA.position, bodyA.radius, transformB.position,
-                                               bodyB.halfExtents);
-                } else { // bodyA.shape == ShapeType::Box && bodyB.shape == ShapeType::Sphere
-                    contact = collideSphereBox(transformB.position, bodyB.radius, transformA.position,
-                                               bodyA.halfExtents);
-                    contact.normal = -contact.normal;
-                }
-
-                if (!contact.hasContact || contact.penetration <= 0.0f) {
-                    continue;
-                }
-
-                // Soporte del suelo: si un cuerpo está apoyado en el suelo (o es estático) y soporta al otro
-                // verticalmente, actúa con masa infinita (effInv = 0) para no hundirse en el suelo voxel
-                float effInvA = invMassA;
-                float effInvB = invMassB;
-                if ((invMassA <= 0.0f || bodyA.grounded) && contact.normal.y > 0.7f) {
-                    effInvA = 0.0f;
-                    bodyB.grounded = true;
-                } else if ((invMassB <= 0.0f || bodyB.grounded) && contact.normal.y < -0.7f) {
-                    effInvB = 0.0f;
-                    bodyA.grounded = true;
-                }
-
-                const float effSum = effInvA + effInvB;
-                if (effSum <= 0.0f) {
-                    continue;
-                }
-
-                // Corrección posicional (Baumgarte)
-                const float excess = std::max(contact.penetration - m_settings.penetrationSlop, 0.0f);
-                const float corrMagnitude = excess * posCorrFraction;
-                const glm::vec3 corrVector = contact.normal * (corrMagnitude / effSum);
-
-                if (effInvA > 0.0f) {
-                    const glm::vec3 corrA = -corrVector * effInvA;
-                    if (m_voxels) {
-                        const MoveResult resA =
-                            moveAabb(bodyA.bounds(transformA.position), corrA, m_voxels, {0.0f, 1e-4f});
-                        transformA.position += resA.moved;
-                    } else {
-                        transformA.position += corrA;
-                    }
-                }
-
-                if (effInvB > 0.0f) {
-                    const glm::vec3 corrB = corrVector * effInvB;
-                    if (m_voxels) {
-                        const MoveResult resB =
-                            moveAabb(bodyB.bounds(transformB.position), corrB, m_voxels, {0.0f, 1e-4f});
-                        transformB.position += resB.moved;
-                    } else {
-                        transformB.position += corrB;
-                    }
-                }
-
-                // Impulso de velocidad normal
+                // Impulso normal acumulado >= 0
                 const glm::vec3 vRel = bodyB.velocity - bodyA.velocity;
-                const float vn = glm::dot(vRel, contact.normal);
-                float jn = 0.0f;
-
-                if (vn < 0.0f) {
-                    float e = std::min(bodyA.restitution, bodyB.restitution);
-                    if (-vn < 0.5f) {
-                        e = 0.0f; // Detener micro-rebotes
-                    }
-                    jn = -(1.0f + e) * vn / effSum;
-                    bodyA.velocity -= contact.normal * (jn * effInvA);
-                    bodyB.velocity += contact.normal * (jn * effInvB);
+                const float vn = glm::dot(vRel, sc.normal);
+                const float deltaJn = (sc.velocityBias - vn) / sc.effSum;
+                const float oldJn = sc.normalImpulse;
+                sc.normalImpulse = std::max(oldJn + deltaJn, 0.0f);
+                const float appliedJn = sc.normalImpulse - oldJn;
+                if (appliedJn != 0.0f) {
+                    bodyA.velocity -= sc.normal * (appliedJn * sc.effInvA);
+                    bodyB.velocity += sc.normal * (appliedJn * sc.effInvB);
                 }
 
-                // Impulso de fricción tangencial (Coulomb)
-                if (jn > 0.0f) {
-                    const glm::vec3 currentVRel = bodyB.velocity - bodyA.velocity;
-                    const glm::vec3 vTangent =
-                        currentVRel - glm::dot(currentVRel, contact.normal) * contact.normal;
-                    const float tanSpeedSq = glm::dot(vTangent, vTangent);
-                    if (tanSpeedSq > 1e-10f) {
-                        const float tanSpeed = std::sqrt(tanSpeedSq);
-                        const glm::vec3 t = vTangent / tanSpeed;
-                        const float mu = std::sqrt(bodyA.friction * bodyB.friction);
-                        const float maxFriction = mu * jn;
-                        const float maxJt = tanSpeed / effSum;
-                        const float jt = -std::min(maxFriction, maxJt);
-                        bodyA.velocity -= t * (jt * effInvA);
-                        bodyB.velocity += t * (jt * effInvB);
+                // Impulso tangencial acumulado limitado por |jt| <= mu * max(normalImpulse, minNormalImpulse)
+                if (sc.mu > 0.0f) {
+                    const glm::vec3 curVRel = bodyB.velocity - bodyA.velocity;
+                    const glm::vec3 vTan = curVRel - glm::dot(curVRel, sc.normal) * sc.normal;
+                    const glm::vec3 deltaJt = -vTan / sc.effSum;
+                    const glm::vec3 oldJt = sc.tangentImpulse;
+                    glm::vec3 newJt = oldJt + deltaJt;
+                    const float maxFriction = sc.mu * std::max(sc.normalImpulse, sc.minNormalImpulse);
+                    const float newJtLenSq = glm::dot(newJt, newJt);
+                    if (newJtLenSq > maxFriction * maxFriction) {
+                        if (maxFriction > 0.0f && newJtLenSq > 1e-12f) {
+                            newJt *= (maxFriction / std::sqrt(newJtLenSq));
+                        } else {
+                            newJt = glm::vec3(0.0f);
+                        }
                     }
+                    const glm::vec3 appliedJt = newJt - oldJt;
+                    sc.tangentImpulse = newJt;
+                    bodyA.velocity -= appliedJt * sc.effInvA;
+                    bodyB.velocity += appliedJt * sc.effInvB;
+                }
+            }
+        }
+
+        // Corrección posicional (Baumgarte) respetando los voxeles mediante moveAabb
+        for (const SolverContact& sc : m_contacts) {
+            RigidBody& bodyA = *m_bodies[sc.idxA].body;
+            RigidBody& bodyB = *m_bodies[sc.idxB].body;
+            Transform& transformA = *m_bodies[sc.idxA].transform;
+            Transform& transformB = *m_bodies[sc.idxB].transform;
+
+            const Contact contact = collideBodies(bodyA, transformA, bodyB, transformB);
+            if (!contact.hasContact || contact.penetration <= m_settings.penetrationSlop) {
+                continue;
+            }
+
+            const float excess = contact.penetration - m_settings.penetrationSlop;
+            const float corrMagnitude = excess * m_settings.positionCorrection;
+            const glm::vec3 corrVector = contact.normal * (corrMagnitude / sc.effSum);
+
+            if (sc.effInvA > 0.0f) {
+                const glm::vec3 corrA = -corrVector * sc.effInvA;
+                if (m_voxels) {
+                    const Aabb boundsA = bodyA.shape == ShapeType::Sphere
+                                             ? sphereInnerBounds(transformA.position, bodyA.radius)
+                                             : bodyA.bounds(transformA.position);
+                    const MoveResult resA = moveAabb(boundsA, corrA, m_voxels, moveOpts);
+                    transformA.position += resA.moved;
+                } else {
+                    transformA.position += corrA;
+                }
+            }
+
+            if (sc.effInvB > 0.0f) {
+                const glm::vec3 corrB = corrVector * sc.effInvB;
+                if (m_voxels) {
+                    const Aabb boundsB = bodyB.shape == ShapeType::Sphere
+                                             ? sphereInnerBounds(transformB.position, bodyB.radius)
+                                             : bodyB.bounds(transformB.position);
+                    const MoveResult resB = moveAabb(boundsB, corrB, m_voxels, moveOpts);
+                    transformB.position += resB.moved;
+                } else {
+                    transformB.position += corrB;
                 }
             }
         }
