@@ -491,6 +491,8 @@ TEST_CASE("RigidBody: correccion posicional no atraviesa paredes de voxeles") {
     CHECK(bounds.max.x <= 2.0f);
 }
 
+// Comportamiento: también pasa con el solver anterior (la gravedad ya daba jn > 0 en reposo);
+// protege el nuevo solver de impulsos acumulados contra regresiones.
 TEST_CASE("RigidBody: friccion en contacto en reposo detiene caja sobre caja estatica") {
     Registry registry;
     PhysicsWorld physics;
@@ -525,6 +527,53 @@ TEST_CASE("RigidBody: friccion en contacto en reposo detiene caja sobre caja est
     CHECK(glm::length(finalRb.velocity) < 0.01f);
     CHECK(finalTf.position.x < 0.5f);
     CHECK(finalTf.position.x > 0.0f);
+}
+
+TEST_CASE("RigidBody: friccion acumulada frena caja en reposo golpeada lateralmente en el mismo paso") {
+    Registry registry;
+    PhysicsWorld physics;
+
+    // Suelo estático (entidad 0): su par (0, 1) se resuelve antes que (1, 2) en cada iteración
+    const Entity staticFloor = registry.create();
+    registry.add<Transform>(staticFloor, glm::vec3(0.0f, 0.0f, 0.0f));
+    RigidBody rbFloor;
+    rbFloor.shape = ShapeType::Box;
+    rbFloor.halfExtents = glm::vec3(5.0f, 0.5f, 5.0f);
+    rbFloor.mass = 0.0f;
+    rbFloor.friction = 1.0f;
+    registry.add<RigidBody>(staticFloor, rbFloor);
+
+    // Caja en reposo sobre el suelo (entidad 1): presupuesto de fricción = mu * g * dt = 28/60 ≈ 0.467
+    const Entity restingBox = registry.create();
+    registry.add<Transform>(restingBox, glm::vec3(0.0f, 1.0f, 0.0f));
+    RigidBody rbResting;
+    rbResting.shape = ShapeType::Box;
+    rbResting.halfExtents = glm::vec3(0.5f);
+    rbResting.mass = 1.0f;
+    rbResting.friction = 1.0f;
+    rbResting.restitution = 0.0f;
+    rbResting.linearDamping = 0.0f;
+    registry.add<RigidBody>(restingBox, rbResting);
+
+    // Caja atacante (entidad 2) golpea lateralmente a restingBox con vx = 0.4 (< 0.467)
+    const Entity striker = registry.create();
+    registry.add<Transform>(striker, glm::vec3(-0.98f, 1.0f, 0.0f));
+    RigidBody rbStriker;
+    rbStriker.shape = ShapeType::Box;
+    rbStriker.halfExtents = glm::vec3(0.5f);
+    rbStriker.mass = 1.0f;
+    rbStriker.friction = 0.0f;
+    rbStriker.restitution = 0.0f;
+    rbStriker.linearDamping = 0.0f;
+    rbStriker.velocity = glm::vec3(0.4f, 0.0f, 0.0f);
+    registry.add<RigidBody>(striker, rbStriker);
+
+    physics.step(registry, 1.0f / 60.0f);
+
+    // Sin impulsos acumulados, el par (0, 1) tiene jn = 0 en iteraciones 1..3 y restingBox queda en vx = 0.2.
+    // Con impulsos acumulados, la fricción del suelo absorbe el empuje en las iteraciones siguientes.
+    const auto& finalResting = registry.get<RigidBody>(restingBox);
+    CHECK(finalResting.velocity.x < 0.05f);
 }
 
 TEST_CASE("RigidBody: caja sobre caja estatica con friccion cero sigue deslizandose") {
