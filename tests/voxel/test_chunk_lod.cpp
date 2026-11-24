@@ -1,6 +1,7 @@
 #include "VoxelTestWorld.h"
 
 #include <doctest/doctest.h>
+#include <mge/core/math/Geometry.h>
 #include <mge/voxel/ChunkLod.h>
 #include <mge/voxel/ChunkSnapshot.h>
 #include <mge/voxel/VoxelWorld.h>
@@ -312,5 +313,114 @@ TEST_CASE("voxel:ChunkLod: agua en LOD > 0 genera malla transparente en la super
 
     for (const auto& pos : meshLod1.transparent.positions) {
         CHECK(pos.y == doctest::Approx(8.0f));
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: superficie plana emite caras superiores a y_top exacto (y=5 -> 6, y=4 -> 5)") {
+    TestBlocks tb;
+
+    for (const int topBlockY : {5, 4}) {
+        const float expectedTopY = static_cast<float>(topBlockY + 1);
+        VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, topBlockY + 1));
+        world.loadChunk({0, 0, 0});
+        const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+        REQUIRE(snap.valid());
+
+        for (const int lod : {1, 2}) {
+            for (const bool greedy : {false, true}) {
+                ChunkMeshOptions opt;
+                opt.greedy = greedy;
+                opt.lodSkirts = false;
+                const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+                CHECK(mesh.opaque.validate().empty());
+
+                int topVertices = 0;
+                for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+                    if (mesh.opaque.normals[i].y > 0.9f) {
+                        CHECK(mesh.opaque.positions[i].y == doctest::Approx(expectedTopY));
+                        topVertices++;
+                    }
+                }
+                CHECK(topVertices > 0);
+                // Con greedy en superficie plana homogénea, la cara superior se fusiona en 1 quad (4
+                // vértices)
+                if (greedy) {
+                    CHECK(topVertices == 4);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 1 y LOD 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    // Mitad izquierda (x < 8): bloques 0..4 (tope en y = 5); mitad derecha (x >= 8): bloques 0..9 (tope en y
+    // = 10)
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            const int maxY = (x < 8) ? 4 : 9;
+            for (int y = 0; y <= maxY; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+
+        // 1. Raycast vertical hacia abajo en 256 puntos (16x16): siempre golpea una cara superior a la altura
+        // exacta
+        for (int z = 0; z < kChunkSize; ++z) {
+            for (int x = 0; x < kChunkSize; ++x) {
+                const float expectedY = (x < 8) ? 5.0f : 10.0f;
+                const Ray ray{glm::vec3(static_cast<float>(x) + 0.5f, 20.0f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(0.0f, -1.0f, 0.0f)};
+                float bestHitY = -1.0f;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].y <= 0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit) {
+                        const float hitY = ray.at(*hit).y;
+                        if (hitY > bestHitY) bestHitY = hitY;
+                    }
+                }
+                CHECK(bestHitY == doctest::Approx(expectedY));
+            }
+        }
+
+        // 2. Raycast horizontal contra el escalón en x = 8 entre y = 5 y y = 10: sin grietas
+        for (int yStep = 5; yStep < 10; ++yStep) {
+            for (int z = 0; z < kChunkSize; z += 2) {
+                const Ray ray{glm::vec3(7.5f, static_cast<float>(yStep) + 0.5f, static_cast<float>(z) + 0.5f),
+                              glm::vec3(1.0f, 0.0f, 0.0f)};
+                bool hitStep = false;
+                for (std::size_t t = 0; t + 2 < mesh.opaque.indices.size(); t += 3) {
+                    const std::uint32_t i0 = mesh.opaque.indices[t];
+                    const std::uint32_t i1 = mesh.opaque.indices[t + 1];
+                    const std::uint32_t i2 = mesh.opaque.indices[t + 2];
+                    if (mesh.opaque.normals[i0].x >= -0.9f) continue;
+                    const auto hit = intersectRayTriangle(
+                        ray, mesh.opaque.positions[i0], mesh.opaque.positions[i1], mesh.opaque.positions[i2]);
+                    if (hit && std::abs(ray.at(*hit).x - 8.0f) < 1e-3f) {
+                        hitStep = true;
+                        break;
+                    }
+                }
+                CHECK(hitStep);
+            }
+        }
     }
 }

@@ -178,9 +178,11 @@ y la carga de dibujo.
   - **LOD n (1, 2)**: Chunk submuestreado por un factor $f = 2^n$ ($16^3 \to 8^3 \to 4^3$ super-bloques de $f^3$ bloques).
 - **Regla de visibilidad cenital (submuestreo):**
   Para cada celda de $f^3$ bloques, se escoge el bloque que vería un observador desde arriba: se escanea
-  la celda de arriba hacia abajo (en el eje Y) y se toma el primer bloque **opaco** que no sea aire. Si la celda
-  no contiene ningún bloque opaco, se toma aire (`kAir`). Los bloques recortados (cutout: flores) y
-  translúcidos (agua, vidrio) se descartan a LOD > 0.
+  la celda de arriba hacia abajo (en el eje Y) y se toma el primer bloque **opaco** que no sea aire junto con su
+  altura real `topY = y + 1`. Las caras superiores expuestas se emiten a `topY` (y las caras laterales de las
+  celdas superiores o entre columnas vecinas de distinta altura cubren el desnivel exacto), evitando el escalón
+  de hasta $f - 1$ bloques en los bordes de LOD. Si la celda no contiene ningún bloque opaco, se toma aire (`kAir`).
+  Los bloques recortados (cutout: flores) y translúcidos (agua, vidrio) se descartan en la pasada opaca a LOD > 0.
 - **Malla generada:**
   - En coordenadas locales del chunk (0..16), con el mismo formato de vértices y colores que `buildChunkMesh`.
   - Solo genera la pasada opaca (`mesh.opaque`).
