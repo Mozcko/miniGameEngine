@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Rigid body resting-contact friction and sphere-vs-voxel collision** (#181): `PhysicsWorld::step` now uses sequential impulses with accumulated normal/tangential impulses (including gravity support for resting contacts) so stacked bodies stop sliding under friction, and resolves spheres against nearby solid voxels using closest-point narrowphase after an inscribed-cube `moveAabb` sweep so spheres roll off block edges while staying tunnel-proof.
 - **Stable runtime ECS component storage** (#176): `ecs_detail::RawPool` now uses fixed 64-element aligned pages instead of a single reallocating buffer, so pointers from `addRaw`/`getRaw`/`eachRaw` (`mge_component_add`/`get`/`each`) remain valid across adds (the spawner pattern). Removal (`removeRaw`/`destroy`) keeps swap-and-pop and invalidates pointers to that component and to the one that was last in its pool.
 
 ## [1.0.1] - 2026-11-18

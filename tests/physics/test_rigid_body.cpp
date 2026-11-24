@@ -490,3 +490,178 @@ TEST_CASE("RigidBody: correccion posicional no atraviesa paredes de voxeles") {
     const Aabb bounds = rb.bounds(tfDynamic.position);
     CHECK(bounds.max.x <= 2.0f);
 }
+
+// Comportamiento: también pasa con el solver anterior (la gravedad ya daba jn > 0 en reposo);
+// protege el nuevo solver de impulsos acumulados contra regresiones.
+TEST_CASE("RigidBody: friccion en contacto en reposo detiene caja sobre caja estatica") {
+    Registry registry;
+    PhysicsWorld physics;
+
+    const Entity staticBox = registry.create();
+    registry.add<Transform>(staticBox, glm::vec3(0.0f, 0.0f, 0.0f));
+    RigidBody rbStatic;
+    rbStatic.shape = ShapeType::Box;
+    rbStatic.halfExtents = glm::vec3(5.0f, 0.5f, 5.0f);
+    rbStatic.mass = 0.0f;
+    rbStatic.friction = 0.5f;
+    registry.add<RigidBody>(staticBox, rbStatic);
+
+    const Entity dynamicBox = registry.create();
+    registry.add<Transform>(dynamicBox, glm::vec3(0.0f, 1.0f, 0.0f));
+    RigidBody rbDyn;
+    rbDyn.shape = ShapeType::Box;
+    rbDyn.halfExtents = glm::vec3(0.5f);
+    rbDyn.mass = 1.0f;
+    rbDyn.friction = 0.5f;
+    rbDyn.linearDamping = 0.0f;
+    rbDyn.velocity = glm::vec3(1.0f, 0.0f, 0.0f);
+    registry.add<RigidBody>(dynamicBox, rbDyn);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int step = 0; step < 120; ++step) {
+        physics.step(registry, kDt);
+    }
+
+    const auto& finalTf = registry.get<Transform>(dynamicBox);
+    const auto& finalRb = registry.get<RigidBody>(dynamicBox);
+    CHECK(glm::length(finalRb.velocity) < 0.01f);
+    CHECK(finalTf.position.x < 0.5f);
+    CHECK(finalTf.position.x > 0.0f);
+}
+
+TEST_CASE("RigidBody: friccion acumulada frena caja en reposo golpeada lateralmente en el mismo paso") {
+    Registry registry;
+    PhysicsWorld physics;
+
+    // Suelo estático (entidad 0): su par (0, 1) se resuelve antes que (1, 2) en cada iteración
+    const Entity staticFloor = registry.create();
+    registry.add<Transform>(staticFloor, glm::vec3(0.0f, 0.0f, 0.0f));
+    RigidBody rbFloor;
+    rbFloor.shape = ShapeType::Box;
+    rbFloor.halfExtents = glm::vec3(5.0f, 0.5f, 5.0f);
+    rbFloor.mass = 0.0f;
+    rbFloor.friction = 1.0f;
+    registry.add<RigidBody>(staticFloor, rbFloor);
+
+    // Caja en reposo sobre el suelo (entidad 1): presupuesto de fricción = mu * g * dt = 28/60 ≈ 0.467
+    const Entity restingBox = registry.create();
+    registry.add<Transform>(restingBox, glm::vec3(0.0f, 1.0f, 0.0f));
+    RigidBody rbResting;
+    rbResting.shape = ShapeType::Box;
+    rbResting.halfExtents = glm::vec3(0.5f);
+    rbResting.mass = 1.0f;
+    rbResting.friction = 1.0f;
+    rbResting.restitution = 0.0f;
+    rbResting.linearDamping = 0.0f;
+    registry.add<RigidBody>(restingBox, rbResting);
+
+    // Caja atacante (entidad 2) golpea lateralmente a restingBox con vx = 0.4 (< 0.467)
+    const Entity striker = registry.create();
+    registry.add<Transform>(striker, glm::vec3(-0.98f, 1.0f, 0.0f));
+    RigidBody rbStriker;
+    rbStriker.shape = ShapeType::Box;
+    rbStriker.halfExtents = glm::vec3(0.5f);
+    rbStriker.mass = 1.0f;
+    rbStriker.friction = 0.0f;
+    rbStriker.restitution = 0.0f;
+    rbStriker.linearDamping = 0.0f;
+    rbStriker.velocity = glm::vec3(0.4f, 0.0f, 0.0f);
+    registry.add<RigidBody>(striker, rbStriker);
+
+    physics.step(registry, 1.0f / 60.0f);
+
+    // Sin impulsos acumulados, el par (0, 1) tiene jn = 0 en iteraciones 1..3 y restingBox queda en vx = 0.2.
+    // Con impulsos acumulados, la fricción del suelo absorbe el empuje en las iteraciones siguientes.
+    const auto& finalResting = registry.get<RigidBody>(restingBox);
+    CHECK(finalResting.velocity.x < 0.05f);
+}
+
+TEST_CASE("RigidBody: caja sobre caja estatica con friccion cero sigue deslizandose") {
+    Registry registry;
+    PhysicsWorld physics;
+
+    const Entity staticBox = registry.create();
+    registry.add<Transform>(staticBox, glm::vec3(0.0f, 0.0f, 0.0f));
+    RigidBody rbStatic;
+    rbStatic.shape = ShapeType::Box;
+    rbStatic.halfExtents = glm::vec3(5.0f, 0.5f, 5.0f);
+    rbStatic.mass = 0.0f;
+    rbStatic.friction = 0.0f;
+    registry.add<RigidBody>(staticBox, rbStatic);
+
+    const Entity dynamicBox = registry.create();
+    registry.add<Transform>(dynamicBox, glm::vec3(0.0f, 1.0f, 0.0f));
+    RigidBody rbDyn;
+    rbDyn.shape = ShapeType::Box;
+    rbDyn.halfExtents = glm::vec3(0.5f);
+    rbDyn.mass = 1.0f;
+    rbDyn.friction = 0.0f;
+    rbDyn.linearDamping = 0.0f;
+    rbDyn.velocity = glm::vec3(1.0f, 0.0f, 0.0f);
+    registry.add<RigidBody>(dynamicBox, rbDyn);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int step = 0; step < 120; ++step) {
+        physics.step(registry, kDt);
+    }
+
+    const auto& finalTf = registry.get<Transform>(dynamicBox);
+    const auto& finalRb = registry.get<RigidBody>(dynamicBox);
+    CHECK(finalRb.velocity.x == doctest::Approx(1.0f).epsilon(0.01f));
+    CHECK(finalTf.position.x > 1.5f);
+}
+
+TEST_CASE("RigidBody: esfera en el borde de un bloque solido cae rodando") {
+    Registry registry;
+    // Un único bloque sólido en (0, 0, 0) -> ocupa [0, 1]^3 (cara superior en y = 1.0, borde en x = 1.0)
+    SolidQuery singleBlock = [](const glm::ivec3& p) { return p.x == 0 && p.y == 0 && p.z == 0; };
+    PhysicsWorld physics(PhysicsSettings{}, singleBlock);
+
+    const Entity sphere = registry.create();
+    // Centro 0.1 pasado el borde del bloque (x = 1.1), radio 0.4, apoyada a la altura del tope (y = 1.4)
+    registry.add<Transform>(sphere, glm::vec3(1.1f, 1.4f, 0.5f));
+    RigidBody rb;
+    rb.shape = ShapeType::Sphere;
+    rb.radius = 0.4f;
+    rb.mass = 1.0f;
+    rb.friction = 0.5f;
+    registry.add<RigidBody>(sphere, rb);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int step = 0; step < 120; ++step) {
+        physics.step(registry, kDt);
+    }
+
+    const auto& finalTf = registry.get<Transform>(sphere);
+    // Debe caer por debajo del tope del bloque (y = 1.0)
+    CHECK(finalTf.position.y < 1.0f);
+    CHECK(finalTf.position.x > 1.1f);
+}
+
+TEST_CASE("RigidBody: esfera centrada sobre suelo plano permanece quieta sin hundirse") {
+    Registry registry;
+    SolidQuery floorQuery = [](const glm::ivec3& p) { return p.y <= 0; };
+    PhysicsWorld physics(PhysicsSettings{}, floorQuery);
+
+    const Entity sphere = registry.create();
+    const glm::vec3 startPos(0.5f, 1.4f, 0.5f);
+    registry.add<Transform>(sphere, startPos);
+    RigidBody rb;
+    rb.shape = ShapeType::Sphere;
+    rb.radius = 0.4f;
+    rb.mass = 1.0f;
+    rb.friction = 0.5f;
+    registry.add<RigidBody>(sphere, rb);
+
+    constexpr float kDt = 1.0f / 60.0f;
+    for (int step = 0; step < 120; ++step) {
+        physics.step(registry, kDt);
+    }
+
+    const auto& finalTf = registry.get<Transform>(sphere);
+    const auto& finalRb = registry.get<RigidBody>(sphere);
+    CHECK(std::abs(finalTf.position.x - startPos.x) < 1e-4f);
+    CHECK(std::abs(finalTf.position.z - startPos.z) < 1e-4f);
+    CHECK(std::abs(finalTf.position.y - startPos.y) <= 1e-3f);
+    CHECK(finalRb.grounded);
+}
