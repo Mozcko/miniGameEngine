@@ -130,7 +130,10 @@ namespace mge {
                 const std::size_t pos = m_dense.size();
                 const std::size_t pageIndex = pos / kPageSize;
                 if (pageIndex >= m_pages.size()) {
-                    m_pages.reserve(pageIndex + 1);
+                    // Crecimiento geométrico antes de operator new para evitar realojamientos O(n^2) y fugas
+                    if (m_pages.size() == m_pages.capacity()) {
+                        m_pages.reserve(m_pages.empty() ? 8 : m_pages.capacity() * 2);
+                    }
                     auto* page = static_cast<std::byte*>(
                         ::operator new(kPageSize * m_stride, std::align_val_t{m_elementAlign}));
                     m_pages.push_back(page);
