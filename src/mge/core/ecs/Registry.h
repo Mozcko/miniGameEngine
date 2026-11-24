@@ -79,9 +79,13 @@ namespace mge {
         };
 
         // Almacenamiento "sparse set" de tipo borrado para componentes en tiempo de ejecución.
-        // Mantiene memoria alineada para structs de lenguajes externos (C, Python, etc.).
+        // Mantiene memoria alineada en páginas fijas (kPageSize) que nunca se mueven ni liberan
+        // hasta destruir el pool: los punteros sobreviven a altas (addRaw), mientras que las bajas
+        // usan swap-and-pop (invalidan el puntero quitado y el del último elemento movido al hueco).
         class RawPool : public PoolBase {
         public:
+            static constexpr std::size_t kPageSize = 64;
+
             RawPool(std::size_t elementSize, std::size_t elementAlign)
                 : m_elementSize(elementSize),
                   m_elementAlign(elementAlign > 0 ? elementAlign : alignof(std::max_align_t)),
@@ -94,11 +98,10 @@ namespace mge {
 
             RawPool(RawPool&& other) noexcept
                 : m_elementSize(other.m_elementSize), m_elementAlign(other.m_elementAlign),
-                  m_stride(other.m_stride), m_capacity(other.m_capacity), m_data(other.m_data) {
+                  m_stride(other.m_stride), m_pages(std::move(other.m_pages)) {
                 m_sparse = std::move(other.m_sparse);
                 m_dense = std::move(other.m_dense);
-                other.m_data = nullptr;
-                other.m_capacity = 0;
+                other.m_pages.clear();
             }
 
             RawPool& operator=(RawPool&& other) noexcept {
@@ -109,30 +112,35 @@ namespace mge {
                     m_elementSize = other.m_elementSize;
                     m_elementAlign = other.m_elementAlign;
                     m_stride = other.m_stride;
-                    m_capacity = other.m_capacity;
-                    m_data = other.m_data;
-                    other.m_data = nullptr;
-                    other.m_capacity = 0;
+                    m_pages = std::move(other.m_pages);
+                    other.m_pages.clear();
                 }
                 return *this;
             }
 
             void* emplace(Entity entity) {
                 if (contains(entity.index)) {
-                    void* ptr = m_data + m_sparse[entity.index] * m_stride;
+                    void* ptr = slotPtr(m_sparse[entity.index]);
                     if (m_elementSize > 0) std::memset(ptr, 0, m_elementSize);
                     return ptr;
                 }
                 if (entity.index >= m_sparse.size()) {
                     m_sparse.resize(entity.index + 1, kAbsent);
                 }
-                if (m_dense.size() >= m_capacity) {
-                    grow(m_capacity == 0 ? 8 : m_capacity * 2);
+                const std::size_t pos = m_dense.size();
+                const std::size_t pageIndex = pos / kPageSize;
+                if (pageIndex >= m_pages.size()) {
+                    // Crecimiento geométrico antes de operator new para evitar realojamientos O(n^2) y fugas
+                    if (m_pages.size() == m_pages.capacity()) {
+                        m_pages.reserve(m_pages.empty() ? 8 : m_pages.capacity() * 2);
+                    }
+                    auto* page = static_cast<std::byte*>(
+                        ::operator new(kPageSize * m_stride, std::align_val_t{m_elementAlign}));
+                    m_pages.push_back(page);
                 }
-                const std::uint32_t pos = static_cast<std::uint32_t>(m_dense.size());
-                m_sparse[entity.index] = pos;
                 m_dense.push_back(entity);
-                void* ptr = m_data + pos * m_stride;
+                m_sparse[entity.index] = static_cast<std::uint32_t>(pos);
+                void* ptr = slotPtr(pos);
                 if (m_elementSize > 0) std::memset(ptr, 0, m_elementSize);
                 return ptr;
             }
@@ -143,16 +151,25 @@ namespace mge {
                 const std::uint32_t last = static_cast<std::uint32_t>(m_dense.size() - 1);
                 if (position != last) {
                     m_dense[position] = m_dense[last];
-                    std::memcpy(m_data + position * m_stride, m_data + last * m_stride, m_stride);
+                    if (m_elementSize > 0) {
+                        std::memcpy(slotPtr(position), slotPtr(last), m_elementSize);
+                    }
                     m_sparse[m_dense[position].index] = position;
                 }
                 m_dense.pop_back();
                 m_sparse[index] = kAbsent;
             }
 
-            void* get(std::uint32_t index) { return m_data + m_sparse[index] * m_stride; }
+            void* get(std::uint32_t index) { return slotPtr(m_sparse[index]); }
 
-            const void* get(std::uint32_t index) const { return m_data + m_sparse[index] * m_stride; }
+            const void* get(std::uint32_t index) const { return slotPtr(m_sparse[index]); }
+
+            // Retorna nullptr si no existe; evita doble búsqueda en m_sparse durante eachRaw.
+            void* tryGetRaw(std::uint32_t index) {
+                if (index >= m_sparse.size()) return nullptr;
+                const std::uint32_t pos = m_sparse[index];
+                return pos != kAbsent ? slotPtr(pos) : nullptr;
+            }
 
             std::size_t elementSize() const { return m_elementSize; }
             std::size_t elementAlign() const { return m_elementAlign; }
@@ -164,31 +181,21 @@ namespace mge {
                 return std::max<std::size_t>(aligned > 0 ? aligned : align, 1);
             }
 
-            void deallocate() {
-                if (m_data) {
-                    ::operator delete(m_data, std::align_val_t{m_elementAlign});
-                    m_data = nullptr;
-                    m_capacity = 0;
-                }
+            std::byte* slotPtr(std::size_t denseIndex) const {
+                return m_pages[denseIndex / kPageSize] + (denseIndex % kPageSize) * m_stride;
             }
 
-            void grow(std::size_t newCap) {
-                newCap = std::max(newCap, m_capacity + 1);
-                auto* newData = static_cast<std::byte*>(
-                    ::operator new(newCap * m_stride, std::align_val_t{m_elementAlign}));
-                if (m_data && !m_dense.empty()) {
-                    std::memcpy(newData, m_data, m_dense.size() * m_stride);
+            void deallocate() {
+                for (std::byte* page : m_pages) {
+                    ::operator delete(page, std::align_val_t{m_elementAlign});
                 }
-                deallocate();
-                m_data = newData;
-                m_capacity = newCap;
+                m_pages.clear();
             }
 
             std::size_t m_elementSize = 0;
             std::size_t m_elementAlign = 1;
             std::size_t m_stride = 0;
-            std::size_t m_capacity = 0;
-            std::byte* m_data = nullptr;
+            std::vector<std::byte*> m_pages;
         };
 
         // Id único por tipo de componente (0, 1, 2...), asignado la primera vez que se usa el tipo
@@ -261,6 +268,10 @@ namespace mge {
         template <typename... Ts, typename Fn> void each(Fn&& fn);
 
         // --- Componentes en tiempo de ejecución (C, Python, etc.) ---
+        // Los punteros devueltos por addRaw(), getRaw() y eachRaw() permanecen válidos al agregar
+        // componentes (las páginas nunca se reubican). Quitar un componente (removeRaw) o destruir
+        // una entidad (destroy) hace swap-and-pop e invalida los punteros a ese componente y al que
+        // era el último en su pool.
         bool isValidRuntimeComponent(ComponentTypeId type) const {
             return type < m_rawPools.size() && m_rawPools[type] != nullptr;
         }

@@ -115,11 +115,21 @@ namespace mge {
                            const std::function<void(Entity, void**)>& callback) {
         if (typeCount == 0 || !types || !callback) return;
 
+        constexpr std::size_t kStackCap = 8;
+        ecs_detail::RawPool* stackPools[kStackCap];
+        std::vector<ecs_detail::RawPool*> heapPools;
+        ecs_detail::RawPool** pools = stackPools;
+        if (typeCount > kStackCap) {
+            heapPools.resize(typeCount);
+            pools = heapPools.data();
+        }
+
         const ecs_detail::RawPool* smallest = nullptr;
         for (std::size_t i = 0; i < typeCount; ++i) {
             const ComponentTypeId id = types[i];
             if (!isValidRuntimeComponent(id)) return;
-            const auto* p = m_rawPools[id].get();
+            auto* p = m_rawPools[id].get();
+            pools[i] = p;
             if (!smallest || p->size() < smallest->size()) {
                 smallest = p;
             }
@@ -128,25 +138,31 @@ namespace mge {
 
         // Copiar entidades antes de iterar para tolerar altas/bajas estructurales durante el callback
         const std::vector<Entity> entities = smallest->entities();
-        std::vector<void*> ptrs(typeCount);
+        void* stackPtrs[kStackCap];
+        std::vector<void*> heapPtrs;
+        void** ptrs = stackPtrs;
+        if (typeCount > kStackCap) {
+            heapPtrs.resize(typeCount);
+            ptrs = heapPtrs.data();
+        }
+
         for (Entity entity : entities) {
             if (!valid(entity)) {
                 continue;
             }
             bool hasAll = true;
             for (std::size_t i = 0; i < typeCount; ++i) {
-                if (!m_rawPools[types[i]]->contains(entity.index)) {
+                void* ptr = pools[i]->tryGetRaw(entity.index);
+                if (!ptr) {
                     hasAll = false;
                     break;
                 }
+                ptrs[i] = ptr;
             }
             if (!hasAll) {
                 continue;
             }
-            for (std::size_t i = 0; i < typeCount; ++i) {
-                ptrs[i] = m_rawPools[types[i]]->get(entity.index);
-            }
-            callback(entity, ptrs.data());
+            callback(entity, ptrs);
         }
     }
 }
