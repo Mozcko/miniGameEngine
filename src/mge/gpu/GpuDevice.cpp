@@ -221,7 +221,12 @@ namespace mge {
 
     bool GpuDevice::uploadToBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size,
                                    bool cycle) {
-        if (!buffer || size == 0) return false;
+        return updateBuffer(buffer, data, size, 0, cycle);
+    }
+
+    bool GpuDevice::updateBuffer(const GpuBuffer& buffer, const void* data, std::uint32_t size,
+                                 std::uint32_t offset, bool cycle) {
+        if (!buffer || !data || size == 0) return false;
         GpuTransferBuffer staging = createTransferBuffer(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, size);
         if (!staging) return false;
         void* mapped = SDL_MapGPUTransferBuffer(m_device, staging.get(), false);
@@ -237,8 +242,9 @@ namespace mge {
         {
             CopyPass copy = cmd.beginCopyPass();
             SDL_GPUTransferBufferLocation source{staging.get(), 0};
-            SDL_GPUBufferRegion destination{buffer.get(), 0, size};
-            SDL_UploadToGPUBuffer(copy.get(), &source, &destination, cycle);
+            SDL_GPUBufferRegion destination{buffer.get(), offset, size};
+            const bool allowCycle = cycle && offset == 0;
+            SDL_UploadToGPUBuffer(copy.get(), &source, &destination, allowCycle);
         }
         // El transfer buffer se puede liberar ya: SDL lo mantiene vivo hasta que la copia termine
         return cmd.submit();

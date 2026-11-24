@@ -53,6 +53,6 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
   `AudioModule` + `mge_synth` (#46); the old `Chunk`/`Block` classes were replaced by `mge_voxel` (#25).
 - ~~Unused assets: `sounds/`, `music/`, `levels/`~~ – levels and sounds are 2D test data for
   `examples/platformer2d` (#45). `music/` waits for the M5 sequencer.
-- Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.
+- ~~Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.~~ – fixed in #180: transparent chunks keep per-face centroids and nearby chunks re-sort their transparent index buffer back-to-front on `JobSystem` when the camera moves/turns or the chunk re-meshes.
 - ~~`build/` directory with binaries is committed~~ – fixed in #1.
 - `README.md` was a one‑liner before this documentation pass; no tests, no CI.

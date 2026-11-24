@@ -2,7 +2,9 @@
 
 #include <mge/voxel/detail/MesherCommon.h>
 
+#include <algorithm>
 #include <array>
+#include <utility>
 
 namespace mge {
 
@@ -36,6 +38,11 @@ namespace mge {
                 case RenderLayer::Translucent: break;
                 }
                 return m_result.transparent;
+            }
+
+            std::vector<glm::vec3>* centroidsFor(const BlockDesc& desc) {
+                return desc.renderLayer() == RenderLayer::Translucent ? &m_result.transparentFaceCentroids
+                                                                      : nullptr;
             }
 
             static bool uniform(const AoValues& ao) {
@@ -75,7 +82,7 @@ namespace mge {
                                 mask[j * kChunkSize + i] = {id, ao[0]};
                             else
                                 emitQuad(meshFor(desc), desc, face, faceIndex, glm::vec3(pos),
-                                         glm::vec3(1.0f), ao, m_options);
+                                         glm::vec3(1.0f), ao, m_options, centroidsFor(desc));
                         }
                     }
                     // 2. Greedy: rectángulos máximos de celdas iguales (ancho en u, luego alto en v)
@@ -90,7 +97,8 @@ namespace mge {
                                         size[v] = static_cast<float>(height);
                                         const BlockDesc& desc = m_registry.get(cell.id);
                                         emitQuad(meshFor(desc), desc, face, faceIndex, glm::vec3(pos), size,
-                                                 AoValues{cell.ao, cell.ao, cell.ao, cell.ao}, m_options);
+                                                 AoValues{cell.ao, cell.ao, cell.ao, cell.ao}, m_options,
+                                                 centroidsFor(desc));
                                     });
                 }
             }
@@ -98,6 +106,7 @@ namespace mge {
             // Dos planos diagonales, cada uno con sus dos caras (se ven desde ambos lados)
             void emitCross(const BlockDesc& desc, const glm::ivec3& pos) {
                 MeshData& mesh = meshFor(desc);
+                std::vector<glm::vec3>* centroids = centroidsFor(desc);
                 UvRect uv{glm::vec2(0.0f), glm::vec2(0.0f)};
                 if (desc.tile(BlockFace::Front) >= 0)
                     uv = m_options.atlas.tileUv(desc.tile(BlockFace::Front));
@@ -112,10 +121,14 @@ namespace mge {
                 const glm::vec3 normals[4] = {{-s, 0, s}, {s, 0, -s}, {s, 0, s}, {-s, 0, -s}};
                 for (int p = 0; p < 4; p++) {
                     std::uint32_t idx[4];
-                    for (int i = 0; i < 4; i++)
-                        idx[i] = mesh.addVertex(glm::vec3(pos) + planes[p][i], normals[p],
-                                                baseColor(desc, m_options), uvs[i]);
+                    glm::vec3 centroid(0.0f);
+                    for (int i = 0; i < 4; i++) {
+                        const glm::vec3 vertexPos = glm::vec3(pos) + planes[p][i];
+                        centroid += vertexPos;
+                        idx[i] = mesh.addVertex(vertexPos, normals[p], baseColor(desc, m_options), uvs[i]);
+                    }
                     mesh.addQuad(idx[0], idx[1], idx[2], idx[3]);
+                    if (centroids) centroids->push_back(centroid * 0.25f);
                 }
             }
 
@@ -124,6 +137,30 @@ namespace mge {
             const ChunkMeshOptions& m_options;
             ChunkMesh m_result;
         };
+    }
+
+    std::vector<std::uint32_t> sortQuadsBackToFront(const std::vector<std::uint32_t>& indices,
+                                                    const std::vector<glm::vec3>& centroids,
+                                                    const glm::vec3& cameraLocal) {
+        const std::size_t quadCount = centroids.size();
+        if (quadCount <= 1 || indices.size() != quadCount * 6) return indices;
+
+        std::vector<std::pair<float, std::size_t>> order;
+        order.reserve(quadCount);
+        for (std::size_t q = 0; q < quadCount; ++q) {
+            const glm::vec3 delta = centroids[q] - cameraLocal;
+            order.emplace_back(glm::dot(delta, delta), q);
+        }
+        std::stable_sort(order.begin(), order.end(),
+                         [](const auto& a, const auto& b) { return a.first > b.first; });
+
+        std::vector<std::uint32_t> sorted(indices.size());
+        for (std::size_t k = 0; k < quadCount; ++k) {
+            const std::size_t src = order[k].second * 6;
+            const std::size_t dst = k * 6;
+            for (std::size_t i = 0; i < 6; ++i) sorted[dst + i] = indices[src + i];
+        }
+        return sorted;
     }
 
     ChunkMesh buildChunkMesh(const ChunkSnapshot& snapshot, const BlockRegistry& registry,

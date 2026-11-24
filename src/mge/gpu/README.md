@@ -132,6 +132,8 @@ reported by the validation layers.
 - **Factories:** `createBuffer`, `createTransferBuffer`, `createTexture`, `createRenderTarget`
   (2D RGBA8 colour target that can also be sampled), `createSampler`, `createShader`,
   `createGraphicsPipeline`, `createComputePipeline`.
+- **`uploadToBuffer(buffer, data, size, cycle)` / `updateBuffer(buffer, data, size, offset, cycle)`:**
+  uploads CPU bytes to a GPU buffer (or a `[offset, offset + size)` range) via a transfer buffer and copy pass without blocking. `cycle = true` (only when `offset == 0`) avoids overwriting data the GPU is still reading.
 - **`uploadMesh(MeshData)`:**
   - interleaves the mesh into `GpuVertex {position, normal, color, uv}`. Shader locations are
     0, 1, 2, 3; colour is included, unlike the GL path (KI#13).
