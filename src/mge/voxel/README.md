@@ -185,7 +185,8 @@ y la carga de dibujo.
   Los bloques recortados (cutout: flores) y translúcidos (agua, vidrio) se descartan en la pasada opaca a LOD > 0.
   Para columnas cubiertas por agua (líquido translúcido no sólido), la cara opaca superior usa el bloque opaco
   más alto por debajo del agua — quedando estrictamente debajo del quad plano de agua (sin epsilon de profundidad)
-  — y se omite si por cualquier motivo coincidiera o superara la altura del agua.
+  — y solo se omite si empata exactamente con la altura del agua (las caras opacas por encima, p. ej. terreno
+  sobre un lago subterráneo, se mantienen).
 - **Malla generada:**
   - En coordenadas locales del chunk (0..16), con el mismo formato de vértices y colores que `buildChunkMesh`.
   - Solo genera la pasada opaca (`mesh.opaque`).

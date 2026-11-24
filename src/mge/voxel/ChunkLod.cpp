@@ -395,11 +395,11 @@ namespace mge {
                         if (isTopFace) {
                             if (!isFaceVisible(id, neighborId, registry)) continue;
                             faceY0 = grid.cellTop(cellPos.x, cellPos.y, cellPos.z);
-                            // Resguardo: si la columna tiene agua y la cara opaca no queda estrictamente
-                            // debajo, omitir la cara opaca superior para que no compita con el quad de agua.
+                            // Resguardo: omitir solo la cara opaca que empata con el quad de agua;
+                            // las caras por encima, p. ej. terreno sobre un lago subterráneo, se mantienen.
                             const int waterTop =
                                 columnWaterTopY[static_cast<std::size_t>(cellPos.z * dim + cellPos.x)];
-                            if (waterTop >= 0 && faceY0 >= waterTop) continue;
+                            if (waterTop >= 0 && faceY0 == waterTop) continue;
                             faceY1 = faceY0;
                         } else if (isBottomFace) {
                             if (!isFaceVisible(id, neighborId, registry)) continue;

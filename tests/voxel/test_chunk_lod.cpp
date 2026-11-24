@@ -529,3 +529,40 @@ TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra 
         }
     }
 }
+
+TEST_CASE("voxel:ChunkLod: terreno sobre un lago subterráneo conserva su cara superior en LOD 1 y 2") {
+    TestBlocks tb;
+    VoxelWorld world(tb.registry);
+    world.loadChunk({0, 0, 0});
+
+    for (int z = 0; z < kChunkSize; ++z) {
+        for (int x = 0; x < kChunkSize; ++x) {
+            for (int y = 0; y <= 2; ++y) {
+                world.setBlock({x, y, z}, tb.stone);
+            }
+            world.setBlock({x, 3, z}, tb.water);
+            // y 4..11: aire (por defecto)
+            world.setBlock({x, 12, z}, tb.stone);
+            world.setBlock({x, 13, z}, tb.stone);
+        }
+    }
+    const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
+    REQUIRE(snap.valid());
+
+    for (const int lod : {1, 2}) {
+        ChunkMeshOptions opt;
+        opt.greedy = true;
+        opt.lodSkirts = false;
+        const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
+        CHECK(mesh.opaque.validate().empty());
+        CHECK(mesh.transparent.validate().empty());
+
+        int topVerticesAt14 = 0;
+        for (std::size_t i = 0; i < mesh.opaque.positions.size(); ++i) {
+            if (mesh.opaque.normals[i].y > 0.9f && mesh.opaque.positions[i].y == doctest::Approx(14.0f)) {
+                ++topVerticesAt14;
+            }
+        }
+        CHECK(topVerticesAt14 > 0);
+    }
+}
