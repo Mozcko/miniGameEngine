@@ -11,6 +11,7 @@ SDL headers. New to the engine? See [docs/FIRST_GAME.md](../../docs/FIRST_GAME.m
 |--------|--------|------------|----------|-----|
 | `core/` | `mge_core` | std only | `Application` runner + `Module`, `Clock`/`Time`, `Input`, `Log`, ECS, cameras (`Camera` component, `FlyController`) | [core/README.md](core/README.md) |
 | `procgen/` | `mge_procgen` | core (headless) | `MeshData`, OBJ export, primitives, mesh ops, noise, SDF + surface nets | [procgen/README.md](procgen/README.md) |
+| `gltf/` | `mge_gltf` | core, procgen (headless) | Optional glTF 2.0 / GLB model loader (`GltfModel`, `loadGltfFile`, `loadGltfFromMemory`) | [gltf/README.md](gltf/README.md) |
 | `voxel/` | `mge_voxel` | core, procgen (headless) | `BlockRegistry`, chunks + coordinates, `VoxelWorld`, `TerrainGenerator`, `buildChunkMesh` | [voxel/README.md](voxel/README.md) |
 | `platform/` | `mge_platform` | core, SDL3 | `PlatformModule` (window, SDL→core input), `Window`, `SdlInput` | [platform/README.md](platform/README.md) |
 | `gpu/` | `mge_gpu` | core, procgen, platform, SDL3 | `GpuModule` (device + swapchain), move‑only GPU handles, `CommandBuffer`/passes, `uploadMesh` (SDL3 GPU, Vulkan) | [gpu/README.md](gpu/README.md) |
