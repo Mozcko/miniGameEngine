@@ -59,7 +59,7 @@ scripts/run.sh                             # build + run (works from any directo
 ## Code conventions
 
 - **Language:** C++17. No compiler extensions, no C++20 features.
-- **Comments are in Spanish**, matching the existing code. Docs, issues and PRs are in English.
+- **Comments & docs:** Code comments, log messages, test names and docs are written in English.
 - **Namespace:** all engine code lives in `mge`.
 - **Naming:** enforced by `.clang-tidy` (`readability-identifier-naming`) in the CI `lint` job.
 

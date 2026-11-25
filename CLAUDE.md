@@ -24,7 +24,7 @@ and a `README.md` inside every folder of `src/` and `assets/`.
   terrain with biomes and caves, trees/flowers, animated water/lava; procedural atlas, sky and day/night; walk/fly character,
   block break/place, thrown rigid bodies; synthesized SFX and music; HUD + F1 profiler overlay). Second demo:
   `examples/sdf_glide` (SDF raymarched game). Guide game: `examples/guide_game` (walkthrough of `docs/GUIDE.md`).
-- Owner writes code comments in **Spanish**; keep that style in code. Docs are in English.
+- Code comments, log messages, test names and docs are in **English** (#236).
 
 ## Build & run
 ```bash
