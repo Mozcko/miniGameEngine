@@ -6,17 +6,17 @@
 
 namespace mge::cli {
 
-    // Ejecuta un comando del sistema pasando argumentos como lista para evitar inyecciones de shell
+    // Runs a system command passing arguments as a list to avoid shell injection
     int runCommand(const std::vector<std::string>& args, const std::filesystem::path& workingDir = {});
 
-    // Ejecuta un comando capturando la salida estándar combinada
+    // Runs a command capturing combined standard output and error
     int runCommandCapture(const std::vector<std::string>& args, std::string& outOutput,
                           const std::filesystem::path& workingDir = {});
 
-    // Comprueba si un comando existe en el PATH del sistema
+    // Checks whether a command exists in the system PATH
     bool commandExists(const std::string& commandName);
 
-    // Obtiene la ruta canónica absoluta del ejecutable mge en ejecución
+    // Returns the canonical absolute path of the running mge executable
     std::filesystem::path getExecutablePath();
 
 } // namespace mge::cli

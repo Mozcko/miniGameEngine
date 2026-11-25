@@ -1,4 +1,4 @@
-"""@GAME_TITLE@: aplicacion principal 2D en Python."""
+"""@GAME_TITLE@: main 2D Python application."""
 import os
 import sys
 import mge
@@ -45,20 +45,20 @@ class @GAME_CLASS@App(mge.Application):
         if self.renderer is None:
             return
 
-        # Dibujar monedas
+        # Draw coins
         coin_color = mge.Vec4(1.0, 0.84, 0.0, 1.0)
         for coin in self.logic.coins:
             self.renderer.draw_rect(coin.x, coin.y, coin.w, coin.h, color=coin_color)
 
-        # Dibujar jugador
+        # Draw player
         player_color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
         pr = self.logic.player_rect
         self.renderer.draw_rect(pr.x, pr.y, pr.w, pr.h, color=player_color)
 
-        # Marcador y ayuda
+        # Score and help
         self.renderer.draw_text("@GAME_TITLE@ (Python 2D)", 20.0, 20.0, scale=2.0)
-        self.renderer.draw_text(f"Puntaje: {self.logic.score}", 20.0, 60.0, scale=1.5)
-        self.renderer.draw_text("WASD / Flechas: Mover | Esc: Salir", 20.0, 100.0, scale=1.0)
+        self.renderer.draw_text(f"Score: {self.logic.score}", 20.0, 60.0, scale=1.5)
+        self.renderer.draw_text("WASD / Arrows: Move | Esc: Quit", 20.0, 100.0, scale=1.0)
 
     def on_shutdown(self) -> None:
         if self.coin_sfx is not None:

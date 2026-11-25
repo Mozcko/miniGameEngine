@@ -69,7 +69,7 @@ To add a new project template `templates/<name>/`:
    - `templates/<name>/README.md.in`: document building and running commands.
 
 3. **Add C++ source templates**:
-   - `src/@GAME_CLASS@Logic.h.in` and `src/@GAME_CLASS@Logic.cpp.in`: pure, testable game state and functions (code comments in Spanish).
+   - `src/@GAME_CLASS@Logic.h.in` and `src/@GAME_CLASS@Logic.cpp.in`: pure, testable game state and functions (code comments in English).
    - `src/@GAME_CLASS@.cpp.in`: `mge::Application` subclass connecting modules, input actions, rendering, and ECS systems.
    - `tests/test_@GAME_NAME@.cpp.in`: doctest unit tests covering logic without GPU/window dependencies.
 

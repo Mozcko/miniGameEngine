@@ -1,4 +1,4 @@
-"""Logica de juego 2D desacoplada para @GAME_TITLE@."""
+"""Decoupled 2D game logic for @GAME_TITLE@."""
 from dataclasses import dataclass
 
 
@@ -32,15 +32,15 @@ class GameLogic2D:
         ]
 
     def update(self, dt: float, move_x: float, move_y: float) -> int:
-        # Movimiento del jugador
+        # Player movement
         self.player_rect.x += move_x * self.player_speed * dt
         self.player_rect.y += move_y * self.player_speed * dt
 
-        # Delimitar jugador a los bordes de la pantalla
+        # Clamp player to screen bounds
         self.player_rect.x = max(0.0, min(self.player_rect.x, self.screen_w - self.player_rect.w))
         self.player_rect.y = max(0.0, min(self.player_rect.y, self.screen_h - self.player_rect.h))
 
-        # Recoleccion de monedas
+        # Coin collection
         collected = 0
         remaining_coins = []
         for coin in self.coins:

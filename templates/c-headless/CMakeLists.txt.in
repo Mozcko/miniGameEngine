@@ -1,4 +1,4 @@
-# @GAME_TITLE@ (plantilla C Headless)
+# @GAME_TITLE@ (C Headless template)
 cmake_minimum_required(VERSION 3.25)
 project(@GAME_NAME@ LANGUAGES C CXX)
 
@@ -17,7 +17,7 @@ if(NOT mge_FOUND AND NOT TARGET mge::c)
     FetchContent_MakeAvailable(mge)
 endif()
 
-# Logica de simulacion desacoplada
+# Decoupled simulation logic
 add_library(@GAME_NAME@_logic STATIC
     src/logic.c
     src/logic.h
@@ -25,7 +25,7 @@ add_library(@GAME_NAME@_logic STATIC
 target_include_directories(@GAME_NAME@_logic PUBLIC src)
 target_link_libraries(@GAME_NAME@_logic PUBLIC mge::c)
 
-# Ejecutable headless
+# Headless executable
 mge_add_c_game(@GAME_NAME@
     SOURCES src/main.c
     LIBRARIES @GAME_NAME@_logic
@@ -33,7 +33,7 @@ mge_add_c_game(@GAME_NAME@
     SMOKE_FRAMES 60
 )
 
-# Pruebas unitarias
+# Unit tests
 enable_testing()
 add_executable(@GAME_NAME@_tests tests/test_@GAME_NAME@.c)
 target_link_libraries(@GAME_NAME@_tests PRIVATE @GAME_NAME@_logic mge::c)

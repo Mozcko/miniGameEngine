@@ -37,7 +37,7 @@ namespace mge::cli {
         }
 
         if (pid == 0) {
-            // Proceso hijo: cambia de directorio y ejecuta el binario sin invocación a shell
+            // Child process: change directory and execute binary without invoking a shell
             if (!workingDir.empty()) {
                 if (chdir(workingDir.c_str()) != 0) {
                     _exit(127);
@@ -55,7 +55,7 @@ namespace mge::cli {
             _exit(127);
         }
 
-        // Proceso padre: espera que termine el hijo y extrae el código de salida
+        // Parent process: wait for child to finish and extract exit code
         int status = 0;
         if (waitpid(pid, &status, 0) < 0) {
             return -1;
@@ -90,7 +90,7 @@ namespace mge::cli {
         }
 
         if (pid == 0) {
-            // Proceso hijo: redirige stdout y stderr hacia el descriptor de escritura del pipe
+            // Child process: redirect stdout and stderr to the pipe write descriptor
             close(pipefd[0]);
             dup2(pipefd[1], STDOUT_FILENO);
             dup2(pipefd[1], STDERR_FILENO);
@@ -113,7 +113,7 @@ namespace mge::cli {
             _exit(127);
         }
 
-        // Proceso padre: lee de manera continua la salida del proceso hijo
+        // Parent process: continuously read output from the child process
         close(pipefd[1]);
 
         std::array<char, 512> buffer{};
@@ -142,12 +142,12 @@ namespace mge::cli {
             return false;
         }
 
-        // Si contiene barra '/', verificar ruta directa
+        // If it contains a slash '/', check direct path
         if (commandName.find('/') != std::string::npos) {
             return access(commandName.c_str(), X_OK) == 0;
         }
 
-        // Buscar en las rutas del PATH del sistema
+        // Search in system PATH directories
         const char* pathEnv = std::getenv("PATH");
         if (pathEnv == nullptr) {
             pathEnv = "/usr/bin:/bin";

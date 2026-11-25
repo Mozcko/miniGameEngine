@@ -1,10 +1,10 @@
 .github/workflows/ci.yml 1e51f7708bb53770
 .gitignore 668d7124ecd80892
-CMakeLists.txt 6d59b094fc092b66
+CMakeLists.txt ed2b7e46743c6856
 CMakePresets.json a3baee64ebbfd7d2
 README.md b15d848054eb05ed
 mge.project a366971ca865bad1
-src/Plain2d.cpp 370c2b7a6b1d9133
-src/Plain2dLogic.cpp 84420790af9876c9
-src/Plain2dLogic.h 7aade4cac8d6cd22
-tests/test_plain_2d.cpp fb4219862538d908
+src/Plain2d.cpp 9f182d60a3dbcb3c
+src/Plain2dLogic.cpp 74dfec0d80d83d55
+src/Plain2dLogic.h 08e874cfc5dd6833
+tests/test_plain_2d.cpp d995850b3a2a2a5c

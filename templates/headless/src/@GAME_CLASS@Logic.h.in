@@ -5,7 +5,7 @@
 
 namespace @GAME_NAME@ {
 
-    // Estado de una simulación matemática determinista
+    // State of a deterministic mathematical simulation
     struct SimulationState {
         std::uint64_t stepCount = 0;
         glm::vec3 position{1.0f, 0.0f, 0.0f};
@@ -13,10 +13,10 @@ namespace @GAME_NAME@ {
         float accumulatedDistance = 0.0f;
     };
 
-    // Avanza un paso fijo de la simulación
+    // Advances the simulation by one fixed step
     void stepSimulation(SimulationState& state, float dt);
 
-    // Verifica que los resultados sean deterministas y concuerden con los pasos esperados
+    // Verifies that results are deterministic and match the expected step count
     bool verifySimulation(const SimulationState& state, std::uint64_t expectedSteps);
 
 } // namespace @GAME_NAME@

@@ -1,7 +1,7 @@
-// @GAME_TITLE@: juego 3D generado a partir de la plantilla "3d".
-// Muestra: suelo plano con SolidQuery, CharacterController con gravedad y salto,
-// cielo procedural con ciclo DayNight, iluminación direccional y niebla,
-// entidades ECS animadas en el paso fijo, overlay de rendimiento (F1) y audio sintetizado.
+// @GAME_TITLE@: 3D game generated from the "3d" template.
+// Demonstrates: flat floor with SolidQuery, CharacterController with gravity and jumping,
+// procedural sky with DayNight cycle, directional lighting and fog,
+// ECS entities animated in the fixed step, performance overlay (F1), and synthesized audio.
 #include <mge/mge.h>
 
 #include "@GAME_CLASS@Logic.h"
@@ -28,7 +28,7 @@ namespace {
             m_gpu = getModule<mge::GpuModule>();
             @AUDIO_INIT_MODULE@
 
-            // 1. Acciones de entrada
+            // 1. Input actions
             auto& actions = m_platform->actions();
             actions.bindAxis("MoveX", mge::Key::D, mge::Key::A);
             actions.bindAxis("MoveZ", mge::Key::W, mge::Key::S);
@@ -37,10 +37,10 @@ namespace {
             actions.bind("Overlay", mge::Key::F1);
             actions.bind("Quit", mge::Key::Escape);
 
-            // Bloquear cursor para control con ratón
+            // Lock cursor for mouse look
             m_platform->setCursorLocked(true);
 
-            // 2. Renderizadores de GPU
+            // 2. GPU renderers
             mge::GpuDevice& device = m_gpu->device();
             m_renderer = std::make_unique<mge::MeshRenderer>(device, m_gpu->swapchainFormat());
             if (!m_renderer->valid()) return false;
@@ -52,7 +52,7 @@ namespace {
             m_ui = std::make_unique<mge::Renderer2D>(device, m_gpu->swapchainFormat());
             if (!m_ui->valid()) return false;
 
-            // 3. Mallas procedurales
+            // 3. Procedural meshes
             m_floorMesh = device.uploadMesh(
                 mge::primitives::plane(50.0f, 50.0f, 10, 10, glm::vec4(0.28f, 0.42f, 0.25f, 1.0f)));
             m_boxMesh = device.uploadMesh(
@@ -64,14 +64,14 @@ namespace {
 
             @AUDIO_LOAD_SFX@
 
-            // 5. Jugador físico con CharacterController sobre suelo plano
+            // 5. Physics player with CharacterController on a flat floor
             m_playerEntity = world().registry().create();
             mge::CharacterController playerController;
             playerController.previousPosition = glm::vec3(0.0f, 0.0f, 0.0f);
             world().registry().add<mge::Transform>(m_playerEntity, glm::vec3(0.0f, 0.0f, 0.0f));
             world().registry().add<mge::CharacterController>(m_playerEntity, playerController);
 
-            // Cámara del ECS que sigue al personaje
+            // ECS camera following the character
             m_cameraEntity = world().registry().create();
             world().registry().add<mge::Transform>(m_cameraEntity);
             world().registry().add<mge::Camera>(m_cameraEntity);
@@ -80,7 +80,7 @@ namespace {
             mge::addCharacterSystem(world(), @GAME_NAME@::isFloorSolid);
             mge::addCharacterCameraSystem(world(), time());
 
-            // 6. Entidad ECS animada en paso fijo (FloatingOrb)
+            // 6. ECS entity animated in fixed step (FloatingOrb)
             m_orbEntity = world().registry().create();
             @GAME_NAME@::FloatingOrb orbState;
             orbState.basePosition = glm::vec3(0.0f, 1.5f, -5.0f);
@@ -96,7 +96,7 @@ namespace {
                     });
             });
 
-            MGE_LOG_INFO("@GAME_NAME@", "WASD: mover, Espacio: saltar, Shift: correr, F1: rendimiento, Esc: salir");
+            MGE_LOG_INFO("@GAME_NAME@", "WASD: move, Space: jump, Shift: sprint, F1: performance, Esc: quit");
             return true;
         }
 
@@ -156,21 +156,21 @@ namespace {
                                         m_dayNight.sky());
                 }
 
-                // Plano del suelo
+                // Ground plane
                 m_renderer->draw(m_floorMesh, glm::mat4(1.0f));
 
-                // Primitivas estáticas de referencia
+                // Static reference primitives
                 m_renderer->draw(m_boxMesh, glm::translate(glm::mat4(1.0f), glm::vec3(-4.0f, 0.6f, -6.0f)));
                 m_renderer->draw(m_pillarMesh, glm::translate(glm::mat4(1.0f), glm::vec3(4.0f, 1.5f, -6.0f)));
 
-                // Entidad ECS animada
+                // Animated ECS entity
                 const auto& orbTransform = world().registry().get<mge::Transform>(m_orbEntity);
                 m_renderer->draw(m_orbMesh, orbTransform.localMatrix());
 
                 m_renderer->end();
             }
 
-            // Overlay de rendimiento y texto 2D
+            // Performance overlay and 2D text
             m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
             m_overlay.setProfile(profiler());
             m_ui->begin(frame->width, frame->height, std::max(1.0f, std::round(frame->displayScale)));

@@ -1,6 +1,6 @@
-// @GAME_TITLE@: programa headless generado a partir de la plantilla "headless".
-// Sin módulos: sin ventana, GPU ni SDL. Ideal para servidores, simulaciones y herramientas.
-// Corre 600 frames con un reloj manual (determinista) y verifica el resultado al terminar.
+// @GAME_TITLE@: headless program generated from the "headless" template.
+// No modules: no window, GPU, or SDL. Ideal for servers, simulations, and tools.
+// Runs 600 frames with a manual clock (deterministic) and verifies the result on shutdown.
 #include <mge/mge.h>
 
 #include "@GAME_CLASS@Logic.h"
@@ -16,7 +16,7 @@ namespace {
     class @GAME_CLASS@ : public mge::Application {
     public:
         @GAME_CLASS@() : mge::Application(makeConfig()) {
-            // Cada frame dura exactamente 1/60 s: resultado idéntico en cualquier máquina
+            // Each frame lasts exactly 1/60 s: identical result on any machine
             setClock(std::make_unique<mge::ManualClock>(1.0 / 60.0));
         }
 
@@ -37,13 +37,13 @@ namespace {
             const auto& sim = world().registry().get<SimComponent>(m_simEntity);
             const std::uint64_t expectedSteps = time().fixedStepCount();
             if (!@GAME_NAME@::verifySimulation(sim.state, expectedSteps)) {
-                MGE_LOG_ERROR("@GAME_NAME@", "Fallo de verificacion: esperaba ", expectedSteps,
-                              " pasos, hubo ", sim.state.stepCount);
+                MGE_LOG_ERROR("@GAME_NAME@", "Verification failed: expected ", expectedSteps,
+                              " steps, got ", sim.state.stepCount);
                 setExitCode(1);
                 return;
             }
-            MGE_LOG_INFO("@GAME_NAME@", "OK: simulacion determinista completada con ", sim.state.stepCount,
-                         " pasos en ", getFrameCount(), " frames");
+            MGE_LOG_INFO("@GAME_NAME@", "OK: deterministic simulation completed with ", sim.state.stepCount,
+                         " steps in ", getFrameCount(), " frames");
         }
 
     private:

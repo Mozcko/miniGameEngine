@@ -5,7 +5,7 @@
 
 using namespace @GAME_NAME@;
 
-TEST_CASE("@GAME_NAME@: determinismo de la simulacion headless") {
+TEST_CASE("@GAME_NAME@: headless simulation determinism") {
     SimulationState sim1;
     SimulationState sim2;
 

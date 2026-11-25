@@ -13,7 +13,7 @@ static bool on_init(mge_app* app, void* user_data) {
     (void)app;
     AppState* state = (AppState*)user_data;
     sim_logic_init(&state->sim);
-    printf("[@GAME_NAME@] Inicializando simulacion headless determinista\n");
+    printf("[@GAME_NAME@] Initializing deterministic headless simulation\n");
     return true;
 }
 
@@ -32,7 +32,7 @@ static void on_update(mge_app* app, float dt, void* user_data) {
 static void on_shutdown(mge_app* app, void* user_data) {
     (void)app;
     AppState* state = (AppState*)user_data;
-    printf("[@GAME_NAME@] Simulacion finalizada con %lu pasos ejecutados\n",
+    printf("[@GAME_NAME@] Simulation finished with %lu steps executed\n",
            (unsigned long)state->sim.stepCount);
 }
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (!sim_logic_verify(&state.sim, (uint64_t)max_frames)) {
-        fprintf(stderr, "Error: esperados %d pasos, obtenidos %lu\n", max_frames,
+        fprintf(stderr, "Error: expected %d steps, got %lu\n", max_frames,
                 (unsigned long)state.sim.stepCount);
         return 1;
     }
