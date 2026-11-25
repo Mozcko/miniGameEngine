@@ -1,18 +1,18 @@
-// <mge/mge.h> enlazando mge_platform: debe incluir el módulo de plataforma
+// <mge/mge.h> linking mge_platform: must include the platform module
 #include <doctest/doctest.h>
 #include <mge/mge.h>
 
 #ifndef MGE_HAS_PLATFORM
-#error "mge_platform_tests enlaza mge_platform: MGE_HAS_PLATFORM debería estar definido"
+#error "mge_platform_tests links mge_platform: MGE_HAS_PLATFORM should be defined"
 #endif
 
-TEST_CASE("<mge/mge.h> incluye PlatformModule cuando se enlaza mge_platform") {
-    mge::PlatformModule platform; // Sin onInit: no abre ventana
+TEST_CASE("<mge/mge.h> includes PlatformModule when linking mge_platform") {
+    mge::PlatformModule platform; // Without onInit: does not open a window
     CHECK(std::string(platform.name()) == "Platform");
     CHECK_FALSE(platform.isCursorLocked());
 }
 
-TEST_CASE("PlatformModule: atajos de acciones (isActionDown, wasActionPressed, wasActionReleased, axis)") {
+TEST_CASE("PlatformModule: action shortcuts (isActionDown, wasActionPressed, wasActionReleased, axis)") {
     mge::PlatformModule platform;
     platform.actions().bind("Jump", mge::Key::Space);
     platform.actions().bindAxis("MoveX", mge::Key::D, mge::Key::A);

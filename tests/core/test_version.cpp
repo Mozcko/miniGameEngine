@@ -3,7 +3,7 @@
 
 #include <string_view>
 
-TEST_CASE("version: macros y constantes de versión coinciden") {
+TEST_CASE("version: version macros and constants match") {
     CHECK(MGE_VERSION_MAJOR == 1);
     CHECK(MGE_VERSION_MINOR == 0);
     CHECK(MGE_VERSION_PATCH == 2);

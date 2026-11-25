@@ -10,7 +10,7 @@
 using namespace mge;
 using mge_test::GpuTestContext;
 
-TEST_CASE("GPU noise: simplex 3D en rejilla 32^3 coincide con CPU mge::Noise (< 1e-4)") {
+TEST_CASE("GPU noise: 3D simplex on 32^3 grid matches CPU mge::Noise (< 1e-4)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
 
@@ -58,7 +58,7 @@ TEST_CASE("GPU noise: simplex 3D en rejilla 32^3 coincide con CPU mge::Noise (< 
     CHECK(maxDiff < 1e-4f);
 }
 
-TEST_CASE("GPU noise: fBm 3D (5 octavas) en rejilla 32^3 coincide con CPU mge::Noise (< 1e-4)") {
+TEST_CASE("GPU noise: 3D fBm (5 octaves) on 32^3 grid matches CPU mge::Noise (< 1e-4)") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
 
@@ -108,7 +108,7 @@ TEST_CASE("GPU noise: fBm 3D (5 octavas) en rejilla 32^3 coincide con CPU mge::N
     CHECK(maxDiff < 1e-4f);
 }
 
-TEST_CASE("GPU noise: cambio de semilla y regeneración") {
+TEST_CASE("GPU noise: seed change and regeneration") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
 
@@ -124,7 +124,7 @@ TEST_CASE("GPU noise: cambio de semilla y regeneración") {
     field.generate(desc);
     const std::vector<float> v1 = field.download();
 
-    // Cambiar a semilla distinta
+    // Switch to a different seed
     field.setSeed(222);
     field.generate(desc);
     const std::vector<float> v2 = field.download();
@@ -139,7 +139,7 @@ TEST_CASE("GPU noise: cambio de semilla y regeneración") {
     }
     CHECK(different);
 
-    // Comparar v2 con CPU Noise(222)
+    // Compare v2 against CPU Noise(222)
     const Noise cpuNoise(222);
     float maxDiff = 0.0f;
     glm::uvec3 worstCoord{0};

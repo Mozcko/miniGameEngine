@@ -16,14 +16,14 @@ namespace {
     };
 }
 
-TEST_CASE("Sandbox: 20 bloques registrados con nombre único") {
+TEST_CASE("Sandbox: 20 registered blocks with unique names") {
     Registered r;
-    CHECK(r.registry.size() == 21); // + aire
+    CHECK(r.registry.size() == 21); // + air
     CHECK(r.registry.find("grass") == r.b.grass);
     CHECK(r.registry.find("lava") == r.b.lava);
 }
 
-TEST_CASE("Sandbox: atravesables = no sólidos y no opacos") {
+TEST_CASE("Sandbox: passable blocks are non-solid and non-opaque") {
     Registered r;
     for (BlockId id : {r.b.rose, r.b.flower, r.b.sapling, r.b.cobweb, r.b.water, r.b.lava}) {
         CAPTURE(r.registry.get(id).name);
@@ -32,7 +32,7 @@ TEST_CASE("Sandbox: atravesables = no sólidos y no opacos") {
     }
 }
 
-TEST_CASE("Sandbox: vidrio y hojas sólidos pero transparentes; el resto sólido y opaco") {
+TEST_CASE("Sandbox: glass and leaves are solid but transparent; the rest are solid and opaque") {
     Registered r;
     for (BlockId id : {r.b.glass, r.b.leaves}) {
         CHECK(r.registry.isSolid(id));
@@ -47,13 +47,13 @@ TEST_CASE("Sandbox: vidrio y hojas sólidos pero transparentes; el resto sólido
     }
 }
 
-TEST_CASE("Sandbox: plantas en cruz") {
+TEST_CASE("Sandbox: cross-shaped plants") {
     Registered r;
     for (BlockId id : {r.b.rose, r.b.flower, r.b.sapling, r.b.cobweb})
         CHECK(r.registry.get(id).shape == BlockShape::Cross);
 }
 
-TEST_CASE("Sandbox: tiles del atlas por cara (los mismos que antes de mge_voxel)") {
+TEST_CASE("Sandbox: atlas tiles per face (same as before mge_voxel)") {
     Registered r;
     const BlockDesc& grass = r.registry.get(r.b.grass);
     CHECK(grass.tile(BlockFace::Top) == 0);
@@ -66,7 +66,7 @@ TEST_CASE("Sandbox: tiles del atlas por cara (los mismos que antes de mge_voxel)
     CHECK(r.registry.get(r.b.stone).tile(BlockFace::Back) == 1);
 }
 
-TEST_CASE("Sandbox: todos los bloques tienen textura y color (los dos caminos)") {
+TEST_CASE("Sandbox: all blocks have both texture and color (both paths)") {
     Registered r;
     for (std::size_t i = 1; i < r.registry.size(); i++) {
         const BlockDesc& desc = r.registry.get(static_cast<BlockId>(i));
@@ -76,7 +76,7 @@ TEST_CASE("Sandbox: todos los bloques tienen textura y color (los dos caminos)")
     }
 }
 
-TEST_CASE("Sandbox: hojas y plantas en la pasada cutout; agua, lava y vidrio translúcidos") {
+TEST_CASE("Sandbox: leaves and plants in cutout pass; water, lava, and glass translucent") {
     Registered r;
     for (BlockId id : {r.b.leaves, r.b.rose, r.b.flower, r.b.sapling, r.b.cobweb})
         CHECK(r.registry.get(id).renderLayer() == RenderLayer::Cutout);
@@ -85,7 +85,7 @@ TEST_CASE("Sandbox: hojas y plantas en la pasada cutout; agua, lava y vidrio tra
     CHECK(r.registry.get(r.b.stone).renderLayer() == RenderLayer::Opaque);
 }
 
-TEST_CASE("Atlas procedural: pinta todos los tiles que usan los bloques y los cuadros animados") {
+TEST_CASE("Procedural atlas: paints all tiles used by blocks and animated frames") {
     Registered r;
     const std::vector<int>& painted = sandbox::proceduralTiles();
     auto paints = [&](int tile) { return std::find(painted.begin(), painted.end(), tile) != painted.end(); };
@@ -100,9 +100,9 @@ TEST_CASE("Atlas procedural: pinta todos los tiles que usan los bloques y los cu
     const mge::Image atlas = sandbox::buildProceduralAtlas(7);
     CHECK(atlas.width() == 512);
     CHECK(atlas.height() == 512);
-    CHECK(atlas.pixels() == sandbox::buildProceduralAtlas(7).pixels()); // Determinista
+    CHECK(atlas.pixels() == sandbox::buildProceduralAtlas(7).pixels()); // Deterministic
     CHECK(atlas.pixels() != sandbox::buildProceduralAtlas(8).pixels());
-    // Ningún tile usado queda con el relleno magenta; las hojas tienen huecos
+    // No used tile is left with magenta filler; leaves have alpha cutouts
     const glm::vec4 magenta(1, 0, 1, 1);
     for (int tile : painted) {
         const int x0 = (tile % 16) * 32, y0 = (tile / 16) * 32;

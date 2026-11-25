@@ -6,20 +6,20 @@
 
 using namespace mge;
 
-TEST_CASE("SpscQueue: FIFO, llena con Capacity - 1 y vacía") {
+TEST_CASE("SpscQueue: FIFO, full at Capacity - 1, and empty") {
     SpscQueue<int, 8> queue;
     CHECK(queue.empty());
     CHECK(SpscQueue<int, 8>::capacity() == 7);
     int value = 0;
     CHECK_FALSE(queue.pop(value));
     for (int i = 0; i < 7; i++) CHECK(queue.push(i));
-    CHECK_FALSE(queue.push(99)); // Llena
+    CHECK_FALSE(queue.push(99)); // Full
     for (int i = 0; i < 7; i++) {
         REQUIRE(queue.pop(value));
         CHECK(value == i);
     }
     CHECK(queue.empty());
-    // Da la vuelta al anillo varias veces
+    // Wraps around the ring multiple times
     for (int round = 0; round < 20; round++) {
         CHECK(queue.push(round));
         REQUIRE(queue.pop(value));
@@ -27,7 +27,7 @@ TEST_CASE("SpscQueue: FIFO, llena con Capacity - 1 y vacía") {
     }
 }
 
-TEST_CASE("SpscQueue: un productor y un consumidor en hilos distintos no pierden ni repiten nada") {
+TEST_CASE("SpscQueue: single producer and single consumer across threads lose or duplicate nothing") {
     struct Item {
         std::uint32_t index;
         std::uint32_t check;

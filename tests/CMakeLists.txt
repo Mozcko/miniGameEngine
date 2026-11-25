@@ -16,7 +16,7 @@ target_include_directories(doctest_header SYSTEM INTERFACE ${doctest_SOURCE_DIR}
 
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 
-# --- Core tests: link mge_core only (no SDL or GPU) ---
+# --- Core tests: link only mge_core (no SDL or GPU) ---
 add_executable(mge_core_tests
     test_main.cpp
     core/test_application.cpp
@@ -66,8 +66,8 @@ target_link_libraries(mge_synth_tests PRIVATE mge_synth doctest_header)
 mge_set_warnings(mge_synth_tests)
 doctest_discover_tests(mge_synth_tests TEST_PREFIX "synth: ")
 
-# "The audio thread does not allocate memory": overrides operator new, so it runs in its own program
-# and is not built with sanitizers (ASan and TSan already override new/delete)
+# "The audio thread does not allocate memory": overrides operator new, so it runs in its own
+# executable and is not built with sanitizers (ASan and TSan already override new/delete)
 if(NOT MGE_SANITIZERS AND NOT MGE_TSAN)
     add_executable(mge_synth_alloc_tests test_main.cpp synth/test_no_alloc.cpp)
     target_link_libraries(mge_synth_alloc_tests PRIVATE mge_synth doctest_header)
@@ -112,15 +112,15 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(mge_platform_tests)
     doctest_discover_tests(mge_platform_tests TEST_PREFIX "platform: ")
 
-    # Audio with SDL's dummy driver (no sound card required)
+    # Audio with SDL's dummy driver (no sound card)
     add_executable(mge_audio_tests test_main.cpp audio/test_audio_module.cpp)
     target_link_libraries(mge_audio_tests PRIVATE mge_audio doctest_header)
     mge_set_warnings(mge_audio_tests)
     doctest_discover_tests(mge_audio_tests TEST_PREFIX "audio: "
         PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy;ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
 
-    # GPU (SDL3 GPU, Vulkan). No window: renders to textures. Skipped without a GPU (MGE_REQUIRE_GPU=1 → fail).
-    # With sanitizers, disable LeakSanitizer: Mesa drivers leak memory that LSan cannot attribute.
+    # GPU (SDL3 GPU, Vulkan). Headless: renders to textures. Skipped without a GPU (MGE_REQUIRE_GPU=1 → fails).
+    # With sanitizers, LeakSanitizer is disabled: Mesa drivers leak memory that LSan cannot attribute.
     add_executable(mge_gpu_tests
         test_main.cpp
         gpu/test_gpu_compute.cpp
@@ -138,13 +138,13 @@ if(MGE_BUILD_MODULES)
         gpu/shaders/test_sdf_raymarch.comp)
 
     # Vulkan validation errors appear in test output: CTest fails any GPU test that prints them
-    # (FAIL_REGULAR_EXPRESSION). The probe triggers one on purpose and passes only if it is seen.
+    # (FAIL_REGULAR_EXPRESSION). The probe triggers one intentionally and passes only if it is seen.
     add_executable(gpu_validation_probe gpu/ValidationProbe.cpp)
     target_link_libraries(gpu_validation_probe PRIVATE mge_gpu)
     mge_set_warnings(gpu_validation_probe)
     mge_add_shaders(gpu_validation_probe SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
-    add_test(NAME "gpu: validation catches incorrect API usage" COMMAND gpu_validation_probe)
-    set_tests_properties("gpu: validation catches incorrect API usage" PROPERTIES
+    add_test(NAME "gpu: validation fails on incorrect API usage" COMMAND gpu_validation_probe)
+    set_tests_properties("gpu: validation fails on incorrect API usage" PROPERTIES
         LABELS gpu SKIP_RETURN_CODE 77 ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
         PASS_REGULAR_EXPRESSION "VUID-VkGraphicsPipelineCreateInfo-layout-07988")
 
@@ -188,13 +188,13 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(game_tests)
     doctest_discover_tests(game_tests TEST_PREFIX "game: ")
 
-    # 2D Platformer (#45): ASCII levels and physics, no window
+    # 2D Platformer (#45): ASCII levels and physics, headless
     add_executable(platformer_tests test_main.cpp examples/test_platformer.cpp)
     target_link_libraries(platformer_tests PRIVATE platformer2d_logic doctest_header)
     mge_set_warnings(platformer_tests)
     doctest_discover_tests(platformer_tests TEST_PREFIX "platformer: ")
 
-    # SDF Glide demo (#66): SDF canyon, collisions, motes, logic and synth audio, no window
+    # SDF Glide demo (#66): SDF canyon, collisions, motes, logic and synth audio, headless
     add_executable(sdf_glide_tests test_main.cpp examples/test_sdf_glide.cpp)
     target_link_libraries(sdf_glide_tests PRIVATE sdf_glide_logic mge_procgen doctest_header)
     mge_set_warnings(sdf_glide_tests)
@@ -233,9 +233,9 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(mge_c_tests)
 
     add_test(NAME "c:lifecycle: headless lifecycle and timers" COMMAND mge_c_tests lifecycle)
-    add_test(NAME "c:ecs: dynamic component and system registration" COMMAND mge_c_tests ecs)
+    add_test(NAME "c:ecs: dynamic component registration and systems" COMMAND mge_c_tests ecs)
     add_test(NAME "c:input: action mapping and queries" COMMAND mge_c_tests input)
-    add_test(NAME "c:audio: offline rendering and sfx generation" COMMAND mge_c_tests audio)
+    add_test(NAME "c:audio: offline render and sfx generation" COMMAND mge_c_tests audio)
     add_test(NAME "c:voxel: world, c generator and raycast" COMMAND mge_c_tests voxel)
     add_test(NAME "c:safety: safe gpu resource release on shutdown" COMMAND mge_c_tests safety)
 endif()

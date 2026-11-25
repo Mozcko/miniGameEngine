@@ -1,9 +1,10 @@
-// Prueba que los errores de validación de Vulkan llegan a la salida del test, que es lo que CTest revisa
-// (FAIL_REGULAR_EXPRESSION "Validation Error" en todos los tests de GPU): sin esto, un uso incorrecto de
-// la API o un recurso sin liberar pasarían sin que nadie lo note.
-// Provoca un error real: un shader de fragmentos que usa un uniform buffer, declarado con 0 uniform
-// buffers (SDL no lee el SPIR-V; la capa sí lo detecta al crear el pipeline). El test de CTest pasa solo
-// si en la salida aparece ese VUID (PASS_REGULAR_EXPRESSION). 77 = se saltea (sin GPU o sin capas).
+// Verifies that Vulkan validation errors reach test output, which CTest checks
+// (FAIL_REGULAR_EXPRESSION "Validation Error" on all GPU tests): without this, incorrect API
+// usage or unreleased resources would go unnoticed.
+// Triggers a real error: a fragment shader that uses a uniform buffer, declared with 0 uniform
+// buffers (SDL does not inspect SPIR-V; the validation layer catches it when creating the pipeline).
+// The CTest test passes only if that VUID appears in output (PASS_REGULAR_EXPRESSION).
+// 77 = skipped (no GPU or no validation layers).
 #include <mge/gpu/GpuDevice.h>
 
 #include <shaders/test_triangle_frag.h>
@@ -16,7 +17,7 @@
 #include <cstring>
 
 namespace {
-    bool validationActive = false; // Lo marca el log de SDL al crear el device
+    bool validationActive = false; // Set by SDL log when creating the device
 
     void SDLCALL captureLog(void* /*userdata*/, int /*category*/, SDL_LogPriority /*priority*/,
                             const char* message) {
@@ -41,18 +42,19 @@ int main() {
     auto device = mge::GpuDevice::create(options);
     if (!device) return required("MGE_REQUIRE_GPU") ? 1 : 77;
     if (!validationActive) {
-        std::printf("Capas de validación no activas\n");
+        std::printf("Validation layers not active\n");
         return required("MGE_REQUIRE_VALIDATION") ? 1 : 77;
     }
 
-    // Error a propósito: el fragment shader usa un uniform buffer (set 3) pero se declaran 0
+    // Intentional error: fragment shader uses a uniform buffer (set 3) but 0 are declared
     const mge::GpuShader vertex = device->createShader(mge::shaders::kTestTriangleVert);
-    const mge::GpuShader fragment = device->createShader(mge::shaders::kTestTriangleFrag); // Faltan recursos
+    const mge::GpuShader fragment =
+        device->createShader(mge::shaders::kTestTriangleFrag); // Missing resources
     mge::GraphicsPipelineDesc desc;
     desc.vertexShader = &vertex;
     desc.fragmentShader = &fragment;
     desc.gpuVertexInput = false;
     const mge::GpuGraphicsPipeline pipeline = device->createGraphicsPipeline(desc);
-    std::fflush(stdout); // La capa escribe en stdout: que CTest lo vea antes de salir
+    std::fflush(stdout); // Layer writes to stdout: flush so CTest sees it before exit
     return 0;
 }
