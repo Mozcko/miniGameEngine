@@ -209,12 +209,12 @@ void mge_rigid_body_remove(mge_app* app, mge_entity entity) {
 /* --- Dynamic Runtime Components --- */
 mge_component_id mge_component_register(mge_app* app, const char* name, size_t size, size_t align) {
     if (!app || !app->world || !name) {
-        mge::c_impl::setLastError("mge_component_register: app o name es nulo");
+        mge::c_impl::setLastError("mge_component_register: app or name is null");
         return MGE_INVALID_COMPONENT_ID;
     }
     const mge::ComponentTypeId id = app->world->registry().registerRuntimeComponent(name, size, align);
     if (id == mge::kInvalidComponentType) {
-        mge::c_impl::setLastError("mge_component_register: parámetros inválidos o conflicto de layout");
+        mge::c_impl::setLastError("mge_component_register: invalid parameters or layout conflict");
         return MGE_INVALID_COMPONENT_ID;
     }
     return static_cast<mge_component_id>(id);
@@ -222,43 +222,43 @@ mge_component_id mge_component_register(mge_app* app, const char* name, size_t s
 
 void* mge_component_add(mge_app* app, mge_entity entity, mge_component_id comp_id) {
     if (!app || !app->world) {
-        mge::c_impl::setLastError("mge_component_add: app es nulo");
+        mge::c_impl::setLastError("mge_component_add: app is null");
         return nullptr;
     }
     auto& reg = app->world->registry();
     mge::Entity e = toEngineEntity(entity);
     if (!reg.valid(e)) {
-        mge::c_impl::setLastError("mge_component_add: entidad inválida");
+        mge::c_impl::setLastError("mge_component_add: invalid entity");
         return nullptr;
     }
     if (!reg.isValidRuntimeComponent(comp_id)) {
-        mge::c_impl::setLastError("mge_component_add: comp_id inválido");
+        mge::c_impl::setLastError("mge_component_add: invalid comp_id");
         return nullptr;
     }
     void* ptr = reg.addRaw(e, comp_id);
     if (!ptr) {
-        mge::c_impl::setLastError("mge_component_add: no se pudo agregar el componente");
+        mge::c_impl::setLastError("mge_component_add: failed to add component");
     }
     return ptr;
 }
 
 void* mge_component_get(mge_app* app, mge_entity entity, mge_component_id comp_id) {
     if (!app || !app->world) {
-        mge::c_impl::setLastError("mge_component_get: app es nulo");
+        mge::c_impl::setLastError("mge_component_get: app is null");
         return nullptr;
     }
     auto& reg = app->world->registry();
     mge::Entity e = toEngineEntity(entity);
     if (!reg.valid(e)) {
-        mge::c_impl::setLastError("mge_component_get: entidad inválida");
+        mge::c_impl::setLastError("mge_component_get: invalid entity");
         return nullptr;
     }
     if (!reg.isValidRuntimeComponent(comp_id)) {
-        mge::c_impl::setLastError("mge_component_get: comp_id inválido");
+        mge::c_impl::setLastError("mge_component_get: invalid comp_id");
         return nullptr;
     }
     if (!reg.hasRaw(e, comp_id)) {
-        mge::c_impl::setLastError("mge_component_get: la entidad no posee el componente");
+        mge::c_impl::setLastError("mge_component_get: entity does not have component");
         return nullptr;
     }
     return reg.getRaw(e, comp_id);
@@ -266,17 +266,17 @@ void* mge_component_get(mge_app* app, mge_entity entity, mge_component_id comp_i
 
 bool mge_component_has(mge_app* app, mge_entity entity, mge_component_id comp_id) {
     if (!app || !app->world) {
-        mge::c_impl::setLastError("mge_component_has: app es nulo");
+        mge::c_impl::setLastError("mge_component_has: app is null");
         return false;
     }
     const auto& reg = app->world->registry();
     mge::Entity e = toEngineEntity(entity);
     if (!reg.valid(e)) {
-        mge::c_impl::setLastError("mge_component_has: entidad inválida");
+        mge::c_impl::setLastError("mge_component_has: invalid entity");
         return false;
     }
     if (!reg.isValidRuntimeComponent(comp_id)) {
-        mge::c_impl::setLastError("mge_component_has: comp_id inválido");
+        mge::c_impl::setLastError("mge_component_has: invalid comp_id");
         return false;
     }
     return reg.hasRaw(e, comp_id);
@@ -284,17 +284,17 @@ bool mge_component_has(mge_app* app, mge_entity entity, mge_component_id comp_id
 
 void mge_component_remove(mge_app* app, mge_entity entity, mge_component_id comp_id) {
     if (!app || !app->world) {
-        mge::c_impl::setLastError("mge_component_remove: app es nulo");
+        mge::c_impl::setLastError("mge_component_remove: app is null");
         return;
     }
     auto& reg = app->world->registry();
     mge::Entity e = toEngineEntity(entity);
     if (!reg.valid(e)) {
-        mge::c_impl::setLastError("mge_component_remove: entidad inválida");
+        mge::c_impl::setLastError("mge_component_remove: invalid entity");
         return;
     }
     if (!reg.isValidRuntimeComponent(comp_id)) {
-        mge::c_impl::setLastError("mge_component_remove: comp_id inválido");
+        mge::c_impl::setLastError("mge_component_remove: invalid comp_id");
         return;
     }
     reg.removeRaw(e, comp_id);
@@ -304,7 +304,7 @@ void mge_component_each(mge_app* app, const mge_component_id* comp_ids, size_t c
                         void (*callback)(mge_entity entity, void** components, void* user_data),
                         void* user_data) {
     if (!app || !app->world || !comp_ids || comp_count == 0 || !callback) {
-        mge::c_impl::setLastError("mge_component_each: argumentos inválidos");
+        mge::c_impl::setLastError("mge_component_each: invalid arguments");
         return;
     }
 
@@ -312,7 +312,7 @@ void mge_component_each(mge_app* app, const mge_component_id* comp_ids, size_t c
     std::vector<mge::ComponentTypeId> types(comp_count);
     for (size_t i = 0; i < comp_count; ++i) {
         if (!reg.isValidRuntimeComponent(comp_ids[i])) {
-            mge::c_impl::setLastError("mge_component_each: comp_id inválido");
+            mge::c_impl::setLastError("mge_component_each: invalid comp_id");
             return;
         }
         types[i] = comp_ids[i];

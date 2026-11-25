@@ -38,7 +38,7 @@ namespace mge::cli {
 
         DoctorItem checkCompiler() {
             DoctorItem item;
-            item.name = "Compilador C++";
+            item.name = "C++ Compiler";
             item.required = true;
 
             std::string compiler;
@@ -55,22 +55,22 @@ namespace mge::cli {
 
             if (compiler.empty()) {
                 item.ok = false;
-                item.detail = "No encontrado";
+                item.detail = "Not found";
                 item.hint =
-                    "Instalar un compilador C++17 (ej: sudo apt install g++ / sudo dnf install gcc-c++)";
+                    "Install a C++17 compiler (e.g., sudo apt install g++ / sudo dnf install gcc-c++)";
                 return item;
             }
 
             std::string output;
             if (runCommandCapture({compiler, "--version"}, output) != 0) {
                 item.ok = false;
-                item.detail = compiler + " (error al consultar --version)";
-                item.hint = "Verificar que el compilador funcione correctamente";
+                item.detail = compiler + " (error querying --version)";
+                item.hint = "Verify that the compiler works properly";
                 return item;
             }
 
             std::string line = firstLine(output);
-            // Buscar número de versión con regex
+            // Search version number with regex
             std::regex verRegex(R"((\d+)\.(\d+)(\.(\d+))?)");
             std::smatch match;
             if (std::regex_search(line, match, verRegex)) {
@@ -82,20 +82,20 @@ namespace mge::cli {
                         item.ok = true;
                     } else {
                         item.ok = false;
-                        item.hint = "Se requiere Clang >= 14 para soporte completo de C++17";
+                        item.hint = "Clang >= 14 is required for full C++17 support";
                     }
                 } else {
-                    // Por defecto asumir GCC / compatible
+                    // Default to assuming GCC / compatible
                     if (major >= 11) {
                         item.ok = true;
                     } else {
                         item.ok = false;
-                        item.hint = "Se requiere GCC >= 11 para soporte completo de C++17";
+                        item.hint = "GCC >= 11 is required for full C++17 support";
                     }
                 }
                 item.detail = line;
             } else {
-                // Si no se puede parsear la versión exacta pero el comando existe
+                // If exact version cannot be parsed but command exists
                 item.ok = true;
                 item.detail = line;
             }
@@ -110,16 +110,16 @@ namespace mge::cli {
 
             if (!commandExists("cmake")) {
                 item.ok = false;
-                item.detail = "No encontrado";
-                item.hint = "Instalar CMake >= 3.24 (https://cmake.org/download/ o gestor de paquetes)";
+                item.detail = "Not found";
+                item.hint = "Install CMake >= 3.24 (https://cmake.org/download/ or package manager)";
                 return item;
             }
 
             std::string output;
             if (runCommandCapture({"cmake", "--version"}, output) != 0) {
                 item.ok = false;
-                item.detail = "Error al ejecutar cmake --version";
-                item.hint = "Verificar la instalación de CMake";
+                item.detail = "Error running cmake --version";
+                item.hint = "Verify your CMake installation";
                 return item;
             }
 
@@ -134,8 +134,8 @@ namespace mge::cli {
                     item.detail = line;
                 } else {
                     item.ok = false;
-                    item.detail = line + " (se requiere >= 3.24)";
-                    item.hint = "Actualizar CMake a versión >= 3.24";
+                    item.detail = line + " (requires >= 3.24)";
+                    item.hint = "Update CMake to version >= 3.24";
                 }
             } else {
                 item.ok = true;
@@ -154,14 +154,14 @@ namespace mge::cli {
                 std::string output;
                 if (runCommandCapture({"ninja", "--version"}, output) == 0) {
                     item.ok = true;
-                    item.detail = "versión " + trim(output);
+                    item.detail = "version " + trim(output);
                     return item;
                 }
             }
 
             item.ok = false;
-            item.detail = "No encontrado (opcional)";
-            item.hint = "Instalar ninja-build para compilaciones más veloces (sudo apt install ninja-build)";
+            item.detail = "Not found (optional)";
+            item.hint = "Install ninja-build for faster builds (sudo apt install ninja-build)";
             return item;
         }
 
@@ -170,7 +170,7 @@ namespace mge::cli {
             item.name = "SDL3";
             item.required = true;
 
-            // 1. Probar pkg-config
+            // 1. Try pkg-config
             std::string pkgTool =
                 commandExists("pkg-config") ? "pkg-config" : (commandExists("pkgconf") ? "pkgconf" : "");
             if (!pkgTool.empty()) {
@@ -178,12 +178,12 @@ namespace mge::cli {
                 if (runCommandCapture({pkgTool, "--modversion", "sdl3"}, output) == 0 &&
                     !trim(output).empty()) {
                     item.ok = true;
-                    item.detail = "versión " + trim(output) + " (" + pkgTool + ")";
+                    item.detail = "version " + trim(output) + " (" + pkgTool + ")";
                     return item;
                 }
             }
 
-            // 2. Probar cabeceras o carpetas CMake estándar
+            // 2. Try standard headers or CMake directories
             const std::vector<std::string> searchPaths = {
                 "/usr/include/SDL3/SDL.h", "/usr/local/include/SDL3/SDL.h",
                 "/usr/lib64/cmake/SDL3",   "/usr/lib/x86_64-linux-gnu/cmake/SDL3",
@@ -192,15 +192,14 @@ namespace mge::cli {
             for (const auto& pathStr : searchPaths) {
                 if (std::filesystem::exists(pathStr)) {
                     item.ok = true;
-                    item.detail = "Instalación del sistema encontrada en " + pathStr;
+                    item.detail = "System installation found at " + pathStr;
                     return item;
                 }
             }
 
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint =
-                "Instalar libsdl3-dev o SDL3-devel (o compilar desde https://github.com/libsdl-org/SDL)";
+            item.detail = "Not found";
+            item.hint = "Install libsdl3-dev or SDL3-devel (or build from https://github.com/libsdl-org/SDL)";
             return item;
         }
 
@@ -228,8 +227,8 @@ namespace mge::cli {
             }
 
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar glslang (sudo apt install glslang-tools / sudo dnf install glslang)";
+            item.detail = "Not found";
+            item.hint = "Install glslang (sudo apt install glslang-tools / sudo dnf install glslang)";
             return item;
         }
 
@@ -238,7 +237,7 @@ namespace mge::cli {
             item.name = "Vulkan Loader & ICD";
             item.required = true;
 
-            // Comprobación con vulkaninfo
+            // Check with vulkaninfo
             if (commandExists("vulkaninfo")) {
                 std::string output;
                 if (runCommandCapture({"vulkaninfo", "--summary"}, output) == 0) {
@@ -246,13 +245,13 @@ namespace mge::cli {
                         output.find("Devices") != std::string::npos ||
                         output.find("Vulkan") != std::string::npos) {
                         item.ok = true;
-                        item.detail = "vulkaninfo OK (loader y controlador ICD activos)";
+                        item.detail = "vulkaninfo OK (loader and ICD driver active)";
                         return item;
                     }
                 }
             }
 
-            // Comprobación alternativa del loader
+            // Alternative loader check
             bool loaderFound = false;
             std::string pkgTool =
                 commandExists("pkg-config") ? "pkg-config" : (commandExists("pkgconf") ? "pkgconf" : "");
@@ -260,7 +259,7 @@ namespace mge::cli {
                 std::string output;
                 if (runCommandCapture({pkgTool, "--modversion", "vulkan"}, output) == 0) {
                     loaderFound = true;
-                    item.detail = "Loader Vulkan " + trim(output);
+                    item.detail = "Vulkan Loader " + trim(output);
                 }
             }
 
@@ -271,13 +270,13 @@ namespace mge::cli {
                 for (const auto& pathStr : loaderPaths) {
                     if (std::filesystem::exists(pathStr)) {
                         loaderFound = true;
-                        item.detail = "Loader encontrado en " + pathStr;
+                        item.detail = "Loader found at " + pathStr;
                         break;
                     }
                 }
             }
 
-            // Búsqueda de manifiestos ICD de controladores
+            // Search for driver ICD manifests
             size_t icdCount = 0;
             const std::vector<std::string> icdDirs = {"/usr/share/vulkan/icd.d", "/etc/vulkan/icd.d"};
 
@@ -302,27 +301,27 @@ namespace mge::cli {
 
             if (loaderFound && icdCount > 0) {
                 item.ok = true;
-                item.detail += " (" + std::to_string(icdCount) + " manifiesto(s) ICD detectado(s))";
+                item.detail += " (" + std::to_string(icdCount) + " ICD manifest(s) detected)";
                 return item;
             }
 
             if (loaderFound) {
                 item.ok = false;
-                item.detail = "Loader de Vulkan presente pero no se detectaron controladores ICD";
-                item.hint = "Instalar controladores Vulkan (mesa-vulkan-drivers o driver NVIDIA/AMD)";
+                item.detail = "Vulkan loader present but no ICD drivers detected";
+                item.hint = "Install Vulkan drivers (mesa-vulkan-drivers or NVIDIA/AMD driver)";
                 return item;
             }
 
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar libvulkan-dev y mesa-vulkan-drivers (sudo apt install libvulkan-dev "
+            item.detail = "Not found";
+            item.hint = "Install libvulkan-dev and mesa-vulkan-drivers (sudo apt install libvulkan-dev "
                         "mesa-vulkan-drivers)";
             return item;
         }
 
         DoctorItem checkGlm() {
             DoctorItem item;
-            item.name = "Cabeceras GLM";
+            item.name = "GLM Headers";
             item.required = true;
 
             const std::vector<std::string> glmPaths = {"/usr/include/glm/glm.hpp",
@@ -331,7 +330,7 @@ namespace mge::cli {
             for (const auto& pathStr : glmPaths) {
                 if (std::filesystem::exists(pathStr)) {
                     item.ok = true;
-                    item.detail = "Cabeceras encontradas en " + pathStr;
+                    item.detail = "Headers found at " + pathStr;
                     return item;
                 }
             }
@@ -342,14 +341,14 @@ namespace mge::cli {
                 std::string output;
                 if (runCommandCapture({pkgTool, "--modversion", "glm"}, output) == 0) {
                     item.ok = true;
-                    item.detail = "GLM versión " + trim(output) + " (" + pkgTool + ")";
+                    item.detail = "GLM version " + trim(output) + " (" + pkgTool + ")";
                     return item;
                 }
             }
 
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar libglm-dev (sudo apt install libglm-dev / sudo dnf install glm-devel)";
+            item.detail = "Not found";
+            item.hint = "Install libglm-dev (sudo apt install libglm-dev / sudo dnf install glm-devel)";
             return item;
         }
 
@@ -375,16 +374,16 @@ namespace mge::cli {
         std::string py = commandExists("python3") ? "python3" : (commandExists("python") ? "python" : "");
         if (py.empty()) {
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar Python >= 3.10 (sudo apt install python3)";
+            item.detail = "Not found";
+            item.hint = "Install Python >= 3.10 (sudo apt install python3)";
             return item;
         }
 
         std::string output;
         if (runCommandCapture({py, "--version"}, output) != 0) {
             item.ok = false;
-            item.detail = "Error al consultar versión de Python";
-            item.hint = "Verificar que python3 funcione correctamente";
+            item.detail = "Error querying Python version";
+            item.hint = "Verify that python3 works properly";
             return item;
         }
 
@@ -398,7 +397,7 @@ namespace mge::cli {
                 item.ok = true;
             } else {
                 item.ok = false;
-                item.hint = "Se requiere Python >= 3.10";
+                item.hint = "Python >= 3.10 is required";
             }
             item.detail = line;
         } else {
@@ -420,8 +419,8 @@ namespace mge::cli {
             item.detail = firstLine(output);
         } else {
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar pip (python3 -m ensurepip o sudo apt install python3-pip)";
+            item.detail = "Not found";
+            item.hint = "Install pip (python3 -m ensurepip or sudo apt install python3-pip)";
         }
         return item;
     }
@@ -436,31 +435,31 @@ namespace mge::cli {
         if (runCommandCapture({py, "-c", "import venv; print('OK')"}, output) == 0 &&
             output.find("OK") != std::string::npos) {
             item.ok = true;
-            item.detail = "Módulo estándar venv disponible";
+            item.detail = "Standard venv module available";
         } else {
             item.ok = false;
-            item.detail = "No encontrado";
-            item.hint = "Instalar paquete python3-venv (sudo apt install python3-venv)";
+            item.detail = "Not found";
+            item.hint = "Install python3-venv package (sudo apt install python3-venv)";
         }
         return item;
     }
 
     DoctorItem checkPythonMge() {
         DoctorItem item;
-        item.name = "mge (bindings de Python)";
+        item.name = "mge (Python bindings)";
         item.required = true;
 
         std::string py = commandExists("python3") ? "python3" : "python";
         std::string output;
-        if (runCommandCapture({py, "-c", "import mge; print(getattr(mge, '__version__', 'instalado'))"},
+        if (runCommandCapture({py, "-c", "import mge; print(getattr(mge, '__version__', 'installed'))"},
                               output) == 0) {
             std::string ver = firstLine(output);
             item.ok = true;
             item.detail = "mge v" + ver;
         } else {
             item.ok = false;
-            item.detail = "No encontrado en el entorno de Python";
-            item.hint = "Instalar el paquete mge (pip install . o pip install mge)";
+            item.detail = "Not found in Python environment";
+            item.hint = "Install the mge package (pip install . or pip install mge)";
         }
         return item;
     }
@@ -484,10 +483,10 @@ namespace mge::cli {
                     isPython = true;
                 }
             } else if (arg == "--help" || arg == "-h") {
-                std::cout << "Uso: mge doctor [--lang <cpp|c|python>]\n\n"
-                          << "Comprueba que las herramientas y dependencias del sistema estén instaladas\n"
-                          << "y cumplan con los requisitos mínimos de miniGameEngine:\n"
-                          << "  - C/C++: Compilador, CMake, Ninja, SDL3, glslang, Vulkan, GLM\n"
+                std::cout << "Usage: mge doctor [--lang <cpp|c|python>]\n\n"
+                          << "Checks that system tools and dependencies are installed\n"
+                          << "and meet miniGameEngine minimum requirements:\n"
+                          << "  - C/C++: Compiler, CMake, Ninja, SDL3, glslang, Vulkan, GLM\n"
                           << "  - Python: python3 >= 3.10, pip, venv, import mge\n";
                 return 0;
             }
@@ -501,8 +500,8 @@ namespace mge::cli {
         }
 
         std::cout << colors::bold()
-                  << (isPython ? "mge doctor - Comprobando entorno de desarrollo Python...\n"
-                               : "mge doctor - Comprobando dependencias del sistema...\n")
+                  << (isPython ? "mge doctor - Checking Python development environment...\n"
+                               : "mge doctor - Checking system dependencies...\n")
                   << colors::reset() << "\n";
 
         auto items = isPython ? runPythonDoctorChecks() : runDoctorChecks();
@@ -516,32 +515,28 @@ namespace mge::cli {
                 std::cout << colors::yellow() << "[!] " << colors::reset() << colors::bold() << item.name
                           << colors::reset() << " - " << item.detail << "\n";
                 if (!item.hint.empty()) {
-                    std::cout << colors::yellow() << "    Sugerencia: " << item.hint << colors::reset()
-                              << "\n";
+                    std::cout << colors::yellow() << "    Hint: " << item.hint << colors::reset() << "\n";
                 }
             } else {
                 anyRequiredFailed = true;
                 std::cout << colors::red() << "[✗] " << colors::reset() << colors::bold() << item.name
                           << colors::reset() << " - " << item.detail << "\n";
                 if (!item.hint.empty()) {
-                    std::cout << colors::yellow() << "    Sugerencia: " << item.hint << colors::reset()
-                              << "\n";
+                    std::cout << colors::yellow() << "    Hint: " << item.hint << colors::reset() << "\n";
                 }
             }
         }
 
         std::cout << "\n";
         if (anyRequiredFailed) {
-            std::cout
-                << colors::red() << colors::bold()
-                << "Se encontraron problemas en dependencias requeridas. Consulte las sugerencias arriba."
-                << colors::reset() << "\n";
+            std::cout << colors::red() << colors::bold()
+                      << "Issues were found with required dependencies. See the hints above."
+                      << colors::reset() << "\n";
             return 1;
         }
 
-        std::cout << colors::green() << colors::bold()
-                  << "Todas las dependencias requeridas están correctamente instaladas." << colors::reset()
-                  << "\n";
+        std::cout << colors::green() << colors::bold() << "All required dependencies are properly installed."
+                  << colors::reset() << "\n";
         return 0;
     }
 

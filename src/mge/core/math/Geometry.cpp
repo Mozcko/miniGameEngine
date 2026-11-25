@@ -71,7 +71,7 @@ namespace mge {
     // --- Frustum ---
 
     Frustum Frustum::fromViewProjection(const glm::mat4& m, DepthRange depthRange) {
-        // Filas de la matriz (glm es column-major: m[columna][fila])
+        // Matrix rows (glm is column-major: m[column][row])
         auto row = [&m](int r) { return glm::vec4(m[0][r], m[1][r], m[2][r], m[3][r]); };
         const glm::vec4 r0 = row(0), r1 = row(1), r2 = row(2), r3 = row(3);
         const glm::vec4 nearPlane = depthRange == DepthRange::ZeroToOne ? r2 : r3 + r2;
@@ -99,7 +99,7 @@ namespace mge {
 
     bool Frustum::intersects(const Aabb& box) const {
         if (box.isEmpty()) return false;
-        // Para cada plano, el vértice de la caja más "adentro" (vértice positivo) debe estar adentro
+        // For each plane, the innermost box corner (positive vertex) must be inside
         for (const Plane& plane : m_planes) {
             glm::vec3 positive(plane.normal.x >= 0.0f ? box.max.x : box.min.x,
                                plane.normal.y >= 0.0f ? box.max.y : box.min.y,
@@ -109,7 +109,7 @@ namespace mge {
         return true;
     }
 
-    // --- Rayos ---
+    // --- Rays ---
 
     std::optional<float> intersectRayAabb(const Ray& ray, const Aabb& box) {
         if (box.isEmpty()) return std::nullopt;
@@ -119,7 +119,7 @@ namespace mge {
             const float origin = ray.origin[axis];
             const float dir = ray.direction[axis];
             if (std::abs(dir) < 1e-12f) {
-                // Paralelo a las caras de este eje: tiene que estar entre ellas
+                // Parallel to this axis's slabs: origin must lie between them
                 if (origin < box.min[axis] || origin > box.max[axis]) return std::nullopt;
                 continue;
             }
@@ -137,8 +137,8 @@ namespace mge {
         glm::vec3 toOrigin = ray.origin - sphere.center;
         float b = glm::dot(toOrigin, ray.direction);
         float c = glm::dot(toOrigin, toOrigin) - sphere.radius * sphere.radius;
-        if (c <= 0.0f) return 0.0f;        // El origen está dentro
-        if (b > 0.0f) return std::nullopt; // Afuera y alejándose
+        if (c <= 0.0f) return 0.0f;        // Origin is inside
+        if (b > 0.0f) return std::nullopt; // Outside and pointing away
         float discriminant = b * b - c;
         if (discriminant < 0.0f) return std::nullopt;
         return -b - std::sqrt(discriminant);

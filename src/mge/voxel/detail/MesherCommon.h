@@ -10,13 +10,13 @@
 namespace mge::detail {
 
     struct FaceDef {
-        glm::ivec3 offset; // Dirección al vecino
+        glm::ivec3 offset; // Direction to the neighbour
         glm::vec3 normal;
-        glm::vec3 corners[4]; // Cubo unitario, antihorario visto desde afuera
-        int axis;             // Eje de la normal (0 x, 1 y, 2 z)
+        glm::vec3 corners[4]; // Unit cube, counter-clockwise when viewed from outside
+        int axis;             // Normal axis (0 x, 1 y, 2 z)
     };
 
-    // Mismo orden que BlockFace. Esquinas: (uMin,vMin), (uMax,vMin), (uMax,vMax), (uMin,vMax)
+    // Same order as BlockFace. Corners: (uMin,vMin), (uMax,vMin), (uMax,vMax), (uMin,vMax)
     inline constexpr FaceDef kFaces[kBlockFaceCount] = {
         {{0, 0, 1}, {0, 0, 1}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, 2},   // Front +Z
         {{0, 0, -1}, {0, 0, -1}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 2}, // Back -Z
@@ -26,7 +26,7 @@ namespace mge::detail {
         {{0, -1, 0}, {0, -1, 0}, {{0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {0, 0, 1}}, 1}, // Bottom -Y
     };
 
-    using AoValues = std::array<int, 4>; // 0 (rincón cerrado) .. 3 (libre), por esquina
+    using AoValues = std::array<int, 4>; // 0 (enclosed corner) .. 3 (open), per corner
 
     struct MaskCell {
         BlockId id = kAir;

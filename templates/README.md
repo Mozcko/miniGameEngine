@@ -45,10 +45,10 @@ Files inside templates use the `.in` suffix and contain placeholders substituted
 | `@GAME_NAME@` | `space_shooter` | Lowercase snake_case identifier (CMake target, test executable, log category). |
 | `@GAME_CLASS@` | `SpaceShooter` | PascalCase class name and C++ source filename. |
 | `@GAME_TITLE@` | `Space Shooter` | Human-readable title for window headers and documentation. |
-| `@MGE_VERSION@` | `1.0.1` | Target engine release version for FetchContent fallbacks. |
+| `@MGE_VERSION@` | `1.0.2` | Target engine release version for FetchContent fallbacks. |
 
 > [!NOTE]
-> `FetchContent` in templates uses `GIT_TAG v@MGE_VERSION@` (e.g. `v1.0.1`), so every engine version that generates projects must have its release tag published. To test generated projects against a local checkout, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
+> `FetchContent` in templates uses `GIT_TAG v@MGE_VERSION@` (e.g. `v1.0.2`), so every engine version that generates projects must have its release tag published. To test generated projects against a local checkout, pass `-DFETCHCONTENT_SOURCE_DIR_MGE=/path/to/miniGameEngine`.
 
 The `.in` suffix keeps template source files out of clang-format and clang-tidy in-tree, as placeholders are not valid C++ identifiers. When a project is generated, `scripts/new-game.sh` runs `clang-format` on all generated `.h` and `.cpp` files.
 
@@ -69,7 +69,7 @@ To add a new project template `templates/<name>/`:
    - `templates/<name>/README.md.in`: document building and running commands.
 
 3. **Add C++ source templates**:
-   - `src/@GAME_CLASS@Logic.h.in` and `src/@GAME_CLASS@Logic.cpp.in`: pure, testable game state and functions (code comments in Spanish).
+   - `src/@GAME_CLASS@Logic.h.in` and `src/@GAME_CLASS@Logic.cpp.in`: pure, testable game state and functions (code comments in English).
    - `src/@GAME_CLASS@.cpp.in`: `mge::Application` subclass connecting modules, input actions, rendering, and ECS systems.
    - `tests/test_@GAME_NAME@.cpp.in`: doctest unit tests covering logic without GPU/window dependencies.
 

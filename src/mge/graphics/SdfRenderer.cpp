@@ -8,7 +8,7 @@
 namespace mge {
 
     namespace {
-        // Uniforms del fragment shader para iluminación (set 3, binding 0, coincidente con lighting.glsl)
+        // Fragment shader uniforms for lighting (set 3, binding 0, matching lighting.glsl)
         struct LightingUniform {
             glm::vec4 toSun;
             glm::vec4 sunColor;
@@ -19,7 +19,7 @@ namespace mge {
             glm::vec4 cameraPosition;
         };
 
-        // Uniforms del fragment shader para SDF raymarching (set 3, binding 1, coincidente con sdf_pass.glsl)
+        // Fragment shader uniforms for SDF raymarching (set 3, binding 1, matching sdf_pass.glsl)
         struct SdfUniforms {
             glm::mat4 viewProjection;
             glm::mat4 inverseViewProjection;
@@ -52,7 +52,7 @@ namespace mge {
 
         m_pipeline = device.createGraphicsPipeline(desc);
         if (!valid()) {
-            MGE_LOG_ERROR("Graphics", "No se pudo crear el SdfRenderer");
+            MGE_LOG_ERROR("Graphics", "Failed to create SdfRenderer");
         }
     }
 
@@ -65,7 +65,7 @@ namespace mge {
         SDL_BindGPUGraphicsPipeline(pass, m_pipeline.get());
         renderer.resetBoundPipeline();
 
-        // Slot 0: Lighting (layout std140 idéntico a lighting.glsl)
+        // Slot 0: Lighting (std140 layout matching lighting.glsl)
         const LightingUniform lightingUniform{
             glm::vec4(-glm::normalize(lighting.sunDirection), 0.0f),
             glm::vec4(lighting.sunColor, 0.0f),
@@ -76,7 +76,7 @@ namespace mge {
             glm::vec4(frame.cameraPosition, 1.0f)};
         SDL_PushGPUFragmentUniformData(cmd->get(), 0, &lightingUniform, sizeof(lightingUniform));
 
-        // Slot 1: SdfUniforms (layout std140 idéntico a sdf_pass.glsl)
+        // Slot 1: SdfUniforms (std140 layout matching sdf_pass.glsl)
         const SdfUniforms sdfUniforms{frame.viewProjection,
                                       frame.inverseViewProjection,
                                       glm::vec4(frame.cameraPosition, frame.time),

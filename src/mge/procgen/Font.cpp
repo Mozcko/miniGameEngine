@@ -7,7 +7,7 @@ namespace mge {
     namespace {
         constexpr int kBuiltinCell = 8;
         constexpr int kBuiltinColumns = 16;
-        constexpr float kBuiltinLineHeight = 10.0f; // 8 px + 2 de interlineado
+        constexpr float kBuiltinLineHeight = 10.0f; // 8 px + 2 px line spacing
     }
 
     Font::Font(Image atlas, std::vector<Glyph> glyphs, float lineHeight, bool pixelFont)
@@ -80,7 +80,7 @@ namespace mge {
             extra = 3;
             cp = lead & 0x07u;
         } else {
-            return kReplacement; // Byte de continuación suelto o inválido
+            return kReplacement; // Stray or invalid continuation byte
         }
         for (int k = 0; k < extra; k++) {
             if (index >= text.size() || (byte(index) & 0xC0) != 0x80) return kReplacement;

@@ -25,7 +25,7 @@ namespace mge {
             return;
         }
         MGE_ASSERT(std::this_thread::get_id() == m_mainThreadId,
-                   "Profiler solo debe usarse desde el hilo principal");
+                   "Profiler must only be used from the main thread");
         m_openStack.clear();
         for (auto& acc : m_accumulators) {
             acc.totalDuration = std::chrono::steady_clock::duration{0};
@@ -38,8 +38,8 @@ namespace mge {
             return;
         }
         MGE_ASSERT(std::this_thread::get_id() == m_mainThreadId,
-                   "Profiler solo debe usarse desde el hilo principal");
-        MGE_ASSERT(m_openStack.empty(), "Profiler: hay scopes sin cerrar al terminar el frame");
+                   "Profiler must only be used from the main thread");
+        MGE_ASSERT(m_openStack.empty(), "Profiler: unclosed scopes remaining at end of frame");
 
         for (std::size_t i = 0; i < m_entries.size(); ++i) {
             auto& entry = m_entries[i];
@@ -83,7 +83,7 @@ namespace mge {
             return;
         }
         MGE_ASSERT(std::this_thread::get_id() == m_mainThreadId,
-                   "Profiler solo debe usarse desde el hilo principal");
+                   "Profiler must only be used from the main thread");
 
         std::size_t index = m_entries.size();
         for (std::size_t i = 0; i < m_entries.size(); ++i) {
@@ -113,9 +113,9 @@ namespace mge {
             return;
         }
         MGE_ASSERT(std::this_thread::get_id() == m_mainThreadId,
-                   "Profiler solo debe usarse desde el hilo principal");
+                   "Profiler must only be used from the main thread");
         if (m_openStack.empty()) {
-            MGE_ASSERT(false, "Profiler::end() llamado sin begin()");
+            MGE_ASSERT(false, "Profiler::end() called without begin()");
             return;
         }
         const OpenScope open = m_openStack.back();

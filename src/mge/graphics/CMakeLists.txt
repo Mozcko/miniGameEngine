@@ -1,5 +1,5 @@
-# High-level renderer over mge_gpu (SDL3 GPU): textures, mesh drawing with camera and depth.
-# Shaders are GLSL compiled to SPIR-V at build time and embedded (mge_add_shaders).
+# High-level renderer on top of mge_gpu (SDL3 GPU): textures, mesh drawing with camera and depth.
+# Shaders are GLSL compiled to SPIR-V during the build and embedded (mge_add_shaders).
 add_library(mge_graphics STATIC
     Texture2D.h Texture2D.cpp
     MeshRenderer.h MeshRenderer.cpp
@@ -26,7 +26,7 @@ mge_add_shaders(mge_graphics SHADERS shaders/mesh.vert shaders/mesh.frag shaders
     shaders/debug_lines.vert shaders/debug_lines.frag shaders/ui.vert shaders/ui.frag
     shaders/sky.vert shaders/sky.frag)
 
-# For <mge/mge.h>: targets linking this module see MGE_HAS_GRAPHICS
+# For <mge/mge.h>: anything linking this module sees MGE_HAS_GRAPHICS
 target_compile_definitions(mge_graphics INTERFACE MGE_HAS_GRAPHICS=1)
 
 mge_install_headers(graphics

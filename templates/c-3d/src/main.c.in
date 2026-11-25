@@ -16,20 +16,20 @@ static bool on_init(mge_app* app, void* user_data) {
     AppState* state = (AppState*)user_data;
     game_logic_init(&state->logic);
 
-    /* Cubo procedural 3D */
+    /* Procedural 3D cube */
     state->cube = mge_mesh_create_cube(app, 1.0f);
     if (!state->cube) {
         return false;
     }
 
-    /* Sonido procedural de salto */
+    /* Procedural jump sound */
     state->jumpSfx = mge_audio_sfx_create_preset(app, MGE_SFX_JUMP, 0);
 
-    /* Acciones de entrada */
+    /* Input actions */
     mge_input_bind_action(app, "Jump", "Space");
     mge_input_bind_action(app, "Quit", "Escape");
 
-    /* Camara mirando al origen */
+    /* Camera looking at the origin */
     float view[16] = {
         1.0f,  0.0f,          0.0f,          0.0f,
         0.0f,  0.89442719f,  -0.44721360f,   0.0f,
@@ -71,7 +71,7 @@ static void on_update(mge_app* app, float dt, void* user_data) {
 static void on_render(mge_app* app, void* user_data) {
     AppState* state = (AppState*)user_data;
 
-    /* Matriz de rotacion y traslacion del cubo */
+    /* Cube rotation and translation matrix */
     const float c = cosf(state->logic.rotationY);
     const float s = sinf(state->logic.rotationY);
     float model[16] = {
@@ -84,12 +84,12 @@ static void on_render(mge_app* app, void* user_data) {
     float color[4] = {0.2f, 0.7f, 1.0f, 1.0f};
     mge_renderer_draw_mesh(app, state->cube, model, color);
 
-    /* Texto 2D */
+    /* 2D text */
     float textColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     mge_ui_text(app, 20.0f, 20.0f, "@GAME_TITLE@ (C 3D)", 2.0f, textColor);
 
     float hintColor[4] = {0.8f, 0.8f, 0.8f, 1.0f};
-    mge_ui_text(app, 20.0f, 60.0f, "Espacio: Salto | Esc: Salir", 1.0f, hintColor);
+    mge_ui_text(app, 20.0f, 60.0f, "Space: Jump | Esc: Quit", 1.0f, hintColor);
 }
 
 static void on_shutdown(mge_app* app, void* user_data) {

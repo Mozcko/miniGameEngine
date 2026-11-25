@@ -2,12 +2,12 @@
 .gitignore 668d7124ecd80892
 .vscode/settings.json bb3724e5fa6cdbd2
 .vscode/tasks.json 9e4cbfd50e7c076d
-CMakeLists.txt 1fa7528a5afd995d
+CMakeLists.txt 6e002b56fc65abf7
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md bfed3750830113fc
 mge.project d02f2563111b4ce6
-src/SimCore.cpp 9410e8ddf8295fe4
-src/SimCoreLogic.cpp e0df816d300d5834
-src/SimCoreLogic.h c259eac71250683d
-tests/test_sim_core.cpp c84ed6d5c355f0c9
+src/SimCore.cpp 311b742646b7531c
+src/SimCoreLogic.cpp 8ffcbf138a0b37cb
+src/SimCoreLogic.h ab3733f63b8aff97
+tests/test_sim_core.cpp 883a3800b0f00907

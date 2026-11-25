@@ -1,4 +1,4 @@
-"""@GAME_TITLE@: aplicacion principal en Python."""
+"""@GAME_TITLE@: main Python application."""
 import math
 import os
 import sys
@@ -20,14 +20,14 @@ class @GAME_CLASS@App(mge.Application):
         self.jump_sfx: mge.Sample | None = None
 
     def on_init(self) -> bool:
-        # Malla procedural del cubo
+        # Procedural cube mesh
         self.cube = mge.Mesh.create_cube(1.0, app=self)
 
-        # Efecto de sonido sintetizado para salto
+        # Synthesized jump sound effect
         if self.audio is not None:
             self.jump_sfx = self.audio.create_sfx(mge.SfxPreset.JUMP)
 
-        # Camara 3D mirando al origen
+        # 3D camera looking at the origin
         eye = mge.Vec3(0.0, 2.0, 4.0)
         target = mge.Vec3(0.0, 0.0, 0.0)
         up = mge.Vec3(0.0, 1.0, 0.0)
@@ -50,7 +50,7 @@ class @GAME_CLASS@App(mge.Application):
         if self.cube is None or not self.cube.is_alive or self.renderer is None:
             return
 
-        # Modelo con rotacion en Y y traslacion vertical
+        # Model matrix with Y rotation and vertical translation
         model = (
             mge.Mat4.translation(mge.Vec3(0.0, self.logic.player.y, 0.0))
             * mge.Mat4.rotate(self.logic.rotation_y, mge.Vec3(0.0, 1.0, 0.0))
@@ -58,9 +58,9 @@ class @GAME_CLASS@App(mge.Application):
         color = mge.Vec4(0.2, 0.7, 1.0, 1.0)
         self.renderer.draw_mesh(self.cube, model, color)
 
-        # Overlay 2D
+        # 2D overlay
         self.renderer.draw_text("@GAME_TITLE@ (Python 3D)", 20.0, 20.0, scale=2.0)
-        self.renderer.draw_text("Espacio: Salto | Esc: Salir", 20.0, 60.0, scale=1.0)
+        self.renderer.draw_text("Space: Jump | Esc: Quit", 20.0, 60.0, scale=1.0)
 
     def on_shutdown(self) -> None:
         if self.cube is not None:

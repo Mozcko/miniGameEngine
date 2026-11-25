@@ -1,5 +1,5 @@
 #version 450
-// UI 2D (#42): GpuVertex en píxeles lógicos (origen arriba a la izquierda), proyección ortográfica
+// 2D UI (#42): GpuVertex in logical pixels (top-left origin), orthographic projection
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inColor;

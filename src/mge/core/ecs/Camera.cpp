@@ -10,7 +10,7 @@ namespace mge {
         if (camera.projection == ProjectionType::Perspective)
             return glm::perspectiveRH_ZO(camera.fovY, camera.aspect, camera.nearPlane, camera.farPlane);
         if (camera.pixelSpace) {
-            // Arriba a la izquierda = (0, 0): bottom = alto, top = 0
+            // Top-left = (0, 0): bottom = height, top = 0
             return glm::orthoRH_ZO(0.0f, float(viewport.x), float(viewport.y), 0.0f, camera.nearPlane,
                                    camera.farPlane);
         }
@@ -32,7 +32,7 @@ namespace mge {
     }
 
     void CameraSystem::update(Registry& registry, const glm::uvec2& viewport) {
-        if (viewport.x == 0 || viewport.y == 0) return; // Ventana minimizada: se conserva el aspecto
+        if (viewport.x == 0 || viewport.y == 0) return; // Minimized window: keep existing aspect ratio
         const float aspect = float(viewport.x) / float(viewport.y);
         registry.each<Camera>([aspect](Entity, Camera& camera) {
             if (camera.autoAspect) camera.aspect = aspect;

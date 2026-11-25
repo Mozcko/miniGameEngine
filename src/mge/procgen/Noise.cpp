@@ -10,7 +10,7 @@ namespace mge {
     namespace {
         float fade(float t) {
             return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
-        } // Quíntica de Perlin
+        } // Perlin quintic
         float lerp(float a, float b, float t) {
             return a + (b - a) * t;
         }
@@ -24,7 +24,7 @@ namespace mge {
             return static_cast<float>(h) / 127.5f - 1.0f;
         } // [0,255] -> [-1, 1]
 
-        // 8 direcciones unitarias para Perlin 2D
+        // 8 unit directions for 2D Perlin
         const glm::vec2 kGrad2[8] = {{1, 0},
                                      {-1, 0},
                                      {0, 1},
@@ -33,7 +33,7 @@ namespace mge {
                                      {-0.70710678f, 0.70710678f},
                                      {0.70710678f, -0.70710678f},
                                      {-0.70710678f, -0.70710678f}};
-        // 12 aristas del cubo para Perlin/simplex 3D (Perlin mejorado)
+        // 12 cube edges for 3D Perlin/simplex (improved Perlin)
         const glm::vec3 kGrad3[12] = {{1, 1, 0}, {-1, 1, 0}, {1, -1, 0}, {-1, -1, 0},
                                       {1, 0, 1}, {-1, 0, 1}, {1, 0, -1}, {-1, 0, -1},
                                       {0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1}};
@@ -41,7 +41,7 @@ namespace mge {
 
     Noise::Noise(std::uint32_t seed) : m_seed(seed) {
         for (std::size_t i = 0; i < 256; i++) m_perm[i] = static_cast<std::uint8_t>(i);
-        // Fisher–Yates con el RNG del motor: tabla de permutación distinta por semilla
+        // Fisher–Yates with the engine's RNG: distinct permutation table per seed
         Pcg32 rng(seed, 0x6E6F697365ull); // stream "noise"
         for (std::size_t i = 255; i > 0; i--) {
             std::size_t j = rng.nextBounded(static_cast<std::uint32_t>(i + 1));
@@ -81,7 +81,7 @@ namespace mge {
         const float u = fade(fx), v = fade(fy);
         const float result =
             lerp(lerp(corner(0, 0), corner(1, 0), u), lerp(corner(0, 1), corner(1, 1), u), v);
-        return clamp1(result * 1.41421356f); // Rango teórico ±√2/2 -> ±1
+        return clamp1(result * 1.41421356f); // Theoretical range ±√2/2 -> ±1
     }
 
     float Noise::perlin(float x, float y, float z) const {
@@ -181,7 +181,7 @@ namespace mge {
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 const int gx = cx + dx, gy = cy + dy;
-                // Punto característico de la celda, determinista por (celda, semilla)
+                // Cell feature point, deterministic for (cell, seed)
                 const std::uint32_t h = hash2i(gx, gy, m_seed);
                 const glm::vec2 feature(static_cast<float>(gx) + toFloat01(h),
                                         static_cast<float>(gy) +
@@ -222,7 +222,7 @@ namespace mge {
         return {f1, f2};
     }
 
-    // --- Muestreo genérico ---
+    // --- Generic sampling ---
 
     float Noise::sample(NoiseType type, float x, float y) const {
         switch (type) {
@@ -242,7 +242,7 @@ namespace mge {
         return 0.0f;
     }
 
-    // --- Fractales ---
+    // --- Fractals ---
 
     namespace {
         template <typename SampleFn> float fractal(const FractalSettings& s, SampleFn&& sampleAt) {
@@ -255,7 +255,7 @@ namespace mge {
             }
             return norm > 0.0f ? sum / norm : 0.0f;
         }
-        // Desplazamiento por octava para que las octavas no se alineen en el origen
+        // Per-octave offset so octaves do not align at the origin
         float octaveOffset(int octave) {
             return static_cast<float>(octave) * 17.31f;
         }
@@ -299,7 +299,7 @@ namespace mge {
         return fbm(type, x + wx * strength, y + wy * strength, z + wz * strength, settings);
     }
 
-    // --- Lotes ---
+    // --- Batch sampling ---
 
     void Noise::sample(NoiseType type, const float* xs, const float* ys, float* out,
                        std::size_t count) const {

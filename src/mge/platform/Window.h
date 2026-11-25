@@ -5,7 +5,7 @@
 
 namespace mge {
 
-    // Ventana de SDL3 (redimensionable, sin API gráfica propia: la toma la GPU de SDL en el GpuModule)
+    // SDL3 window (resizable, no graphics API of its own: claimed by SDL GPU in GpuModule)
     class Window {
     public:
         Window(const std::string& title, int width, int height);
@@ -14,10 +14,10 @@ namespace mge {
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
 
-        // Tamaño pedido al crearla (el real lo da el swapchain: GpuFrame::width/height)
+        // Requested size at creation (actual size comes from the swapchain: GpuFrame::width/height)
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
-        // false si falló la creación de la ventana (ver el log)
+        // false if window creation failed (check the log)
         bool isValid() const { return m_sdlWindow != nullptr; }
 
         SDL_Window* getSDLWindow() { return m_sdlWindow; }

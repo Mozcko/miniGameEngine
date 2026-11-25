@@ -1,4 +1,4 @@
-"""Tests unitarios para la logica de @GAME_TITLE@ (Python 2D)."""
+"""Unit tests for @GAME_TITLE@ logic (Python 2D)."""
 from game.logic import GameLogic2D, Rect
 
 
@@ -13,11 +13,11 @@ def test_rect_intersection() -> None:
 def test_player_movement_and_clamping() -> None:
     logic = GameLogic2D(800.0, 600.0)
     initial_x = logic.player_rect.x
-    # Mover a la derecha
+    # Move right
     logic.update(0.1, move_x=1.0, move_y=0.0)
     assert logic.player_rect.x > initial_x
 
-    # Intentar moverse fuera de la pantalla
+    # Try moving outside the screen
     for _ in range(100):
         logic.update(0.1, move_x=1.0, move_y=0.0)
     assert logic.player_rect.x <= 800.0 - logic.player_rect.w
@@ -25,7 +25,7 @@ def test_player_movement_and_clamping() -> None:
 
 def test_coin_collection() -> None:
     logic = GameLogic2D(800.0, 600.0)
-    # Colocar jugador sobre la primera moneda
+    # Place player on the first coin
     coin0 = logic.coins[0]
     logic.player_rect.x = coin0.x
     logic.player_rect.y = coin0.y

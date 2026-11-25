@@ -1,7 +1,7 @@
 # Engine command-line tool (mge CLI)
 
 if(WIN32)
-    message(STATUS "mge CLI: not supported on Windows yet")
+    message(STATUS "mge CLI: not yet supported on Windows")
     return()
 endif()
 

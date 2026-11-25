@@ -8,7 +8,7 @@
 
 namespace mge::sdf {
 
-    // --- Primitivas (fórmulas clásicas de Íñigo Quílez) ---
+    // --- Primitives (classic Inigo Quilez formulas) ---
 
     Sdf sphere(float radius) {
         return [radius](const glm::vec3& p) { return glm::length(p) - radius; };
@@ -54,7 +54,7 @@ namespace mge::sdf {
         return [n, offset](const glm::vec3& p) { return glm::dot(n, p) + offset; };
     }
 
-    // --- Booleanas ---
+    // --- Booleans ---
 
     Sdf opUnion(Sdf a, Sdf b) {
         return [a = std::move(a), b = std::move(b)](const glm::vec3& p) { return std::min(a(p), b(p)); };
@@ -95,7 +95,7 @@ namespace mge::sdf {
         };
     }
 
-    // --- Transformaciones ---
+    // --- Transforms ---
 
     Sdf opTranslate(Sdf a, const glm::vec3& offset) {
         return [a = std::move(a), offset](const glm::vec3& p) { return a(p - offset); };
@@ -163,13 +163,13 @@ namespace mge::sdf {
                    glm::vec3(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)) * cell;
         };
 
-        // 1. Muestrear la SDF en todos los puntos de la grilla
+        // 1. Sample the SDF at all grid points
         std::vector<float> values(static_cast<std::size_t>(points.x) * points.y * points.z);
         for (int z = 0; z < points.z; z++)
             for (int y = 0; y < points.y; y++)
                 for (int x = 0; x < points.x; x++) values[pointIndex(x, y, z)] = sdf(position(x, y, z));
 
-        // 2. Un vértice por celda que la superficie cruza: promedio de los cruces en sus 12 aristas
+        // 2. One vertex per cell crossed by the surface: average of crossings across its 12 edges
         constexpr std::uint32_t kNone = 0xFFFFFFFFu;
         std::vector<std::uint32_t> cellVertex(static_cast<std::size_t>(cells.x) * cells.y * cells.z, kNone);
         static const int kCorners[8][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0},
@@ -205,9 +205,9 @@ namespace mge::sdf {
             }
         }
 
-        // 3. Un quad por arista de la grilla con cambio de signo, uniendo las 4 celdas que la rodean
+        // 3. One quad per sign-changing grid edge, joining the 4 surrounding cells
         auto quadAround = [&](int axis, int x, int y, int z) {
-            // Las otras dos direcciones del eje
+            // The other two axes
             const int u = (axis + 1) % 3, w = (axis + 2) % 3;
             glm::ivec3 base(x, y, z);
             std::uint32_t corners[4];
@@ -224,7 +224,7 @@ namespace mge::sdf {
             }
             for (std::uint32_t index : corners)
                 if (index == kNone) return;
-            // Orden en ciclo alrededor de la arista: (−,−), (−,0), (0,0), (0,−)
+            // Cyclic order around the edge: (−,−), (−,0), (0,0), (0,−)
             detail::addOrientedQuad(mesh, corners[0], corners[1], corners[3], corners[2]);
         };
         for (int z = 0; z < points.z; z++) {

@@ -9,7 +9,7 @@ namespace mge {
 
     namespace {
 
-        // Función hash para empaquetar una coordenada 3D entera en 64 bits (igual a ChunkCoordHash)
+        // Hash function to pack a 3D integer coordinate into 64 bits (same as ChunkCoordHash)
         inline std::uint64_t cellKey(int x, int y, int z) {
             std::uint64_t h = static_cast<std::uint32_t>(x);
             h = h * 0x9E3779B97F4A7C15ull ^ static_cast<std::uint32_t>(y);
@@ -17,7 +17,7 @@ namespace mge {
             return h ^ (h >> 31);
         }
 
-        // Conversión segura de coordenada flotante a índice de celda (evita UB en float -> int)
+        // Safe conversion from float coordinate to cell index (avoids UB on float -> int)
         inline int cellCoord(float v, float cellSize) {
             if (std::isnan(v)) {
                 return 0;
@@ -35,7 +35,7 @@ namespace mge {
     } // namespace
 
     SpatialHash::SpatialHash(float initialCellSize) : m_cellSize(initialCellSize) {
-        MGE_ASSERT(initialCellSize > 0.0f, "SpatialHash: cellSize debe ser mayor a 0");
+        MGE_ASSERT(initialCellSize > 0.0f, "SpatialHash: cellSize must be greater than 0");
     }
 
     void SpatialHash::clear() {
@@ -91,7 +91,7 @@ namespace mge {
                 ++j;
             }
 
-            // Comparar todos los pares de entradas que coinciden en esta celda
+            // Compare all entry pairs that share this cell
             for (std::size_t a = i; a < j; ++a) {
                 const std::uint32_t idxA = m_cellItems[a].entryIndex;
                 const Entry& entryA = m_entries[idxA];

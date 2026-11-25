@@ -1,6 +1,6 @@
-# Sandbox: voxel test world for the engine
+# Sandbox: test voxel world for the engine
 
-# World content (blocks and terrain) over mge_voxel: headless, testable without a window
+# World content (blocks and terrain) built on mge_voxel: headless, testable without a window
 add_library(sandbox_world STATIC
     SandboxBlocks.h SandboxBlocks.cpp
     SandboxTerrain.h SandboxTerrain.cpp
@@ -19,7 +19,7 @@ mge_add_game(sandbox
     MODULES platform gpu graphics audio
     SMOKE_FRAMES 120)
 
-# Smoke test with debug overlays (F3/F4) enabled: debug lines go through Vulkan validation
+# Smoke test with debug helpers (F3/F4) enabled: lines go through Vulkan validation
 if(MGE_BUILD_TESTS)
     add_test(NAME "smoke: sandbox offscreen 60 frames (debug draw)" COMMAND sandbox
              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests)

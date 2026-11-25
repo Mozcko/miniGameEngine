@@ -1,4 +1,4 @@
-# Procedural generation on CPU (headless: core + GLM only). Always built, even without modules.
+# CPU procedural generation (headless: core + GLM only). Always built, even without modules.
 add_library(mge_procgen STATIC
     MeshData.h MeshData.cpp
     Image.h Image.cpp

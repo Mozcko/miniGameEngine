@@ -18,7 +18,7 @@ target_include_directories(mge_voxel PUBLIC
 target_link_libraries(mge_voxel PUBLIC mge_core mge_procgen)
 mge_set_warnings(mge_voxel)
 
-# For <mge/mge.h>: targets linking this module see MGE_HAS_VOXEL
+# For <mge/mge.h>: anything linking this module sees MGE_HAS_VOXEL
 target_compile_definitions(mge_voxel INTERFACE MGE_HAS_VOXEL=1)
 
 mge_install_headers(voxel

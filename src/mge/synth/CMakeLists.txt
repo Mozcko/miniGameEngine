@@ -1,5 +1,5 @@
-# Procedural audio on CPU (headless: core only). Always built, even without modules: mixer,
-# synthesis, effects and music are tested without an audio device. mge_audio connects it to SDL3.
+# CPU procedural audio (headless: core only). Always built, even without modules: mixer,
+# synthesis, effects, and music are tested without an audio device. mge_audio connects it to SDL3.
 add_library(mge_synth STATIC
     Sample.h
     Oscillator.h Oscillator.cpp

@@ -13,7 +13,7 @@ target_include_directories(mge_platform PUBLIC
 target_link_libraries(mge_platform PUBLIC mge_core SDL3::SDL3)
 mge_set_warnings(mge_platform)
 
-# For <mge/mge.h>: targets linking this module see MGE_HAS_PLATFORM
+# For <mge/mge.h>: anything linking this module sees MGE_HAS_PLATFORM
 target_compile_definitions(mge_platform INTERFACE MGE_HAS_PLATFORM=1)
 
 mge_install_headers(platform

@@ -19,7 +19,7 @@ namespace sandbox {
     }
 
     SandboxSounds::SandboxSounds() {
-        // --- 1. Pasto (Grass) ---
+        // --- 1. Grass ---
         mge::SfxParams grassStep;
         grassStep.wave = mge::Waveform::Noise;
         grassStep.baseFrequency = 450.0f;
@@ -52,7 +52,7 @@ namespace sandbox {
         grassPlace.lowPassCutoff = 900.0f;
         grassPlace.gain = 0.3f;
 
-        // --- 2. Piedra (Stone) ---
+        // --- 2. Stone ---
         mge::SfxParams stoneStep;
         stoneStep.wave = mge::Waveform::Noise;
         stoneStep.baseFrequency = 850.0f;
@@ -88,7 +88,7 @@ namespace sandbox {
         stonePlace.lowPassCutoff = 3000.0f;
         stonePlace.gain = 0.35f;
 
-        // --- 3. Arena (Sand) ---
+        // --- 3. Sand ---
         mge::SfxParams sandStep;
         sandStep.wave = mge::Waveform::Noise;
         sandStep.baseFrequency = 550.0f;
@@ -121,7 +121,7 @@ namespace sandbox {
         sandPlace.lowPassCutoff = 1400.0f;
         sandPlace.gain = 0.28f;
 
-        // --- 4. Madera (Wood) ---
+        // --- 4. Wood ---
         mge::SfxParams woodStep;
         woodStep.wave = mge::Waveform::Triangle;
         woodStep.baseFrequency = 180.0f;
@@ -157,7 +157,7 @@ namespace sandbox {
         woodPlace.lowPassCutoff = 1800.0f;
         woodPlace.gain = 0.35f;
 
-        // --- 5. Hojas / Plantas (Leaves) ---
+        // --- 5. Leaves / Plants ---
         mge::SfxParams leavesStep;
         leavesStep.wave = mge::Waveform::Noise;
         leavesStep.baseFrequency = 1100.0f;
@@ -198,7 +198,7 @@ namespace sandbox {
             {leavesStep, leavesBreak, leavesPlace},
         };
 
-        // Semillas fijas para mutar variantes de manera determinista y diferenciada
+        // Fixed seeds to mutate variants deterministically and distinctly
         constexpr std::uint64_t kFootstepSeeds[kFootstepVariants] = {0x101u, 0x102u, 0x103u, 0x104u};
         constexpr std::uint64_t kBreakSeeds[kBreakVariants] = {0x201u, 0x202u, 0x203u, 0x204u};
         constexpr std::uint64_t kPlaceSeeds[kPlaceVariants] = {0x301u, 0x302u, 0x303u, 0x304u};
@@ -216,8 +216,8 @@ namespace sandbox {
             }
         }
 
-        // --- Acciones globales ---
-        // Salto: tono ascendente
+        // --- Global actions ---
+        // Jump: rising pitch
         m_jump.wave = mge::Waveform::Square;
         m_jump.duty = 0.35f;
         m_jump.baseFrequency = 300.0f;
@@ -228,7 +228,7 @@ namespace sandbox {
         m_jump.highPassCutoff = 120.0f;
         m_jump.gain = 0.35f;
 
-        // Aterrizaje: impacto grave
+        // Landing: low thud
         m_land.wave = mge::Waveform::Noise;
         m_land.baseFrequency = 120.0f;
         m_land.slide = -2.0f;
@@ -240,7 +240,7 @@ namespace sandbox {
         m_land.lowPassSweep = -3.0f;
         m_land.gain = 0.5f;
 
-        // Splash al entrar en agua: ruido con phaser y caída
+        // Water splash: noise with phaser and falloff
         m_splash.wave = mge::Waveform::Noise;
         m_splash.baseFrequency = 500.0f;
         m_splash.slide = -2.5f;
@@ -254,7 +254,7 @@ namespace sandbox {
         m_splash.lowPassSweep = -3.0f;
         m_splash.gain = 0.45f;
 
-        // Lanzamiento de cuerpo rígido: siseo/whoosh rápido
+        // Rigid body throw: quick whoosh
         m_throw.wave = mge::Waveform::Noise;
         m_throw.baseFrequency = 240.0f;
         m_throw.slide = 2.0f;

@@ -1,5 +1,5 @@
-// Utilidades de trazado de rayos por campos de distancia (SDF raymarching).
-// Requiere que el shader defina la función de distancia de la escena:
+// Signed distance field (SDF) raymarching utilities.
+// Requires the shader to define the scene distance function:
 // float map(vec3 p);
 #ifndef MGE_RAYMARCH_GLSL
 #define MGE_RAYMARCH_GLSL
@@ -16,11 +16,11 @@
 #define MGE_RAYMARCH_SHADOW_STEPS 64
 #endif
 
-// Declaración previa de la función de escena (debe implementarse en el shader)
+// Forward declaration of the scene function (must be implemented in the shader)
 float map(vec3 p);
 
-// Marcha un rayo desde ro en dirección unitaria rd dentro del rango [tMin, tMax] con un máximo de pasos dado.
-// Retorna la distancia t a la superficie, o -1.0 si no hubo impacto.
+// Marches a ray from ro along unit direction rd within [tMin, tMax] up to maxSteps.
+// Returns distance t to the surface, or -1.0 if there was no hit.
 float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, int maxSteps, out int steps) {
     float t = tMin;
     steps = 0;
@@ -36,24 +36,24 @@ float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, int maxSteps, out int s
     return -1.0;
 }
 
-// Marcha un rayo desde ro en dirección unitaria rd dentro del rango [tMin, tMax].
-// Retorna la distancia t a la superficie, o -1.0 si no hubo impacto.
+// Marches a ray from ro along unit direction rd within [tMin, tMax].
+// Returns distance t to the surface, or -1.0 if there was no hit.
 float raymarch(vec3 ro, vec3 rd, float tMin, float tMax, out int steps) {
     return raymarch(ro, rd, tMin, tMax, MGE_RAYMARCH_MAX_STEPS, steps);
 }
 
-// Marcha un rayo desde t = 0.0 hasta tMax, reportando el número de pasos ejecutados
+// Marches a ray from t = 0.0 to tMax, reporting the number of steps taken
 float raymarch(vec3 ro, vec3 rd, float tMax, out int steps) {
     return raymarch(ro, rd, 0.0, tMax, steps);
 }
 
-// Sobrecarga conveniente sin reporte de pasos
+// Convenience overload without step reporting
 float raymarch(vec3 ro, vec3 rd, float tMax) {
     int dummySteps;
     return raymarch(ro, rd, 0.0, tMax, dummySteps);
 }
 
-// Normal en superficie calculada con la técnica del tetraedro (4 evaluaciones de map)
+// Surface normal computed with the tetrahedron technique (4 evaluations of map)
 vec3 calcNormal(vec3 p) {
     const vec2 k = vec2(1.0, -1.0);
     const float h = 0.0005;
@@ -65,7 +65,7 @@ vec3 calcNormal(vec3 p) {
     );
 }
 
-// Oclusión ambiental basada en muestreo hemisférico a lo largo de la normal
+// Ambient occlusion based on hemispheric sampling along the normal
 float calcAO(vec3 p, vec3 n) {
     float occ = 0.0;
     float sca = 1.0;
@@ -78,7 +78,7 @@ float calcAO(vec3 p, vec3 n) {
     return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
 }
 
-// Sombra suave en raymarching (k = factor de penumbra, típicamente entre 8.0 y 32.0)
+// Soft raymarching shadow (k = penumbra factor, typically between 8.0 and 32.0)
 float softShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
     float res = 1.0;
     float t = mint;
@@ -93,7 +93,7 @@ float softShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
     return clamp(res, 0.0, 1.0);
 }
 
-// Sobrecarga con penumbra por defecto k = 16.0
+// Overload with default penumbra k = 16.0
 float softShadow(vec3 ro, vec3 rd, float mint, float maxt) {
     return softShadow(ro, rd, mint, maxt, 16.0);
 }

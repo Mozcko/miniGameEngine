@@ -11,7 +11,7 @@ namespace sandbox {
             return desc;
         }
 
-        // Cubo que no tapa la vista (vidrio, hojas: sólidos; agua, lava: atravesables)
+        // Non-occluding cube (glass, leaves: solid; water, lava: pass-through)
         mge::BlockDesc seeThrough(const char* name, glm::vec4 color, int tile, bool solid) {
             mge::BlockDesc desc;
             desc.name = name;
@@ -22,7 +22,7 @@ namespace sandbox {
             return desc;
         }
 
-        // Plantas y telaraña: forma de cruz, atravesables, con agujeros (pasada cutout)
+        // Plants and cobweb: cross-shaped, pass-through, with transparent cutouts (cutout pass)
         mge::BlockDesc cross(const char* name, glm::vec3 color, int tile) {
             mge::BlockDesc desc = seeThrough(name, glm::vec4(color, 1.0f), tile, false);
             desc.shape = mge::BlockShape::Cross;
@@ -51,7 +51,7 @@ namespace sandbox {
         b.log = registry.add(cube("log", {0.40f, 0.30f, 0.18f}, 20).setTiles(21, 21, 20));
         b.glass = registry.add(seeThrough("glass", {0.80f, 0.90f, 0.95f, 0.35f}, 49, true));
         mge::BlockDesc leaves = seeThrough("leaves", {0.22f, 0.50f, 0.18f, 1.0f}, 52, true);
-        leaves.layer = mge::RenderLayer::Cutout; // Agujeros, no semitransparencia (KI#21)
+        leaves.layer = mge::RenderLayer::Cutout; // Cutout holes, not semi-transparency (KI#21)
         b.leaves = registry.add(leaves);
         b.water = registry.add(seeThrough("water", {0.20f, 0.40f, 0.85f, 0.6f}, kWaterTile, false));
         b.lava = registry.add(seeThrough("lava", {0.95f, 0.40f, 0.05f, 1.0f}, kLavaTile, false));

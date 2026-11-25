@@ -6,7 +6,7 @@
 
 namespace mge::cli::wizard {
 
-    // Tipos de teclas interpretadas por el asistente de proyectos
+    // Key types interpreted by the project wizard
     enum class Key {
         None,
         Enter,
@@ -25,8 +25,8 @@ namespace mge::cli::wizard {
 
     using KeyReader = std::function<Key(char&)>;
 
-    // Ejecuta el asistente interactivo de proyectos en la terminal
-    // Devuelve true si el usuario confirmó la creación, o false si canceló con Ctrl+C, EOF o 'n'
+    // Runs the interactive project wizard in the terminal
+    // Returns true if the user confirmed creation, or false if cancelled with Ctrl+C, EOF, or 'n'
     bool runInteractiveWizard(WizardModel& model, const KeyReader& customKeyReader = {});
 
 } // namespace mge::cli::wizard

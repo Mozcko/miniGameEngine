@@ -20,9 +20,9 @@ namespace mge {
                                 {lo.x, lo.y, hi.z}, {lo.x, hi.y, lo.z}, {hi.x, hi.y, lo.z},
                                 {hi.x, hi.y, hi.z}, {lo.x, hi.y, hi.z}};
         for (int i = 0; i < 4; i++) {
-            line(c[i], c[(i + 1) % 4], color);         // Abajo
-            line(c[i + 4], c[(i + 1) % 4 + 4], color); // Arriba
-            line(c[i], c[i + 4], color);               // Verticales
+            line(c[i], c[(i + 1) % 4], color);         // Bottom
+            line(c[i + 4], c[(i + 1) % 4 + 4], color); // Top
+            line(c[i], c[i + 4], color);               // Verticals
         }
     }
 
@@ -56,7 +56,7 @@ namespace mge {
             const glm::vec4 world = inverse * ndc;
             c[i] = glm::vec3(world) / world.w;
         }
-        // Cerca (0..3) y lejos (4..7): cuadrados + aristas que los unen
+        // Near (0..3) and far (4..7): quads + connecting edges
         const int quad[4] = {0, 1, 3, 2};
         for (int i = 0; i < 4; i++) {
             line(c[quad[i]], c[quad[(i + 1) % 4]], color);
@@ -73,7 +73,8 @@ namespace mge {
             m_buffer = m_device.createBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
                                              m_capacity * std::uint32_t(sizeof(GpuVertex)));
         }
-        // cycle: si el frame anterior todavía usa el buffer, SDL da otro por detrás (sin pisarlo)
+        // cycle: if the previous frame still uses the buffer, SDL provides another behind the scenes (no
+        // overwrite)
         if (!m_device.uploadToBuffer(m_buffer, vertices().data(), count * std::uint32_t(sizeof(GpuVertex)),
                                      true))
             return;

@@ -11,15 +11,15 @@ struct SDL_AudioStream;
 
 namespace mge {
 
-    // Módulo de audio (#46): conecta un Mixer (mge_synth) al dispositivo de audio por defecto con un
-    // SDL_AudioStream en float32 estéreo. SDL llama al mezclador desde su hilo de audio; el juego le habla al
-    // mezclador por una cola sin locks. Sin dispositivo (o con SDL_AUDIODRIVER=dummy) el juego sigue en
-    // silencio: no es un error. MGE_MUTE=1 arranca en silencio.
+    // Audio module (#46): connects a Mixer (mge_synth) to the default audio device using a
+    // float32 stereo SDL_AudioStream. SDL invokes the mixer from its audio thread; the game talks to the
+    // mixer through a lock-free queue. Without a device (or with SDL_AUDIODRIVER=dummy) the game continues
+    // silently: this is not an error. MGE_MUTE=1 starts muted.
     //   auto* audio = getModule<mge::AudioModule>();
-    //   audio->playTone({440.0f, 0.3f});                   // sin archivos
+    //   audio->playTone({440.0f, 0.3f});                   // no files
     //   const SampleId jump = audio->loadWav("sounds/jump.wav");
     //   audio->play(jump);
-    // Hilo del juego: un solo hilo llama a play/load/volumen.
+    // Game thread: a single thread calls play/load/volume.
     class AudioModule : public Module {
     public:
         explicit AudioModule(int sampleRate = kDefaultSampleRate);
@@ -29,14 +29,14 @@ namespace mge {
         bool onInit(Application& app) override;
         void onShutdown(Application& app) override;
 
-        // ¿Hay un dispositivo sonando? (false: todo sigue funcionando, pero no se oye)
+        // Is a playback device active? (false: everything still works, just silently)
         bool hasDevice() const { return m_stream != nullptr; }
         Mixer& mixer() { return m_mixer; }
 
-        // WAV → Sample a la frecuencia del mezclador (relativo → mge::assetPath). kInvalidSample si falla
+        // WAV → Sample at the mixer's sample rate (relative → mge::assetPath). kInvalidSample on failure
         SampleId loadWav(const std::filesystem::path& path);
         SampleId addSample(Sample sample) { return m_mixer.addSample(std::move(sample)); }
-        // Genera un efecto sfxr (#48) a la frecuencia del mezclador y lo registra: mge::sfx::jump(), coin()…
+        // Renders an sfxr effect (#48) at the mixer's sample rate and registers it: mge::sfx::jump(), coin()…
         SampleId addSfx(const SfxParams& params, std::uint64_t seed = 0) {
             return m_mixer.addSample(renderSfx(params, m_mixer.sampleRate(), seed));
         }
@@ -45,7 +45,7 @@ namespace mge {
             return m_mixer.playSample(sample, gain, pan);
         }
         bool playTone(const ToneDesc& tone) { return m_mixer.playTone(tone); }
-        // Una nota de un instrumento sintetizado (#47); ver Mixer::playNote
+        // A note from a synthesized instrument (#47); see Mixer::playNote
         VoiceHandle playNote(const Instrument& instrument, float frequency, float velocity = 1.0f,
                              float duration = 0.25f, AudioBus bus = AudioBus::Effects) {
             return m_mixer.playNote(instrument, frequency, velocity, duration, bus);
@@ -54,7 +54,7 @@ namespace mge {
         bool stopNote(VoiceHandle note) { return m_mixer.stopNote(note); }
         bool setDelay(const DelaySettings& settings) { return m_mixer.setDelay(settings); }
         void setBusVolume(AudioBus bus, float volume) { m_mixer.setBusVolume(bus, volume); }
-        // Música (#49): registrar una canción (mge::Song) y tocarla en loop; con fade, fundido cruzado
+        // Music (#49): register a song (mge::Song) and play it in a loop; with fade, crossfades
         SongId addSong(const Song& song) { return m_mixer.addSong(song); }
         bool playSong(SongId song, float fadeSeconds = 0.0f) { return m_mixer.playSong(song, fadeSeconds); }
         bool stopMusic(float fadeSeconds = 0.0f) { return m_mixer.stopMusic(fadeSeconds); }
@@ -72,6 +72,6 @@ namespace mge {
         Mixer m_mixer;
         SDL_AudioStream* m_stream = nullptr;
         bool m_subsystem = false;
-        std::vector<float> m_scratch; // Bloque de mezcla (se reserva en onInit, nunca en el hilo de audio)
+        std::vector<float> m_scratch; // Mixing block (preallocated in onInit, never on the audio thread)
     };
 }

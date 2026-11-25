@@ -1,8 +1,8 @@
-// NOTA DE DISEÑO:
-// La regla del motor "no usar printf/std::cout/std::cerr" aplica a las bibliotecas del motor (mge_*).
-// Una herramienta de línea de comandos (CLI) como mge DEBE comunicarse con el usuario a través de stdout
-// y stderr para ser componible en tuberías y shells del sistema operativo.
-// Por tanto, el uso de std::cout y std::cerr está explícitamente permitido en tools/mge.
+// DESIGN NOTE:
+// The engine rule "do not use printf/std::cout/std::cerr" applies to the engine libraries (mge_*).
+// A command-line tool (CLI) like mge MUST communicate with the user through stdout and stderr
+// so it can be composed in OS pipes and shells.
+// Therefore, using std::cout and std::cerr is explicitly allowed in tools/mge.
 
 #include "Commands.h"
 #include "Doctor.h"
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         return mge::cli::cmdDoctor(argc - 2, argv + 2);
     }
 
-    std::cerr << "Error: comando desconocido '" << cmd << "'.\n\n";
+    std::cerr << "Error: unknown command '" << cmd << "'.\n\n";
     mge::cli::printGeneralHelp();
     return 1;
 }

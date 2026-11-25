@@ -9,8 +9,8 @@
 
 namespace mge {
 
-    // Teclas físicas (posición en el teclado, no el carácter). Independiente de SDL: el módulo de
-    // plataforma traduce sus eventos a esto. Los tests pueden inyectar input directamente.
+    // Physical keys (keyboard position, not character). Independent of SDL: the platform module
+    // translates its events to these. Tests can inject input directly.
     enum class Key : std::uint16_t {
         Unknown = 0,
         A,
@@ -93,32 +93,32 @@ namespace mge {
         float y = 0.0f;
     };
 
-    // Estado del teclado y el ratón para el frame actual, con flancos (pressed/released) por frame.
+    // Keyboard and mouse state for the current frame, with per-frame edges (pressed/released).
     class InputState {
     public:
-        // Llamar al inicio de cada frame, ANTES de aplicar los eventos del frame
+        // Call at the start of each frame, BEFORE applying the frame's events
         void beginFrame();
 
-        // --- Entrada (la llama el backend de plataforma o un test) ---
+        // --- Input (called by the platform backend or a test) ---
         void setKey(Key key, bool down);
         void setMouseButton(MouseButton button, bool down);
         void setMousePosition(float x, float y);
         void addMouseDelta(float dx, float dy);
         void addWheel(float amount);
-        // Suelta todo (ej: la ventana perdió el foco, para no quedar con teclas "pegadas")
+        // Release everything (e.g., window lost focus, to avoid "stuck" keys)
         void clear();
 
-        // --- Consultas ---
+        // --- Queries ---
         bool isDown(Key key) const;
-        bool wasPressed(Key key) const;  // Bajó en este frame
-        bool wasReleased(Key key) const; // Subió en este frame
+        bool wasPressed(Key key) const;  // Went down this frame
+        bool wasReleased(Key key) const; // Went up this frame
         bool isDown(MouseButton button) const;
         bool wasPressed(MouseButton button) const;
         bool wasReleased(MouseButton button) const;
 
-        Vec2f mousePosition() const { return m_mousePosition; } // Píxeles, y hacia abajo
-        Vec2f mouseDelta() const { return m_mouseDelta; }       // Movimiento acumulado del frame
-        float wheel() const { return m_wheel; }                 // Rueda acumulada del frame (+ = arriba)
+        Vec2f mousePosition() const { return m_mousePosition; } // Pixels, y pointing down
+        Vec2f mouseDelta() const { return m_mouseDelta; }       // Accumulated movement this frame
+        float wheel() const { return m_wheel; }                 // Accumulated wheel this frame (+ = up)
 
     private:
         static constexpr std::size_t kKeyCount = static_cast<std::size_t>(Key::Count);
@@ -133,13 +133,13 @@ namespace mge {
         float m_wheel = 0.0f;
     };
 
-    // Acciones y ejes con nombre ("Jump", "MoveForward") enlazados a teclas o botones.
-    // El juego consulta acciones; cambiar los controles es solo cambiar los bindings.
+    // Named actions and axes ("Jump", "MoveForward") bound to keys or mouse buttons.
+    // The game queries actions; rebinding controls only requires changing the bindings.
     class ActionMap {
     public:
         void bind(const std::string& action, Key key);
         void bind(const std::string& action, MouseButton button);
-        // Eje en [-1, 1]: positive suma +1, negative suma -1 (ambas = 0)
+        // Axis in [-1, 1]: positive adds +1, negative adds -1 (both = 0)
         void bindAxis(const std::string& axis, Key positive, Key negative);
         void clear();
 

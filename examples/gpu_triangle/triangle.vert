@@ -1,15 +1,15 @@
 #version 450
-// Triángulo sin buffers de vértices: las posiciones salen de gl_VertexIndex.
-// Uniform del vértice: set 1, binding 0 (convención de SDL GPU, ver src/mge/gpu/Shader.h).
+// Triangle without vertex buffers: positions come from gl_VertexIndex.
+// Vertex uniform: set 1, binding 0 (SDL GPU convention, see src/mge/gpu/Shader.h).
 
 layout(set = 1, binding = 0) uniform Params {
-    float angle;  // Radianes
-    float aspect; // ancho / alto, para que no se deforme
+    float angle;  // Radians
+    float aspect; // width / height, to avoid distortion
 };
 
 layout(location = 0) out vec3 outColor;
 
-// NDC de SDL GPU: Y hacia arriba (SDL convierte por dentro para Vulkan)
+// SDL GPU NDC: Y points up (SDL converts internally for Vulkan)
 const vec2 kPositions[3] = vec2[](vec2(0.0, 0.6), vec2(-0.6, -0.45), vec2(0.6, -0.45));
 const vec3 kColors[3] = vec3[](vec3(1.0, 0.25, 0.2), vec3(0.2, 0.9, 0.3), vec3(0.25, 0.4, 1.0));
 

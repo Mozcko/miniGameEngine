@@ -1,4 +1,4 @@
-# Fileless sound (#46): sine tones from the engine mixer, using only AudioModule
+# Fileless sound (#46): sine tones from the engine's mixer, using only AudioModule
 mge_add_game(tone
     SOURCES Tone.cpp
     MODULES audio

@@ -22,7 +22,7 @@ namespace mge::cli::wizard {
     namespace {
 
 #ifndef _WIN32
-        // Estado global para restaurar el modo terminal en manejadores de señales (async-signal-safe)
+        // Global state to restore terminal mode in signal handlers (async-signal-safe)
         static struct termios sOrigTerm{};
         static volatile sig_atomic_t sOrigTermSaved{0};
         static struct sigaction sOldSigterm{};
@@ -209,7 +209,7 @@ namespace mge::cli::wizard {
 
             if (c == 0x1b) {
                 if (!pollInput(STDIN_FILENO, 50)) {
-                    // ESC solitario: no bloquea ni espera más bytes
+                    // Standalone ESC: does not block or wait for more bytes
                     return Key::Escape;
                 }
                 char seq[2] = {0, 0};
@@ -284,15 +284,15 @@ namespace mge::cli::wizard {
     bool runInteractiveWizard(WizardModel& model, const KeyReader& customKeyReader) {
         TerminalGuard guard(!customKeyReader);
 
-        std::cout << colors::cyan() << colors::bold() << "mge new - Asistente interactivo de proyecto"
+        std::cout << colors::cyan() << colors::bold() << "mge new - Interactive project wizard"
                   << colors::reset() << "\n\n";
 
-        // Pregunta 0: Lenguaje del proyecto (se omite si se especificó --lang)
+        // Question 0: Project language (skipped if --lang was specified)
         if (!model.skipsLanguage()) {
             const std::vector<std::pair<LanguageChoice, std::string>> languageOptions = {
-                {LanguageChoice::Cpp, "C++ (motor completo, máximo rendimiento y control)"},
-                {LanguageChoice::C, "C (API C99 estable, interoperabilidad y simplicidad)"},
-                {LanguageChoice::Python, "Python (desarrollo rápido con bindings nanobind y pytest)"}};
+                {LanguageChoice::Cpp, "C++ (full engine, maximum performance and control)"},
+                {LanguageChoice::C, "C (stable C99 API, interoperability and simplicity)"},
+                {LanguageChoice::Python, "Python (rapid development with nanobind bindings and pytest)"}};
 
             int renderedLines = 0;
             while (true) {
@@ -300,8 +300,7 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines);
                 }
 
-                std::cout << "\r" << colors::bold() << "? Lenguaje del proyecto:" << colors::reset()
-                          << "\033[K\n";
+                std::cout << "\r" << colors::bold() << "? Project language:" << colors::reset() << "\033[K\n";
                 for (const auto& opt : languageOptions) {
                     std::cout << "\033[K";
                     if (model.answers().language == opt.first) {
@@ -318,7 +317,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -337,7 +336,7 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines);
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Lenguaje del proyecto: " << colors::reset() << colors::cyan()
+                              << " Project language: " << colors::reset() << colors::cyan()
                               << model.answers().languageString() << colors::reset() << "\n";
                     model.nextStep();
                     break;
@@ -345,15 +344,14 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pregunta 1: Nombre del proyecto con validación en vivo
+        // Question 1: Project name with live validation
         {
             while (true) {
                 clearCurrentLine();
-                std::cout << colors::bold() << "? Nombre del proyecto: " << colors::reset()
-                          << model.answers().name;
+                std::cout << colors::bold() << "? Project name: " << colors::reset() << model.answers().name;
 
                 if (model.answers().name.empty()) {
-                    std::cout << colors::gray() << " (ej: mi_juego)" << colors::reset();
+                    std::cout << colors::gray() << " (e.g., my_game)" << colors::reset();
                 } else if (model.isNameValid()) {
                     std::cout << colors::green() << " [✓]" << colors::reset();
                 } else {
@@ -365,7 +363,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -373,8 +371,7 @@ namespace mge::cli::wizard {
                     if (model.isNameValid()) {
                         clearCurrentLine();
                         std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                                  << " Nombre del proyecto: " << colors::reset() << model.answers().name
-                                  << "\n";
+                                  << " Project name: " << colors::reset() << model.answers().name << "\n";
                         model.nextStep();
                         break;
                     }
@@ -386,22 +383,22 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pregunta 2: Plantilla (filtrada por lenguaje)
+        // Question 2: Template (filtered by language)
         {
             std::vector<std::pair<TemplateChoice, std::string>> templateOptions;
             if (model.answers().language == LanguageChoice::C) {
                 templateOptions = {
-                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con iluminación y audio)"},
-                    {TemplateChoice::Headless, "Headless (simulación determinista sin ventana ni GPU)"}};
+                    {TemplateChoice::ThreeD, "3D (procedural 3D world with lighting and audio)"},
+                    {TemplateChoice::Headless, "Headless (deterministic simulation without window or GPU)"}};
             } else if (model.answers().language == LanguageChoice::Python) {
                 templateOptions = {
-                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con cámara, cubo y audio)"},
-                    {TemplateChoice::TwoD, "2D (juego 2D con formas procedurales y monedas)"}};
+                    {TemplateChoice::ThreeD, "3D (procedural 3D world with camera, cube, and audio)"},
+                    {TemplateChoice::TwoD, "2D (2D game with procedural shapes and coins)"}};
             } else {
                 templateOptions = {
-                    {TemplateChoice::ThreeD, "3D (mundo 3D procedimental con iluminación, cámara y física)"},
-                    {TemplateChoice::TwoD, "2D (juego pixel-space con Renderer2D, figuras y fuentes)"},
-                    {TemplateChoice::Headless, "Headless (simulación determinista sin ventana ni GPU)"}};
+                    {TemplateChoice::ThreeD, "3D (procedural 3D world with lighting, camera, and physics)"},
+                    {TemplateChoice::TwoD, "2D (pixel-space game with Renderer2D, shapes, and fonts)"},
+                    {TemplateChoice::Headless, "Headless (deterministic simulation without window or GPU)"}};
             }
 
             int renderedLines = 0;
@@ -410,8 +407,7 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines);
                 }
 
-                std::cout << "\r" << colors::bold() << "? Seleccione plantilla:" << colors::reset()
-                          << "\033[K\n";
+                std::cout << "\r" << colors::bold() << "? Select template:" << colors::reset() << "\033[K\n";
                 for (const auto& opt : templateOptions) {
                     std::cout << "\033[K";
                     if (model.answers().templateChoice == opt.first) {
@@ -428,7 +424,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -447,24 +443,23 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines - 1);
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Plantilla: " << colors::reset() << model.answers().templateString()
-                              << "\n";
+                              << " Template: " << colors::reset() << model.answers().templateString() << "\n";
                     model.nextStep();
                     break;
                 }
             }
         }
 
-        // Pregunta 3: Audio (solo para 3D y 2D)
+        // Question 3: Audio (3D and 2D only)
         if (model.answers().templateChoice != TemplateChoice::Headless) {
             bool currentAudio = model.answers().audio;
             while (true) {
                 clearCurrentLine();
-                std::cout << colors::bold() << "? ¿Activar módulo de audio sintetizado? " << colors::reset();
+                std::cout << colors::bold() << "? Enable synthesized audio module? " << colors::reset();
                 if (currentAudio) {
-                    std::cout << colors::cyan() << colors::bold() << "[Sí]" << colors::reset() << " No";
+                    std::cout << colors::cyan() << colors::bold() << "[Yes]" << colors::reset() << " No";
                 } else {
-                    std::cout << "Sí " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
+                    std::cout << "Yes " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
                 }
                 std::cout << std::flush;
 
@@ -472,7 +467,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -488,7 +483,7 @@ namespace mge::cli::wizard {
                 } else if (key == Key::Enter) {
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Módulo de audio: " << colors::reset() << (currentAudio ? "Sí" : "No")
+                              << " Audio module: " << colors::reset() << (currentAudio ? "Yes" : "No")
                               << "\n";
                     model.nextStep();
                     break;
@@ -496,12 +491,12 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pregunta 4: Licencia de código abierto
+        // Question 4: Open-source license
         {
             const std::vector<std::pair<LicenseChoice, std::string>> licenseOptions = {
-                {LicenseChoice::Mit, "MIT (permisiva, estándar)"},
-                {LicenseChoice::Apache2, "Apache-2.0 (permisiva con concesión de patentes)"},
-                {LicenseChoice::None, "Ninguna / Propietaria"}};
+                {LicenseChoice::Mit, "MIT (permissive, standard)"},
+                {LicenseChoice::Apache2, "Apache-2.0 (permissive with patent grant)"},
+                {LicenseChoice::None, "None / Proprietary"}};
 
             int renderedLines = 0;
             while (true) {
@@ -509,7 +504,7 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines);
                 }
 
-                std::cout << "\r" << colors::bold() << "? Licencia de código abierto:" << colors::reset()
+                std::cout << "\r" << colors::bold() << "? Open-source license:" << colors::reset()
                           << "\033[K\n";
                 for (const auto& opt : licenseOptions) {
                     std::cout << "\033[K";
@@ -527,7 +522,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -546,23 +541,23 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines - 1);
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Licencia: " << colors::reset() << model.answers().licenseString() << "\n";
+                              << " License: " << colors::reset() << model.answers().licenseString() << "\n";
                     model.nextStep();
                     break;
                 }
             }
         }
 
-        // Pregunta 5: Inicializar Git
+        // Question 5: Initialize Git
         {
             bool currentGit = model.answers().git;
             while (true) {
                 clearCurrentLine();
-                std::cout << colors::bold() << "? ¿Inicializar repositorio Git? " << colors::reset();
+                std::cout << colors::bold() << "? Initialize Git repository? " << colors::reset();
                 if (currentGit) {
-                    std::cout << colors::cyan() << colors::bold() << "[Sí]" << colors::reset() << " No";
+                    std::cout << colors::cyan() << colors::bold() << "[Yes]" << colors::reset() << " No";
                 } else {
-                    std::cout << "Sí " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
+                    std::cout << "Yes " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
                 }
                 std::cout << std::flush;
 
@@ -570,7 +565,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -586,7 +581,7 @@ namespace mge::cli::wizard {
                 } else if (key == Key::Enter) {
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Repositorio Git: " << colors::reset() << (currentGit ? "Sí" : "No")
+                              << " Git repository: " << colors::reset() << (currentGit ? "Yes" : "No")
                               << "\n";
                     model.nextStep();
                     break;
@@ -594,17 +589,17 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pregunta 6: Tareas de VS Code
+        // Question 6: VS Code tasks
         {
             bool currentVsCode = model.answers().vscode;
             while (true) {
                 clearCurrentLine();
-                std::cout << colors::bold() << "? ¿Generar configuración de VS Code (.vscode/)? "
+                std::cout << colors::bold() << "? Generate VS Code configuration (.vscode/)? "
                           << colors::reset();
                 if (currentVsCode) {
-                    std::cout << colors::cyan() << colors::bold() << "[Sí]" << colors::reset() << " No";
+                    std::cout << colors::cyan() << colors::bold() << "[Yes]" << colors::reset() << " No";
                 } else {
-                    std::cout << "Sí " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
+                    std::cout << "Yes " << colors::cyan() << colors::bold() << "[No]" << colors::reset();
                 }
                 std::cout << std::flush;
 
@@ -612,7 +607,7 @@ namespace mge::cli::wizard {
                 Key key = readKey(customKeyReader, ch);
                 if (key == Key::CtrlC || key == Key::Eof) {
                     guard.restore();
-                    std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                    std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                     model.cancel();
                     return false;
                 }
@@ -628,7 +623,7 @@ namespace mge::cli::wizard {
                 } else if (key == Key::Enter) {
                     clearCurrentLine();
                     std::cout << colors::green() << "✓" << colors::reset() << colors::bold()
-                              << " Tareas VS Code: " << colors::reset() << (currentVsCode ? "Sí" : "No")
+                              << " VS Code tasks: " << colors::reset() << (currentVsCode ? "Yes" : "No")
                               << "\n";
                     model.nextStep();
                     break;
@@ -636,30 +631,30 @@ namespace mge::cli::wizard {
             }
         }
 
-        // Pantalla de Resumen y Confirmación
-        std::cout << "\n" << colors::bold() << "Resumen del proyecto:" << colors::reset() << "\n";
-        std::cout << "  Nombre:      " << colors::cyan() << model.answers().name << colors::reset() << "\n";
-        std::cout << "  Lenguaje:    " << model.answers().languageString() << "\n";
-        std::cout << "  Plantilla:   " << model.answers().templateString() << "\n";
-        std::cout << "  Audio:       " << (model.answers().audio ? "Sí" : "No") << "\n";
-        std::cout << "  Licencia:    " << model.answers().licenseString() << "\n";
-        std::cout << "  Git init:    " << (model.answers().git ? "Sí" : "No") << "\n";
-        std::cout << "  VS Code:     " << (model.answers().vscode ? "Sí" : "No") << "\n";
+        // Summary and Confirmation screen
+        std::cout << "\n" << colors::bold() << "Project summary:" << colors::reset() << "\n";
+        std::cout << "  Name:        " << colors::cyan() << model.answers().name << colors::reset() << "\n";
+        std::cout << "  Language:    " << model.answers().languageString() << "\n";
+        std::cout << "  Template:    " << model.answers().templateString() << "\n";
+        std::cout << "  Audio:       " << (model.answers().audio ? "Yes" : "No") << "\n";
+        std::cout << "  License:     " << model.answers().licenseString() << "\n";
+        std::cout << "  Git init:    " << (model.answers().git ? "Yes" : "No") << "\n";
+        std::cout << "  VS Code:     " << (model.answers().vscode ? "Yes" : "No") << "\n";
 
         std::filesystem::path dest = model.answers().targetDir;
         if (dest.empty()) {
             dest = std::filesystem::current_path() / model.answers().name;
         }
-        std::cout << "  Destino:     " << dest.string() << "\n\n";
+        std::cout << "  Target:      " << dest.string() << "\n\n";
 
         bool confirmCreate = true;
         while (true) {
             clearCurrentLine();
-            std::cout << colors::bold() << "¿Crear proyecto? " << colors::reset();
+            std::cout << colors::bold() << "Create project? " << colors::reset();
             if (confirmCreate) {
-                std::cout << colors::green() << colors::bold() << "[Sí]" << colors::reset() << " No";
+                std::cout << colors::green() << colors::bold() << "[Yes]" << colors::reset() << " No";
             } else {
-                std::cout << "Sí " << colors::red() << colors::bold() << "[No]" << colors::reset();
+                std::cout << "Yes " << colors::red() << colors::bold() << "[No]" << colors::reset();
             }
             std::cout << std::flush;
 
@@ -667,7 +662,7 @@ namespace mge::cli::wizard {
             Key key = readKey(customKeyReader, ch);
             if (key == Key::CtrlC || key == Key::Eof) {
                 guard.restore();
-                std::cout << "\n" << colors::yellow() << "Cancelado." << colors::reset() << "\n";
+                std::cout << "\n" << colors::yellow() << "Cancelled." << colors::reset() << "\n";
                 model.cancel();
                 return false;
             }
@@ -684,7 +679,7 @@ namespace mge::cli::wizard {
                     model.nextStep();
                     return true;
                 }
-                std::cout << colors::yellow() << "Creación cancelada." << colors::reset() << "\n";
+                std::cout << colors::yellow() << "Creation cancelled." << colors::reset() << "\n";
                 model.cancel();
                 return false;
             }

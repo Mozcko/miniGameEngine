@@ -1,5 +1,5 @@
 #version 450
-// Color desde un uniform del fragmento: set 3, binding 0 (convención de SDL GPU)
+// Color from a fragment uniform: set 3, binding 0 (SDL GPU convention)
 layout(set = 3, binding = 0) uniform Params {
     vec4 color;
 };

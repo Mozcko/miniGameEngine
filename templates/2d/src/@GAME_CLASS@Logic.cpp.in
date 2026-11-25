@@ -10,7 +10,7 @@ namespace @GAME_NAME@ {
         if (glm::length(inputDir) > 1e-4f) {
             const glm::vec2 dir = glm::normalize(inputDir);
 
-            // Subpasos para evitar tunneling si el paso supera el tamaño del jugador
+            // Sub-steps to prevent tunneling if the step exceeds the player size
             constexpr float kMaxSubStep = 4.0f;
             const float totalDistance = player.speed * dt;
             const int steps = std::max(1, static_cast<int>(std::ceil(totalDistance / kMaxSubStep)));
@@ -19,7 +19,7 @@ namespace @GAME_NAME@ {
             for (int s = 0; s < steps; ++s) {
                 const glm::vec2 step = dir * (player.speed * subDt);
 
-                // Movimiento en eje X con resolución de colisiones
+                // X-axis movement with collision resolution
                 player.position.x += step.x;
                 Rect2D playerRect{player.position, player.size};
                 for (const auto& obs : obstacles) {
@@ -33,7 +33,7 @@ namespace @GAME_NAME@ {
                     }
                 }
 
-                // Movimiento en eje Y con resolución de colisiones
+                // Y-axis movement with collision resolution
                 player.position.y += step.y;
                 playerRect.position.y = player.position.y;
                 for (const auto& obs : obstacles) {
@@ -49,7 +49,7 @@ namespace @GAME_NAME@ {
             }
         }
 
-        // Delimitar dentro del área visible de la arena
+        // Clamp within the visible arena area
         player.position.x = glm::clamp(player.position.x, 0.0f, std::max(0.0f, bounds.x - player.size.x));
         player.position.y = glm::clamp(player.position.y, 0.0f, std::max(0.0f, bounds.y - player.size.y));
     }

@@ -7,7 +7,7 @@
 
 namespace @GAME_NAME@ {
 
-    // Componente de la entidad que oscila en la fase Fixed
+    // Entity component that oscillates in the Fixed phase
     struct FloatingOrb {
         glm::vec3 basePosition{0.0f, 1.5f, 0.0f};
         float phase = 0.0f;
@@ -17,13 +17,13 @@ namespace @GAME_NAME@ {
         float rotationAngle = 0.0f;
     };
 
-    // Actualiza la oscilación y rotación del orbe (determinista)
+    // Updates orb oscillation and rotation (deterministic)
     void updateFloatingOrb(FloatingOrb& orb, float dt);
 
-    // Calcula la posición en el mundo a partir de la oscilación
+    // Computes world position from the oscillation
     glm::vec3 computeOrbPosition(const FloatingOrb& orb);
 
-    // Función de consulta de colisión: suelo plano en y < 0
+    // Collision query function: flat floor at y < 0
     inline bool isFloorSolid(const glm::ivec3& block) {
         return block.y < 0;
     }

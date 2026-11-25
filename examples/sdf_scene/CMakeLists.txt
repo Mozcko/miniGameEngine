@@ -1,4 +1,4 @@
-# SDF raymarching demo scene (#36): SDF shapes (smooth-blended blobs,
+# SDF raymarching demo scene (#36): SDF shapes (smooth-union blobs,
 # twisted torus, column field) intersecting a rasterized ground plane mesh and cube.
 mge_add_game(sdf_scene
     SOURCES SdfScene.cpp

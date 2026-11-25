@@ -1,4 +1,4 @@
-# @GAME_TITLE@ (plantilla "window"). Ejecutar: cmake --build --preset dev --target run-@GAME_NAME@
+# @GAME_TITLE@ ("window" template). Run: cmake --build --preset dev --target run-@GAME_NAME@
 mge_add_game(@GAME_NAME@
     SOURCES @GAME_CLASS@.cpp
     MODULES platform gpu graphics audio

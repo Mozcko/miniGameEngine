@@ -1,4 +1,4 @@
-# Low-level GPU over the SDL3 GPU API (Vulkan/Metal/D3D12), see ADR 0001.
+# Low-level GPU on the SDL3 GPU API (Vulkan/Metal/D3D12), see ADR 0001.
 # RAII wrappers, GpuModule (device + window swapchain), and MeshData upload.
 add_library(mge_gpu STATIC
     Handles.h
@@ -20,11 +20,11 @@ target_include_directories(mge_gpu PUBLIC
 )
 mge_add_shaders(mge_gpu SHADERS shaders/noise.comp)
 target_link_libraries(mge_gpu PUBLIC mge_core mge_procgen mge_platform SDL3::SDL3)
-# GPU validation (Vulkan validation layers) enabled by default in Debug
+# GPU validation (Vulkan layers) enabled by default in Debug
 target_compile_definitions(mge_gpu PRIVATE $<$<CONFIG:Debug>:MGE_GPU_DEBUG_DEFAULT=1>)
 mge_set_warnings(mge_gpu)
 
-# For <mge/mge.h>: targets linking this module see MGE_HAS_GPU
+# For <mge/mge.h>: anyone linking this module sees MGE_HAS_GPU
 target_compile_definitions(mge_gpu INTERFACE MGE_HAS_GPU=1)
 
 mge_install_headers(gpu

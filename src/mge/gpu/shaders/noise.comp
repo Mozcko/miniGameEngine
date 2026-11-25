@@ -2,13 +2,13 @@
 
 layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-// Reglas de binding SDL3 GPU para compute (SPIR-V):
-// Set 0: texturas y buffers de solo lectura (storage buffers)
+// SDL3 GPU binding rules for compute (SPIR-V):
+// Set 0: read-only textures and buffers (storage buffers)
 layout(set = 0, binding = 0, std430) readonly buffer PermutationBuffer {
     uint u_perm[256];
 };
 
-// Set 1: texturas y buffers de lectura/escritura (storage buffers)
+// Set 1: read-write textures and buffers (storage buffers)
 layout(set = 1, binding = 0, std430) buffer DensityBuffer {
     float u_density[];
 };
@@ -29,7 +29,7 @@ layout(set = 2, binding = 0, std140) uniform Params {
     float _pad2;
 };
 
-// 12 aristas del cubo para simplex 3D (igual a mge::Noise en Noise.cpp)
+// 12 cube edges for 3D simplex (matches mge::Noise in Noise.cpp)
 const vec3 kGrad3[12] = vec3[12](
     vec3(1.0, 1.0, 0.0), vec3(-1.0, 1.0, 0.0), vec3(1.0, -1.0, 0.0), vec3(-1.0, -1.0, 0.0),
     vec3(1.0, 0.0, 1.0), vec3(-1.0, 0.0, 1.0), vec3(1.0, 0.0, -1.0), vec3(-1.0, 0.0, -1.0),

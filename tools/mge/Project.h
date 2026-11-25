@@ -33,24 +33,24 @@ namespace mge::cli {
         ProjectLanguage language{ProjectLanguage::Cpp};
     };
 
-    // Valida que el nombre cumpla con ^[a-z][a-z0-9_]*$ y no coincida con nombres reservados
+    // Validates that the name matches ^[a-z][a-z0-9_]*$ and is not a reserved name
     bool validateProjectName(const std::string& name, std::string& outError);
 
-    // Convierte snake_case a PascalCase (ej: space_shooter -> SpaceShooter)
+    // Converts snake_case to PascalCase (e.g., space_shooter -> SpaceShooter)
     std::string toPascalCase(const std::string& snakeCase);
 
-    // Convierte snake_case a Title Case (ej: space_shooter -> Space Shooter)
+    // Converts snake_case to Title Case (e.g., space_shooter -> Space Shooter)
     std::string toTitleCase(const std::string& snakeCase);
 
-    // Reemplaza marcadores @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@ y @MGE_VERSION@
+    // Replaces @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@, and @MGE_VERSION@ placeholders
     std::string renderTemplateString(const std::string& content, const std::string& name,
                                      const std::string& className, const std::string& title,
                                      const std::string& version);
 
-    // Localiza la carpeta de plantillas instaladas o del repositorio
+    // Locates the installed or repository templates directory
     std::filesystem::path findTemplatesDir(const std::filesystem::path& exePath);
 
-    // Detecta el proyecto inspeccionando la carpeta actual y sus ancestros
+    // Detects the project by inspecting the current directory and its ancestors
     ProjectInfo detectProject(const std::filesystem::path& startDir);
 
     enum class LicenseType {
@@ -72,12 +72,12 @@ namespace mge::cli {
         std::string pinnedVersion;
     };
 
-    // Reemplaza marcadores @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@, @MGE_VERSION@ y módulos opcionales
+    // Replaces @GAME_NAME@, @GAME_CLASS@, @GAME_TITLE@, @MGE_VERSION@, and optional module placeholders
     std::string renderTemplateString(const std::string& content, const NewProjectOptions& options,
                                      const std::string& className, const std::string& title,
                                      const std::string& version);
 
-    // Crea un proyecto a partir de la plantilla seleccionada
+    // Creates a project from the selected template
     int createNewProject(const NewProjectOptions& options, const std::filesystem::path& exePath,
                          std::string& outMessage);
 

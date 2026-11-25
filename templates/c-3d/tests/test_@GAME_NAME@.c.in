@@ -5,7 +5,7 @@
 #define TEST_ASSERT(cond)                                                                                    \
     do {                                                                                                     \
         if (!(cond)) {                                                                                       \
-            fprintf(stderr, "FALLO en %s:%d: %s\n", __FILE__, __LINE__, #cond);                              \
+            fprintf(stderr, "FAIL at %s:%d: %s\n", __FILE__, __LINE__, #cond);                               \
             return 1;                                                                                        \
         }                                                                                                    \
     } while (0)
@@ -15,7 +15,7 @@
         float diff = (a) - (b);                                                                              \
         if (diff < 0) diff = -diff;                                                                          \
         if (diff > (eps)) {                                                                                  \
-            fprintf(stderr, "FALLO en %s:%d: %f != %f (eps %f)\n", __FILE__, __LINE__, (float)(a), (float)(b), (float)(eps)); \
+            fprintf(stderr, "FAIL at %s:%d: %f != %f (eps %f)\n", __FILE__, __LINE__, (float)(a), (float)(b), (float)(eps)); \
             return 1;                                                                                        \
         }                                                                                                    \
     } while (0)
@@ -33,13 +33,13 @@ static int test_player_jump(void) {
     GameLogicState state;
     game_logic_init(&state);
 
-    /* Iniciar salto */
+    /* Start jump */
     game_logic_update(&state, 0.016f, true);
     TEST_ASSERT(state.player.grounded == false);
     TEST_ASSERT(state.player.vy > 0.0f);
     TEST_ASSERT(state.player.y > 0.0f);
 
-    /* Simular hasta caer de nuevo al suelo */
+    /* Simulate until landing back on the ground */
     for (int i = 0; i < 100; ++i) {
         game_logic_update(&state, 0.016f, false);
     }
@@ -49,9 +49,9 @@ static int test_player_jump(void) {
 }
 
 int main(void) {
-    printf("Ejecutando tests de @GAME_NAME@ (C 3D)...\n");
+    printf("Running @GAME_NAME@ tests (C 3D)...\n");
     if (test_player_init() != 0) return 1;
     if (test_player_jump() != 0) return 1;
-    printf("Todos los tests de @GAME_NAME@ pasaron con exito.\n");
+    printf("All @GAME_NAME@ tests passed.\n");
     return 0;
 }

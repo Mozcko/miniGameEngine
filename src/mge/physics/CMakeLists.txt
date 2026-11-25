@@ -17,7 +17,7 @@ target_include_directories(mge_physics PUBLIC
 target_link_libraries(mge_physics PUBLIC mge_core mge_voxel)
 mge_set_warnings(mge_physics)
 
-# For <mge/mge.h>: targets linking this module see MGE_HAS_PHYSICS
+# For <mge/mge.h>: anything linking this module sees MGE_HAS_PHYSICS
 target_compile_definitions(mge_physics INTERFACE MGE_HAS_PHYSICS=1)
 
 mge_install_headers(physics

@@ -9,7 +9,7 @@
 namespace mge {
 
     namespace {
-        // Uniforms del fragment shader sky.frag (set 3, binding 0)
+        // Uniforms for fragment shader sky.frag (set 3, binding 0)
         struct SkyUniforms {
             glm::mat4 inverseViewProjection;
             glm::vec4 cameraPosition;
@@ -45,7 +45,7 @@ namespace mge {
 
         m_pipeline = device.createGraphicsPipeline(desc);
         if (!valid()) {
-            MGE_LOG_ERROR("Graphics", "No se pudo crear el SkyRenderer");
+            MGE_LOG_ERROR("Graphics", "Failed to create SkyRenderer");
         }
     }
 

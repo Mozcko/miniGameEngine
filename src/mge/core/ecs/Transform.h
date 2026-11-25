@@ -9,29 +9,29 @@ namespace mge {
 
     class Registry;
 
-    // Posición/rotación/escala local (relativa al padre si la entidad tiene Parent)
+    // Local position/rotation/scale (relative to parent if the entity has a Parent component)
     struct Transform {
         glm::vec3 position{0.0f};
-        glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f}; // Identidad (w, x, y, z)
+        glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f}; // Identity (w, x, y, z)
         glm::vec3 scale{1.0f};
 
-        // Matriz local: T * R * S
+        // Local matrix: T * R * S
         glm::mat4 localMatrix() const;
     };
 
-    // Jerarquía: la entidad cuelga de parent (que también debe tener Transform)
+    // Hierarchy: the entity is a child of parent (which must also have a Transform)
     struct Parent {
         Entity entity;
     };
 
-    // Matriz de mundo calculada por TransformSystem (no escribir a mano)
+    // World matrix computed by TransformSystem (do not write manually)
     struct WorldTransform {
         glm::mat4 matrix{1.0f};
     };
 
-    // Calcula WorldTransform para toda entidad con Transform: padres antes que hijos
-    // (world = world(padre) * local). Agrega WorldTransform si falta. Padres inválidos o sin
-    // Transform se tratan como raíz; los ciclos se cortan con un aviso en el log.
+    // Computes WorldTransform for every entity with Transform: parents before children
+    // (world = world(parent) * local). Adds WorldTransform if missing. Invalid parents or parents
+    // without Transform are treated as root; cycles are broken with a warning in the log.
     class TransformSystem {
     public:
         static void update(Registry& registry);

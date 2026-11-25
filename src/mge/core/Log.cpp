@@ -8,7 +8,7 @@
 namespace mge {
 
     namespace {
-        // Estado global del logger. Se accede siempre bajo el mutex.
+        // Global logger state. Always accessed under the mutex.
         struct LogState {
             std::mutex mutex;
 #ifdef NDEBUG
@@ -22,7 +22,7 @@ namespace mge {
         };
 
         LogState& state() {
-            static LogState s; // Construido en el primer uso (sin problemas de orden de inicialización)
+            static LogState s; // Constructed on first use (avoids static initialization order issues)
             return s;
         }
 
@@ -83,8 +83,8 @@ namespace mge {
 
     void Log::assertFailed(const char* expression, const char* file, int line, const std::string& message) {
         write(LogLevel::Fatal, "Assert",
-              format("Falló la aserción '", expression, "' en ", file, ":", line,
-                     message.empty() ? "" : " - ", message));
+              format("Assertion failed '", expression, "' at ", file, ":", line, message.empty() ? "" : " - ",
+                     message));
 
         AssertHandler handler;
         {
@@ -101,7 +101,7 @@ namespace mge {
                      const std::string& message) {
         if (!condition) {
             write(LogLevel::Error, "Verify",
-                  format("Falló '", expression, "' en ", file, ":", line, message.empty() ? "" : " - ",
+                  format("Failed '", expression, "' at ", file, ":", line, message.empty() ? "" : " - ",
                          message));
         }
         return condition;

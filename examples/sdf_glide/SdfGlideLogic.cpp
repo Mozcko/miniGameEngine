@@ -57,7 +57,7 @@ namespace sdf_glide {
     }
 
     float canyonDistance(const glm::vec3& p) {
-        // Paredes laterales y piso del cañón
+        // Side walls and floor of the canyon
         float d = std::min(std::min(p.x + 6.0f, 6.0f - p.x), p.y + 3.0f);
 
         constexpr float kL = GlideGame::kSectionLength;
@@ -71,7 +71,7 @@ namespace sdf_glide {
             const float h2 = sectionHash(s, 2u);
             const float h3 = sectionHash(s, 3u);
 
-            // A. Rocas laterales con unión suave (smooth-union)
+            // A. Side rocks with smooth-union
             const glm::vec3 r1Pos(-4.8f + h0 * 0.6f, -2.0f + h1 * 0.8f, sz - 4.0f + (h2 - 0.5f) * 3.0f);
             const float dRock1 = sdSphere(p - r1Pos, 1.6f + h3 * 0.5f);
             d = opSmoothUnion(d, dRock1, 1.2f);
@@ -80,7 +80,7 @@ namespace sdf_glide {
             const float dRock2 = sdSphere(p - r2Pos, 1.5f + h1 * 0.5f);
             d = opSmoothUnion(d, dRock2, 1.2f);
 
-            // B. Pilares con torsión en los costados
+            // B. Twisted pillars along the sides
             const float p1x = -3.8f + (h1 - 0.5f) * 0.6f;
             const float p1z = sz - 7.0f;
             const glm::vec3 tp1 = opTwist(p - glm::vec3(p1x, 0.0f, p1z), (h2 > 0.5f ? 0.35f : -0.35f));
@@ -93,7 +93,7 @@ namespace sdf_glide {
             const float dPil2 = sdBox(tp2, glm::vec3(0.55f, 6.0f, 0.55f)) - 0.12f;
             d = opSmoothUnion(d, dPil2, 0.35f);
 
-            // C. Arcos que cruzan el cañón
+            // C. Arches spanning the canyon
             const float archZ = sz + (h1 - 0.5f) * 4.0f;
             const float archX = (h0 - 0.5f) * 1.0f;
             const float archMajorR = 5.2f + h2 * 0.6f;
@@ -138,7 +138,7 @@ namespace sdf_glide {
         m_farthestSectionGenerated = 1;
         m_audioEvents.clear();
 
-        // Generar motes iniciales para las primeras secciones
+        // Generate initial motes for the first sections
         for (int s = 0; s >= -4; --s) {
             const float sz = static_cast<float>(s) * kSectionLength;
             const float h0 = sectionHash(s, 4u);
@@ -155,7 +155,7 @@ namespace sdf_glide {
     void GlideGame::updateMotes() {
         const int currentSection =
             static_cast<int>(std::floor((m_playerPos.z + kSectionLength * 0.5f) / kSectionLength));
-        const int targetSection = currentSection - 5; // Generar 5 secciones adelante
+        const int targetSection = currentSection - 5; // Generate 5 sections ahead
 
         while (m_farthestSectionGenerated > targetSection) {
             const int s = --m_farthestSectionGenerated;
@@ -169,7 +169,7 @@ namespace sdf_glide {
             m_motes.push_back({glm::vec3(-2.2f + h2 * 4.4f, -0.6f + h3 * 2.2f, sz + 6.0f), false, s});
         }
 
-        // Eliminar motes ya superados por más de 30 unidades
+        // Remove motes passed by more than 30 units
         m_motes.erase(std::remove_if(m_motes.begin(), m_motes.end(),
                                      [this](const Mote& m) { return m.position.z > m_playerPos.z + 30.0f; }),
                       m_motes.end());
@@ -184,7 +184,7 @@ namespace sdf_glide {
             return;
         }
 
-        // 1. Impulso (Boost) y gestión de energía
+        // 1. Boost and energy management
         if (input.boost && m_energy > 0.0f) {
             m_boosting = true;
             m_energy = std::max(0.0f, m_energy - 35.0f * dt);
@@ -197,24 +197,24 @@ namespace sdf_glide {
         }
         m_wasBoosting = m_boosting;
 
-        // 2. Velocidad hacia adelante (aumenta suavemente con la distancia)
+        // 2. Forward speed (gradually increases with distance)
         const float dist = -m_playerPos.z;
         const float baseSpeed = 16.0f + dist * 0.012f;
         const float forwardSpeed = baseSpeed * (m_boosting ? 1.6f : 1.0f);
         m_playerVel.z = -forwardSpeed;
 
-        // 3. Dirección lateral y vertical (WASD o ratón)
+        // 3. Lateral and vertical steering (WASD or mouse)
         const float targetVelX = input.steerX * 12.0f;
         const float targetVelY = input.steerY * 10.0f;
         m_playerVel.x = glm::mix(m_playerVel.x, targetVelX, std::clamp(12.0f * dt, 0.0f, 1.0f));
         m_playerVel.y = glm::mix(m_playerVel.y, targetVelY, std::clamp(12.0f * dt, 0.0f, 1.0f));
 
-        // 4. Temporizador de invulnerabilidad tras colisión
+        // 4. Post-collision invulnerability timer
         if (m_invulnerableTimer > 0.0f) {
             m_invulnerableTimer = std::max(0.0f, m_invulnerableTimer - dt);
         }
 
-        // 5. Avance con sub-pasos de sphere-tracing y detección de colisión continua con el cañón
+        // 5. Advance with sphere-tracing substeps and continuous canyon collision detection
         float remaining = dt;
         const float speed = glm::length(m_playerVel);
         bool hit = false;
@@ -239,16 +239,16 @@ namespace sdf_glide {
         if (hit) {
             const float currentD = canyonDistance(m_playerPos);
             const glm::vec3 normal = canyonNormal(m_playerPos);
-            // Empujar hacia afuera para evitar que quede atascado
+            // Push outward to prevent getting stuck
             m_playerPos += normal * (kOrbRadius - currentD + 0.15f);
 
-            // Rebote de velocidad en el plano normal
+            // Bounce velocity along the surface normal
             m_playerVel.x += normal.x * 10.0f;
             m_playerVel.y += normal.y * 8.0f;
 
             if (m_invulnerableTimer <= 0.0f) {
                 m_shields--;
-                m_combo = 1; // El impacto resetea el multiplicador
+                m_combo = 1; // Impact resets the multiplier
                 m_invulnerableTimer = 1.2f;
                 m_audioEvents.push_back(AudioEvent::HitWall);
 
@@ -261,7 +261,7 @@ namespace sdf_glide {
             }
         }
 
-        // 6. Temporizador de combo
+        // 6. Combo timer
         if (m_comboTimer > 0.0f) {
             m_comboTimer -= dt;
             if (m_comboTimer <= 0.0f) {
@@ -269,7 +269,7 @@ namespace sdf_glide {
             }
         }
 
-        // 7. Generación y recolección de motes
+        // 7. Mote generation and collection
         updateMotes();
 
         constexpr float kCollectDistSq = 0.95f * 0.95f;
@@ -291,7 +291,7 @@ namespace sdf_glide {
     GlideAudioParams GlideAudioParams::create() {
         GlideAudioParams params;
 
-        // Sonidos de motes: moneda con frecuencia base escalada según combo (1..8)
+        // Mote sounds: coin with base frequency scaled by combo (1..8)
         for (int c = 1; c <= 8; ++c) {
             mge::SfxParams coin = mge::sfx::coin(0x42u + static_cast<uint64_t>(c));
             coin.baseFrequency = 880.0f * (1.0f + 0.09f * static_cast<float>(c - 1));
@@ -300,11 +300,11 @@ namespace sdf_glide {
             params.moteSounds[static_cast<size_t>(c - 1)] = coin;
         }
 
-        // Sonido de impacto contra la pared
+        // Wall impact sound
         params.hitSound = mge::sfx::hurt(101u);
         params.hitSound.gain = 0.48f;
 
-        // Sonido de propulsión / boost (whoosh de ruido con deslizamiento)
+        // Boost sound (noise whoosh with pitch slide)
         params.boostSound.wave = mge::Waveform::Noise;
         params.boostSound.baseFrequency = 200.0f;
         params.boostSound.slide = 3.0f;
@@ -316,7 +316,7 @@ namespace sdf_glide {
         params.boostSound.lowPassSweep = -2.0f;
         params.boostSound.gain = 0.35f;
 
-        // Tema musical de vuelo sintetizado (128 BPM, dinámico y rítmico)
+        // Synthesized flight theme music (128 BPM, dynamic and rhythmic)
         mge::Song song(128.0f, 4);
 
         mge::Instrument lead;

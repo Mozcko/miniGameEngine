@@ -1,5 +1,5 @@
 #version 450
-// Triángulo grande que cubre el centro de la imagen (sin buffers de vértices)
+// Large triangle covering the center of the image (no vertex buffers)
 const vec2 kPositions[3] = vec2[](vec2(-0.5, -0.5), vec2(0.5, -0.5), vec2(0.0, 0.5));
 
 void main() {

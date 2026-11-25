@@ -30,7 +30,7 @@ namespace mge {
     void VoxelWorld::unloadChunk(const ChunkCoord& coord) {
         auto it = m_chunks.find(coord);
         if (it == m_chunks.end()) return;
-        if (m_pool.size() < kMaxPooled) m_pool.push_back(std::move(it->second)); // La memoria se reutiliza
+        if (m_pool.size() < kMaxPooled) m_pool.push_back(std::move(it->second)); // Memory is reused
         m_chunks.erase(it);
     }
 
@@ -72,9 +72,8 @@ namespace mge {
         data->set(local, id);
         markDirty(coord);
 
-        // Bloque en un borde: la malla del vecino de ese lado también lo mira
-        // (sin vecinos en diagonal: el AO de las esquinas puede quedar desactualizado hasta el próximo
-        // mallado)
+        // Block on a border: the neighbour's mesh on that side also inspects it
+        // (diagonal neighbours are excluded: corner AO may remain stale until the next remesh)
         for (int axis = 0; axis < 3; axis++) {
             if (local[axis] == 0) {
                 ChunkCoord n = coord;

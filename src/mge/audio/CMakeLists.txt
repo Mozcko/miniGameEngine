@@ -1,4 +1,4 @@
-# Audio (#46): the mge_synth mixer playing on the default device (SDL3 audio streams)
+# Audio (#46): plays the mge_synth mixer on the default playback device (SDL3 audio streams)
 add_library(mge_audio STATIC
     AudioModule.h AudioModule.cpp
 )

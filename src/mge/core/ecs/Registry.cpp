@@ -31,7 +31,7 @@ namespace mge {
         for (auto& rawPool : m_rawPools) {
             if (rawPool) rawPool->remove(entity.index);
         }
-        // La generación nueva invalida todos los handles viejos de este índice
+        // The new generation invalidates all stale handles for this index
         m_generations[entity.index]++;
         m_freeIndices.push_back(entity.index);
         m_alive--;
@@ -44,18 +44,18 @@ namespace mge {
     ComponentTypeId Registry::registerRuntimeComponent(std::string name, std::size_t size,
                                                        std::size_t align) {
         if (name.empty()) {
-            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent: el nombre del componente no puede estar vacío");
+            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent: component name cannot be empty");
             return kInvalidComponentType;
         }
         const std::size_t actualAlign = align == 0 ? alignof(std::max_align_t) : align;
         if ((actualAlign & (actualAlign - 1)) != 0 || actualAlign > kMaxRuntimeComponentAlign) {
-            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent('", name, "'): alineación inválida ", align,
-                          " (debe ser potencia de 2 y <= ", kMaxRuntimeComponentAlign, ")");
+            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent('", name, "'): invalid alignment ", align,
+                          " (must be a power of 2 and <= ", kMaxRuntimeComponentAlign, ")");
             return kInvalidComponentType;
         }
         if (size >= kMaxRuntimeComponentSize) {
-            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent('", name, "'): tamaño inválido ", size,
-                          " (debe ser < ", kMaxRuntimeComponentSize, ")");
+            MGE_LOG_ERROR("Ecs", "registerRuntimeComponent('", name, "'): invalid size ", size,
+                          " (must be < ", kMaxRuntimeComponentSize, ")");
             return kInvalidComponentType;
         }
 
@@ -67,8 +67,8 @@ namespace mge {
                 return existingId;
             }
             MGE_LOG_ERROR("Ecs", "registerRuntimeComponent('", name,
-                          "'): conflicto de layout (registrado size=", existingPool->elementSize(),
-                          " align=", existingPool->elementAlign(), ", solicitado size=", size,
+                          "'): layout conflict (registered size=", existingPool->elementSize(),
+                          " align=", existingPool->elementAlign(), ", requested size=", size,
                           " align=", actualAlign, ")");
             return kInvalidComponentType;
         }
@@ -136,7 +136,7 @@ namespace mge {
         }
         if (!smallest || smallest->size() == 0) return;
 
-        // Copiar entidades antes de iterar para tolerar altas/bajas estructurales durante el callback
+        // Copy entities before iterating to tolerate structural additions/removals during the callback
         const std::vector<Entity> entities = smallest->entities();
         void* stackPtrs[kStackCap];
         std::vector<void*> heapPtrs;

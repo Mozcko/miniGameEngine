@@ -1,4 +1,4 @@
-# Engine main(): calls the game's mge::createApplication() and returns the exit code from run().
+# Engine main(): calls the game's mge::createApplication() and returns the exit code of run().
 # OBJECT library so main() is always linked into the executable. Depends only on core (no SDL),
 # so it also works for headless programs.
 add_library(mge_main OBJECT Main.cpp)

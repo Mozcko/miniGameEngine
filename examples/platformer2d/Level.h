@@ -10,19 +10,19 @@
 
 namespace platformer {
 
-    // Casillas de los niveles ASCII de assets/levels (formato y leyenda en assets/levels/README.md)
+    // Cells of the ASCII levels in assets/levels (format and legend in assets/levels/README.md)
     enum class Tile : char {
         Empty,
-        Ground,      // 'G': superficie
-        Dirt,        // 'D': debajo de la superficie
+        Ground,      // 'G': surface
+        Dirt,        // 'D': beneath the surface
         BridgeLeft,  // '['
         Bridge,      // '-'
         BridgeRight, // ']'
-        Pillar,      // '1', '2': apoyos en el pozo
+        Pillar,      // '1', '2': supports in pits
         Ice,         // 'I'
-        Snow,        // 'S': superficie nevada
-        SnowDirt,    // 's': debajo de la nieve
-        Water,       // '~': no es sólida; caer adentro te devuelve al inicio
+        Snow,        // 'S': snowy surface
+        SnowDirt,    // 's': beneath the snow
+        Water,       // '~': non-solid; falling in sends you back to the start
     };
 
     enum class ItemKind : char {
@@ -35,24 +35,24 @@ namespace platformer {
         ItemKind kind = ItemKind::Coin;
     };
 
-    // Un nivel ya leído. Celdas (x, y) con y = 0 en la fila de arriba, como en el archivo
+    // A parsed level. Cells (x, y) with y = 0 at the top row, matching the file
     struct Level {
         std::string biome; // GRASS, SAND, RED_SAND, ICE…
         int width = 0;
         int height = 0;
-        std::vector<Tile> tiles; // width × height, fila por fila
+        std::vector<Tile> tiles; // width × height, row by row
         glm::ivec2 spawn{0};     // '@'
         std::vector<Item> items;
         std::vector<glm::ivec2> enemies; // 'E'
 
-        // Fuera del nivel: vacío
+        // Out of bounds: empty
         Tile at(int x, int y) const;
-        bool solid(int x, int y) const; // Todo menos vacío y agua
+        bool solid(int x, int y) const; // Everything except empty and water
     };
 
-    // Lee un nivel: "#BIOME <nombre>" y después una fila por línea (las más cortas se completan con vacío).
-    // Sin nivel válido (sin filas, sin '@', caracteres desconocidos) devuelve nullopt y el motivo en error
+    // Parses a level: "#BIOME <name>" followed by one row per line (shorter rows are padded with empty).
+    // On invalid level (no rows, no '@', unknown characters) returns nullopt and sets error
     std::optional<Level> parseLevel(std::string_view text, std::string* error = nullptr);
-    // path relativo → mge::assetPath (ej: "levels/level1.txt")
+    // Relative path → mge::assetPath (e.g., "levels/level1.txt")
     std::optional<Level> loadLevel(const std::filesystem::path& path, std::string* error = nullptr);
 }

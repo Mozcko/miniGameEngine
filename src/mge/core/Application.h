@@ -22,27 +22,27 @@ namespace mge {
         std::string title = "miniGameEngine";
         int width = 1280;
         int height = 720;
-        // Pista para el juego: sin ventana/GPU (tests, servidores, CI). El core nunca crea una ventana;
-        // un juego headless simplemente no agrega el PlatformModule.
+        // Hint for the game: no window/GPU (tests, servers, CI). The core never creates a window;
+        // a headless game simply omits PlatformModule.
         bool headless = false;
-        // 0 = sin límite (hasta requestStop). Útil para tests y corridas headless.
+        // 0 = unlimited (until requestStop). Useful for tests and headless runs.
         std::uint64_t maxFrames = 0;
-        // Paso fijo: onFixedUpdate corre tickRate veces por segundo (de tiempo escalado)
+        // Fixed timestep: onFixedUpdate runs tickRate times per second (of scaled time)
         double tickRate = 60.0;
-        // Máximo de pasos fijos por frame: si un frame tarda mucho, el tiempo sobrante se descarta
-        // (evita la "espiral de la muerte", donde cada frame acumula más trabajo que el anterior)
+        // Maximum fixed steps per frame: if a frame takes too long, excess time is discarded
+        // (avoids the "spiral of death", where each frame accumulates more work than the previous one)
         int maxFixedStepsPerFrame = 5;
-        // Un frame no cuenta más que esto (pausas del sistema, breakpoints, mover la ventana)
+        // A single frame never counts for more than this (OS pauses, breakpoints, dragging the window)
         double maxFrameTime = 0.25;
-        // Sincronizar la presentación con el monitor (sin tearing; limita los FPS a los Hz de la pantalla).
-        // false = lo más rápido posible. La plataforma/GPU lo aplican si existen; el core no lo usa.
+        // Synchronize presentation with the display (no tearing; caps FPS to the display refresh rate).
+        // false = as fast as possible. Applied by platform/GPU if present; unused by the core.
         bool vsync = true;
-        // Instrumentación de tiempos por frame (MGE_PROFILE=0 en el entorno lo desactiva)
+        // Per-frame timing instrumentation (MGE_PROFILE=0 in the environment disables it)
         bool profiling = true;
     };
 
-    // Runner del motor: dueño del loop y de los módulos. Vive en el core (sin SDL ni GPU).
-    // Un juego hereda de Application, agrega los módulos que necesita y define createApplication().
+    // Engine runner: owns the loop and the modules. Lives in the core (no SDL or GPU).
+    // A game inherits from Application, adds the modules it needs, and defines createApplication().
     class Application {
     public:
         explicit Application(ApplicationConfig config = {});
@@ -51,59 +51,59 @@ namespace mge {
         Application(const Application&) = delete;
         Application& operator=(const Application&) = delete;
 
-        // Inicializa módulos y juego, corre el loop y cierra todo. Devuelve el código de salida:
-        // 1 si falló la inicialización (el motivo está en el log); si no, el de setExitCode (por defecto 0).
-        // La variable de entorno MGE_MAX_FRAMES (si config.maxFrames es 0) limita los frames: útil
-        // para correr cualquier juego unos frames en CI.
+        // Initializes modules and game, runs the loop, and shuts everything down. Returns the exit code:
+        // 1 if initialization failed (the reason is in the log); otherwise the value from setExitCode (0 by
+        // default). The MGE_MAX_FRAMES environment variable (if config.maxFrames is 0) caps the frame count:
+        // useful for running any game for a few frames in CI.
         int run();
 
-        // Código que devolverá run() al terminar normalmente (ej: un test headless que falla)
+        // Exit code returned by run() on normal termination (e.g., a failing headless test)
         void setExitCode(int code) { m_exitCode = code; }
 
-        // Termina el loop al final del frame actual
+        // Stops the loop at the end of the current frame
         void requestStop() { m_running = false; }
         bool isRunning() const { return m_running; }
 
         const ApplicationConfig& getConfig() const { return m_config; }
         std::uint64_t getFrameCount() const { return m_time.frameCount(); }
 
-        // Estado de tiempo (delta, paso fijo, alpha, escala). time().setTimeScale(0) = pausa.
+        // Time state (delta, fixed step, alpha, scale). time().setTimeScale(0) = pause.
         Time& time() { return m_time; }
         const Time& time() const { return m_time; }
 
-        // Profiler del frame (CPU). Mide los tiempos de fases y sistemas.
+        // Frame profiler (CPU). Measures phase and system timings.
         Profiler& profiler() { return m_profiler; }
         const Profiler& profiler() const { return m_profiler; }
 
-        // Entidades + sistemas. El loop corre las fases: Fixed en cada paso fijo (antes de
-        // onFixedUpdate), Update antes de onUpdate y Render antes de onRender.
+        // Entities + systems. The loop runs the phases: Fixed on each fixed step (before
+        // onFixedUpdate), Update before onUpdate, and Render before onRender.
         World& world() { return m_world; }
         const World& world() const { return m_world; }
 
-        // Tamaño en píxeles de la imagen que se dibuja. Lo actualiza el módulo de GPU cada frame (el
-        // swapchain sigue a la ventana); sin GPU es config.width × config.height. Antes de la fase Render
-        // el loop ajusta a este tamaño las cámaras con autoAspect (CameraSystem).
+        // Size in pixels of the image being drawn. Updated each frame by the GPU module (the
+        // swapchain follows the window); without a GPU it is config.width × config.height. Before the Render
+        // phase, the loop adjusts autoAspect cameras to this size (CameraSystem).
         const glm::uvec2& viewport() const { return m_viewport; }
         void setViewport(const glm::uvec2& viewport) { m_viewport = viewport; }
 
-        // Pool de hilos del motor (se crea la primera vez que se pide). Para trabajo pesado e independiente:
-        // generar/mallar chunks, etc. Se destruye con la Application, después de onShutdown.
+        // Engine thread pool (created on first request). For heavy, independent work:
+        // generating/meshing chunks, etc. Destroyed with the Application, after onShutdown.
         JobSystem& jobs();
 
-        // Reemplaza el reloj (antes de run()). Por defecto SteadyClock (tiempo real).
-        // Tests/headless deterministas: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
+        // Replaces the clock (before run()). Defaults to SteadyClock (real time).
+        // Deterministic tests/headless runs: setClock(std::make_unique<ManualClock>(1.0 / 60.0)).
         void setClock(std::unique_ptr<Clock> clock) { m_clock = std::move(clock); }
 
-        // Agrega un módulo (antes de run()). Devuelve una referencia para configurarlo.
+        // Adds a module (before run()). Returns a reference to configure it.
         template <typename T, typename... Args> T& addModule(Args&&... args) {
-            static_assert(std::is_base_of_v<Module, T>, "T debe heredar de mge::Module");
+            static_assert(std::is_base_of_v<Module, T>, "T must inherit from mge::Module");
             auto module = std::make_unique<T>(std::forward<Args>(args)...);
             T& ref = *module;
             m_modules.push_back(std::move(module));
             return ref;
         }
 
-        // Busca un módulo por tipo (nullptr si no está)
+        // Looks up a module by type (nullptr if not present)
         template <typename T> T* getModule() const {
             for (const auto& module : m_modules) {
                 if (auto* typed = dynamic_cast<T*>(module.get())) return typed;
@@ -112,27 +112,27 @@ namespace mge {
         }
 
     protected:
-        // Hooks del juego. onInit corre después de inicializar los módulos (ej: con la GPU lista).
-        // Devolver false aborta el arranque.
+        // Game hooks. onInit runs after initializing the modules (e.g., with the GPU ready).
+        // Returning false aborts startup.
         virtual bool onInit() { return true; }
-        // Simulación determinista: 0..N veces por frame, siempre con el mismo fixedDt (1 / tickRate)
+        // Deterministic simulation: 0..N times per frame, always with the same fixedDt (1 / tickRate)
         virtual void onFixedUpdate(float /*fixedDt*/) {}
-        // Una vez por frame con el delta escalado (0 en pausa). Cámara, input, animaciones...
+        // Once per frame with the scaled delta (0 when paused). Camera, input, animations...
         virtual void onUpdate(float /*dt*/) {}
-        // Una vez por frame. time().alpha() = fracción del siguiente paso fijo (para interpolar)
+        // Once per frame. time().alpha() = fraction of the next fixed step (for interpolation)
         virtual void onRender() {}
-        // Antes de cerrar los módulos (los recursos de GPU del juego todavía son válidos)
+        // Before shutting down the modules (the game's GPU resources are still valid)
         virtual void onShutdown() {}
 
     private:
         bool initModules();
         void shutdownModules();
-        // Avanza el tiempo con el delta real del frame y corre los pasos fijos que tocan
+        // Advances time with the real frame delta and runs the due fixed steps
         void advanceTime(double rawFrameTime);
 
         ApplicationConfig m_config;
         std::vector<std::unique_ptr<Module>> m_modules;
-        std::size_t m_initializedModules = 0; // Los primeros N inicializaron bien
+        std::size_t m_initializedModules = 0; // The first N initialized successfully
         bool m_running = false;
         int m_exitCode = 0;
         Time m_time;
@@ -140,10 +140,10 @@ namespace mge {
         World m_world;
         std::unique_ptr<JobSystem> m_jobs;
         glm::uvec2 m_viewport{0, 0};
-        double m_fixedDeltaSeconds = 1.0 / 60.0; // Precisión completa para el acumulador
+        double m_fixedDeltaSeconds = 1.0 / 60.0; // Full precision for the accumulator
         std::unique_ptr<Clock> m_clock;
     };
 
-    // Definida por el juego: devuelve su Application. La llama el main() del motor (mge_main).
+    // Defined by the game: returns its Application. Called by the engine's main() (mge_main).
     Application* createApplication();
 }

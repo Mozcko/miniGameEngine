@@ -11,24 +11,24 @@
 
 namespace mge {
 
-    // Vértice entrelazado que sube a la GPU: todos los atributos de MeshData (también el color, que el
-    // renderer OpenGL nunca enviaba, KI#13). Locations del shader: 0 posición, 1 normal, 2 color, 3 uv.
+    // Interleaved vertex uploaded to the GPU: all MeshData attributes (including color, which the
+    // OpenGL renderer never sent, KI#13). Shader locations: 0 position, 1 normal, 2 color, 3 uv.
     struct GpuVertex {
         glm::vec3 position;
         glm::vec3 normal;
         glm::vec4 color;
         glm::vec2 uv;
     };
-    static_assert(sizeof(GpuVertex) == 48, "GpuVertex debe ser compacto (sin relleno)");
+    static_assert(sizeof(GpuVertex) == 48, "GpuVertex must be tightly packed (no padding)");
 
-    // MeshData (arreglos separados) → vértices entrelazados
+    // MeshData (separate arrays) → interleaved vertices
     std::vector<GpuVertex> interleave(const MeshData& mesh);
 
-    // Descripción del layout de GpuVertex para crear pipelines (buffer en el slot 0)
+    // GpuVertex layout description for pipeline creation (buffer in slot 0)
     SDL_GPUVertexBufferDescription gpuVertexBufferDescription();
     std::array<SDL_GPUVertexAttribute, 4> gpuVertexAttributes();
 
-    // Malla en la GPU: vértices + índices (uint32, triángulos)
+    // Mesh on the GPU: vertices + indices (uint32, triangles)
     struct GpuMesh {
         GpuBuffer vertices;
         GpuBuffer indices;

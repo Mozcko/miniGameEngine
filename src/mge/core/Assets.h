@@ -5,25 +5,25 @@
 
 namespace mge {
 
-    // Resolución de rutas de assets, independiente del directorio de trabajo.
-    // La raíz se busca una sola vez de forma perezosa (en la primera llamada a assetPath() o assetRoot()):
-    //   1. variable de entorno MGE_ASSET_DIR
-    //   2. <carpeta del ejecutable>/assets       (builds empaquetados)
-    //   3. <carpeta del ejecutable>/../assets    (layout actual: build/sandbox -> assets/)
-    //   4. assets/ del código fuente (ruta absoluta fijada al configurar CMake, si
+    // Asset path resolution, independent of the working directory.
+    // The root is resolved lazily once (on the first call to assetPath() or assetRoot()):
+    //   1. MGE_ASSET_DIR environment variable
+    //   2. <executable directory>/assets       (packaged builds)
+    //   3. <executable directory>/../assets    (current layout: build/sandbox -> assets/)
+    //   4. source tree assets/ (absolute path fixed at CMake configure time, if
     //   MGE_SOURCE_ASSET_FALLBACK=ON)
-    // Si ninguna existe se usa "assets" relativo (sin avisos; el fallo se reporta al intentar abrir un
-    // archivo). ADR 0004: la carga de assets es un camino soportado y opcional; el motor es procedural-first.
+    // If none exists, relative "assets" is used (silently; failure is reported when attempting to open a
+    // file). ADR 0004: asset loading is a supported optional path; the engine is procedural-first.
 
-    // Ruta completa de un asset: assetPath("textures/atlas.png")
+    // Full path to an asset: assetPath("textures/atlas.png")
     std::filesystem::path assetPath(std::string_view relative);
 
-    // Raíz de assets en uso (la resuelve en la primera llamada)
+    // Asset root currently in use (resolved on first call)
     const std::filesystem::path& assetRoot();
 
-    // Fija la raíz a mano (tiene prioridad sobre la búsqueda automática). Vacío = volver a buscar.
+    // Manually set the root (takes priority over automatic lookup). Empty = resolve again.
     void setAssetRoot(const std::filesystem::path& root);
 
-    // Carpeta del ejecutable actual (vacía si no se pudo determinar)
+    // Directory of the current executable (empty if it could not be determined)
     std::filesystem::path executableDir();
 }
