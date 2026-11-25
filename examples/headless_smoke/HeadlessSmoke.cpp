@@ -1,8 +1,8 @@
-// Smoke test headless: una Application SIN módulos (sin ventana, sin GPU, sin SDL inicializado)
-// que corre 1000 frames generando y mallando chunks del sandbox (mge_voxel) y verificando invariantes.
-// Además viaja en línea recta con un ChunkStreamer en el pool de hilos (#56, #57): la memoria tiene que
-// quedar acotada (chunks cargados ≤ el anillo de descarga) y se reporta el peor update del hilo principal.
-// Sale con código != 0 si algo falla. Se ejecuta en CI (también con ASan/UBSan).
+// Headless smoke test: an Application WITHOUT modules (no window, no GPU, no SDL initialized)
+// that runs 1000 frames generating and meshing sandbox chunks (mge_voxel) and checking invariants.
+// It also travels in a straight line with a ChunkStreamer on the thread pool (#56, #57): memory must
+// stay bounded (loaded chunks ≤ unload ring) and the worst main-thread update time is reported.
+// Exits with code != 0 if anything fails. Runs in CI (including with ASan/UBSan).
 #include <mge/mge.h>
 
 #include <game/SandboxBlocks.h>
@@ -39,7 +39,7 @@ namespace {
 
         void onUpdate(float /*dt*/) override {
             streamStep();
-            // Recorre una espiral simple de columnas, incluidas negativas; una columna = todos sus chunks
+            // Walks a simple spiral of columns, including negative ones; one column = all its chunks
             const int frame = static_cast<int>(getFrameCount());
             const int cx = (frame % 21) - 10;
             const int cz = (frame / 21 % 21) - 10;
@@ -49,32 +49,32 @@ namespace {
             const mge::ChunkData& bottom = *m_world.chunk({cx, 0, cz});
             for (int x = 0; x < mge::kChunkSize; x++) {
                 for (int z = 0; z < mge::kChunkSize; z++) {
-                    if (!m_registry.isSolid(bottom.get(x, 0, z))) fail("fondo no sólido", cx, cz);
+                    if (!m_registry.isSolid(bottom.get(x, 0, z))) fail("non-solid floor", cx, cz);
                     for (int cy = 0; cy < kChunksY; cy++) {
                         const mge::ChunkData& chunk = *m_world.chunk({cx, cy, cz});
                         for (int y = 0; y < mge::kChunkSize; y++) {
                             if (chunk.get(x, y, z) == m_blocks.water &&
                                 cy * mge::kChunkSize + y > kWaterLevel)
-                                fail("agua sobre el nivel del mar", cx, cz);
+                                fail("water above sea level", cx, cz);
                         }
                     }
                 }
             }
 
-            // Mallado en CPU (sin GPU): mallas válidas y la columna tiene superficie
+            // CPU meshing (no GPU): valid meshes and the column has a surface
             std::size_t opaqueTriangles = 0;
             for (int cy = 0; cy < kChunksY; cy++) {
                 const mge::ChunkMesh mesh = mge::buildChunkMesh(m_world, {cx, cy, cz});
                 if (!mesh.opaque.validate().empty() || !mesh.transparent.validate().empty())
-                    fail("malla inválida", cx, cz);
+                    fail("invalid mesh", cx, cz);
                 opaqueTriangles += mesh.opaque.triangleCount();
             }
-            if (opaqueTriangles == 0) fail("columna sin caras opacas", cx, cz);
-            for (int cy = 0; cy < kChunksY; cy++) m_world.unloadChunk({cx, cy, cz}); // Memoria acotada
+            if (opaqueTriangles == 0) fail("column has no opaque faces", cx, cz);
+            for (int cy = 0; cy < kChunksY; cy++) m_world.unloadChunk({cx, cy, cz}); // Bounded memory
             m_chunksChecked++;
         }
 
-        // Un chunk cada 4 frames en +X: 250 chunks (4000 bloques) en 1000 frames
+        // One chunk every 4 frames along +X: 250 chunks (4000 blocks) in 1000 frames
         void streamStep() {
             const auto start = std::chrono::steady_clock::now();
             const int x = static_cast<int>(getFrameCount() / 4);
@@ -84,22 +84,22 @@ namespace {
                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             m_worstStreamMs = std::max(m_worstStreamMs, ms);
             if (m_streamWorld.chunkCount() > m_streamBound)
-                fail("streaming: más chunks cargados que el límite", x, 0);
+                fail("streaming: loaded chunks exceeded bound", x, 0);
         }
 
         void onShutdown() override {
             const mge::StreamingStats stats = m_streamer->stats();
-            MGE_LOG_INFO("Smoke", "Streaming: ", m_streamedMeshes, " mallas, ", stats.loaded,
-                         " cargados (límite ", m_streamBound, "), pool reutilizado ",
-                         m_streamWorld.reusedCount(), " veces, descartados ", stats.discarded,
-                         ", peor update del hilo principal ", m_worstStreamMs, " ms");
-            if (m_streamedMeshes == 0) fail("streaming: no llegó ninguna malla", 0, 0);
+            MGE_LOG_INFO("Smoke", "Streaming: ", m_streamedMeshes, " meshes, ", stats.loaded,
+                         " loaded (limit ", m_streamBound, "), pool reused ", m_streamWorld.reusedCount(),
+                         " times, discarded ", stats.discarded, ", worst main-thread update ",
+                         m_worstStreamMs, " ms");
+            if (m_streamedMeshes == 0) fail("streaming: no meshes received", 0, 0);
             m_streamer.reset();
             if (m_failures == 0) {
-                MGE_LOG_INFO("Smoke", "OK: ", m_chunksChecked, " columnas verificadas en ", getFrameCount(),
-                             " frames sin ventana ni GPU");
+                MGE_LOG_INFO("Smoke", "OK: ", m_chunksChecked, " columns verified in ", getFrameCount(),
+                             " frames without window or GPU");
             } else {
-                MGE_LOG_ERROR("Smoke", m_failures, " fallos");
+                MGE_LOG_ERROR("Smoke", m_failures, " failures");
             }
         }
 
@@ -113,14 +113,14 @@ namespace {
         }
 
         void fail(const char* what, int cx, int cz) {
-            if (m_failures++ < 10) MGE_LOG_ERROR("Smoke", what, " en el chunk (", cx, ", ", cz, ")");
+            if (m_failures++ < 10) MGE_LOG_ERROR("Smoke", what, " in chunk (", cx, ", ", cz, ")");
             setExitCode(1);
         }
 
         mge::BlockRegistry m_registry;
         sandbox::SandboxBlocks m_blocks;
         mge::VoxelWorld m_world;
-        mge::VoxelWorld m_streamWorld; // Para el viaje con ChunkStreamer
+        mge::VoxelWorld m_streamWorld; // For the ChunkStreamer traversal
         std::unique_ptr<mge::ChunkStreamer> m_streamer;
         std::size_t m_streamBound = 0;
         std::size_t m_streamedMeshes = 0;

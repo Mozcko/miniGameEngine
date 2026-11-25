@@ -10,48 +10,48 @@
 namespace sandbox {
 
     enum class Biome {
-        Plains,    // Pasto, árboles y flores
-        Desert,    // Arena (caliente y seco)
-        Mountains, // Roca y grava, alto
-        Shore,     // Arena junto al agua
+        Plains,    // Grass, trees, and flowers
+        Desert,    // Sand (hot and dry)
+        Mountains, // Rock and gravel, high elevation
+        Shore,     // Sand next to water
     };
 
     struct TerrainSettings {
         std::uint32_t seed = 1337;
-        bool caves = true; // Túneles con ruido 3D (nunca rompen el piso y = 0 ni la superficie)
+        bool caves = true; // 3D noise tunnels (never break the y = 0 floor or the surface)
     };
 
-    // Terreno del sandbox con ruido (#27): altura por fbm de simplex + montañas (ruido "ridged" bajo una
-    // máscara), biomas por temperatura y humedad, cuevas con ruido 3D y decoración (árboles, flores).
-    // Determinista por (coord, semilla) y sin estado: cada columna es una función pura, y los árboles de
-    // columnas vecinas (incluso de otro chunk) se reconstruyen desde su columna. Así un árbol cruza bordes
-    // de chunk entero y el mundo no depende del orden de carga.
+    // Noise-based sandbox terrain (#27): height via simplex fbm + mountains (ridged noise under a
+    // mask), biomes by temperature and moisture, 3D noise caves, and decoration (trees, flowers).
+    // Deterministic per (coord, seed) and stateless: each column is a pure function, and trees from
+    // neighboring columns (even from another chunk) are reconstructed from their column. This way a tree
+    // crosses chunk borders intact and the world does not depend on load order.
     class SandboxTerrain : public mge::TerrainGenerator {
     public:
         static constexpr std::uint32_t kDefaultSeed = 1337;
-        static constexpr int kWorldChunksY = 4;                              // Chunks de alto
-        static constexpr int kWorldHeight = kWorldChunksY * mge::kChunkSize; // 64 bloques
+        static constexpr int kWorldChunksY = 4;                              // Height in chunks
+        static constexpr int kWorldHeight = kWorldChunksY * mge::kChunkSize; // 64 blocks
         static constexpr int kWaterLevel = 20;
-        static constexpr int kMaxSurfaceHeight = kWorldHeight - 8; // Deja lugar a los árboles
-        static constexpr int kTreeRadius = 2;                      // Copa: hasta 2 bloques del tronco
+        static constexpr int kMaxSurfaceHeight = kWorldHeight - 8; // Leaves room for trees
+        static constexpr int kTreeRadius = 2;                      // Canopy: up to 2 blocks from trunk
 
         explicit SandboxTerrain(const SandboxBlocks& blocks, TerrainSettings settings = {});
 
         void generate(const mge::ChunkCoord& coord, mge::ChunkData& chunk) const override;
 
-        // Altura de la superficie en la columna (x, z) del mundo, en [1, kMaxSurfaceHeight]
+        // Surface height at world column (x, z), in [1, kMaxSurfaceHeight]
         int surfaceHeight(int worldX, int worldZ) const { return column(worldX, worldZ).height; }
         Biome biome(int worldX, int worldZ) const { return column(worldX, worldZ).biome; }
-        // ¿La cueva vacía este bloque? (solo bajo la superficie, nunca en y = 0)
+        // Does a cave carve out this block? (only below the surface, never at y = 0)
         bool isCave(int worldX, int worldY, int worldZ, int surfaceHeight) const;
 
     private:
-        // Lo que decide la pasada de terreno para una columna (función pura de (x, z, semilla))
+        // Output of the terrain pass for a column (pure function of (x, z, seed))
         struct Column {
             int height;
             Biome biome;
-            mge::BlockId surface; // Bloque en y == height
-            mge::BlockId filler;  // Las capas de abajo de la superficie (tierra, arena, roca)
+            mge::BlockId surface; // Block at y == height
+            mge::BlockId filler;  // Layers beneath the surface (dirt, sand, stone)
         };
         Column column(int worldX, int worldZ) const;
 
@@ -60,7 +60,7 @@ namespace sandbox {
 
         SandboxBlocks m_blocks;
         TerrainSettings m_settings;
-        // Un ruido por "capa" (semillas distintas: los campos no se parecen entre sí)
+        // One noise instance per "layer" (distinct seeds so the fields don't correlate)
         mge::Noise m_height, m_mountains, m_temperature, m_moisture, m_caveA, m_caveB;
     };
 }

@@ -11,26 +11,26 @@
 
 namespace sdf_glide {
 
-    // --- Funciones SDF del cañón procedural (idénticas a glide.frag) ---
+    // --- Procedural canyon SDF functions (identical to glide.frag) ---
 
-    // Hash pseudoaleatorio determinista por sección (32 bits, idéntico en CPU y GPU)
+    // Deterministic per-section pseudorandom hash (32-bit, identical on CPU and GPU)
     uint32_t sectionHashU32(int32_t s, uint32_t salt);
     float sectionHash(int32_t s, uint32_t salt);
 
-    // Primitivas analíticas equivalentes a las de GLSL y mge::sdf
+    // Analytical primitives equivalent to GLSL and mge::sdf
     float sdSphere(const glm::vec3& p, float radius);
     float sdBox(const glm::vec3& p, const glm::vec3& halfExtents);
     float sdTorus(const glm::vec3& p, float majorRadius, float minorRadius);
     float opSmoothUnion(float d1, float d2, float k);
     glm::vec3 opTwist(const glm::vec3& p, float radiansPerUnit);
 
-    // Distancia con signo al cañón procedural en cualquier punto p
+    // Signed distance to the procedural canyon at any point p
     float canyonDistance(const glm::vec3& p);
 
-    // Normal en la superficie del cañón (gradiente por diferencias centrales)
+    // Surface normal of the canyon (central-differences gradient)
     glm::vec3 canyonNormal(const glm::vec3& p, float eps = 1e-3f);
 
-    // --- Entidades y Lógica del Juego ---
+    // --- Entities and Game Logic ---
 
     struct Mote {
         glm::vec3 position{0.0f};
@@ -39,8 +39,8 @@ namespace sdf_glide {
     };
 
     struct GlideInput {
-        float steerX = 0.0f; // -1 (izq) .. +1 (der)
-        float steerY = 0.0f; // -1 (abajo) .. +1 (arriba)
+        float steerX = 0.0f; // -1 (left) .. +1 (right)
+        float steerY = 0.0f; // -1 (down) .. +1 (up)
         bool boost = false;
         bool restart = false;
     };
@@ -95,7 +95,7 @@ namespace sdf_glide {
 
         const std::vector<Mote>& motes() const { return m_motes; }
 
-        // Eventos de audio ocurridos en el último paso de simulación
+        // Audio events emitted during the last simulation step
         const std::vector<AudioEvent>& audioEvents() const { return m_audioEvents; }
 
     private:
@@ -120,9 +120,9 @@ namespace sdf_glide {
         std::vector<AudioEvent> m_audioEvents;
     };
 
-    // Parámetros de efectos y música sintetizada para sdf_glide
+    // Synthesized sound effects and music parameters for sdf_glide
     struct GlideAudioParams {
-        std::array<mge::SfxParams, 8> moteSounds; // Picheado según combo 1..8
+        std::array<mge::SfxParams, 8> moteSounds; // Pitched by combo 1..8
         mge::SfxParams hitSound;
         mge::SfxParams boostSound;
         mge::Song themeSong;

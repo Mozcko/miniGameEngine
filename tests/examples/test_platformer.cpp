@@ -86,7 +86,7 @@ TEST_CASE("Los cuatro niveles de assets/levels se leen") {
 TEST_CASE("loadLevel con archivo inexistente devuelve nullopt y reporta error") {
     std::string error;
     CHECK_FALSE(loadLevel("levels/no_existe.txt", &error).has_value());
-    CHECK(error.find("no se pudo abrir") != std::string::npos);
+    CHECK(error.find("failed to open") != std::string::npos);
 }
 
 TEST_CASE("El jugador cae al piso, camina, salta y no atraviesa paredes") {

@@ -1,4 +1,4 @@
-# Galería procedural: exporta las mallas de mge_procgen y mge_voxel a OBJ en <build>/gallery/ (headless).
+# Procedural gallery: exports mge_procgen and mge_voxel meshes to OBJ in <build>/gallery/ (headless).
 mge_add_game(procgen_gallery
     HEADLESS
     SOURCES ProcgenGallery.cpp
