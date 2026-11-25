@@ -39,6 +39,7 @@ A plain `cmake -S . -B build && cmake --build build` also works and defaults to 
 | `MGE_SANITIZERS` | `OFF` | AddressSanitizer + UndefinedBehaviorSanitizer for the whole build (`asan` preset). UB aborts (`-fno-sanitize-recover`) |
 | `MGE_BUILD_BENCHMARKS` | `ON` | Build `bench/` (e.g. `ecs_bench`; run from a Release build) |
 | `MGE_BUILD_MODULES` | `ON` | `OFF` = only `mge_core` (no SDL/GPU dependencies) |
+| `MGE_SHADERS_MSL` | `ON` on macOS, `OFF` elsewhere | Cross-compile SPIR-V shaders to MSL via `spirv-cross` for Metal (`SDL_GPU_SHADERFORMAT_MSL`) |
 | `MGE_SIZE_OPTIMIZE` | `OFF` | Optimize binaries for minimum size (`-Os`, LTO/IPO, gc-sections, strip). `ON` in the `minsize` preset |
 | `MGE_SOURCE_ASSET_FALLBACK` | `ON` | Use the repository's source `assets/` folder as a last-resort fallback in `assetPath()` (`OFF` in CI zero-asset check and distributable packages) |
 | `MGE_INSTALL` | `OFF` | Export and generate CMake installation rules (`find_package(mge)`). Requires system SDL3 |
@@ -247,6 +248,7 @@ superseded runs are cancelled):
 | Job | What it proves |
 |-----|----------------|
 | `gcc`, `clang` | `ci` preset (Debug, `-Werror`) builds; all tests pass headless, including GPU and render tests and the smoke runs on Mesa lavapipe (Vulkan) with validation enforced |
+| `macos` | `ci` preset on `macos-15` (Apple Silicon): builds with `-Werror` and MSL shaders (`spirv-cross`), runs the non-GPU test suite and the Metal GPU/render tests |
 | `sanitizers` | `asan` preset: the same tests and smoke runs under ASan + UBSan, with no display server |
 | `tsan` | `tsan` preset (clang): core, procgen and voxel tests under ThreadSanitizer (job system, parallel generation/meshing) |
 | `core-only` | `mge_core`, `mge_procgen` and `mge_voxel` build and their tests pass on a machine **without** SDL/GL headers |

@@ -158,6 +158,9 @@ if(MGE_BUILD_MODULES)
         render/test_daynight.cpp
     )
     target_link_libraries(render_tests PRIVATE mge_graphics sandbox_world platformer2d_view doctest_header)
+    if(MGE_STB_INCLUDE_DIR AND NOT MGE_STB_INCLUDE_DIR STREQUAL "/usr/include")
+        target_include_directories(render_tests SYSTEM PRIVATE ${MGE_STB_INCLUDE_DIR})
+    endif()
     target_compile_definitions(render_tests PRIVATE
         MGE_TEST_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets"
         MGE_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/render/golden"

@@ -16,11 +16,13 @@ namespace mge {
     }
 
     std::unique_ptr<GpuDevice> GpuDevice::create(const GpuDeviceOptions& options) {
-        // SPIR-V (Vulkan) only for now; MSL/DXIL arrive with macOS/Windows (#29)
-        SDL_GPUDevice* device =
-            SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, options.debug, options.driver);
+        SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV;
+#ifdef MGE_SHADERS_MSL
+        formats |= SDL_GPU_SHADERFORMAT_MSL;
+#endif
+        SDL_GPUDevice* device = SDL_CreateGPUDevice(formats, options.debug, options.driver);
         if (!device) {
-            MGE_LOG_ERROR("Gpu", "No compatible GPU found (SDL GPU, SPIR-V): ", SDL_GetError());
+            MGE_LOG_ERROR("Gpu", "No compatible GPU found (SDL GPU): ", SDL_GetError());
             return nullptr;
         }
         auto result = std::unique_ptr<GpuDevice>(new GpuDevice(device));
@@ -114,11 +116,23 @@ namespace mge {
             MGE_LOG_ERROR("Gpu", "createShader: compute shaders belong in createComputePipeline");
             return {};
         }
+        const SDL_GPUShaderFormat supported = SDL_GetGPUShaderFormats(m_device);
         SDL_GPUShaderCreateInfo info{};
-        info.code = code.code;
-        info.code_size = code.size;
-        info.entrypoint = "main";
-        info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        if ((supported & SDL_GPU_SHADERFORMAT_SPIRV) && code.code && code.size > 0) {
+            info.code = code.code;
+            info.code_size = code.size;
+            info.entrypoint = "main";
+            info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        } else if ((supported & SDL_GPU_SHADERFORMAT_MSL) && code.mslCode && code.mslSize > 0) {
+            info.code = code.mslCode;
+            info.code_size = code.mslSize;
+            info.entrypoint = "main0";
+            info.format = SDL_GPU_SHADERFORMAT_MSL;
+        } else {
+            MGE_LOG_ERROR("Gpu", "createShader: no compatible shader bytecode for driver '", driverName(),
+                          "'");
+            return {};
+        }
         info.stage =
             code.stage == ShaderStage::Vertex ? SDL_GPU_SHADERSTAGE_VERTEX : SDL_GPU_SHADERSTAGE_FRAGMENT;
         info.num_samplers = resources.samplers;
@@ -187,20 +201,29 @@ namespace mge {
     }
 
     GpuComputePipeline GpuDevice::createComputePipeline(const ComputePipelineDesc& desc) {
-        if (!desc.bytecode.code || desc.bytecode.size == 0) {
-            MGE_LOG_ERROR("Gpu", "createComputePipeline: empty bytecode");
-            return GpuComputePipeline{};
-        }
         if (desc.bytecode.stage != ShaderStage::Compute) {
             MGE_LOG_ERROR("Gpu",
                           "createComputePipeline: shader must be a compute shader (ShaderStage::Compute)");
             return GpuComputePipeline{};
         }
+        const SDL_GPUShaderFormat supported = SDL_GetGPUShaderFormats(m_device);
         SDL_GPUComputePipelineCreateInfo info{};
-        info.code = desc.bytecode.code;
-        info.code_size = desc.bytecode.size;
-        info.entrypoint = desc.entrypoint ? desc.entrypoint : "main";
-        info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        if ((supported & SDL_GPU_SHADERFORMAT_SPIRV) && desc.bytecode.code && desc.bytecode.size > 0) {
+            info.code = desc.bytecode.code;
+            info.code_size = desc.bytecode.size;
+            info.entrypoint = desc.entrypoint ? desc.entrypoint : "main";
+            info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        } else if ((supported & SDL_GPU_SHADERFORMAT_MSL) && desc.bytecode.mslCode &&
+                   desc.bytecode.mslSize > 0) {
+            info.code = desc.bytecode.mslCode;
+            info.code_size = desc.bytecode.mslSize;
+            info.entrypoint = "main0";
+            info.format = SDL_GPU_SHADERFORMAT_MSL;
+        } else {
+            MGE_LOG_ERROR("Gpu", "createComputePipeline: no compatible shader bytecode for driver '",
+                          driverName(), "'");
+            return GpuComputePipeline{};
+        }
         info.num_samplers = desc.samplers;
         info.num_readonly_storage_textures = desc.readonlyStorageTextures;
         info.num_readonly_storage_buffers = desc.readonlyStorageBuffers;

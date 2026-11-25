@@ -44,6 +44,19 @@ endif()
 
 set(MGE_EMBED_SPIRV_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
 
+# MSL shader generation (for Metal on macOS): SPIR-V → MSL via spirv-cross.
+# Enabled by default on Apple platforms; off elsewhere so Linux/Windows need no extra tool.
+option(MGE_SHADERS_MSL "Generate and embed MSL shaders alongside SPIR-V (for Metal on macOS)" ${APPLE})
+if(MGE_SHADERS_MSL)
+    find_program(MGE_SPIRV_CROSS_EXECUTABLE NAMES spirv-cross
+        DOC "SPIR-V → MSL cross-compiler (SPIRV-Cross)")
+    if(MGE_SPIRV_CROSS_EXECUTABLE)
+        message(STATUS "spirv-cross: using ${MGE_SPIRV_CROSS_EXECUTABLE} (MSL shaders enabled)")
+    else()
+        message(FATAL_ERROR "MGE_SHADERS_MSL=ON requires spirv-cross (e.g. 'brew install spirv-cross'). Pass -DMGE_SHADERS_MSL=OFF to build SPIR-V only.")
+    endif()
+endif()
+
 # Engine shader include directory (.glsl)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include")
     get_filename_component(MGE_DEFAULT_SHADER_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include" ABSOLUTE)
@@ -95,17 +108,33 @@ function(mge_add_shaders target)
         set(spirv "${out_dir}/${file_name}.spv")
         set(header "${out_dir}/${stem}.h")
         set(depfile "${spirv}.d")
-        add_custom_command(
-            OUTPUT "${spirv}" "${header}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${out_dir}"
-            COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet
-                    ${include_args} --depfile "${depfile}" -o "${spirv}" "${source}"
-            COMMAND ${CMAKE_COMMAND} -DINPUT=${spirv} -DOUTPUT=${header} -DSOURCE_NAME=${file_name}
-                    -P "${MGE_EMBED_SPIRV_SCRIPT}"
-            DEPFILE "${depfile}"
-            DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}
-            COMMENT "Shader ${file_name} → embedded SPIR-V"
-            VERBATIM)
+        if(MGE_SHADERS_MSL)
+            set(msl "${out_dir}/${file_name}.msl")
+            add_custom_command(
+                OUTPUT "${spirv}" "${msl}" "${header}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${out_dir}"
+                COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet
+                        ${include_args} --depfile "${depfile}" -o "${spirv}" "${source}"
+                COMMAND ${MGE_SPIRV_CROSS_EXECUTABLE} "${spirv}" --msl --msl-version 20100 --output "${msl}"
+                COMMAND ${CMAKE_COMMAND} -DINPUT=${spirv} -DMSL_INPUT=${msl} -DOUTPUT=${header}
+                        -DSOURCE_NAME=${file_name} -P "${MGE_EMBED_SPIRV_SCRIPT}"
+                DEPFILE "${depfile}"
+                DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}
+                COMMENT "Shader ${file_name} → embedded SPIR-V + MSL"
+                VERBATIM)
+        else()
+            add_custom_command(
+                OUTPUT "${spirv}" "${header}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${out_dir}"
+                COMMAND ${MGE_GLSLANG_COMMAND} -V ${stage_flag} --target-env vulkan1.0 --quiet
+                        ${include_args} --depfile "${depfile}" -o "${spirv}" "${source}"
+                COMMAND ${CMAKE_COMMAND} -DINPUT=${spirv} -DOUTPUT=${header} -DSOURCE_NAME=${file_name}
+                        -P "${MGE_EMBED_SPIRV_SCRIPT}"
+                DEPFILE "${depfile}"
+                DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}
+                COMMENT "Shader ${file_name} → embedded SPIR-V"
+                VERBATIM)
+        endif()
         target_sources(${target} PRIVATE "${header}")
         list(APPEND headers "${header}")
     endforeach()

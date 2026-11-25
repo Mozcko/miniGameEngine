@@ -27,6 +27,11 @@ target_include_directories(mge_core PUBLIC
     $<BUILD_INTERFACE:${miniGameEngine_BINARY_DIR}/generated/include>
     $<INSTALL_INTERFACE:include>
 )
+# GLM (header-only): pick up non-default include roots such as Homebrew (/opt/homebrew/include)
+find_path(MGE_GLM_INCLUDE_DIR glm/glm.hpp)
+if(MGE_GLM_INCLUDE_DIR AND NOT MGE_GLM_INCLUDE_DIR STREQUAL "/usr/include")
+    target_include_directories(mge_core SYSTEM PUBLIC $<BUILD_INTERFACE:${MGE_GLM_INCLUDE_DIR}>)
+endif()
 # JobSystem (std::thread)
 find_package(Threads REQUIRED)
 target_link_libraries(mge_core PUBLIC Threads::Threads)
