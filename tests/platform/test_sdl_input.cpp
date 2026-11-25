@@ -91,3 +91,93 @@ TEST_CASE("Losing focus releases all keys") {
     applySdlEvent(input, focus);
     CHECK_FALSE(input.isDown(Key::LeftCtrl));
 }
+
+TEST_CASE("Gamepad button and axis translation") {
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_SOUTH) == GamepadButton::South);
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_EAST) == GamepadButton::East);
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_WEST) == GamepadButton::West);
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_NORTH) == GamepadButton::North);
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER) == GamepadButton::LeftShoulder);
+    CHECK(gamepadButtonFromSdl(SDL_GAMEPAD_BUTTON_DPAD_RIGHT) == GamepadButton::DpadRight);
+    CHECK(gamepadButtonFromSdl(200) == GamepadButton::Count);
+
+    CHECK(gamepadAxisFromSdl(SDL_GAMEPAD_AXIS_LEFTX) == GamepadAxis::LeftX);
+    CHECK(gamepadAxisFromSdl(SDL_GAMEPAD_AXIS_RIGHTY) == GamepadAxis::RightY);
+    CHECK(gamepadAxisFromSdl(SDL_GAMEPAD_AXIS_LEFT_TRIGGER) == GamepadAxis::LeftTrigger);
+    CHECK(gamepadAxisFromSdl(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) == GamepadAxis::RightTrigger);
+    CHECK(gamepadAxisFromSdl(99) == GamepadAxis::Count);
+
+    CHECK(normalizeSdlGamepadAxis(-32768, false) == doctest::Approx(-1.0f));
+    CHECK(normalizeSdlGamepadAxis(0, false) == doctest::Approx(0.0f));
+    CHECK(normalizeSdlGamepadAxis(32767, false) == doctest::Approx(1.0f));
+    CHECK(normalizeSdlGamepadAxis(0, true) == doctest::Approx(0.0f));
+    CHECK(normalizeSdlGamepadAxis(32767, true) == doctest::Approx(1.0f));
+    CHECK(normalizeSdlGamepadAxis(-1000, true) == doctest::Approx(0.0f));
+}
+
+TEST_CASE("Gamepad SDL events update state for the target slot") {
+    InputState input;
+    input.setGamepadDeadzone(0.0f);
+    input.beginFrame();
+
+    SDL_Event btnDown{};
+    btnDown.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+    btnDown.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
+    btnDown.gbutton.down = true;
+    applySdlEvent(input, btnDown, 1);
+    CHECK(input.isDown(GamepadButton::South, 1));
+    CHECK(input.wasPressed(GamepadButton::South, 1));
+    CHECK_FALSE(input.isDown(GamepadButton::South, 0));
+
+    SDL_Event axis{};
+    axis.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+    axis.gaxis.axis = SDL_GAMEPAD_AXIS_LEFTX;
+    axis.gaxis.value = -32768;
+    applySdlEvent(input, axis, 1);
+    CHECK(input.gamepadAxis(GamepadAxis::LeftX, 1) == doctest::Approx(-1.0f));
+
+    SDL_Event trigger{};
+    trigger.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+    trigger.gaxis.axis = SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+    trigger.gaxis.value = 32767;
+    applySdlEvent(input, trigger, 1);
+    CHECK(input.gamepadAxis(GamepadAxis::RightTrigger, 1) == doctest::Approx(1.0f));
+
+    input.beginFrame();
+    SDL_Event btnUp{};
+    btnUp.type = SDL_EVENT_GAMEPAD_BUTTON_UP;
+    btnUp.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
+    btnUp.gbutton.down = false;
+    applySdlEvent(input, btnUp, 1);
+    CHECK(input.wasReleased(GamepadButton::South, 1));
+}
+
+TEST_CASE("Text input and IME editing SDL events") {
+    InputState input;
+    input.beginFrame();
+
+    SDL_Event editing{};
+    editing.type = SDL_EVENT_TEXT_EDITING;
+    editing.edit.text = "ni";
+    editing.edit.start = 0;
+    editing.edit.length = 2;
+    applySdlEvent(input, editing);
+    CHECK(input.textComposition().active());
+    CHECK(input.textComposition().text == "ni");
+    CHECK(input.textComposition().cursor == 0);
+    CHECK(input.textComposition().selectionLength == 2);
+
+    SDL_Event committed{};
+    committed.type = SDL_EVENT_TEXT_INPUT;
+    committed.text.text = "Hello";
+    applySdlEvent(input, committed);
+    CHECK(input.textInput() == "Hello");
+    CHECK_FALSE(input.textComposition().active());
+
+    // Empty editing event clears composition
+    applySdlEvent(input, editing);
+    CHECK(input.textComposition().active());
+    editing.edit.text = "";
+    applySdlEvent(input, editing);
+    CHECK_FALSE(input.textComposition().active());
+}

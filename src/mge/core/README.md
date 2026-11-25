@@ -76,12 +76,13 @@ mge::Vec2f look = platform.input().mouseDelta();
 
 | Item | Behaviour |
 |------|-----------|
-| `InputState::beginFrame()` | Saves the previous key/button state and resets mouse delta and wheel. The platform module calls it before applying the frame's events |
-| `isDown` / `wasPressed` / `wasReleased` | Level / pressed this frame / released this frame, for `Key` and `MouseButton`. Press + release within one frame leaves no edge |
+| `InputState::beginFrame()` | Saves the previous key/mouse/gamepad button state and resets mouse delta, wheel, and committed text input. The platform module calls it before applying the frame's events |
+| `isDown` / `wasPressed` / `wasReleased` | Level / pressed this frame / released this frame, for `Key`, `MouseButton`, and `GamepadButton` (up to `kMaxGamepads = 4` slots). Press + release within one frame leaves no edge |
+| `gamepadAxis` / `gamepadStick` / `applyAxisDeadzone` / `applyStickDeadzone` | Analog sticks (`[-1, 1]`) and triggers (`[0, 1]`) with configurable radial/axis deadzones and response curves |
+| `textInput()` / `textComposition()` | Committed UTF-8 text received this frame and active IME pre-edit composition (`TextComposition`) |
 | `mousePosition()`, `mouseDelta()`, `wheel()` | Position persists; delta and wheel accumulate per frame |
-| `clear()` | Releases everything (focus lost) |
-| `ActionMap::bind(action, Key / MouseButton)` | Any binding drives the action. `wasPressed` fires only when the first binding goes down; `wasReleased` only when the last one goes up |
-| `ActionMap::bindAxis(axis, positive, negative)` | Sums +1/−1 over all pairs, clamped to [−1, 1] |
+| `clear()` | Releases all keys/buttons/axes and clears text input (focus lost; preserves gamepad connections) |
+| `ActionMap::bind` / `rebind` / `unbind` / `serialize` / `deserialize` | Binds actions to `Key`, `MouseButton`, or `GamepadButton` (`InputBinding`) and axes to key pairs or `GamepadAxis` (`AxisBinding`), with runtime rebinding, `capturePressedInput()`, and line-based serialization |
 
 Tests: `tests/core/test_input.cpp`.
 
