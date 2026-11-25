@@ -147,7 +147,7 @@ Benchmark (`bench/ecs_bench`, Release, this dev machine): 100k entities, `each<P
 
 ---
 
-## Cameras – `<mge/core/ecs/Camera.h>`, `<mge/core/FlyController.h>`
+## Cameras – `<mge/core/ecs/Camera.h>`, `<mge/core/Camera2D.h>`, `<mge/core/FlyController.h>`
 
 Cameras are ECS components. They live in the core, so they're headless and testable without a GPU.
 
@@ -175,6 +175,7 @@ renderer.setCamera(m.viewProjection);          // m.view, m.projection, m.positi
 | `CameraSystem::update(registry, viewport)` | Sets `aspect` on every `autoAspect` camera; a zero viewport (minimised) keeps it. **The Application runs it before the Render phase**, so window resizes reach every camera with no game code |
 | `Application::viewport()` / `setViewport()` | Size in pixels of the image being drawn. Starts at `config.width × config.height`; `GpuModule` updates it each frame from the swapchain |
 | `FlyController` | Yaw/pitch from `lookX/lookY × sensitivity` (pitch clamped to ±89°), movement along the view (`speed`, `sprintMultiplier`), collisions axis by axis (X, Z, Y) against `halfExtents` around the position, so it slides along walls. `dt <= 0` (paused) does nothing. `apply(Transform&)` writes position + rotation |
+| `Camera2D` | Headless 2D camera: `worldToScreen`/`screenToWorld`, `viewMatrix`/`viewProjectionMatrix`, `visibleBounds`, `zoom`/`zoomBy`/`zoomAt`, `bounds`/`clampToBounds`, `follow(target, dt)` with `deadzoneHalfSize` and frame-rate independent `followSmoothing`, and deterministic PCG32 trauma-based screen shake (`addTrauma`/`update`/`stopShake`) |
 | `CameraInput` | `moveForward`, `moveRight`, `moveUp` (−1..1), `sprint`, `lookX`, `lookY` (mouse pixels). Controllers never read keys, so they don't depend on the platform |
 
 Replaces the legacy `Camera`/`Camera2D`/`Camera3D`/`FirstPersonCamera` of `mge_render` (#32), which

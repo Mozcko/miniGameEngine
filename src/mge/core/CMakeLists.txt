@@ -10,6 +10,7 @@ add_library(mge_core STATIC
     Random.h
     SpscQueue.h
     Clock.h Clock.cpp
+    Camera2D.h Camera2D.cpp
     FlyController.h FlyController.cpp
     Time.h
     math/Geometry.h math/Geometry.cpp
@@ -60,6 +61,7 @@ mge_install_headers(core
     Random.h
     SpscQueue.h
     Clock.h
+    Camera2D.h
     FlyController.h
     Time.h
     math/Geometry.h

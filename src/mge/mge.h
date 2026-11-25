@@ -9,6 +9,7 @@
 #include <mge/Version.h>
 #include <mge/core/Application.h>
 #include <mge/core/Assets.h>
+#include <mge/core/Camera2D.h>
 #include <mge/core/Clock.h>
 #include <mge/core/FlyController.h>
 #include <mge/core/Input.h>
