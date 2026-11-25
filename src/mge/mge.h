@@ -17,6 +17,7 @@
 #include <mge/core/Random.h>
 #include <mge/core/SpscQueue.h>
 #include <mge/core/Time.h>
+#include <mge/core/Timer.h>
 #include <mge/core/ecs/Camera.h>
 #include <mge/core/ecs/Entity.h>
 #include <mge/core/ecs/Registry.h>

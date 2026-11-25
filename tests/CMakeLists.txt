@@ -32,6 +32,7 @@ add_executable(mge_core_tests
     core/test_log_stripped.cpp
     core/test_profiler.cpp
     core/test_time.cpp
+    core/test_timer.cpp
     core/test_umbrella.cpp
     core/test_version.cpp
 )

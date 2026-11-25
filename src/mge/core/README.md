@@ -16,6 +16,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
+| `Timer.h` | `mge` | Gameplay timing helpers (header‑only): `Timer` (one‑shot / repeating) and `Cooldown` (ability/action rate‑limiter) |
 | `Profiler.h/.cpp` | `mge` | Per-frame CPU profiling instrumentation: `Profiler`, `ScopedTimer`, `MGE_PROFILE_SCOPE` |
 
 

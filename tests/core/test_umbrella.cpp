@@ -12,7 +12,11 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     registry.add<mge::Transform>(entity);
     mge::Pcg32 rng(1);
     mge::InputState input;
+    mge::Timer timer(1.0f);
+    mge::Cooldown cooldown(0.5f);
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(timer.isRunning());
+    CHECK(cooldown.isReady());
 }
