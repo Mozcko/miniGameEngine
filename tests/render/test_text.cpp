@@ -200,6 +200,242 @@ TEST_CASE("Batch2D: nested clips (intersection) split batches and fully clipped 
     batch.popClip(); // Extra pop: does not crash
 }
 
+TEST_CASE("Batch2D: sprite default placement, image equivalence, and scaling around pivot (#233)") {
+    const Texture2D tex;
+
+    // Default pivot (0.5, 0.5) centers the sprite on pos
+    Batch2D batch;
+    SpriteDesc desc;
+    desc.pos = {100.0f, 50.0f};
+    desc.size = {20.0f, 10.0f};
+    desc.tint = {0.2f, 0.4f, 0.6f, 0.8f};
+    batch.sprite(&tex, desc);
+
+    REQUIRE(batch.quadCount() == 1);
+    REQUIRE(batch.vertices().size() == 6);
+    REQUIRE(batch.commands().size() == 1);
+    CHECK(batch.commands()[0].texture == &tex);
+    CHECK_FALSE(batch.commands()[0].nearest);
+
+    glm::vec2 lo(1e9f), hi(-1e9f);
+    for (const GpuVertex& v : batch.vertices()) {
+        lo = glm::min(lo, glm::vec2(v.position));
+        hi = glm::max(hi, glm::vec2(v.position));
+        CHECK(v.color == desc.tint);
+    }
+    CHECK(lo == glm::vec2(90.0f, 45.0f));
+    CHECK(hi == glm::vec2(110.0f, 55.0f));
+
+    // With top-left pivot (0, 0), unrotated/unscaled/unflipped sprite matches image() identically
+    Batch2D imageBatch;
+    imageBatch.image(&tex, {12.0f, 24.0f}, {32.0f, 16.0f}, {0.25f, 0.5f}, {0.75f, 1.0f}, {1, 0.5f, 0.25f, 1},
+                     true);
+    Batch2D spriteBatch;
+    SpriteDesc equiv;
+    equiv.pos = {12.0f, 24.0f};
+    equiv.size = {32.0f, 16.0f};
+    equiv.pivot = {0.0f, 0.0f};
+    equiv.uvMin = {0.25f, 0.5f};
+    equiv.uvMax = {0.75f, 1.0f};
+    equiv.tint = {1.0f, 0.5f, 0.25f, 1.0f};
+    equiv.nearest = true;
+    spriteBatch.sprite(&tex, equiv);
+
+    REQUIRE(spriteBatch.vertices().size() == imageBatch.vertices().size());
+    for (std::size_t i = 0; i < imageBatch.vertices().size(); ++i) {
+        CHECK(spriteBatch.vertices()[i].position == imageBatch.vertices()[i].position);
+        CHECK(spriteBatch.vertices()[i].uv == imageBatch.vertices()[i].uv);
+        CHECK(spriteBatch.vertices()[i].color == imageBatch.vertices()[i].color);
+    }
+
+    // Non-uniform scaling around custom bottom-center pivot (0.5, 1.0)
+    batch.clear();
+    SpriteDesc scaled;
+    scaled.pos = {50.0f, 80.0f};
+    scaled.size = {20.0f, 10.0f};
+    scaled.scale = {2.0f, 3.0f};
+    scaled.pivot = {0.5f, 1.0f};
+    batch.sprite(&tex, scaled);
+
+    REQUIRE(batch.vertices().size() == 6);
+    lo = glm::vec2(1e9f);
+    hi = glm::vec2(-1e9f);
+    for (const GpuVertex& v : batch.vertices()) {
+        lo = glm::min(lo, glm::vec2(v.position));
+        hi = glm::max(hi, glm::vec2(v.position));
+    }
+    CHECK(lo.x == doctest::Approx(30.0f));
+    CHECK(hi.x == doctest::Approx(70.0f));
+    CHECK(lo.y == doctest::Approx(50.0f));
+    CHECK(hi.y == doctest::Approx(80.0f)); // Bottom edge stays pinned at pivot y = 80
+}
+
+TEST_CASE("Batch2D: sprite rotation around pivot and scale-before-rotate order (#233)") {
+    constexpr float kHalfPi = 1.5707963267948966f;
+    constexpr float kQuarterPi = 0.7853981633974483f;
+    const Texture2D tex;
+
+    // 90 deg clockwise in screen space (+Y down): (20x10) scaled by (2, 1) -> (40x10) -> rotated to (10x40)
+    Batch2D batch;
+    SpriteDesc desc;
+    desc.pos = {100.0f, 100.0f};
+    desc.size = {20.0f, 10.0f};
+    desc.scale = {2.0f, 1.0f};
+    desc.rotation = kHalfPi;
+    batch.sprite(&tex, desc);
+
+    REQUIRE(batch.vertices().size() == 6);
+    // Quad vertices order: {0, 1, 2, 0, 2, 3} -> indices 0=TL, 1=TR, 2=BR, 5=BL
+    const GpuVertex& v0 = batch.vertices()[0];
+    const GpuVertex& v1 = batch.vertices()[1];
+    const GpuVertex& v2 = batch.vertices()[2];
+    const GpuVertex& v3 = batch.vertices()[5];
+
+    // Original TL (-20, -5) rotates CW 90 deg to (+5, -20) -> (105, 80) with UV (0, 1)
+    CHECK(v0.position.x == doctest::Approx(105.0f).epsilon(1e-4f));
+    CHECK(v0.position.y == doctest::Approx(80.0f).epsilon(1e-4f));
+    CHECK(v0.uv == glm::vec2(0.0f, 1.0f));
+
+    // Original TR (+20, -5) rotates CW 90 deg to (+5, +20) -> (105, 120) with UV (1, 1)
+    CHECK(v1.position.x == doctest::Approx(105.0f).epsilon(1e-4f));
+    CHECK(v1.position.y == doctest::Approx(120.0f).epsilon(1e-4f));
+    CHECK(v1.uv == glm::vec2(1.0f, 1.0f));
+
+    // Original BR (+20, +5) rotates CW 90 deg to (-5, +20) -> (95, 120) with UV (1, 0)
+    CHECK(v2.position.x == doctest::Approx(95.0f).epsilon(1e-4f));
+    CHECK(v2.position.y == doctest::Approx(120.0f).epsilon(1e-4f));
+    CHECK(v2.uv == glm::vec2(1.0f, 0.0f));
+
+    // Original BL (-20, +5) rotates CW 90 deg to (-5, -20) -> (95, 80) with UV (0, 0)
+    CHECK(v3.position.x == doctest::Approx(95.0f).epsilon(1e-4f));
+    CHECK(v3.position.y == doctest::Approx(80.0f).epsilon(1e-4f));
+    CHECK(v3.uv == glm::vec2(0.0f, 0.0f));
+
+    // Custom pivot (0, 0) stays fixed at pos under 45 deg rotation, and edge lengths are preserved
+    batch.clear();
+    SpriteDesc pivoted;
+    pivoted.pos = {20.0f, 30.0f};
+    pivoted.size = {16.0f, 8.0f};
+    pivoted.pivot = {0.0f, 0.0f};
+    pivoted.rotation = kQuarterPi;
+    batch.sprite(&tex, pivoted);
+
+    REQUIRE(batch.vertices().size() == 6);
+    const glm::vec2 c0 = glm::vec2(batch.vertices()[0].position);
+    const glm::vec2 c1 = glm::vec2(batch.vertices()[1].position);
+    const glm::vec2 c2 = glm::vec2(batch.vertices()[2].position);
+    const glm::vec2 c3 = glm::vec2(batch.vertices()[5].position);
+    CHECK(c0.x == doctest::Approx(20.0f).epsilon(1e-4f));
+    CHECK(c0.y == doctest::Approx(30.0f).epsilon(1e-4f));
+    CHECK(glm::distance(c0, c1) == doctest::Approx(16.0f).epsilon(1e-4f));
+    CHECK(glm::distance(c1, c2) == doctest::Approx(8.0f).epsilon(1e-4f));
+    CHECK(glm::distance(c2, c3) == doctest::Approx(16.0f).epsilon(1e-4f));
+    CHECK(glm::distance(c3, c0) == doctest::Approx(8.0f).epsilon(1e-4f));
+}
+
+TEST_CASE("Batch2D: sprite horizontal and vertical flip swap UVs within sub-rect without moving corners "
+          "(#233)") {
+    const Texture2D tex;
+    SpriteDesc base;
+    base.pos = {40.0f, 40.0f};
+    base.size = {20.0f, 10.0f};
+    base.pivot = {0.25f, 0.5f};
+    base.uvMin = {0.25f, 0.5f};
+    base.uvMax = {0.5f, 0.75f};
+
+    Batch2D normalBatch;
+    normalBatch.sprite(&tex, base);
+
+    SpriteDesc flippedX = base;
+    flippedX.flipX = true;
+    Batch2D flipXBatch;
+    flipXBatch.sprite(&tex, flippedX);
+
+    SpriteDesc flippedY = base;
+    flippedY.flipY = true;
+    Batch2D flipYBatch;
+    flipYBatch.sprite(&tex, flippedY);
+
+    SpriteDesc flippedXY = base;
+    flippedXY.flipX = true;
+    flippedXY.flipY = true;
+    Batch2D flipXYBatch;
+    flipXYBatch.sprite(&tex, flippedXY);
+
+    REQUIRE(normalBatch.vertices().size() == 6);
+    REQUIRE(flipXBatch.vertices().size() == 6);
+    REQUIRE(flipYBatch.vertices().size() == 6);
+    REQUIRE(flipXYBatch.vertices().size() == 6);
+
+    // Positions are identical regardless of flip flags
+    for (std::size_t i = 0; i < 6; ++i) {
+        CHECK(flipXBatch.vertices()[i].position == normalBatch.vertices()[i].position);
+        CHECK(flipYBatch.vertices()[i].position == normalBatch.vertices()[i].position);
+        CHECK(flipXYBatch.vertices()[i].position == normalBatch.vertices()[i].position);
+    }
+
+    // Indices 0=TL, 1=TR, 2=BR, 5=BL
+    CHECK(flipXBatch.vertices()[0].uv == glm::vec2(0.5f, 0.75f));
+    CHECK(flipXBatch.vertices()[1].uv == glm::vec2(0.25f, 0.75f));
+    CHECK(flipXBatch.vertices()[2].uv == glm::vec2(0.25f, 0.5f));
+    CHECK(flipXBatch.vertices()[5].uv == glm::vec2(0.5f, 0.5f));
+
+    CHECK(flipYBatch.vertices()[0].uv == glm::vec2(0.25f, 0.5f));
+    CHECK(flipYBatch.vertices()[1].uv == glm::vec2(0.5f, 0.5f));
+    CHECK(flipYBatch.vertices()[2].uv == glm::vec2(0.5f, 0.75f));
+    CHECK(flipYBatch.vertices()[5].uv == glm::vec2(0.25f, 0.75f));
+
+    CHECK(flipXYBatch.vertices()[0].uv == glm::vec2(0.5f, 0.5f));
+    CHECK(flipXYBatch.vertices()[1].uv == glm::vec2(0.25f, 0.5f));
+    CHECK(flipXYBatch.vertices()[2].uv == glm::vec2(0.25f, 0.75f));
+    CHECK(flipXYBatch.vertices()[5].uv == glm::vec2(0.5f, 0.75f));
+}
+
+TEST_CASE("Batch2D: sprite batching, untextured sprites, clipping, and degenerate inputs (#233)") {
+    const Texture2D texA;
+    const Texture2D texB;
+    Batch2D batch;
+
+    SpriteDesc desc;
+    desc.pos = {10.0f, 10.0f};
+    desc.size = {16.0f, 16.0f};
+    desc.nearest = true;
+
+    // Same texture and filter share one draw call; untextured sprite does not break the batch
+    batch.sprite(&texA, desc);
+    batch.sprite(nullptr, desc);
+    batch.sprite(&texA, desc);
+    CHECK(batch.quadCount() == 3);
+    CHECK(batch.commands().size() == 1);
+    CHECK(batch.vertices()[6].uv.x == doctest::Approx(Batch2D::kNoTexture));
+
+    // Changing filter or texture starts a new command
+    desc.nearest = false;
+    batch.sprite(&texA, desc);
+    CHECK(batch.commands().size() == 2);
+    batch.sprite(&texB, desc);
+    CHECK(batch.commands().size() == 3);
+
+    // Degenerate size or zero scale emits nothing
+    const std::size_t before = batch.quadCount();
+    SpriteDesc zeroSize = desc;
+    zeroSize.size = {0.0f, 16.0f};
+    batch.sprite(&texB, zeroSize);
+    SpriteDesc negSize = desc;
+    negSize.size = {16.0f, -4.0f};
+    batch.sprite(&texB, negSize);
+    SpriteDesc zeroScale = desc;
+    zeroScale.scale = {1.0f, 0.0f};
+    batch.sprite(&texB, zeroScale);
+    CHECK(batch.quadCount() == before);
+
+    // Empty clip rect suppresses emission
+    batch.pushClip({{0.0f, 0.0f}, {0.0f, 0.0f}});
+    batch.sprite(&texB, desc);
+    batch.popClip();
+    CHECK(batch.quadCount() == before);
+}
+
 // --- Renderer2D (#42): on the GPU ---
 
 namespace {
@@ -275,6 +511,87 @@ TEST_CASE("Render: DPI scale enlarges UI in physical pixels without shifting ori
     CHECK(x2.pixel(20, 20)[0] > 200); // Rect from 4..24 physical px
     CHECK(x2.pixel(26, 26)[0] < 100);
     CHECK(x2.pixel(3, 3)[0] < 100);
+}
+
+TEST_CASE("Render: rotated, scaled, and flipped sprites in a single batch (#233)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    // 2x2 texture, row 0 at top: Red, Green / Blue, White
+    const std::uint8_t pixels[] = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
+    const Texture2D texture = Texture2D::fromPixels(device, 2, 2, pixels);
+    REQUIRE(texture);
+
+    constexpr float kHalfPi = 1.5707963267948966f;
+    std::uint32_t drawCalls = 0;
+    const mge_test::Image image = drawUi(
+        device, 112, 96, 1.0f,
+        [&](Renderer2D& ui) {
+            SpriteDesc base;
+            base.size = {16.0f, 16.0f};
+            base.nearest = true;
+
+            // 1. Unflipped at (20, 20): TL=Red, TR=Green, BL=Blue, BR=White
+            SpriteDesc normal = base;
+            normal.pos = {20.0f, 20.0f};
+            ui.sprite(&texture, normal);
+
+            // 2. Horizontal flip at (52, 20): TL=Green, TR=Red, BL=White, BR=Blue
+            SpriteDesc flipX = base;
+            flipX.pos = {52.0f, 20.0f};
+            flipX.flipX = true;
+            ui.sprite(&texture, flipX);
+
+            // 3. Vertical flip at (84, 20): TL=Blue, TR=White, BL=Red, BR=Green
+            SpriteDesc flipY = base;
+            flipY.pos = {84.0f, 20.0f};
+            flipY.flipY = true;
+            ui.sprite(&texture, flipY);
+
+            // 4. Scaled (2, 1) then rotated 90 deg CW at (48, 64) -> 16 wide x 32 tall
+            //    TL=Blue, TR=Red, BR=Green, BL=White
+            SpriteDesc rotScaled = base;
+            rotScaled.pos = {48.0f, 64.0f};
+            rotScaled.scale = {2.0f, 1.0f};
+            rotScaled.rotation = kHalfPi;
+            ui.sprite(&texture, rotScaled);
+        },
+        &drawCalls);
+
+    CHECK(drawCalls == 1);
+
+    auto isRed = [](const std::uint8_t* p) { return p[0] > 200 && p[1] < 50 && p[2] < 50; };
+    auto isGreen = [](const std::uint8_t* p) { return p[0] < 50 && p[1] > 200 && p[2] < 50; };
+    auto isBlue = [](const std::uint8_t* p) { return p[0] < 50 && p[1] < 50 && p[2] > 200; };
+    auto isWhite = [](const std::uint8_t* p) { return p[0] > 200 && p[1] > 200 && p[2] > 200; };
+    auto isDark = [](const std::uint8_t* p) { return p[0] < 60 && p[1] < 60 && p[2] < 60; };
+
+    // 1. Unflipped
+    CHECK(isRed(image.pixel(16, 16)));
+    CHECK(isGreen(image.pixel(24, 16)));
+    CHECK(isBlue(image.pixel(16, 24)));
+    CHECK(isWhite(image.pixel(24, 24)));
+
+    // 2. Horizontally flipped
+    CHECK(isGreen(image.pixel(48, 16)));
+    CHECK(isRed(image.pixel(56, 16)));
+    CHECK(isWhite(image.pixel(48, 24)));
+    CHECK(isBlue(image.pixel(56, 24)));
+
+    // 3. Vertically flipped
+    CHECK(isBlue(image.pixel(80, 16)));
+    CHECK(isWhite(image.pixel(88, 16)));
+    CHECK(isRed(image.pixel(80, 24)));
+    CHECK(isGreen(image.pixel(88, 24)));
+
+    // 4. Scaled (2, 1) and rotated 90 deg CW: occupies x in [40, 56], y in [48, 80]
+    CHECK(isBlue(image.pixel(44, 56)));
+    CHECK(isRed(image.pixel(52, 56)));
+    CHECK(isGreen(image.pixel(52, 72)));
+    CHECK(isWhite(image.pixel(44, 72)));
+    CHECK(isDark(image.pixel(32, 64)));
+    CHECK(isDark(image.pixel(64, 64)));
 }
 
 // --- DebugOverlay (#43) ---

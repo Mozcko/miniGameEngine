@@ -35,6 +35,21 @@ namespace mge {
         std::uint32_t vertexCount = 0;
     };
 
+    // Parameters for drawing a transformed 2D sprite (position, size, scale, rotation, pivot, UVs, flip)
+    struct SpriteDesc {
+        glm::vec2 pos{0.0f};         // Position of the pivot in logical UI pixels
+        glm::vec2 size{0.0f};        // Base size in logical UI pixels (before scale)
+        glm::vec2 scale{1.0f};       // Scale factor around pivot (negative values mirror geometry)
+        float rotation = 0.0f;       // Rotation in radians (clockwise on screen, +Y pointing down)
+        glm::vec2 pivot{0.5f, 0.5f}; // Normalized anchor in [0, 1] ((0, 0) top-left, (0.5, 0.5) center)
+        glm::vec2 uvMin{0.0f, 0.0f}; // Sub-rectangle in Texture2D UV space (v pointing up)
+        glm::vec2 uvMax{1.0f, 1.0f};
+        glm::vec4 tint{1.0f}; // Vertex color multiplier
+        bool flipX = false;   // Mirror UVs horizontally
+        bool flipY = false;   // Mirror UVs vertically
+        bool nearest = false; // Unfiltered sampling (true for pixel art)
+    };
+
     // Immediate-mode 2D batch (#42), built on the CPU (testable without GPU). In logical UI pixels: origin
     // at top-left, y pointing down. Each primitive is loose triangles (6 vertices per quad); a new command
     // starts only when texture, filter, or clip changes. Untextured primitives (rect, line) do not break
@@ -56,6 +71,9 @@ namespace mge {
         void image(const Texture2D* texture, const glm::vec2& pos, const glm::vec2& size,
                    const glm::vec2& uvMin = glm::vec2(0.0f), const glm::vec2& uvMax = glm::vec2(1.0f),
                    const glm::vec4& tint = glm::vec4(1.0f), bool nearest = false);
+        // Transformed sprite: scaled, rotated around pivot, and optionally flipped in X/Y.
+        // If texture is nullptr, emits an untextured colored quad without breaking the current batch.
+        void sprite(const Texture2D* texture, const SpriteDesc& desc);
         // Text using font (its atlas already uploaded to atlasTexture). pos = top-left of the first line;
         // '\n' moves down a line. Returns the occupied size (like Font::measure)
         glm::vec2 text(const Font& font, const Texture2D* atlasTexture, const glm::vec2& pos,

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace mge {
 
@@ -95,6 +96,48 @@ namespace mge {
                         const glm::vec2& uvMin, const glm::vec2& uvMax, const glm::vec4& tint, bool nearest) {
         // Top-left on screen = (uMin, vMax) in Texture2D convention (v pointing up)
         quad(true, texture, nearest, pos, pos + size, {uvMin.x, uvMax.y}, {uvMax.x, uvMin.y}, tint);
+    }
+
+    void Batch2D::sprite(const Texture2D* texture, const SpriteDesc& desc) {
+        if (desc.size.x <= 0.0f || desc.size.y <= 0.0f) return;
+        if (desc.scale.x == 0.0f || desc.scale.y == 0.0f) return;
+
+        const glm::vec2 scaledSize = desc.size * desc.scale;
+        const glm::vec2 pivotOffset = desc.pivot * scaledSize;
+
+        // Local corners relative to pivot: top-left, top-right, bottom-right, bottom-left
+        const glm::vec2 local[4] = {
+            {-pivotOffset.x, -pivotOffset.y},
+            {scaledSize.x - pivotOffset.x, -pivotOffset.y},
+            {scaledSize.x - pivotOffset.x, scaledSize.y - pivotOffset.y},
+            {-pivotOffset.x, scaledSize.y - pivotOffset.y},
+        };
+
+        glm::vec2 corners[4];
+        if (desc.rotation == 0.0f) {
+            for (int i = 0; i < 4; ++i) corners[i] = desc.pos + local[i];
+        } else {
+            const float c = std::cos(desc.rotation);
+            const float s = std::sin(desc.rotation);
+            for (int i = 0; i < 4; ++i) {
+                corners[i] = {
+                    desc.pos.x + local[i].x * c - local[i].y * s,
+                    desc.pos.y + local[i].x * s + local[i].y * c,
+                };
+            }
+        }
+
+        // Top-left on screen = (uMin, vMax) in Texture2D convention (v pointing up)
+        float u0 = desc.uvMin.x;
+        float u1 = desc.uvMax.x;
+        float v0 = desc.uvMax.y;
+        float v1 = desc.uvMin.y;
+        if (desc.flipX) std::swap(u0, u1);
+        if (desc.flipY) std::swap(v0, v1);
+
+        const glm::vec2 uvs[4] = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
+
+        quadCorners(texture != nullptr, texture, desc.nearest, corners, uvs, desc.tint);
     }
 
     glm::vec2 Batch2D::text(const Font& font, const Texture2D* atlasTexture, const glm::vec2& pos,

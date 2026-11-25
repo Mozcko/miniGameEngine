@@ -11,7 +11,7 @@ by default (`MODULES platform gpu graphics audio`).
 | `MeshRenderer.h/.cpp` | `MeshRenderer`, `RenderStats`: draws `GpuMesh`es with texture × vertex colour, camera, depth, in three passes |
 | `DebugDraw.h/.cpp` | `DebugLines` (CPU line builder: line, aabb, sphere, axes, frustum) and `DebugDraw` (+ GPU buffer, `flush(renderer)`) |
 | `TtfFont.h/.cpp` | `loadTtfFont(bytes, px)`, `loadTtfFontFile(path, px)`: optional TTF → `mge::Font` with stb_truetype (no SDL_ttf) |
-| `Batch2D.h/.cpp` | `Rect2D`, `Draw2DCommand`, `Batch2D`: CPU 2D batch (rects, outlines, lines, images, text, clip stack) |
+| `Batch2D.h/.cpp` | `Rect2D`, `Draw2DCommand`, `SpriteDesc`, `Batch2D`: CPU 2D batch (rects, outlines, lines, images, transformed sprites, text, clip stack) |
 | `Renderer2D.h/.cpp` | `GpuFont` (font + atlas texture), `Renderer2D`: the batch on the GPU, pixel‑space UI drawn over the scene |
 | `DebugOverlay.h/.cpp` | `DebugOverlay`: FPS, frame‑time graph and named counters, drawn with `Renderer2D` |
 | `shaders/ui.vert/.frag` | 2D: orthographic projection in logical pixels; `texture × colour`, white when `uv.x < 0` |
@@ -135,6 +135,7 @@ ui.flush(*frame->cmd, frame->swapchain);                 // draws on top, then c
 - **`Batch2D`** (CPU, testable without a GPU) collects the vertices and draw commands:
   - shapes: `rect`, `rectOutline` (inside the rect), `line` (a quad of any thickness);
   - `image(texture, pos, size, uvMin, uvMax, tint, nearest)`;
+  - `sprite(texture, SpriteDesc)` for scaled, rotated (around a normalized `pivot`), and horizontally/vertically flipped sprites;
   - `text(font, atlasTexture, pos, string, colour, scale)` returns the size it took; `\n` starts a
     new line;
   - `pushClip/popClip` nest by intersection, and anything fully clipped adds no vertices.
