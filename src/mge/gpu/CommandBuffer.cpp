@@ -153,13 +153,13 @@ namespace mge {
             depthInfo.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
         }
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(m_cmd, &colorInfo, 1, depth ? &depthInfo : nullptr);
-        if (!pass) MGE_LOG_ERROR("Gpu", "No se pudo abrir el render pass: ", SDL_GetError());
+        if (!pass) MGE_LOG_ERROR("Gpu", "Failed to begin render pass: ", SDL_GetError());
         return RenderPass(pass);
     }
 
     CopyPass CommandBuffer::beginCopyPass() {
         SDL_GPUCopyPass* pass = SDL_BeginGPUCopyPass(m_cmd);
-        if (!pass) MGE_LOG_ERROR("Gpu", "No se pudo abrir el copy pass: ", SDL_GetError());
+        if (!pass) MGE_LOG_ERROR("Gpu", "Failed to begin copy pass: ", SDL_GetError());
         return CopyPass(pass);
     }
 
@@ -211,7 +211,7 @@ namespace mge {
 
         SDL_GPUComputePass* pass =
             SDL_BeginGPUComputePass(m_cmd, texPtr, numStorageTextures, bufPtr, numStorageBuffers);
-        if (!pass) MGE_LOG_ERROR("Gpu", "No se pudo abrir el compute pass: ", SDL_GetError());
+        if (!pass) MGE_LOG_ERROR("Gpu", "Failed to begin compute pass: ", SDL_GetError());
         m_computePass = pass;
         return ComputePass(pass, this);
     }
@@ -276,7 +276,7 @@ namespace mge {
         if (!m_cmd) return false;
         endComputePass();
         const bool ok = SDL_SubmitGPUCommandBuffer(std::exchange(m_cmd, nullptr));
-        if (!ok) MGE_LOG_ERROR("Gpu", "No se pudo enviar el command buffer: ", SDL_GetError());
+        if (!ok) MGE_LOG_ERROR("Gpu", "Failed to submit command buffer: ", SDL_GetError());
         return ok;
     }
 
@@ -285,7 +285,7 @@ namespace mge {
         endComputePass();
         SDL_GPUFence* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(std::exchange(m_cmd, nullptr));
         if (!fence) {
-            MGE_LOG_ERROR("Gpu", "No se pudo enviar el command buffer: ", SDL_GetError());
+            MGE_LOG_ERROR("Gpu", "Failed to submit command buffer: ", SDL_GetError());
             return false;
         }
         const bool ok = SDL_WaitForGPUFences(m_device, true, &fence, 1);
@@ -296,7 +296,7 @@ namespace mge {
     void CommandBuffer::cancel() {
         if (!m_cmd) return;
         endComputePass();
-        // Con una textura del swapchain adquirida SDL no deja cancelar: se envía vacío
+        // With a swapchain texture acquired, SDL does not allow cancelling: submit it empty
         if (!SDL_CancelGPUCommandBuffer(m_cmd)) SDL_SubmitGPUCommandBuffer(m_cmd);
         m_cmd = nullptr;
     }

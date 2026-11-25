@@ -15,7 +15,7 @@
 
 namespace mge {
 
-    // Estadísticas del último frame, por pasada (índice = MeshPass)
+    // Stats from the last frame, per pass (index = MeshPass)
     struct RenderStats {
         std::array<std::uint32_t, kMeshPassCount> drawCalls{};
         std::array<std::uint64_t, kMeshPassCount> triangles{};
@@ -23,12 +23,12 @@ namespace mge {
         std::uint64_t totalTriangles() const { return triangles[0] + triangles[1] + triangles[2]; }
     };
 
-    // Dibuja mallas (GpuMesh) con una textura × color de vértice, cámara y profundidad. Back-face culling
-    // con caras antihorarias de frente (como MeshData). Uso por frame:
-    //   renderer.begin(cmd, target, w, h, cielo); renderer.setCamera(viewProj);
-    //   renderer.draw(malla, model, &textura[, MeshPass::Transparent]) ...; renderer.end();
-    // Con draw() el orden lo pone quien llama (opaco, cutout, transparente); con submit(cola) lo ordena
-    // la RenderQueue.
+    // Draws meshes (GpuMesh) with texture × vertex color, camera, and depth. Back-face culling
+    // with counter-clockwise front faces (like MeshData). Per-frame usage:
+    //   renderer.begin(cmd, target, w, h, skyColor); renderer.setCamera(viewProj);
+    //   renderer.draw(mesh, model, &texture[, MeshPass::Transparent]) ...; renderer.end();
+    // With draw(), the caller controls order (opaque, cutout, transparent); with submit(queue),
+    // RenderQueue sorts them.
     class MeshRenderer {
     public:
         MeshRenderer(GpuDevice& device, SDL_GPUTextureFormat colorFormat);
@@ -37,34 +37,34 @@ namespace mge {
             return m_opaque && m_cutout && m_transparent && m_lines && m_sampler && m_white;
         }
 
-        // Abre el render pass sobre target (limpia color y profundidad). El buffer de profundidad se
-        // (re)crea si cambia el tamaño. false = no se pudo (no dibujar)
+        // Begins the render pass on target (clears color and depth). The depth buffer is
+        // (re)created if the size changes. false = failed (do not draw)
         bool begin(CommandBuffer& cmd, SDL_GPUTexture* target, std::uint32_t width, std::uint32_t height,
                    const glm::vec4& clearColor);
-        // Proyección con Z en [0, 1] (Camera del ECS: cameraMatrices, o glm::perspectiveRH_ZO)
-        // cameraPosition: para la niebla (distancia a la cámara)
+        // Projection with Z in [0, 1] (ECS Camera: cameraMatrices, or glm::perspectiveRH_ZO)
+        // cameraPosition: used for fog (distance to camera)
         void setCamera(const glm::mat4& viewProjection, const glm::vec3& cameraPosition = glm::vec3(0.0f)) {
             m_viewProjection = viewProjection;
             m_cameraPosition = cameraPosition;
             m_lightingDirty = true;
         }
-        // Luz y niebla (#33). Por defecto Lighting::unlit(): la textura × color de vértice tal cual
+        // Lighting and fog (#33). Defaults to Lighting::unlit(): texture × vertex color as-is
         void setLighting(const Lighting& lighting) {
             m_lighting = lighting;
             m_lightingDirty = true;
         }
         const Lighting& lighting() const { return m_lighting; }
-        // texture == nullptr → blanca (solo el color de los vértices)
+        // texture == nullptr → white (vertex color only)
         void draw(const GpuMesh& mesh, const glm::mat4& model, const Texture2D* texture = nullptr,
                   MeshPass pass = MeshPass::Opaque, const MeshMaterial& material = {});
-        // Dibuja una cola ya ordenada (RenderQueue::sort)
+        // Draws an already sorted queue (RenderQueue::sort)
         void submit(const RenderQueue& queue);
-        // Lista de líneas (pares de GpuVertex, posición + color) con prueba de profundidad sin escribirla.
-        // Lo usa DebugDraw::flush
+        // Line list (pairs of GpuVertex, position + color) with depth testing and no depth write.
+        // Used by DebugDraw::flush
         void drawLines(const GpuBuffer& vertices, std::uint32_t vertexCount);
         void end();
 
-        // Render pass y command buffer activos para pases complementarios (SkyRenderer)
+        // Active render pass and command buffer for complementary passes (SkyRenderer)
         SDL_GPURenderPass* currentPass() const { return m_pass.get(); }
         CommandBuffer* currentCommandBuffer() const { return m_cmd; }
         void resetBoundPipeline() {
@@ -72,7 +72,7 @@ namespace mge {
             m_lightingDirty = true;
         }
 
-        // Del frame actual / último
+        // From the current / last frame
         const RenderStats& stats() const { return m_stats; }
         std::uint32_t drawCalls() const { return m_stats.totalDrawCalls(); }
         std::uint64_t triangles() const { return m_stats.totalTriangles(); }

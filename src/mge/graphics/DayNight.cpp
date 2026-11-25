@@ -17,10 +17,10 @@ namespace mge {
             float starsIntensity;
         };
 
-        // Keyframes a lo largo del ciclo de 24 horas.
-        // 0:00 y 24:00 son idénticos para permitir interpolación cíclica suave y continua.
+        // Keyframes across the 24-hour cycle.
+        // 0:00 and 24:00 are identical to allow smooth, continuous cyclic interpolation.
         constexpr SkyKeyframe kKeyframes[] = {
-            // 0:00 Medianoche profunda
+            // 0:00 Deep midnight
             {0.0f,
              {0.02f, 0.02f, 0.05f},
              {0.04f, 0.05f, 0.10f},
@@ -29,7 +29,7 @@ namespace mge {
              0.9995f,
              8.0f,
              1.0f},
-            // 4:00 Noche tardía
+            // 4:00 Late night
             {4.0f,
              {0.02f, 0.02f, 0.05f},
              {0.04f, 0.05f, 0.10f},
@@ -38,7 +38,7 @@ namespace mge {
              0.9995f,
              8.0f,
              1.0f},
-            // 5:00 Primeras luces del amanecer
+            // 5:00 First light of dawn
             {5.0f,
              {0.05f, 0.06f, 0.14f},
              {0.18f, 0.12f, 0.18f},
@@ -47,7 +47,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.7f},
-            // 6:00 Salida del sol (horizonte dorado)
+            // 6:00 Sunrise (golden horizon)
             {6.0f,
              {0.18f, 0.28f, 0.55f},
              {0.90f, 0.45f, 0.25f},
@@ -56,7 +56,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 7:00 Mañana temprana
+            // 7:00 Early morning
             {7.0f,
              {0.25f, 0.45f, 0.80f},
              {0.65f, 0.70f, 0.85f},
@@ -65,7 +65,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 9:00 Media mañana
+            // 9:00 Mid-morning
             {9.0f,
              {0.20f, 0.45f, 0.85f},
              {0.55f, 0.72f, 0.95f},
@@ -74,7 +74,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 12:00 Mediodía
+            // 12:00 Noon
             {12.0f,
              {0.18f, 0.42f, 0.85f},
              {0.55f, 0.72f, 0.95f},
@@ -83,7 +83,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 15:00 Tarde
+            // 15:00 Afternoon
             {15.0f,
              {0.20f, 0.45f, 0.85f},
              {0.55f, 0.72f, 0.95f},
@@ -92,7 +92,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 17:00 Atardecer temprano
+            // 17:00 Early evening
             {17.0f,
              {0.22f, 0.40f, 0.75f},
              {0.75f, 0.60f, 0.45f},
@@ -101,7 +101,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 18:00 Puesta de sol (sol en el horizonte, cielo rojo/naranja)
+            // 18:00 Sunset (sun at horizon, red/orange sky)
             {18.0f,
              {0.15f, 0.22f, 0.50f},
              {0.95f, 0.38f, 0.18f},
@@ -110,7 +110,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.0f},
-            // 19:00 Crepúsculo vespertino
+            // 19:00 Evening twilight
             {19.0f,
              {0.06f, 0.08f, 0.22f},
              {0.30f, 0.15f, 0.25f},
@@ -119,7 +119,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.5f},
-            // 20:00 Entrada de la noche
+            // 20:00 Nightfall
             {20.0f,
              {0.03f, 0.03f, 0.08f},
              {0.06f, 0.06f, 0.12f},
@@ -128,7 +128,7 @@ namespace mge {
              0.9995f,
              8.0f,
              0.9f},
-            // 21:00 Noche cerrada
+            // 21:00 Full night
             {21.0f,
              {0.02f, 0.02f, 0.05f},
              {0.04f, 0.05f, 0.10f},
@@ -137,7 +137,7 @@ namespace mge {
              0.9995f,
              8.0f,
              1.0f},
-            // 24:00 Medianoche (mismos valores que 0:00)
+            // 24:00 Midnight (same values as 0:00)
             {24.0f,
              {0.02f, 0.02f, 0.05f},
              {0.04f, 0.05f, 0.10f},
@@ -162,7 +162,7 @@ namespace mge {
         float wrappedHour = std::fmod(hour, 24.0f);
         if (wrappedHour < 0.0f) wrappedHour += 24.0f;
 
-        // Búsqueda del tramo de keyframes correspondiente
+        // Find the matching keyframe segment
         std::size_t idx = 0;
         while (idx + 1 < kKeyframeCount && kKeyframes[idx + 1].hour <= wrappedHour) {
             idx++;
@@ -181,13 +181,13 @@ namespace mge {
         s.sunGlow = glm::mix(a.sunGlow, b.sunGlow, t);
         s.starsIntensity = glm::mix(a.starsIntensity, b.starsIntensity, t);
 
-        // Trayectoria solar: a las 6:00 sale, a las 12:00 cenit, a las 18:00 se pone, a las 0:00 nadir
+        // Solar path: rises at 6:00, zenith at 12:00, sets at 18:00, nadir at 0:00
         constexpr float kPi = 3.14159265358979323846f;
         const float angle = (wrappedHour - 6.0f) * (2.0f * kPi / 24.0f);
-        constexpr float kTilt = 0.26f; // Inclinación suave respecto al meridiano (~15 grados)
+        constexpr float kTilt = 0.26f; // Slight tilt relative to the meridian (~15 degrees)
         const glm::vec3 sunPos = glm::normalize(glm::vec3(-std::cos(angle), std::sin(angle) * std::cos(kTilt),
                                                           std::sin(angle) * std::sin(kTilt)));
-        s.sunDirection = -sunPos; // Hacia dónde viaja la luz
+        s.sunDirection = -sunPos; // Direction light travels toward
 
         return s;
     }
@@ -199,7 +199,7 @@ namespace mge {
         l.sunColor = s.sunColor;
         l.skyAmbient = glm::max(s.zenithColor * 0.7f + s.horizonColor * 0.3f, glm::vec3(0.04f, 0.04f, 0.06f));
         l.groundAmbient = glm::max(s.groundColor, glm::vec3(0.02f, 0.02f, 0.03f));
-        l.fogColor = s.horizonColor; // Coincide exactamente con el horizonte del cielo
+        l.fogColor = s.horizonColor; // Matches the sky horizon exactly
         return l;
     }
 

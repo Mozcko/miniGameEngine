@@ -1,5 +1,5 @@
 #version 450
-// Malla con GpuVertex (posición, normal, color, uv). Uniform del vértice: set 1, binding 0.
+// Mesh with GpuVertex (position, normal, color, uv). Vertex uniform: set 1, binding 0.
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inColor;
@@ -8,7 +8,7 @@ layout(location = 3) in vec2 inUv;
 layout(set = 1, binding = 0) uniform Transforms {
     mat4 viewProjection;
     mat4 model;
-    vec4 material; // x: escala del detalle procedural (por unidad del mundo), y: intensidad (0 = sin detalle)
+    vec4 material; // x: procedural detail scale (per world unit), y: intensity (0 = no detail)
 };
 
 layout(location = 0) out vec4 outColor;
@@ -23,6 +23,6 @@ void main() {
     outColor = inColor;
     outUv = inUv;
     outWorldPosition = world.xyz;
-    outWorldNormal = mat3(model) * inNormal; // Sin escala no uniforme (traslación/rotación/escala uniforme)
+    outWorldNormal = mat3(model) * inNormal; // No non-uniform scaling (translation/rotation/uniform scale)
     outDetail = material.xy;
 }

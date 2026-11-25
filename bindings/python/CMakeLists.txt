@@ -83,7 +83,7 @@ set_target_properties(_mge PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/mge"
 )
 
-# Instalación para empaquetado con scikit-build-core
+# Installation for packaging with scikit-build-core
 install(TARGETS _mge
     LIBRARY DESTINATION mge
     ARCHIVE DESTINATION mge

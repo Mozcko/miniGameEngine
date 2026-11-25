@@ -10,23 +10,23 @@
 namespace mge {
 
     enum class BlendMode {
-        None,     // Opaco
+        None,     // Opaque
         Alpha,    // src * a + dst * (1 - a)
         Additive, // src * a + dst
     };
 
-    // Descripción simplificada de un pipeline gráfico (lo común en el motor). Para casos raros se puede
-    // usar SDL_GPUGraphicsPipelineCreateInfo directo con GpuDevice::createGraphicsPipeline.
+    // Simplified description of a graphics pipeline (common cases in the engine). For unusual cases,
+    // SDL_GPUGraphicsPipelineCreateInfo can be used directly with GpuDevice::createGraphicsPipeline.
     struct GraphicsPipelineDesc {
         const GpuShader* vertexShader = nullptr;
         const GpuShader* fragmentShader = nullptr;
         SDL_GPUTextureFormat colorFormat = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-        // INVALID = sin buffer de profundidad
+        // INVALID = no depth buffer
         SDL_GPUTextureFormat depthFormat = SDL_GPU_TEXTUREFORMAT_INVALID;
-        bool depthTest = true; // Solo si hay depthFormat
+        bool depthTest = true; // Only if depthFormat is set
         bool depthWrite = true;
         SDL_GPUCompareOp compareOp = SDL_GPU_COMPAREOP_LESS;
-        // true: vértices GpuVertex en el slot 0 (mallas). false: sin buffers (el shader usa gl_VertexIndex)
+        // true: GpuVertex vertices in slot 0 (meshes). false: no vertex buffers (shader uses gl_VertexIndex)
         bool gpuVertexInput = true;
         SDL_GPUPrimitiveType primitive = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
         SDL_GPUCullMode cullMode = SDL_GPU_CULLMODE_BACK;
@@ -34,7 +34,7 @@ namespace mge {
         BlendMode blend = BlendMode::None;
     };
 
-    // Descripción simplificada de un pipeline de cómputo.
+    // Simplified description of a compute pipeline.
     struct ComputePipelineDesc {
         ShaderCode bytecode;
         const char* entrypoint = "main";

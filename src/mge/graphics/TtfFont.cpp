@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iterator>
 
-// stb_truetype con funciones static (como stb_image en Texture2D.cpp)
+// stb_truetype with static functions (like stb_image in Texture2D.cpp)
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb/stb_truetype.h>
@@ -20,27 +20,27 @@ namespace mge {
 
     Font loadTtfFont(const std::vector<std::uint8_t>& ttfBytes, float pixelHeight) {
         if (ttfBytes.empty() || !(pixelHeight > 0.0f)) {
-            MGE_LOG_ERROR("Font", "TTF vacío o tamaño inválido (", pixelHeight, " px)");
+            MGE_LOG_ERROR("Font", "Empty TTF or invalid size (", pixelHeight, " px)");
             return {};
         }
         stbtt_fontinfo info;
         const int offset = stbtt_GetFontOffsetForIndex(ttfBytes.data(), 0);
         if (offset < 0 || !stbtt_InitFont(&info, ttfBytes.data(), offset)) {
-            MGE_LOG_ERROR("Font", "El archivo no es una fuente TrueType válida");
+            MGE_LOG_ERROR("Font", "File is not a valid TrueType font");
             return {};
         }
         int ascent = 0, descent = 0, lineGap = 0;
         stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
         const float scale = stbtt_ScaleForPixelHeight(&info, pixelHeight);
 
-        // Atlas cada vez más grande hasta que entren los 95 glifos
+        // Grow the atlas until all 95 glyphs fit
         stbtt_bakedchar baked[Font::kGlyphCount];
         std::vector<unsigned char> coverage;
         int size = 128;
         for (;; size *= 2) {
             if (size > kMaxAtlasSize) {
-                MGE_LOG_ERROR("Font", "Los glifos de ", pixelHeight, " px no entran en un atlas de ",
-                              kMaxAtlasSize, " px");
+                MGE_LOG_ERROR("Font", "Glyphs at ", pixelHeight, " px do not fit in a ", kMaxAtlasSize,
+                              " px atlas");
                 return {};
             }
             coverage.assign(std::size_t(size) * std::size_t(size), 0);
@@ -49,7 +49,7 @@ namespace mge {
                 break;
         }
 
-        // Blanco con la cobertura en el alfa: el color lo pone quien dibuja
+        // White with coverage in alpha: the caller applies the color when drawing
         Image atlas{std::uint32_t(size), std::uint32_t(size)};
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++) {
@@ -64,7 +64,7 @@ namespace mge {
             Glyph& g = glyphs[i];
             g.atlasPos = glm::ivec2(b.x0, b.y0);
             g.size = glm::ivec2(b.x1 - b.x0, b.y1 - b.y0);
-            g.offset = glm::vec2(b.xoff, baseline + b.yoff); // yoff es desde la línea base
+            g.offset = glm::vec2(b.xoff, baseline + b.yoff); // yoff is relative to the baseline
             g.advance = b.xadvance;
         }
         const float lineHeight = std::ceil(float(ascent - descent + lineGap) * scale);
@@ -75,14 +75,13 @@ namespace mge {
         const std::filesystem::path full = path.is_absolute() ? path : assetPath(path.generic_string());
         std::ifstream file(full, std::ios::binary);
         if (!file) {
-            MGE_LOG_ERROR("Font", "No se pudo abrir ", full.string());
+            MGE_LOG_ERROR("Font", "Failed to open ", full.string());
             return {};
         }
         const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(file)),
                                               std::istreambuf_iterator<char>());
         Font font = loadTtfFont(bytes, pixelHeight);
-        if (font.valid())
-            MGE_LOG_INFO("Font", "Fuente ", full.filename().string(), " (", pixelHeight, " px)");
+        if (font.valid()) MGE_LOG_INFO("Font", "Font ", full.filename().string(), " (", pixelHeight, " px)");
         return font;
     }
 }
