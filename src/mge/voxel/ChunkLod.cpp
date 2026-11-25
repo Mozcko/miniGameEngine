@@ -16,7 +16,8 @@ namespace mge {
             int topY = 0; // y + 1 of the highest opaque block in the cell (in chunk-local space)
         };
 
-        // Scans a cell from top to bottom (along Y) looking for the first non-air opaque block and its height.
+        // Scans a cell from top to bottom (along Y) looking for the first non-air opaque block and its
+        // height.
         inline TopOpaqueSample pickTopOpaqueSample(const ChunkSnapshot& snapshot,
                                                    const BlockRegistry* registry, int startX, int endX,
                                                    int startY, int endY, int startZ, int endZ) {

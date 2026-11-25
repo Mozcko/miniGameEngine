@@ -49,8 +49,7 @@ namespace mge {
         std::size_t pendingGenerate = 0; // Generation jobs in flight
         std::size_t pendingMesh = 0;     // Meshing jobs in flight
         std::size_t pooled = 0;          // Chunks in VoxelWorld's pool
-        std::size_t discarded =
-            0; // Results discarded as stale (chunk edited, unloaded, or LOD changed)
+        std::size_t discarded = 0; // Results discarded as stale (chunk edited, unloaded, or LOD changed)
         std::size_t cpuBytes() const { return loaded * sizeof(ChunkData); }
     };
 

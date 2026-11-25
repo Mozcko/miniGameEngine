@@ -11,14 +11,15 @@ namespace mge {
         // Merges equal neighbouring faces into a single quad (colour-only blocks, untextured: atlas tiles
         // cannot repeat across a large quad until the new renderer, M3)
         bool greedy = true;
-        // Per-vertex ambient occlusion: darkens vertex colour in corners and edges (0 to 3 opaque neighbours).
-        // With greedy enabled, only faces with the same occlusion on all 4 corners are merged.
+        // Per-vertex ambient occlusion: darkens vertex colour in corners and edges (0 to 3 opaque
+        // neighbours). With greedy enabled, only faces with the same occlusion on all 4 corners are merged.
         bool ambientOcclusion = false;
         float aoStrength = 0.5f; // Colour in an enclosed corner = 1 - aoStrength
         // Textured blocks: false (default) = white vertex colour (texture as-is, plus AO);
         // true = texture is tinted with BlockDesc::color. Untextured blocks always use their colour.
         bool tintTextured = false;
-        // Skirts on the 4 side borders (±X, ±Z) for LOD > 0 chunks (#61). Hides cracks between different LODs.
+        // Skirts on the 4 side borders (±X, ±Z) for LOD > 0 chunks (#61). Hides cracks between different
+        // LODs.
         bool lodSkirts = true;
     };
 

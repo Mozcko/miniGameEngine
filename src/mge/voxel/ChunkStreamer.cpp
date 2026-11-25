@@ -99,7 +99,8 @@ namespace mge {
     }
 
     bool ChunkStreamer::neighboursReady(const ChunkCoord& c) const {
-        // The 4 horizontal neighbours must have data; above and below as well, unless outside the vertical range
+        // The 4 horizontal neighbours must have data; above and below as well, unless outside the vertical
+        // range
         const ChunkCoord horizontal[4] = {
             {c.x - 1, c.y, c.z}, {c.x + 1, c.y, c.z}, {c.x, c.y, c.z - 1}, {c.x, c.y, c.z + 1}};
         for (const ChunkCoord& n : horizontal) {
@@ -244,7 +245,8 @@ namespace mge {
                 if (m_onChunkInserted) {
                     m_onChunkInserted(c, data);
                 }
-                m_world.insertChunk(c, data); // Single-threaded: generate here, with the same per-update budget
+                m_world.insertChunk(c,
+                                    data); // Single-threaded: generate here, with the same per-update budget
                 budget--;
             }
             room--;

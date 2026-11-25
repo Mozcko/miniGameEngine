@@ -34,8 +34,8 @@ namespace mge {
         // The new chunk starts dirty, along with its 6 loaded neighbours: their meshes saw air on that side
         // and now there is data.
         ChunkData& loadChunk(const ChunkCoord& coord);
-        // Inserts an already-generated chunk (e.g. from a JobSystem). If it already exists, keeps the existing one.
-        // Same as loadChunk: starts dirty and marks its loaded neighbours dirty.
+        // Inserts an already-generated chunk (e.g. from a JobSystem). If it already exists, keeps the
+        // existing one. Same as loadChunk: starts dirty and marks its loaded neighbours dirty.
         ChunkData& insertChunk(const ChunkCoord& coord, const ChunkData& data);
         void unloadChunk(const ChunkCoord& coord);
         bool isLoaded(const ChunkCoord& coord) const { return m_chunks.count(coord) != 0; }
