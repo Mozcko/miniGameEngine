@@ -172,40 +172,40 @@ re‑mesh; the sandbox does this.
 
 ## Terrain LOD – `<mge/voxel/ChunkLod.h>` (#61)
 
-Mallas simplificadas para chunks distantes, reduciendo drásticamente la cantidad de triángulos
-y la carga de dibujo.
+Simplified meshes for distant chunks, drastically reducing triangle counts
+and draw overhead.
 
-- **Niveles de detalle:**
-  - **LOD 0**: Malla completa original sin simplificación (`buildChunkMesh`).
-  - **LOD n (1, 2)**: Chunk submuestreado por un factor $f = 2^n$ ($16^3 \to 8^3 \to 4^3$ super-bloques de $f^3$ bloques).
-- **Regla de visibilidad cenital (submuestreo):**
-  Para cada celda de $f^3$ bloques, se escoge el bloque que vería un observador desde arriba: se escanea
-  la celda de arriba hacia abajo (en el eje Y) y se toma el primer bloque **opaco** que no sea aire junto con su
-  altura real `topY = y + 1`. Las caras superiores expuestas se emiten a `topY` (y las caras laterales de las
-  celdas superiores o entre columnas vecinas de distinta altura cubren el desnivel exacto), evitando el escalón
-  de hasta $f - 1$ bloques en los bordes de LOD. Si la celda no contiene ningún bloque opaco, se toma aire (`kAir`).
-  Los bloques recortados (cutout: flores) y translúcidos (agua, vidrio) se descartan en la pasada opaca a LOD > 0.
-  Para columnas cubiertas por agua (líquido translúcido no sólido), la cara opaca superior usa el bloque opaco
-  más alto por debajo del agua — quedando estrictamente debajo del quad plano de agua (sin epsilon de profundidad)
-  — y solo se omite si empata exactamente con la altura del agua (las caras opacas por encima, p. ej. terreno
-  sobre un lago subterráneo, se mantienen).
-- **Malla generada:**
-  - En coordenadas locales del chunk (0..16), con el mismo formato de vértices y colores que `buildChunkMesh`.
-  - Solo genera la pasada opaca (`mesh.opaque`).
-- **Costuras entre chunks del mismo LOD:**
-  El borde del `ChunkSnapshot` vecino se submuestrea con la misma regla cenital, por lo que las caras entre
-  dos chunks vecinos del mismo LOD se ocultan de forma idéntica a LOD 0 (sin caras internas).
-- **Faldas contra grietas entre distintos LODs (`lodSkirts`):**
-  En los 4 bordes laterales del chunk ($\pm X, \pm Z$), las caras exteriores visibles se extruyen hacia abajo
-  $f$ bloques (quads verticales del mismo color) para cubrir cualquier hueco vertical con chunks vecinos que
-  estén a otro nivel de LOD. Activado por defecto en `ChunkMeshOptions::lodSkirts`.
+- **Levels of detail:**
+  - **LOD 0**: Original full mesh without simplification (`buildChunkMesh`).
+  - **LOD n (1, 2)**: Chunk downsampled by a factor $f = 2^n$ ($16^3 \to 8^3 \to 4^3$ super-blocks of $f^3$ blocks).
+- **Top-down visibility rule (downsampling):**
+  For each $f^3$ block cell, the block an observer would see from above is chosen: the cell is scanned
+  from top to bottom (along the Y axis) and the first **opaque** non-air block is taken along with its
+  actual height `topY = y + 1`. Exposed top faces are emitted at `topY` (and side faces of top cells
+  or between neighbouring columns of different heights cover the exact height step), avoiding a step
+  of up to $f - 1$ blocks at LOD boundaries. If the cell contains no opaque block, air (`kAir`) is chosen.
+  Cutout (flowers) and translucent (water, glass) blocks are discarded in the opaque pass at LOD > 0.
+  For columns covered by water (non-solid translucent liquid), the top opaque face uses the highest
+  opaque block below the water — sitting strictly below the flat water quad (no depth epsilon)
+  — and is only omitted if it matches the water height exactly (opaque faces above it, e.g. terrain
+  over an underground lake, are kept).
+- **Generated mesh:**
+  - In chunk-local coordinates (0..16), with the same vertex format and colours as `buildChunkMesh`.
+  - Only generates the opaque pass (`mesh.opaque`).
+- **Seams between chunks of the same LOD:**
+  The neighbouring `ChunkSnapshot` border is downsampled with the same top-down rule, so faces between
+  two neighbouring chunks of the same LOD are hidden identically to LOD 0 (no internal faces).
+- **Skirts against cracks between different LODs (`lodSkirts`):**
+  On the 4 side borders of the chunk ($\pm X, \pm Z$), visible outer faces are extruded downward by
+  $f$ blocks (vertical quads of the same colour) to cover any vertical gap with neighbouring chunks
+  at a different LOD level. Enabled by default in `ChunkMeshOptions::lodSkirts`.
 
 ```cpp
 mge::ChunkMeshOptions options;
 options.greedy = true;
 options.lodSkirts = true;
 mge::ChunkMesh lodMesh = mge::buildLodChunkMesh(snapshot, registry, /*lod=*/ 1, options);
-// lodMesh.opaque contiene la malla LOD en espacio local 0..16
+// lodMesh.opaque contains the LOD mesh in local 0..16 space
 ```
 
 ## Raycasting – `<mge/voxel/VoxelRaycast.h>` (#51)

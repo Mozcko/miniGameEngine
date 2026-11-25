@@ -1,4 +1,4 @@
-# Core del motor: SOLO la librería estándar y GLM (header-only). Prohibido incluir SDL o GPU.
+# Engine core: standard library and GLM (header-only) ONLY. Including SDL or GPU is forbidden.
 add_library(mge_core STATIC
     Application.h Application.cpp
     Assets.h Assets.cpp
@@ -31,7 +31,7 @@ target_include_directories(mge_core PUBLIC
 find_package(Threads REQUIRED)
 target_link_libraries(mge_core PUBLIC Threads::Threads)
 target_compile_features(mge_core PUBLIC cxx_std_17)
-# Último recurso para encontrar assets/ desde cualquier directorio (ver Assets.h)
+# Last resort to find assets/ from any directory (see Assets.h)
 if(MGE_SOURCE_ASSET_FALLBACK)
     target_compile_definitions(mge_core PRIVATE MGE_SOURCE_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets")
 endif()

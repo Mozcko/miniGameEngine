@@ -14,27 +14,27 @@ typedef struct GameState {
 static bool on_init(mge_app* app, void* user_data) {
     GameState* state = (GameState*)user_data;
 
-    /* Crear cubo procedural */
+    /* Create procedural cube */
     state->cube = mge_mesh_create_cube(app, 1.0f);
     if (!state->cube) {
         return false;
     }
 
-    /* Sonido procedural de moneda */
+    /* Procedural coin sound */
     state->coinSound = mge_audio_sfx_create_preset(app, MGE_SFX_COIN, 0);
 
-    /* Mapear acciones de entrada */
+    /* Bind input actions */
     mge_input_bind_action(app, "Quit", "Escape");
     mge_input_bind_action(app, "Coin", "Space");
 
-    /* Matriz de vista mirando al origen desde (0, 2, 4) */
+    /* View matrix looking at the origin from (0, 2, 4) */
     float view[16] = {
         1.0f,  0.0f,          0.0f,          0.0f,
         0.0f,  0.89442719f,  -0.44721360f,   0.0f,
         0.0f,  0.44721360f,   0.89442719f,   0.0f,
         0.0f, -0.89442719f,  -4.47213595f,   1.0f
     };
-    /* Proyeccion perspectiva con Z en [0, 1] */
+    /* Perspective projection with Z in [0, 1] */
     const float fovRad = 1.04719755f;
     const float aspect = 800.0f / 600.0f;
     const float f = 1.0f / tanf(fovRad * 0.5f);
@@ -64,17 +64,17 @@ static void on_update(mge_app* app, float dt, void* user_data) {
         }
     }
 
-    /* Rotar el cubo en el eje Y */
+    /* Rotate the cube around the Y axis */
     state->rotationY += dt * 1.5f;
 
-    /* Avanzar suavemente el ciclo de cielo */
+    /* Smoothly advance the sky cycle */
     mge_sky_advance_time(app, dt * 0.1f);
 }
 
 static void on_render(mge_app* app, void* user_data) {
     GameState* state = (GameState*)user_data;
 
-    /* Matriz de rotacion en Y */
+    /* Y-axis rotation matrix */
     const float c = cosf(state->rotationY);
     const float s = sinf(state->rotationY);
     float model[16] = {
@@ -87,7 +87,7 @@ static void on_render(mge_app* app, void* user_data) {
     float color[4] = {0.2f, 0.7f, 1.0f, 1.0f};
     mge_renderer_draw_mesh(app, state->cube, model, color);
 
-    /* Texto 2D */
+    /* 2D text */
     float textColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     mge_ui_text(app, 20.0f, 20.0f, "Hello from C", 2.0f, textColor);
 

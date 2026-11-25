@@ -210,10 +210,10 @@ jobs.waitIdle();                                         // block until the queu
 
 ```cpp
 #include <mge/core/Log.h>
-MGE_LOG_INFO("Audio", "Cargado ", path, " (", bytes, " bytes)");   // args joined with operator<<
-MGE_LOG_ERROR("Shader", "Falló la compilación de ", file);
-if (!MGE_VERIFY(window != nullptr, "sin ventana")) return false;   // always evaluated, logs on failure
-MGE_ASSERT(index < size, "índice fuera de rango");                  // Debug only; failure → handler (abort)
+MGE_LOG_INFO("Audio", "Loaded ", path, " (", bytes, " bytes)");     // args joined with operator<<
+MGE_LOG_ERROR("Shader", "Failed to compile ", file);
+if (!MGE_VERIFY(window != nullptr, "no window")) return false;     // always evaluated, logs on failure
+MGE_ASSERT(index < size, "index out of range");                    // Debug only; failure → handler (abort)
 ```
 
 | Feature | Behaviour |

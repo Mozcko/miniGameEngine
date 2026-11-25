@@ -9,11 +9,11 @@
 
 namespace mge {
 
-    // En qué parte del frame corre un sistema
+    // When in the frame a system runs
     enum class SystemPhase {
-        Fixed,  // Dentro de cada paso fijo (simulación determinista), dt = fixedDelta
-        Update, // Una vez por frame antes de onUpdate, dt = delta escalado
-        Render, // Una vez por frame antes de onRender, dt = delta escalado
+        Fixed,  // Inside each fixed step (deterministic simulation), dt = fixedDelta
+        Update, // Once per frame before onUpdate, dt = scaled delta
+        Render, // Once per frame before onRender, dt = scaled delta
         Count
     };
 
@@ -21,8 +21,8 @@ namespace mge {
     class Profiler;
     using SystemFunction = std::function<void(World& world, float dt)>;
 
-    // Registro de entidades + sistemas ordenados por fase. La Application tiene uno (app.world())
-    // y corre cada fase en su loop; los sistemas de una fase corren en el orden en que se agregaron.
+    // Entity registry + systems ordered by phase. Application owns one (app.world())
+    // and runs each phase in its loop; systems within a phase run in registration order.
     class World {
     public:
         Registry& registry() { return m_registry; }

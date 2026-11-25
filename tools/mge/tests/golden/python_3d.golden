@@ -8,5 +8,5 @@ game/__init__.py 84bb0e87a6c048e6
 game/logic.py bd7e36b54847da1b
 main.py 8a644f9bf3156609
 mge.project ef876268faac9b55
-pyproject.toml f1c41b2c4366c49e
+pyproject.toml 1afcfa8e73c1af57
 tests/test_game.py a4603ab7013359bd

@@ -11,7 +11,7 @@
 namespace mge {
 
     namespace {
-        // Layout std140 para los uniformes del shader noise.comp (64 bytes total)
+        // std140 layout for noise.comp shader uniforms (64 bytes total)
         struct UniformParams {
             glm::vec3 origin{0.0f};
             float pad0 = 0.0f;
@@ -26,7 +26,7 @@ namespace mge {
             float gain = 0.5f;
             float pad2 = 0.0f;
         };
-        static_assert(sizeof(UniformParams) == 64, "UniformParams debe tener 64 bytes para std140");
+        static_assert(sizeof(UniformParams) == 64, "UniformParams must be 64 bytes for std140");
     } // namespace
 
     GpuNoiseField::GpuNoiseField(GpuDevice& device, const Noise& noise) : m_device(&device) {
@@ -49,7 +49,7 @@ namespace mge {
         desc.uniformBuffers = 1;          // Set 2, binding 0
         m_pipeline = m_device->createComputePipeline(desc);
         if (!m_pipeline) {
-            MGE_LOG_ERROR("Gpu", "No se pudo crear el pipeline de computo para GpuNoiseField");
+            MGE_LOG_ERROR("Gpu", "Failed to create compute pipeline for GpuNoiseField");
         }
     }
 

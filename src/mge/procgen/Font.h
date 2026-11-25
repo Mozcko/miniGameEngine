@@ -10,19 +10,19 @@
 
 namespace mge {
 
-    // Un carácter dentro del atlas de una fuente. Todo en píxeles de la fuente (escala 1)
+    // A single character inside a font atlas. All values are in font pixels (scale 1)
     struct Glyph {
-        glm::ivec2 atlasPos{0}; // Esquina superior izquierda en el atlas (fila 0 arriba, como Image)
-        glm::ivec2 size{0};     // 0 = nada que dibujar (espacio)
-        glm::vec2 offset{0.0f}; // Desde la posición del lápiz (arriba a la izquierda de la línea) al glifo
-        float advance = 0.0f;   // Cuánto avanza el lápiz
+        glm::ivec2 atlasPos{0}; // Top-left corner in the atlas (row 0 at top, like Image)
+        glm::ivec2 size{0};     // 0 = nothing to draw (space)
+        glm::vec2 offset{0.0f}; // From pen position (top-left of the line) to the glyph
+        float advance = 0.0f;   // How far the pen advances
     };
 
-    // Fuente lista para dibujar texto (#41): un atlas RGBA (blanco + alfa) y las medidas de cada carácter
-    // ASCII 32..126. Headless: la arma la CPU, el renderer 2D la sube a la GPU.
-    //   Font::builtin()        → fuente 8x8 embebida en el código (sin archivos, nítida a escala entera)
-    //   loadTtfFont(...)       → TTF con stb_truetype (mge_graphics, opcional)
-    // El texto se lee como UTF-8; lo que no está en la fuente se dibuja como '?'.
+    // Font ready for text rendering (#41): an RGBA atlas (white + alpha) and metrics for each
+    // ASCII character 32..126. Headless: built on the CPU, uploaded to the GPU by the 2D renderer.
+    //   Font::builtin()        → embedded 8x8 font (no files, crisp at integer scales)
+    //   loadTtfFont(...)       → TTF via stb_truetype (mge_graphics, optional)
+    // Text is decoded as UTF-8; characters not in the font are drawn as '?'.
     class Font {
     public:
         static constexpr char32_t kFirstChar = 32;
@@ -30,10 +30,10 @@ namespace mge {
         static constexpr std::size_t kGlyphCount = kLastChar - kFirstChar + 1;
 
         Font() = default;
-        // glyphs: uno por carácter de kFirstChar a kLastChar. pixelFont: muestrear sin filtrar
+        // glyphs: one per character from kFirstChar to kLastChar. pixelFont: sample unfiltered
         Font(Image atlas, std::vector<Glyph> glyphs, float lineHeight, bool pixelFont);
 
-        // La fuente 8x8 embebida: atlas de 16x6 glifos (128x48 px), línea de 10 px
+        // Embedded 8x8 font: 16x6 glyph atlas (128x48 px), 10 px line height
         static Font builtin();
 
         bool valid() const { return !m_atlas.empty() && m_glyphs.size() == kGlyphCount; }
@@ -41,9 +41,9 @@ namespace mge {
         bool isPixelFont() const { return m_pixelFont; }
         float lineHeight() const { return m_lineHeight; }
 
-        // Glifo de un carácter; si no existe, el de '?'
+        // Glyph for a character; falls back to '?' if missing
         const Glyph& glyph(char32_t codepoint) const;
-        // Tamaño del texto en píxeles (ancho de la línea más larga × líneas), con la escala dada
+        // Text size in pixels (widest line × line count) at the given scale
         glm::vec2 measure(std::string_view text, float scale = 1.0f) const;
 
     private:
@@ -53,10 +53,10 @@ namespace mge {
         bool m_pixelFont = false;
     };
 
-    // Lee un carácter UTF-8 de text a partir de index y avanza index. Secuencias inválidas → U+FFFD
+    // Reads one UTF-8 character from text starting at index and advances index. Invalid sequences → U+FFFD
     char32_t nextCodepoint(std::string_view text, std::size_t& index);
 
-    // Bits de un glifo de la fuente 8x8 (8 filas de arriba a abajo, bit 0 = píxel izquierdo); nullptr fuera
-    // de ASCII 32..126
+    // Glyph bits for the 8x8 font (8 rows top-to-bottom, bit 0 = leftmost pixel); nullptr outside
+    // ASCII 32..126
     const unsigned char* builtinFontGlyphBits(char32_t codepoint);
 }

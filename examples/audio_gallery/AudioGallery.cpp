@@ -1,6 +1,6 @@
-// Galería de audio (#50): genera sonidos con el sintetizador del motor, sin dispositivo ni archivos de
-// entrada, y los escribe en <build>/gallery/audio/*.wav para escucharlos, con un espectrograma *.png de cada
-// uno (tiempo → x, frecuencia → y). Headless: corre en CI; falla si algo no se pudo escribir o salió mudo.
+// Audio gallery (#50): generates sounds with the engine's synthesizer, without an audio device or input
+// files, and writes them to <build>/gallery/audio/*.wav for playback, along with a *.png spectrogram for each
+// (time → x, frequency → y). Headless: runs in CI; fails if anything fails to write or outputs silence.
 #include <mge/mge.h>
 
 #include <algorithm>
@@ -13,7 +13,7 @@
 namespace {
     constexpr int kRate = mge::kDefaultSampleRate;
 
-    // Espectrograma: bandas lineales de 0 a 8 kHz, una columna cada 10 ms, brillo en dB (−60..0)
+    // Spectrogram: linear bands from 0 to 8 kHz, one column every 10 ms, brightness in dB (−60..0)
     mge::Image spectrogram(const std::vector<float>& mono) {
         constexpr int kBands = 96;
         constexpr float kMaxHz = 8000.0f;
@@ -44,7 +44,7 @@ namespace {
             m_outDir = mge::executableDir() / "gallery" / "audio";
             std::filesystem::create_directories(m_outDir);
 
-            // Las formas de onda: un arpegio corto con cada una
+            // Waveforms: a short arpeggio with each one
             for (const auto& [name, wave] : std::vector<std::pair<std::string, mge::Waveform>>{
                      {"sine", mge::Waveform::Sine},
                      {"square", mge::Waveform::Square},
@@ -64,7 +64,7 @@ namespace {
                 });
             }
 
-            // ADSR: pluck, pad y percusivo
+            // ADSR: pluck, pad, and percussive
             write("adsr", 3.0f, [](mge::Mixer& mixer, float t, int step) {
                 mge::Instrument in;
                 in.wave = mge::Waveform::Triangle;
@@ -77,7 +77,7 @@ namespace {
                 return true;
             });
 
-            // Filtro: la misma sierra, el corte bajando de 8 kHz a 200 Hz, con resonancia
+            // Filter: same saw wave, cutoff sweeping from 8 kHz down to 200 Hz, with resonance
             write("filter_sweep", 2.6f, [](mge::Mixer& mixer, float t, int step) {
                 if (step >= 13 || t < 0.2f * float(step)) return false;
                 mge::Instrument in;
@@ -91,7 +91,7 @@ namespace {
                 return true;
             });
 
-            // Eco + vibrato + deslizamiento de tono
+            // Delay + vibrato + pitch slide
             write("delay_vibrato_slide", 3.0f, [](mge::Mixer& mixer, float t, int step) {
                 if (step == 0) {
                     mixer.setDelay({0.25f, 0.45f, 0.5f});
@@ -118,7 +118,7 @@ namespace {
                 return false;
             });
 
-            // Efectos sfxr (#48): los equivalentes de assets/sounds y algunos al azar
+            // sfxr effects (#48): equivalents of assets/sounds plus a few random ones
             const std::vector<std::pair<std::string, mge::SfxParams>> effects = {
                 {"jump", mge::sfx::jump()},           {"coin", mge::sfx::coin()},
                 {"hurt", mge::sfx::hurt()},           {"explosion", mge::sfx::explosion()},
@@ -130,7 +130,7 @@ namespace {
                 writeMono("sfx_" + effect.first, sample.data);
             }
 
-            // Música (#49): un loop de cada canción de ejemplo, con eco
+            // Music (#49): one loop of each example song, with delay
             for (const auto& [name, song] : std::vector<std::pair<std::string, mge::Song>>{
                      {"song_platformer", mge::songs::platformerTheme()},
                      {"song_sandbox_ambient", mge::songs::sandboxAmbient()}}) {
@@ -144,14 +144,14 @@ namespace {
                 });
             }
 
-            MGE_LOG_INFO("Gallery", m_written, " sonidos (.wav + espectrograma .png) en ", m_outDir.string());
+            MGE_LOG_INFO("Gallery", m_written, " sounds (.wav + .png spectrogram) in ", m_outDir.string());
             requestStop();
             return true;
         }
 
     private:
-        // Corre el mezclador offline en bloques de 10 ms; script(mixer, t, paso) dispara eventos y devuelve
-        // true cuando usó el paso actual
+        // Runs the mixer offline in 10 ms blocks; script(mixer, t, step) triggers events and returns
+        // true when it consumed the current step
         void write(const std::string& name, float seconds,
                    const std::function<bool(mge::Mixer&, float, int)>& script) {
             mge::Mixer mixer(kRate);
@@ -167,7 +167,7 @@ namespace {
             if (!mge::writeWav(m_outDir / (name + ".wav"), stereo, 2, kRate) ||
                 !mge::writePng(spectrogram(mge::analysis::channel(stereo, 2, 0)),
                                m_outDir / (name + ".png"))) {
-                MGE_LOG_ERROR("Gallery", "No se pudo escribir ", name);
+                MGE_LOG_ERROR("Gallery", "Failed to write ", name);
                 setExitCode(1);
                 return;
             }
@@ -178,7 +178,7 @@ namespace {
             if (!check(name, mono)) return;
             if (!mge::writeWav(m_outDir / (name + ".wav"), mono, 1, kRate) ||
                 !mge::writePng(spectrogram(mono), m_outDir / (name + ".png"))) {
-                MGE_LOG_ERROR("Gallery", "No se pudo escribir ", name);
+                MGE_LOG_ERROR("Gallery", "Failed to write ", name);
                 setExitCode(1);
                 return;
             }
@@ -187,7 +187,7 @@ namespace {
 
         bool check(const std::string& name, const std::vector<float>& left) {
             if (mge::analysis::peak(left) < 0.01f) {
-                MGE_LOG_ERROR("Gallery", name, ": salió mudo");
+                MGE_LOG_ERROR("Gallery", name, ": produced silence");
                 setExitCode(1);
                 return false;
             }

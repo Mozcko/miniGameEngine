@@ -4,20 +4,21 @@
 
 namespace mge {
 
-    // Iluminación de la escena para MeshRenderer: un sol direccional (Lambert), luz ambiente hemisférica
-    // (cielo arriba, suelo abajo, según la normal) y niebla lineal por distancia a la cámara.
-    //   color = albedo × (ambiente(n) + sol × max(n·haciaElSol, 0)), mezclado con la niebla
+    // Scene lighting for MeshRenderer: directional sun (Lambert), hemispheric ambient light
+    // (sky above, ground below, based on normal), and linear distance fog from the camera.
+    //   color = albedo × (ambient(n) + sun × max(n·toSun, 0)), blended with fog
     struct Lighting {
-        glm::vec3 sunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f)); // Hacia dónde viaja la luz
+        glm::vec3 sunDirection =
+            glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f)); // Direction light travels toward
         glm::vec3 sunColor = glm::vec3(0.75f, 0.72f, 0.65f);
-        glm::vec3 skyAmbient = glm::vec3(0.50f, 0.55f, 0.65f);    // Normales hacia arriba
-        glm::vec3 groundAmbient = glm::vec3(0.30f, 0.27f, 0.24f); // Normales hacia abajo
+        glm::vec3 skyAmbient = glm::vec3(0.50f, 0.55f, 0.65f);    // Upward normals
+        glm::vec3 groundAmbient = glm::vec3(0.30f, 0.27f, 0.24f); // Downward normals
         bool fog = true;
-        glm::vec3 fogColor = glm::vec3(0.5f, 0.7f, 1.0f); // Usar el mismo color que el cielo
-        float fogStart = 60.0f;                           // Distancia (unidades del mundo)
+        glm::vec3 fogColor = glm::vec3(0.5f, 0.7f, 1.0f); // Use the same color as the sky
+        float fogStart = 60.0f;                           // Distance (world units)
         float fogEnd = 140.0f;
 
-        // Sin luz ni niebla: la textura × color de vértice tal cual (el valor por defecto de MeshRenderer)
+        // No lighting or fog: texture × vertex color as-is (MeshRenderer default)
         static Lighting unlit() {
             Lighting lighting;
             lighting.sunColor = glm::vec3(0.0f);

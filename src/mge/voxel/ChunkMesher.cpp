@@ -23,7 +23,7 @@ namespace mge {
             }
 
         private:
-            // Local de -1 a 16: el snapshot ya trae el borde de los vecinos
+            // Local coordinates from -1 to 16: the snapshot already includes the neighbour border
             BlockId blockAt(const glm::ivec3& local) const { return m_snapshot.get(local); }
 
             bool occludes(const glm::ivec3& local) const {
@@ -57,8 +57,8 @@ namespace mge {
 
                 for (int slice = 0; slice < kChunkSize; slice++) {
                     mask.fill(MaskCell{});
-                    // 1. Caras visibles de esta capa: las que se pueden unir van a la máscara, el resto sale
-                    // ya
+                    // 1. Visible faces in this slice: mergeable ones go into the mask, the rest are emitted
+                    // immediately
                     for (int j = 0; j < kChunkSize; j++) {
                         for (int i = 0; i < kChunkSize; i++) {
                             glm::ivec3 pos(0);
@@ -85,7 +85,7 @@ namespace mge {
                                          glm::vec3(1.0f), ao, m_options, centroidsFor(desc));
                         }
                     }
-                    // 2. Greedy: rectángulos máximos de celdas iguales (ancho en u, luego alto en v)
+                    // 2. Greedy: maximal rectangles of equal cells (widen along u, then grow along v)
                     solveGreedyMask(mask.data(), kChunkSize, kChunkSize,
                                     [&](const MaskCell& cell, int i, int j, int width, int height) {
                                         glm::ivec3 pos(0);
@@ -103,7 +103,7 @@ namespace mge {
                 }
             }
 
-            // Dos planos diagonales, cada uno con sus dos caras (se ven desde ambos lados)
+            // Two diagonal planes, each double-sided (visible from both sides)
             void emitCross(const BlockDesc& desc, const glm::ivec3& pos) {
                 MeshData& mesh = meshFor(desc);
                 std::vector<glm::vec3>* centroids = centroidsFor(desc);

@@ -1,8 +1,8 @@
-// Plataformero 2D mínimo (#45): carga los niveles ASCII de assets/levels, los dibuja con Renderer2D
-// (rectángulos de colores, sin texturas) y suena con los WAV de assets/sounds. Sirve para probar que el
-// camino 2D (UI en píxeles, input, audio, assets) sigue funcionando; no pretende ser un juego completo.
-// A/D o flechas: mover, Espacio/W/arriba: saltar, 1-4: nivel, S: sonidos generados/WAV, F1: rendimiento,
-// Esc: salir.
+// Minimal 2D platformer (#45): loads ASCII levels from assets/levels, renders them with Renderer2D
+// (colored rectangles, no textures), and plays sounds using the WAVs in assets/sounds. Serves to verify that
+// the 2D path (pixel UI, input, audio, assets) keeps working; not intended to be a full game.
+// A/D or arrows: move, Space/W/Up: jump, 1-4: level, S: synthesized/WAV sounds, F1: performance,
+// Esc: quit.
 #include <examples/platformer2d/PlatformerView.h>
 #include <mge/mge.h>
 
@@ -31,15 +31,15 @@ namespace {
         bool onInit() override {
             m_platform = getModule<mge::PlatformModule>();
             m_audio = getModule<mge::AudioModule>();
-            // Dos juegos de sonidos: generados por código (#48, por defecto) y los WAV de assets/sounds
-            // (#46). S alterna; PLATFORMER_SOUNDS=wav arranca con los WAV
+            // Two sound sets: generated in code (#48, default) and WAVs from assets/sounds
+            // (#46). S toggles; PLATFORMER_SOUNDS=wav starts with the WAVs
             m_synthSounds = {m_audio->addSfx(mge::sfx::jump()), m_audio->addSfx(mge::sfx::coin()),
                              m_audio->addSfx(mge::sfx::hurt()), m_audio->addSfx(mge::sfx::powerUp())};
             m_wavSounds = {m_audio->loadWav("sounds/jump.wav"), m_audio->loadWav("sounds/coin.wav"),
                            m_audio->loadWav("sounds/hurt.wav"), m_audio->loadWav("sounds/power_up.wav")};
             const char* soundMode = std::getenv("PLATFORMER_SOUNDS");
             m_useWav = soundMode && std::string(soundMode) == "wav";
-            // Música hecha con el secuenciador (#49), con un poco de eco. Con los WAV no hay música (no hay
+            // Sequencer music (#49), with a bit of delay. With WAVs there is no music (no
             // MP3)
             m_audio->setDelay({0.23f, 0.3f, 0.3f});
             m_theme = m_audio->addSong(mge::songs::platformerTheme());
@@ -64,7 +64,7 @@ namespace {
             m_overlay.setVisible(false);
             if (!loadLevel(0)) return false;
             MGE_LOG_INFO("Platformer",
-                         "A/D: mover, Espacio: saltar, 1-4: nivel, S: sonidos, F1: rendimiento, Esc: salir");
+                         "A/D: move, Space: jump, 1-4: level, S: sounds, F1: performance, Esc: quit");
             return true;
         }
 
@@ -80,7 +80,7 @@ namespace {
                 else
                     m_audio->playSong(m_theme, 0.5f);
                 MGE_LOG_INFO("Platformer",
-                             m_useWav ? "Sonidos: WAV (assets/sounds)" : "Sonidos: generados por código");
+                             m_useWav ? "Sounds: WAV (assets/sounds)" : "Sounds: generated in code");
             }
             for (int i = 0; i < kLevelCount; i++)
                 if (m_platform->wasActionPressed("Level" + std::to_string(i + 1))) loadLevel(i);
@@ -105,7 +105,7 @@ namespace {
             const mge::GpuFrame* frame = m_gpu->frame();
             if (!frame) return;
             m_ui->begin(frame->width, frame->height, platformer::viewScale(m_game->level(), frame->height));
-            platformer::drawScene(*m_ui, *m_game, m_levelIndex + 1); // Empieza tapando todo con el cielo
+            platformer::drawScene(*m_ui, *m_game, m_levelIndex + 1); // Starts by filling the screen with sky
             m_overlay.addFrame(time().unscaledDelta() * 1000.0f, frame->acquireMs);
             m_overlay.draw(*m_ui, {8.0f, 28.0f});
             m_ui->flush(*frame->cmd, frame->swapchain);
@@ -117,10 +117,10 @@ namespace {
             std::optional<Level> level =
                 platformer::loadLevel("levels/level" + std::to_string(index + 1) + ".txt", &error);
             if (!level) {
-                MGE_LOG_ERROR("Platformer", "Nivel ", index + 1, ": ", error);
+                MGE_LOG_ERROR("Platformer", "Level ", index + 1, ": ", error);
                 return false;
             }
-            MGE_LOG_INFO("Platformer", "Nivel ", index + 1, " (", level->biome, ", ", level->width, "x",
+            MGE_LOG_INFO("Platformer", "Level ", index + 1, " (", level->biome, ", ", level->width, "x",
                          level->height, ")");
             m_game = std::make_unique<Platformer>(std::move(*level));
             m_levelIndex = index;
@@ -129,7 +129,7 @@ namespace {
 
         static mge::ApplicationConfig makeConfig() {
             mge::ApplicationConfig config;
-            config.title = "miniGameEngine - Plataformero 2D";
+            config.title = "miniGameEngine - 2D Platformer";
             config.width = 1280;
             config.height = 720;
             return config;

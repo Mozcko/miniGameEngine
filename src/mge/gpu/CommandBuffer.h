@@ -11,20 +11,20 @@
 
 namespace mge {
 
-    // Destino de color de un render pass: se limpia con clearColor (o se conserva si clear = false)
+    // Color target of a render pass: cleared with clearColor (or preserved if clear = false)
     struct ColorTarget {
         SDL_GPUTexture* texture = nullptr;
         glm::vec4 clearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         bool clear = true;
     };
 
-    // Destino de profundidad: se limpia a clearDepth (1 = lejos)
+    // Depth target: cleared to clearDepth (1 = far)
     struct DepthTarget {
         SDL_GPUTexture* texture = nullptr;
         float clearDepth = 1.0f;
     };
 
-    // Enlace de un storage buffer de lectura/escritura en un compute pass
+    // Read-write storage buffer binding in a compute pass
     struct StorageBufferBinding {
         SDL_GPUBuffer* buffer = nullptr;
         bool cycle = false;
@@ -34,7 +34,7 @@ namespace mge {
         StorageBufferBinding(const GpuBuffer& buf, bool cyc = false) : buffer(buf.get()), cycle(cyc) {}
     };
 
-    // Enlace de una storage texture de lectura/escritura en un compute pass
+    // Read-write storage texture binding in a compute pass
     struct StorageTextureBinding {
         SDL_GPUTexture* texture = nullptr;
         std::uint32_t mipLevel = 0;
@@ -48,7 +48,7 @@ namespace mge {
 
     class CommandBuffer;
 
-    // Compute pass abierto (shaders de cómputo): termina al destruirse (RAII)
+    // Open compute pass (compute shaders): ends on destruction (RAII)
     class ComputePass {
     public:
         ComputePass() = default;
@@ -84,7 +84,7 @@ namespace mge {
         CommandBuffer* m_cmd = nullptr;
     };
 
-    // Render pass abierto: termina al destruirse (RAII). Solo se puede mover.
+    // Open render pass: ends on destruction (RAII). Move-only.
     class RenderPass {
     public:
         RenderPass() = default;
@@ -103,7 +103,7 @@ namespace mge {
         SDL_GPURenderPass* m_pass = nullptr;
     };
 
-    // Copy pass abierto (subidas y descargas): termina al destruirse
+    // Open copy pass (uploads and downloads): ends on destruction
     class CopyPass {
     public:
         CopyPass() = default;
@@ -122,8 +122,8 @@ namespace mge {
         SDL_GPUCopyPass* m_pass = nullptr;
     };
 
-    // Command buffer de SDL GPU. Se envía con submit(); si se destruye sin enviar, se cancela
-    // (nada de lo grabado se ejecuta). Solo se puede mover.
+    // SDL GPU command buffer. Submitted with submit(); if destroyed without submitting, it is cancelled
+    // (nothing recorded is executed). Move-only.
     class CommandBuffer {
     public:
         CommandBuffer() = default;
@@ -160,11 +160,11 @@ namespace mge {
                       std::uint32_t groupcountZ = 1);
         void endComputePass();
 
-        // Envía el trabajo a la GPU (no espera). false si falló (ver el log)
+        // Submits work to the GPU (does not wait). Returns false on failure (see the log)
         bool submit();
-        // Envía y bloquea hasta que la GPU termine (descargas, tests)
+        // Submits and blocks until the GPU finishes (downloads, tests)
         bool submitAndWait();
-        // Descarta lo grabado
+        // Discards recorded commands
         void cancel();
 
         SDL_GPUCommandBuffer* get() const { return m_cmd; }

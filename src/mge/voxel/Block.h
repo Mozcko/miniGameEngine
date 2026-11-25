@@ -10,11 +10,11 @@
 
 namespace mge {
 
-    // Id de bloque dentro de un BlockRegistry. 0 es siempre aire.
+    // Block ID within a BlockRegistry. 0 is always air.
     using BlockId = std::uint16_t;
     inline constexpr BlockId kAir = 0;
 
-    // Caras de un cubo (mismo orden que el atlas del sandbox)
+    // Faces of a cube (same order as the sandbox atlas)
     enum class BlockFace : std::uint8_t {
         Front = 0,  // +Z
         Back = 1,   // -Z
@@ -26,34 +26,34 @@ namespace mge {
     inline constexpr int kBlockFaceCount = 6;
 
     enum class BlockShape : std::uint8_t {
-        None,  // No se dibuja (aire)
-        Cube,  // Cubo de 6 caras (se ocultan las caras tapadas)
-        Cross, // Dos planos diagonales (flores, pasto alto)
+        None,  // Not drawn (air)
+        Cube,  // 6-faced cube (occluded faces are hidden)
+        Cross, // Two diagonal planes (flowers, tall grass)
     };
 
-    // En qué pasada se dibuja un bloque
+    // Render pass in which a block is drawn
     enum class RenderLayer : std::uint8_t {
-        Opaque,      // Sólido a la vista
-        Cutout,      // Con agujeros (hojas, plantas): píxeles transparentes descartados, escribe profundidad
-        Translucent, // Semitransparente (agua, vidrio): mezcla alfa, ordenado de atrás hacia adelante
+        Opaque,      // Visually solid
+        Cutout,      // With holes (leaves, plants): transparent pixels discarded, writes depth
+        Translucent, // Semi-transparent (water, glass): alpha blending, sorted back-to-front
     };
 
-    // Descripción de un tipo de bloque. Ambos caminos (ADR 0004):
-    //   - procedural: `color` (color por vértice)
-    //   - asset: `tiles`, un tile del atlas por cara (-1 = sin textura)
-    // Pueden combinarse: con textura, el color se multiplica (blanco = textura tal cual).
+    // Description of a block type. Both paths (ADR 0004):
+    //   - procedural: `color` (per-vertex color)
+    //   - asset: `tiles`, one atlas tile per face (-1 = untextured)
+    // They can be combined: with a texture, the color multiplies it (white = texture as-is).
     struct BlockDesc {
         std::string name;
-        bool solid = true;  // Colisiona
-        bool opaque = true; // Tapa la vista (oculta las caras vecinas)
+        bool solid = true;  // Collides
+        bool opaque = true; // Blocks visibility (hides neighbouring faces)
         BlockShape shape = BlockShape::Cube;
         glm::vec4 color = glm::vec4(1.0f);
         std::array<int, kBlockFaceCount> tiles = {-1, -1, -1, -1, -1, -1};
-        // Pasada de dibujo; sin fijar: Opaque si opaque, si no Translucent
+        // Render pass; if unset: Opaque when opaque, otherwise Translucent
         std::optional<RenderLayer> layer;
 
-        BlockDesc& setTile(int tile);                        // Todas las caras
-        BlockDesc& setTiles(int top, int bottom, int sides); // Arriba / abajo / costados
+        BlockDesc& setTile(int tile);                        // All faces
+        BlockDesc& setTiles(int top, int bottom, int sides); // Top / bottom / sides
         bool textured() const;
         int tile(BlockFace face) const { return tiles[static_cast<int>(face)]; }
         RenderLayer renderLayer() const {
@@ -61,13 +61,13 @@ namespace mge {
         }
     };
 
-    // Catálogo de bloques del juego. El id 0 (aire: ni sólido ni opaco, sin forma) ya viene registrado.
+    // Game block catalog. ID 0 (air: neither solid nor opaque, no shape) is pre-registered.
     class BlockRegistry {
     public:
         BlockRegistry();
 
-        BlockId add(BlockDesc desc); // Devuelve el id nuevo (consecutivo)
-        // Id desconocido → assert en debug; en release devuelve el aire
+        BlockId add(BlockDesc desc); // Returns the new (consecutive) ID
+        // Unknown ID → assert in debug; returns air in release
         const BlockDesc& get(BlockId id) const;
         std::optional<BlockId> find(const std::string& name) const;
         std::size_t size() const { return m_blocks.size(); }
@@ -79,7 +79,7 @@ namespace mge {
         std::vector<BlockDesc> m_blocks;
     };
 
-    // Rectángulo UV de un tile en un atlas de columns × rows (tile 0 arriba a la izquierda, V hacia arriba)
+    // UV rectangle of a tile in a columns × rows atlas (tile 0 at top-left, V pointing up)
     struct UvRect {
         glm::vec2 min;
         glm::vec2 max;

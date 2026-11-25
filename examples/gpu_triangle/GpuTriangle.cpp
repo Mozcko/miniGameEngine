@@ -1,7 +1,7 @@
-// Ejemplo mínimo de SDL3 GPU (Vulkan/Metal/D3D12): PlatformModule (ventana) + GpuModule (device y
-// swapchain). Un triángulo que gira, con shaders GLSL compilados a SPIR-V en el
-// build y embebidos (mge_add_shaders): el programa no lee ningún archivo. V alterna el vsync (los FPS
-// van al log cada segundo). Esc sale.
+// Minimal SDL3 GPU example (Vulkan/Metal/D3D12): PlatformModule (window) + GpuModule (device and
+// swapchain). A rotating triangle with GLSL shaders compiled to SPIR-V at build time and
+// embedded (mge_add_shaders): the program reads no files. V toggles vsync (FPS is logged
+// every second). Esc quits.
 #include <mge/mge.h>
 
 #include <shaders/triangle_frag.h>
@@ -11,7 +11,7 @@
 #include <cstdint>
 
 namespace {
-    // Igual que el bloque Params de triangle.vert (std140: dos floats seguidos)
+    // Matches the Params block in triangle.vert (std140: two consecutive floats)
     struct TriangleParams {
         float angle;
         float aspect;
@@ -21,7 +21,7 @@ namespace {
     public:
         GpuTriangle() : mge::Application(makeConfig()) {
             addModule<mge::PlatformModule>();
-            addModule<mge::GpuModule>(); // Después de la plataforma: necesita la ventana
+            addModule<mge::GpuModule>(); // After platform: requires the window
         }
 
     protected:
@@ -41,13 +41,13 @@ namespace {
             desc.vertexShader = &vertex;
             desc.fragmentShader = &fragment;
             desc.colorFormat = m_gpu->swapchainFormat();
-            desc.gpuVertexInput = false;           // Posiciones desde gl_VertexIndex
-            desc.cullMode = SDL_GPU_CULLMODE_NONE; // Se ve de los dos lados al girar
+            desc.gpuVertexInput = false;           // Positions from gl_VertexIndex
+            desc.cullMode = SDL_GPU_CULLMODE_NONE; // Visible from both sides while rotating
             m_pipeline = device.createGraphicsPipeline(desc);
-            // Los shaders se pueden liberar: el pipeline ya los tiene
+            // Shaders can now be released: the pipeline already owns them
             if (!m_pipeline) return false;
 
-            MGE_LOG_INFO("GpuTriangle", "GPU: ", device.driverName(), ". V: vsync, Esc: salir");
+            MGE_LOG_INFO("GpuTriangle", "GPU: ", device.driverName(), ". V: vsync, Esc: quit");
             return true;
         }
 
@@ -56,12 +56,12 @@ namespace {
             if (m_platform->wasActionPressed("ToggleVsync")) m_gpu->setVsync(!m_gpu->vsync());
             m_phase += dt;
 
-            // FPS cada segundo (tiempo real)
+            // FPS every second (real time)
             m_fpsFrames++;
             m_fpsElapsed += time().unscaledDelta();
             if (m_fpsElapsed >= 1.0f) {
                 MGE_LOG_INFO("GpuTriangle", "FPS: ", static_cast<int>(m_fpsFrames / m_fpsElapsed),
-                             m_gpu->vsync() ? " (vsync)" : " (sin vsync)");
+                             m_gpu->vsync() ? " (vsync)" : " (no vsync)");
                 m_fpsFrames = 0;
                 m_fpsElapsed = 0.0f;
             }
@@ -69,7 +69,7 @@ namespace {
 
         void onRender() override {
             const mge::GpuFrame* frame = m_gpu->frame();
-            if (!frame) return; // Ventana minimizada: no hay imagen este frame
+            if (!frame) return; // Window minimized: no image this frame
 
             mge::ColorTarget target;
             target.texture = frame->swapchain;
@@ -77,16 +77,16 @@ namespace {
 
             const TriangleParams params{m_phase, float(frame->width) / float(frame->height)};
             SDL_PushGPUVertexUniformData(frame->cmd->get(), 0, &params, sizeof(params));
-            mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Se cierra al salir del scope
+            mge::RenderPass pass = frame->cmd->beginRenderPass(target); // Ends on scope exit
             SDL_BindGPUGraphicsPipeline(pass.get(), m_pipeline.get());
             SDL_DrawGPUPrimitives(pass.get(), 3, 1, 0, 0);
             m_presented++;
         }
 
         void onShutdown() override {
-            m_pipeline.reset(); // Antes que el device (lo cierra el GpuModule después)
-            MGE_LOG_INFO("GpuTriangle", m_presented, " frames presentados de ", getFrameCount());
-            if (m_presented == 0) setExitCode(1); // Smoke test: tiene que haber llegado alguna imagen
+            m_pipeline.reset(); // Before the device (GpuModule shuts it down afterwards)
+            MGE_LOG_INFO("GpuTriangle", m_presented, " frames presented out of ", getFrameCount());
+            if (m_presented == 0) setExitCode(1); // Smoke test: at least one frame must be presented
         }
 
     private:

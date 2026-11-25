@@ -2,6 +2,6 @@
 
 namespace mge {
 
-    // RigidBody es un componente POD para el ECS de mge.
+    // RigidBody is a POD component for the mge ECS.
 
 } // namespace mge

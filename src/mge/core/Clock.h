@@ -2,15 +2,15 @@
 
 namespace mge {
 
-    // Fuente de tiempo de la Application, en segundos (monotónica). Se puede reemplazar con
-    // Application::setClock: SteadyClock para tiempo real, ManualClock para tests y corridas deterministas.
+    // Time source for Application, in seconds (monotonic). Can be replaced via
+    // Application::setClock: SteadyClock for real time, ManualClock for tests and deterministic runs.
     class Clock {
     public:
         virtual ~Clock() = default;
         virtual double now() = 0;
     };
 
-    // Tiempo real (std::chrono::steady_clock)
+    // Real time (std::chrono::steady_clock)
     class SteadyClock : public Clock {
     public:
         SteadyClock();
@@ -20,8 +20,8 @@ namespace mge {
         double m_origin;
     };
 
-    // Tiempo controlado a mano. Con autoStep > 0, cada llamada a now() avanza ese tanto después de
-    // devolver el valor actual: un frame de la Application = autoStep segundos, siempre igual.
+    // Manually controlled time. With autoStep > 0, each call to now() advances by that amount after
+    // returning the current value: one Application frame = autoStep seconds, always identical.
     class ManualClock : public Clock {
     public:
         explicit ManualClock(double autoStep = 0.0) : m_autoStep(autoStep) {}

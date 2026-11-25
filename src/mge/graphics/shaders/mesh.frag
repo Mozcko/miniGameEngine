@@ -1,7 +1,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-// Textura × color del vértice, iluminado (Lighting). Textura: set 2, binding 0 (blanca 1×1 si no hay).
+// Texture × vertex color, lit (Lighting). Texture: set 2, binding 0 (1×1 white if none).
 layout(set = 2, binding = 0) uniform sampler2D albedo;
 
 #include "mge/lighting.glsl"
@@ -10,10 +10,10 @@ layout(location = 0) in vec4 inColor;
 layout(location = 1) in vec2 inUv;
 layout(location = 2) in vec3 inWorldPosition;
 layout(location = 3) in vec3 inWorldNormal;
-layout(location = 4) flat in vec2 inDetail; // x: escala, y: intensidad del detalle procedural
+layout(location = 4) flat in vec2 inDetail; // x: scale, y: procedural detail intensity
 layout(location = 0) out vec4 outColor;
 
-// Ruido de valor 3D (hash de enteros + interpolación suave), en [0, 1]
+// 3D value noise (integer hash + smooth interpolation), in [0, 1]
 float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
     p *= 17.0;
@@ -31,8 +31,8 @@ float valueNoise(vec3 p) {
 void main() {
     vec4 base = texture(albedo, inUv) * inColor;
 
-    // Detalle procedural (#34): variación de brillo en el espacio del mundo, para mallas de solo color. Se
-    // muestrea un poco hacia adentro de la cara para que cada bloque tenga su patrón estable
+    // Procedural detail (#34): world-space brightness variation for untextured meshes. Sampled
+    // slightly inward from the face so each block gets a stable pattern
     if (inDetail.y > 0.0) {
         vec3 p = (inWorldPosition - normalize(inWorldNormal) * 0.01) * inDetail.x;
         float detail = valueNoise(p) * 0.6 + valueNoise(p * 2.7) * 0.4;

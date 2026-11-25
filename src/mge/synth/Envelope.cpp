@@ -5,7 +5,7 @@
 namespace mge {
 
     namespace {
-        // Muestras de un tramo (al menos 1: un tramo de 0 s salta de una)
+        // Samples in a stage (at least 1: a 0 s stage completes immediately)
         float samplesFor(float seconds, float rate) {
             return std::max(1.0f, seconds * rate);
         }
@@ -46,7 +46,7 @@ namespace mge {
             }
             break;
         case Stage::Sustain:
-            if (m_adsr.sustain <= 0.0f) m_stage = Stage::Idle; // Percusivo: termina solo
+            if (m_adsr.sustain <= 0.0f) m_stage = Stage::Idle; // Percussive: finishes on its own
             break;
         case Stage::Release:
             m_level += m_step;

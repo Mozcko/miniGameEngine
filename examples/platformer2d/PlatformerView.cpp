@@ -72,14 +72,14 @@ namespace platformer {
         const glm::vec2 view = ui.size();
         ui.rect({0.0f, 0.0f}, view, palette.sky);
 
-        // Cámara: sigue al jugador en x, sin salirse del nivel; el nivel centrado en y
+        // Camera: follows the player in x without leaving the level; level centered in y
         const glm::vec2 player = game.playerPosition() * kTile;
         const float maxX = std::max(0.0f, float(level.width) * kTile - view.x);
         const glm::vec2 camera(std::clamp(player.x - view.x * 0.5f, 0.0f, maxX),
                                -std::round((view.y - float(level.height) * kTile) * 0.5f));
         const auto toScreen = [&](const glm::vec2& cell) { return glm::round(cell * kTile - camera); };
 
-        // Solo las columnas que se ven
+        // Only visible columns
         const int firstColumn = std::max(0, int(camera.x / kTile));
         const int lastColumn = std::min(level.width - 1, int((camera.x + view.x) / kTile));
         for (int y = 0; y < level.height; y++)
@@ -108,10 +108,10 @@ namespace platformer {
         // HUD
         ui.rect({0.0f, 0.0f}, {view.x, 22.0f}, {0.0f, 0.0f, 0.0f, 0.45f});
         ui.text({8.0f, 7.0f},
-                "Nivel " + std::to_string(levelNumber) + " (" + level.biome + ")   monedas " +
-                    std::to_string(game.coins()) + "   caidas " + std::to_string(game.deaths()),
+                "Level " + std::to_string(levelNumber) + " (" + level.biome + ")   coins " +
+                    std::to_string(game.coins()) + "   deaths " + std::to_string(game.deaths()),
                 {1.0f, 1.0f, 1.0f, 1.0f});
-        ui.text({8.0f, view.y - 14.0f}, "A/D mover  Espacio saltar  1-4 nivel  S sonidos  F1 rendimiento",
+        ui.text({8.0f, view.y - 14.0f}, "A/D move  Space jump  1-4 level  S sounds  F1 performance",
                 {0.0f, 0.0f, 0.0f, 0.7f});
     }
 }

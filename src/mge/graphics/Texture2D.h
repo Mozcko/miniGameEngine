@@ -8,32 +8,33 @@
 
 namespace mge {
 
-    // Textura 2D RGBA8 en la GPU. Dos caminos (ADR 0004): desde un archivo (PNG, JPG… con stb_image) o
-    // desde píxeles generados por código.
+    // 2D RGBA8 texture on the GPU. Two paths (ADR 0004): from a file (PNG, JPG... via stb_image) or
+    // from procedurally generated pixels.
     //
-    // Convención de UV del motor (igual que el renderer OpenGL): (0, 0) es la esquina INFERIOR izquierda de
-    // la imagen y v crece hacia arriba (lo usan MeshData, las primitivas y el atlas de mge_voxel). Para eso
-    // la imagen se guarda en la GPU invertida verticalmente; las coordenadas de píxel de esta API son las de
-    // la imagen (fila 0 arriba), la inversión es interna.
+    // Engine UV convention (same as the OpenGL renderer): (0, 0) is the BOTTOM-left corner of
+    // the image and v grows upward (used by MeshData, primitives, and the mge_voxel atlas). To match this,
+    // the image is stored vertically flipped on the GPU; pixel coordinates in this API are image coordinates
+    // (row 0 at top), and the flip is internal.
     class Texture2D {
     public:
         Texture2D() = default;
 
-        // rgba: width × height × 4 bytes, fila 0 arriba. keepCpuCopy guarda los píxeles originales
-        // (para copyFromOriginal: animaciones de tiles)
+        // rgba: width x height x 4 bytes, row 0 at top. keepCpuCopy keeps the original pixels
+        // (for copyFromOriginal: tile animations)
         static Texture2D fromPixels(GpuDevice& device, std::uint32_t width, std::uint32_t height,
                                     const std::uint8_t* rgba, bool keepCpuCopy = false);
-        // Inválida si no se pudo leer el archivo (el motivo queda en el log).
-        // path: relativo a la raíz de assets (se resuelve con mge::assetPath) o absoluto.
+        // Invalid if the file could not be read (reason is logged).
+        // path: relative to the assets root (resolved with mge::assetPath) or absolute.
         static Texture2D fromFile(GpuDevice& device, const std::filesystem::path& path,
                                   bool keepCpuCopy = false);
-        // 1×1 blanca: para dibujar mallas sin textura con el mismo shader
+        // 1x1 white: for drawing untextured meshes with the same shader
         static Texture2D white(GpuDevice& device);
 
-        // Reemplaza una región (coordenadas de la imagen, fila 0 arriba) con píxeles RGBA8
+        // Replaces a region (image coordinates, row 0 at top) with RGBA8 pixels
         bool updateRegion(GpuDevice& device, std::uint32_t x, std::uint32_t y, std::uint32_t width,
                           std::uint32_t height, const std::uint8_t* rgba);
-        // Copia una región de la imagen ORIGINAL (keepCpuCopy) a otro lugar de la textura (tiles animados)
+        // Copies a region from the ORIGINAL image (keepCpuCopy) to another location in the texture (animated
+        // tiles)
         bool copyFromOriginal(GpuDevice& device, std::uint32_t srcX, std::uint32_t srcY, std::uint32_t width,
                               std::uint32_t height, std::uint32_t dstX, std::uint32_t dstY);
 
@@ -47,6 +48,6 @@ namespace mge {
         GpuTexture m_texture;
         std::uint32_t m_width = 0;
         std::uint32_t m_height = 0;
-        std::vector<std::uint8_t> m_original; // Fila 0 arriba (vacío sin keepCpuCopy)
+        std::vector<std::uint8_t> m_original; // Row 0 at top (empty without keepCpuCopy)
     };
 }

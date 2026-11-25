@@ -9,7 +9,7 @@ namespace mge {
         constexpr double kTwoPi = 6.283185307179586;
         constexpr int kNoiseSlotsPerCycle = 32;
 
-        // Corrección PolyBLEP de un salto en t = 0 (t = fase en ciclos, dt = ciclos por muestra)
+        // PolyBLEP correction for a discontinuity at t = 0 (t = phase in cycles, dt = cycles per sample)
         double polyBlep(double t, double dt) {
             if (dt <= 0.0) return 0.0;
             if (t < dt) {
@@ -65,7 +65,7 @@ namespace mge {
                 if (m_wave == Waveform::Noise) {
                     m_noiseValue = m_rng.nextFloat01() * 2.0f - 1.0f;
                 } else {
-                    // LFSR de 7 bits (modo "corto" del ruido de la NES): un patrón periódico
+                    // 7-bit LFSR (NES noise "short" mode): periodic metallic pattern
                     const std::uint16_t bit = std::uint16_t((m_lfsr ^ (m_lfsr >> 6)) & 1u);
                     m_lfsr = std::uint16_t((m_lfsr >> 1) | (bit << 14));
                     m_noiseValue = (m_lfsr & 1u) ? 1.0f : -1.0f;

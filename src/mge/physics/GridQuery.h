@@ -7,10 +7,10 @@
 
 namespace mge {
 
-    // Consulta para determinar si un bloque en coordenadas enteras de mundo es sólido
+    // Query to determine whether a block in integer world coordinates is solid
     using SolidQuery = std::function<bool(const glm::ivec3&)>;
 
-    // Genera un SolidQuery a partir de una referencia a VoxelWorld
+    // Creates a SolidQuery from a VoxelWorld reference
     inline SolidQuery solidQuery(const VoxelWorld& world) {
         return [&world](const glm::ivec3& block) { return world.isSolid(block); };
     }

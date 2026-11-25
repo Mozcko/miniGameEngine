@@ -52,7 +52,7 @@ TEST_CASE("noteFromName y parsePattern") {
     CHECK(p->notes[3].velocity == doctest::Approx(0.8f));
 
     CHECK_FALSE(parsePattern("C4 ? E4", 1.0f, 60.0f, &error));
-    CHECK(error.find("paso 2") != std::string::npos);
+    CHECK(error.find("step 2") != std::string::npos);
     CHECK_FALSE(parsePattern("  |  ", 1.0f, 60.0f, &error));
 }
 
@@ -76,7 +76,7 @@ TEST_CASE("Song: largo, eventos en orden, errores") {
     Song bad(120.0f);
     CHECK_FALSE(bad.valid()); // Sin pistas
     bad.addTrack(3, {0});
-    CHECK(bad.error().find("instrumento") != std::string::npos);
+    CHECK(bad.error().find("instrument") != std::string::npos);
     Song parseError;
     parseError.pattern("C4 Z9");
     CHECK_FALSE(parseError.valid());

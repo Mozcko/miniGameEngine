@@ -28,7 +28,7 @@ pip install -v ".[test]"
 ### Git Tag Installation
 Install directly from GitHub repository tags:
 ```bash
-pip install "git+https://github.com/Mozcko/miniGameEngine@v1.0.1"
+pip install "git+https://github.com/Mozcko/miniGameEngine@v1.0.2"
 ```
 
 ### Building via CMake Directly

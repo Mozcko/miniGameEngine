@@ -114,7 +114,7 @@ namespace mge {
         }
 
         float spectralCentroid(const std::vector<float>& mono, int sampleRate, std::size_t from) {
-            // DFT con ventana de Hann sobre 2048 muestras (todas las bandas hasta Nyquist)
+            // Hann-windowed DFT over 2048 samples (all bins up to Nyquist)
             constexpr std::size_t kWindow = 2048;
             if (from + kWindow > mono.size()) return 0.0f;
             constexpr double kPi = 3.141592653589793;

@@ -8,28 +8,28 @@
 
 namespace platformer {
 
-    // Lo que el jugador quiere hacer en este paso
+    // What the player wants to do on this step
     struct PlayerInput {
-        float move = 0.0f; // -1 izquierda .. 1 derecha
-        bool jump = false; // Mientras esté apretado (salta al tocar el piso)
+        float move = 0.0f; // -1 left .. 1 right
+        bool jump = false; // While held (jumps upon touching the ground)
     };
 
-    // Lo que pasó en un paso (para sonidos y cambios de nivel)
+    // What happened during a step (for sounds and level transitions)
     struct StepEvents {
         int coins = 0;
         bool jumped = false;
-        bool died = false;     // Cayó al vacío o tocó un enemigo: vuelve al inicio
-        bool finished = false; // Llegó al final del nivel
+        bool died = false;     // Fell into a pit or touched an enemy: respawns at start
+        bool finished = false; // Reached the end of the level
     };
 
-    // Simulación del plataformero (headless, testeable): un jugador caja contra las casillas sólidas del
-    // nivel. Unidades: casillas; y hacia abajo, como las filas del archivo. Paso fijo (onFixedUpdate).
+    // Platformer simulation (headless, testable): a box player against the level's solid tiles.
+    // Units: tiles; y points down, matching the file rows. Fixed timestep (onFixedUpdate).
     class Platformer {
     public:
         static constexpr glm::vec2 kPlayerSize{0.75f, 0.9f};
-        static constexpr float kRunSpeed = 7.0f;   // casillas/s
-        static constexpr float kJumpSpeed = 13.0f; // casillas/s (≈ 2.4 casillas de altura)
-        static constexpr float kGravity = 35.0f;   // casillas/s²
+        static constexpr float kRunSpeed = 7.0f;   // tiles/s
+        static constexpr float kJumpSpeed = 13.0f; // tiles/s (≈ 2.4 tiles high)
+        static constexpr float kGravity = 35.0f;   // tiles/s²
         static constexpr float kMaxFallSpeed = 20.0f;
 
         explicit Platformer(Level level);
@@ -38,7 +38,7 @@ namespace platformer {
         void respawn();
 
         const Level& level() const { return m_level; }
-        glm::vec2 playerPosition() const { return m_position; } // Esquina de arriba a la izquierda
+        glm::vec2 playerPosition() const { return m_position; } // Top-left corner
         glm::vec2 playerVelocity() const { return m_velocity; }
         bool grounded() const { return m_grounded; }
         bool collected(std::size_t item) const { return m_collected[item]; }
@@ -46,9 +46,9 @@ namespace platformer {
         int deaths() const { return m_deaths; }
 
     private:
-        // ¿La caja (esquina, tamaño) toca alguna casilla sólida?
+        // Does the box (top-left, size) touch any solid tile?
         bool overlapsSolid(const glm::vec2& pos) const;
-        // Mueve en un eje y frena contra las casillas; true si chocó
+        // Moves along one axis and stops against tiles; returns true on collision
         bool moveAxis(int axis, float delta);
 
         Level m_level;

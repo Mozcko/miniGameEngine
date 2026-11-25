@@ -54,5 +54,8 @@ assets"). Severity is a rough guide. Line numbers may drift: search for the quot
 - ~~Unused assets: `sounds/`, `music/`, `levels/`~~ – levels and sounds are 2D test data for
   `examples/platformer2d` (#45). `music/` waits for the M5 sequencer.
 - ~~Transparent items are sorted per chunk (#31), not per triangle: overlapping translucent faces inside one chunk can still blend in the wrong order.~~ – fixed in #180: transparent chunks keep per-face centroids and nearby chunks re-sort their transparent index buffer back-to-front on `JobSystem` when the camera moves/turns or the chunk re-meshes.
+- Transparent face sorting (#180) orders faces by their centre: a large greedy-merged face (e.g. a whole lake surface) next to
+  small glass faces can still blend in the wrong order from some angles. Splitting large translucent quads or disabling greedy
+  merging for the transparent layer would fix it.
 - ~~`build/` directory with binaries is committed~~ – fixed in #1.
 - `README.md` was a one‑liner before this documentation pass; no tests, no CI.

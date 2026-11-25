@@ -60,7 +60,7 @@ namespace mge {
 
     bool writePng(const Image& image, const std::filesystem::path& path) {
         if (image.empty()) return false;
-        // Datos crudos: cada fila empieza con el filtro 0 (ninguno)
+        // Raw scanlines: each row starts with filter type 0 (none)
         std::vector<std::uint8_t> raw;
         const std::size_t row = std::size_t(image.width()) * 4;
         raw.reserve((row + 1) * image.height());
@@ -68,7 +68,7 @@ namespace mge {
             raw.push_back(0);
             raw.insert(raw.end(), image.data() + y * row, image.data() + (y + 1) * row);
         }
-        // zlib con bloques deflate "stored" (sin compresión) de hasta 65535 bytes, más Adler-32
+        // zlib stream with uncompressed deflate "stored" blocks up to 65535 bytes, plus Adler-32
         std::vector<std::uint8_t> zlib = {0x78, 0x01};
         for (std::size_t offset = 0; offset < raw.size() || offset == 0;) {
             const std::size_t length = std::min<std::size_t>(65535, raw.size() - offset);
@@ -95,7 +95,7 @@ namespace mge {
         putU32(header, image.width());
         putU32(header, image.height());
         header.insert(header.end(),
-                      {8, 6, 0, 0, 0}); // 8 bits, RGBA, deflate, filtro adaptativo, sin entrelazado
+                      {8, 6, 0, 0, 0}); // 8-bit, RGBA, deflate, adaptive filtering, non-interlaced
         chunk(png, "IHDR", header);
         chunk(png, "IDAT", zlib);
         chunk(png, "IEND", {});

@@ -1,5 +1,5 @@
-// Ejemplo de SDF raymarching (#36): formas SDF (blobs suaves, toro retorcido,
-// columnas repetidas) intersectando una malla de plano de suelo y un cubo rasterizados.
+// SDF raymarching example (#36): SDF shapes (smooth blobs, twisted torus,
+// repeated columns) intersecting a rasterized ground plane mesh and cube.
 #include <mge/mge.h>
 
 #include <shaders/scene_frag.h>
@@ -32,11 +32,11 @@ namespace {
                 device, m_gpu->swapchainFormat(), device.depthFormat(), mge::shaders::kSceneFrag);
 
             if (!m_renderer || !m_sdfRenderer || !m_sdfRenderer->valid()) {
-                MGE_LOG_ERROR("SdfScene", "No se pudo inicializar los renderizadores");
+                MGE_LOG_ERROR("SdfScene", "Failed to initialize renderers");
                 return false;
             }
 
-            // Mallas rasterizadas: plano de suelo y cubo procedural
+            // Rasterized meshes: ground plane and procedural cube
             const mge::MeshData groundData =
                 mge::primitives::plane(50.0f, 50.0f, 10, 10, glm::vec4(0.35f, 0.40f, 0.45f, 1.0f));
             const mge::MeshData cubeData =
@@ -54,7 +54,7 @@ namespace {
             m_lighting.fogStart = 40.0f;
             m_lighting.fogEnd = 120.0f;
 
-            MGE_LOG_INFO("SdfScene", "SDF Scene iniciada. WASD: mover, raton: mirar, Esc: salir");
+            MGE_LOG_INFO("SdfScene", "SDF Scene started. WASD: move, mouse: look, Esc: quit");
             return true;
         }
 
@@ -68,7 +68,7 @@ namespace {
 
             m_time += dt;
 
-            // Actualización de la cámara fly
+            // Fly camera update
             mge::CameraInput camInput;
             if (in.isDown(mge::Key::W)) camInput.moveForward += 1.0f;
             if (in.isDown(mge::Key::S)) camInput.moveForward -= 1.0f;
@@ -103,11 +103,11 @@ namespace {
                 m_renderer->setCamera(viewProj, m_fly.position());
                 m_renderer->setLighting(m_lighting);
 
-                // 1. Geometría opaca rasterizada
+                // 1. Rasterized opaque geometry
                 m_renderer->draw(m_groundMesh, glm::mat4(1.0f));
                 m_renderer->draw(m_cubeMesh, glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
-                // 2. Pase de SDF raymarching (DESPUÉS de lo opaco y antes de lo transparente)
+                // 2. SDF raymarching pass (AFTER opaque and before transparent)
                 mge::SdfFrame sdfFrame;
                 sdfFrame.viewProjection = viewProj;
                 sdfFrame.inverseViewProjection = invViewProj;
@@ -126,7 +126,7 @@ namespace {
             m_sdfRenderer.reset();
             m_renderer.reset();
 
-            MGE_LOG_INFO("SdfScene", m_presented, " frames presentados");
+            MGE_LOG_INFO("SdfScene", m_presented, " frames presented");
             if (m_presented == 0) setExitCode(1);
         }
 

@@ -8,14 +8,14 @@ namespace mge {
 
     class VoxelWorld;
 
-    // Copia de un chunk más un borde de 1 bloque de sus vecinos (18³ ids, ~11 KB): todo lo que el mesher
-    // necesita leer (caras visibles y oclusión ambiental). Se toma en el hilo principal y se puede mallar
-    // en otro hilo sin tocar el VoxelWorld. Coordenadas locales de -1 a 16; vecino sin cargar = aire.
+    // Copy of a chunk plus a 1-block border from its neighbours (18³ IDs, ~11 KB): everything the mesher
+    // needs to read (visible faces and ambient occlusion). Captured on the main thread and can be meshed
+    // on another thread without touching VoxelWorld. Local coordinates -1 to 16; unloaded neighbour = air.
     class ChunkSnapshot {
     public:
         static constexpr int kPaddedSize = kChunkSize + 2;
 
-        // Inválido (valid() == false) si el chunk no está cargado
+        // Invalid (valid() == false) if the chunk is not loaded
         static ChunkSnapshot capture(const VoxelWorld& world, const ChunkCoord& coord);
 
         bool valid() const { return !m_blocks.empty(); }
