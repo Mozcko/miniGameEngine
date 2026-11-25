@@ -2,12 +2,12 @@
 .gitignore 668d7124ecd80892
 .vscode/settings.json bb3724e5fa6cdbd2
 .vscode/tasks.json 9e4cbfd50e7c076d
-CMakeLists.txt bd9da4ade545cfb3
+CMakeLists.txt de0228be308757d5
 CMakePresets.json a3baee64ebbfd7d2
 LICENSE 6f77bed25018d3eb
 README.md 52e96fdd79e54bc6
 mge.project e4952391affcbcfc
-src/SpaceShooter.cpp d3729db09bdcc7da
-src/SpaceShooterLogic.cpp 88d9765baeba8590
-src/SpaceShooterLogic.h 3ed4c3a384d2a482
-tests/test_space_shooter.cpp 3534ecfe22ba26c5
+src/SpaceShooter.cpp 55fc48679aebb9ae
+src/SpaceShooterLogic.cpp 5f2c0295c1af403a
+src/SpaceShooterLogic.h 38478493d7be21c2
+tests/test_space_shooter.cpp 353ae9fcabbd33b0
