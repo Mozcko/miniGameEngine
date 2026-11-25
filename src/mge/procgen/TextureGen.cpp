@@ -155,8 +155,7 @@ namespace mge::texgen {
     void leaves(Image& image, const Rect& rect, const Palette& palette, float holes, std::uint32_t seed) {
         noise(image, rect, palette, 6.0f, seed, 2);
         each(rect, [&](int u, int v, int x, int y) {
-            if (unit(hash2i(u / 2, v / 2, seed + 7)) < holes)
-                image.set(x, y, glm::vec4(0.0f)); // 2×2 holes
+            if (unit(hash2i(u / 2, v / 2, seed + 7)) < holes) image.set(x, y, glm::vec4(0.0f)); // 2×2 holes
         });
     }
 

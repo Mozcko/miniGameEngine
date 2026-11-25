@@ -122,8 +122,7 @@ namespace mge {
                 if (p < 0 || p >= int(m_patterns.size())) return "track references a non-existent pattern";
         }
         if (lengthSteps() == 0) return "song has zero length";
-        if (m_loopStart < 0 || m_loopStart >= lengthSteps())
-            return "loop start is outside the song";
+        if (m_loopStart < 0 || m_loopStart >= lengthSteps()) return "loop start is outside the song";
         return {};
     }
 

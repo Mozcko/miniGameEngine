@@ -220,7 +220,8 @@ namespace mge {
     std::size_t Mixer::framesUntilMusicEvent() const {
         double until = 1e18;
         for (const MusicPlayer& player : m_players) {
-            if (!player.active || player.target == 0.0f) continue; // A fading-out player triggers no more notes
+            if (!player.active || player.target == 0.0f)
+                continue; // A fading-out player triggers no more notes
             const CompiledSong& song = *player.song;
             const double nextFrame = player.next < song.events.size()
                                          ? double(song.events[player.next].step) * song.framesPerStep

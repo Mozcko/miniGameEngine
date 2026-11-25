@@ -57,8 +57,8 @@ namespace mge {
         for (std::size_t i = 0; i < indices.size(); i++) {
             if (indices[i] >= n) {
                 std::ostringstream error;
-                error << "index " << indices[i] << " out of range at position " << i
-                      << " (vertices: " << n << ")";
+                error << "index " << indices[i] << " out of range at position " << i << " (vertices: " << n
+                      << ")";
                 return error.str();
             }
         }

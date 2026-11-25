@@ -44,8 +44,8 @@ namespace mge {
         m_stream =
             SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &AudioModule::feed, this);
         if (!m_stream) {
-            MGE_LOG_ERROR("Audio", "Could not open audio device (continuing without sound): ",
-                          SDL_GetError());
+            MGE_LOG_ERROR("Audio",
+                          "Could not open audio device (continuing without sound): ", SDL_GetError());
             return true;
         }
         SDL_ResumeAudioStreamDevice(m_stream); // Device streams start paused
@@ -106,8 +106,7 @@ namespace mge {
         std::memcpy(sample.data.data(), converted, sample.data.size() * sizeof(float));
         SDL_free(converted);
         const SampleId id = m_mixer.addSample(std::move(sample));
-        if (id == kInvalidSample)
-            MGE_LOG_ERROR("Audio", "Sample bank is full: ", full.string());
+        if (id == kInvalidSample) MGE_LOG_ERROR("Audio", "Sample bank is full: ", full.string());
         return id;
     }
 }
