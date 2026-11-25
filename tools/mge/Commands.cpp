@@ -188,8 +188,7 @@ namespace mge::cli {
                     return 1;
                 }
             } else if (arg.rfind("-", 0) == 0) {
-                std::cerr << "Error: unknown option '" << arg
-                          << "'. Run 'mge new --help' for help.\n";
+                std::cerr << "Error: unknown option '" << arg << "'. Run 'mge new --help' for help.\n";
                 return 1;
             } else {
                 if (options.name.empty()) {
@@ -339,14 +338,13 @@ namespace mge::cli {
             }
 
             if (arg == "--help" || arg == "-h") {
-                std::cout
-                    << "Usage: mge run [options] [-- <game arguments...>]\n\n"
-                    << "Builds and runs the main project target.\n\n"
-                    << "Options:\n"
-                    << "  --release      Run the version built with the 'release' preset\n"
-                    << "  --preset <p>   Specify the preset (default: dev)\n"
-                    << "  --             Following arguments are passed directly to the game\n"
-                    << "  -h, --help     Show this help message\n";
+                std::cout << "Usage: mge run [options] [-- <game arguments...>]\n\n"
+                          << "Builds and runs the main project target.\n\n"
+                          << "Options:\n"
+                          << "  --release      Run the version built with the 'release' preset\n"
+                          << "  --preset <p>   Specify the preset (default: dev)\n"
+                          << "  --             Following arguments are passed directly to the game\n"
+                          << "  -h, --help     Show this help message\n";
                 return 0;
             }
 
@@ -360,8 +358,7 @@ namespace mge::cli {
                     return 1;
                 }
             } else {
-                std::cerr << "Error: unknown option '" << arg
-                          << "'. Use '--' for game arguments.\n";
+                std::cerr << "Error: unknown option '" << arg << "'. Use '--' for game arguments.\n";
                 return 1;
             }
         }
@@ -480,12 +477,11 @@ namespace mge::cli {
         for (int i = 0; i < argc; ++i) {
             std::string_view arg = argv[i];
             if (arg == "--help" || arg == "-h") {
-                std::cout
-                    << "Usage: mge check [options]\n\n"
-                    << "Checks code formatting and guidelines using clang-format and clang-tidy.\n\n"
-                    << "Options:\n"
-                    << "  --fix       Automatically fix formatting errors with clang-format\n"
-                    << "  -h, --help  Show this help message\n";
+                std::cout << "Usage: mge check [options]\n\n"
+                          << "Checks code formatting and guidelines using clang-format and clang-tidy.\n\n"
+                          << "Options:\n"
+                          << "  --fix       Automatically fix formatting errors with clang-format\n"
+                          << "  -h, --help  Show this help message\n";
                 return 0;
             }
             if (arg == "--fix") {

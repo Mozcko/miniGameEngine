@@ -147,15 +147,13 @@ namespace mge::cli {
             if (tmpl == "3d" || tmpl == "headless") {
                 return true;
             }
-            outError =
-                "Template '" + templateName + "' is not valid for C (valid templates: 3d, headless).";
+            outError = "Template '" + templateName + "' is not valid for C (valid templates: 3d, headless).";
             return false;
         case ProjectLanguage::Python:
             if (tmpl == "3d" || tmpl == "2d") {
                 return true;
             }
-            outError =
-                "Template '" + templateName + "' is not valid for Python (valid templates: 3d, 2d).";
+            outError = "Template '" + templateName + "' is not valid for Python (valid templates: 3d, 2d).";
             return false;
         }
         return false;

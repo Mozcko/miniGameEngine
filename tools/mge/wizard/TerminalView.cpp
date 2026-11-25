@@ -300,8 +300,7 @@ namespace mge::cli::wizard {
                     moveCursorUp(renderedLines);
                 }
 
-                std::cout << "\r" << colors::bold() << "? Project language:" << colors::reset()
-                          << "\033[K\n";
+                std::cout << "\r" << colors::bold() << "? Project language:" << colors::reset() << "\033[K\n";
                 for (const auto& opt : languageOptions) {
                     std::cout << "\033[K";
                     if (model.answers().language == opt.first) {

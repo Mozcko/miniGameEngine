@@ -56,7 +56,8 @@ namespace mge::cli {
             if (compiler.empty()) {
                 item.ok = false;
                 item.detail = "Not found";
-                item.hint = "Install a C++17 compiler (e.g., sudo apt install g++ / sudo dnf install gcc-c++)";
+                item.hint =
+                    "Install a C++17 compiler (e.g., sudo apt install g++ / sudo dnf install gcc-c++)";
                 return item;
             }
 
@@ -198,8 +199,7 @@ namespace mge::cli {
 
             item.ok = false;
             item.detail = "Not found";
-            item.hint =
-                "Install libsdl3-dev or SDL3-devel (or build from https://github.com/libsdl-org/SDL)";
+            item.hint = "Install libsdl3-dev or SDL3-devel (or build from https://github.com/libsdl-org/SDL)";
             return item;
         }
 
@@ -529,15 +529,14 @@ namespace mge::cli {
 
         std::cout << "\n";
         if (anyRequiredFailed) {
-            std::cout
-                << colors::red() << colors::bold()
-                << "Issues were found with required dependencies. See the hints above."
-                << colors::reset() << "\n";
+            std::cout << colors::red() << colors::bold()
+                      << "Issues were found with required dependencies. See the hints above."
+                      << colors::reset() << "\n";
             return 1;
         }
 
-        std::cout << colors::green() << colors::bold()
-                  << "All required dependencies are properly installed." << colors::reset() << "\n";
+        std::cout << colors::green() << colors::bold() << "All required dependencies are properly installed."
+                  << colors::reset() << "\n";
         return 0;
     }
 
