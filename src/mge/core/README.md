@@ -9,6 +9,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Application.h/.cpp` | `mge` | `ApplicationConfig` + the runner: owns the loop and the modules, runs headless when no platform module is added |
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
+| `StickMath.h/.cpp` | `mge` | Headless gamepad stick and trigger math: deadzones (`Radial`, `Axial`, `Hybrid`), response curves (`Linear`, `Quadratic`, `Cubic`, `Power`, `SCurve`), `squareToCircle`, int16 normalization, `processStick` |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
 | `math/Geometry.h/.cpp` | `mge` | `Aabb`, `Sphere`, `Plane`, `Ray`, `Frustum` (from view‑projection), ray tests (`intersectRayAabb/Sphere/Plane/Triangle`) |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |

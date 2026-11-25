@@ -12,7 +12,9 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     registry.add<mge::Transform>(entity);
     mge::Pcg32 rng(1);
     mge::InputState input;
+    mge::StickConfig stickCfg;
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(mge::processStick({0.0f, 0.0f}, stickCfg) == glm::vec2(0.0f));
 }

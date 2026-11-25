@@ -9,6 +9,7 @@ add_library(mge_core STATIC
     Profiler.h Profiler.cpp
     Random.h
     SpscQueue.h
+    StickMath.h StickMath.cpp
     Clock.h Clock.cpp
     FlyController.h FlyController.cpp
     Time.h
@@ -59,6 +60,7 @@ mge_install_headers(core
     Profiler.h
     Random.h
     SpscQueue.h
+    StickMath.h
     Clock.h
     FlyController.h
     Time.h
