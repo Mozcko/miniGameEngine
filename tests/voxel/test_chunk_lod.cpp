@@ -9,11 +9,11 @@
 using namespace mge;
 using namespace mge_test;
 
-TEST_CASE("voxel:ChunkLod: submuestreo de chunk lleno, vacio y semi-lleno") {
+TEST_CASE("voxel:ChunkLod: downsampling full, empty, and half-full chunks") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
 
-    // 1. Chunk vacío (todo aire)
+    // 1. Empty chunk (all air)
     world.loadChunk({0, 0, 0});
     const ChunkSnapshot emptySnap = ChunkSnapshot::capture(world, {0, 0, 0});
     REQUIRE(emptySnap.valid());
@@ -40,7 +40,7 @@ TEST_CASE("voxel:ChunkLod: submuestreo de chunk lleno, vacio y semi-lleno") {
         }
     }
 
-    // 2. Chunk lleno (todo piedra)
+    // 2. Full chunk (all stone)
     for (int y = 0; y < kChunkSize; ++y) {
         for (int z = 0; z < kChunkSize; ++z) {
             for (int x = 0; x < kChunkSize; ++x) {
@@ -69,7 +69,7 @@ TEST_CASE("voxel:ChunkLod: submuestreo de chunk lleno, vacio y semi-lleno") {
         }
     }
 
-    // 3. Chunk semi-lleno (suelo plano hasta y = 8)
+    // 3. Half-full chunk (flat ground up to y = 8)
     VoxelWorld flatWorld(tb.registry, std::make_unique<FlatGenerator>(tb.stone, 8));
     flatWorld.loadChunk({0, 0, 0});
     const ChunkSnapshot halfSnap = ChunkSnapshot::capture(flatWorld, {0, 0, 0});
@@ -103,7 +103,7 @@ TEST_CASE("voxel:ChunkLod: submuestreo de chunk lleno, vacio y semi-lleno") {
     }
 }
 
-TEST_CASE("voxel:ChunkLod: regla del bloque opaco superior") {
+TEST_CASE("voxel:ChunkLod: topmost opaque block rule") {
     TestBlocks tb;
     BlockDesc grassDesc;
     grassDesc.name = "grass";
@@ -114,30 +114,30 @@ TEST_CASE("voxel:ChunkLod: regla del bloque opaco superior") {
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
 
-    // Celda 1 en (0, 0, 0) con factor 2 (x in [0, 1], y in [0, 1], z in [0, 1]):
-    // Capa y = 1: agua (translúcida) en (0, 1, 0), aire en el resto.
-    // Capa y = 0: piedra (opaca) en (0, 0, 0).
-    // La regla debe descartar el agua por no ser opaca y tomar la piedra.
+    // Cell 1 at (0, 0, 0) with factor 2 (x in [0, 1], y in [0, 1], z in [0, 1]):
+    // Layer y = 1: water (translucent) at (0, 1, 0), air elsewhere.
+    // Layer y = 0: stone (opaque) at (0, 0, 0).
+    // The rule should discard water since it is not opaque and pick stone.
     world.setBlock({0, 1, 0}, tb.water);
     world.setBlock({0, 0, 0}, tb.stone);
 
-    // Celda 2 en (2, 0, 0) (sx = 1, sy = 0, sz = 0):
-    // Capa y = 1: flor (recortada / shape Cross) en (2, 1, 0).
-    // Capa y = 0: piedra en (2, 0, 0).
-    // La regla debe descartar la flor y tomar la piedra.
+    // Cell 2 at (2, 0, 0) (sx = 1, sy = 0, sz = 0):
+    // Layer y = 1: flower (cutout / Cross shape) at (2, 1, 0).
+    // Layer y = 0: stone at (2, 0, 0).
+    // The rule should discard the flower and pick stone.
     world.setBlock({2, 1, 0}, tb.flower);
     world.setBlock({2, 0, 0}, tb.stone);
 
-    // Celda 3 en (4, 0, 0) (sx = 2, sy = 0, sz = 0):
-    // Capa y = 1: pasto (opaco) en (4, 1, 0).
-    // Capa y = 0: piedra (opaca) en (4, 0, 0).
-    // Debe tomar el pasto porque está arriba de la piedra.
+    // Cell 3 at (4, 0, 0) (sx = 2, sy = 0, sz = 0):
+    // Layer y = 1: grass (opaque) at (4, 1, 0).
+    // Layer y = 0: stone (opaque) at (4, 0, 0).
+    // Should pick grass because it is above stone.
     world.setBlock({4, 1, 0}, grass);
     world.setBlock({4, 0, 0}, tb.stone);
 
-    // Celda 4 en (6, 0, 0) (sx = 3, sy = 0, sz = 0):
-    // Solo vidrio y agua (ninguno opaco).
-    // Debe devolver aire.
+    // Cell 4 at (6, 0, 0) (sx = 3, sy = 0, sz = 0):
+    // Only glass and water (neither opaque).
+    // Should return air.
     world.setBlock({6, 1, 0}, tb.glass);
     world.setBlock({6, 0, 0}, tb.water);
 
@@ -150,7 +150,7 @@ TEST_CASE("voxel:ChunkLod: regla del bloque opaco superior") {
     CHECK(lod.get(3, 0, 0) == kAir);
 }
 
-TEST_CASE("voxel:ChunkLod: conteo de triangulos de LOD 1 <= 1/4 de LOD 0 (+ faldas)") {
+TEST_CASE("voxel:ChunkLod: LOD 1 triangle count <= 1/4 of LOD 0 (+ skirts)") {
     TestBlocks tb;
     VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, 8));
     world.loadChunk({0, 0, 0});
@@ -160,8 +160,8 @@ TEST_CASE("voxel:ChunkLod: conteo de triangulos de LOD 1 <= 1/4 de LOD 0 (+ fald
     optNaive.greedy = false;
     optNaive.lodSkirts = false;
 
-    // Sin greedy y sin faldas: LOD 1 tiene 8x8 bloques en vez de 16x16, el área superficial
-    // en cada dirección se reduce exactamente por 4
+    // Without greedy and without skirts: LOD 1 has 8x8 blocks instead of 16x16, so surface area
+    // in each direction is reduced by exactly 4
     const ChunkMesh meshLod0 = buildLodChunkMesh(snap, tb.registry, 0, optNaive);
     const ChunkMesh meshLod1NoSkirts = buildLodChunkMesh(snap, tb.registry, 1, optNaive);
 
@@ -170,7 +170,7 @@ TEST_CASE("voxel:ChunkLod: conteo de triangulos de LOD 1 <= 1/4 de LOD 0 (+ fald
     REQUIRE(tri0 > 0);
     CHECK(tri1NoSkirts <= tri0 / 4);
 
-    // Con faldas en los 4 bordes: cada borde de 8 bloques añade 8 quads (16 triángulos) = 64 triángulos
+    // With skirts on all 4 edges: each 8-block edge adds 8 quads (16 triangles) = 64 triangles
     ChunkMeshOptions optWithSkirts = optNaive;
     optWithSkirts.lodSkirts = true;
     const ChunkMesh meshLod1WithSkirts = buildLodChunkMesh(snap, tb.registry, 1, optWithSkirts);
@@ -178,7 +178,7 @@ TEST_CASE("voxel:ChunkLod: conteo de triangulos de LOD 1 <= 1/4 de LOD 0 (+ fald
     CHECK(tri1WithSkirts <= tri0 / 4 + 64);
     CHECK(tri1WithSkirts > tri1NoSkirts);
 
-    // Con greedy meshing
+    // With greedy meshing
     ChunkMeshOptions optGreedy;
     optGreedy.greedy = true;
     optGreedy.lodSkirts = true;
@@ -186,15 +186,15 @@ TEST_CASE("voxel:ChunkLod: conteo de triangulos de LOD 1 <= 1/4 de LOD 0 (+ fald
     CHECK(meshGreedy.opaque.triangleCount() <= tri1WithSkirts);
 }
 
-TEST_CASE("voxel:ChunkLod: validacion de malla (validate pasa sin errores)") {
+TEST_CASE("voxel:ChunkLod: mesh validation (validate passes without errors)") {
     TestBlocks tb;
     VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, 8));
     world.loadChunk({0, 0, 0});
 
-    // Agregar algunos bloques variados
+    // Add a few varied blocks
     world.setBlock({3, 9, 3}, tb.stone);
     world.setBlock({4, 9, 3}, tb.stone);
-    world.setBlock({5, 8, 5}, tb.water); // agua genera cara superior transparente en LOD > 0
+    world.setBlock({5, 8, 5}, tb.water); // water generates a transparent top face at LOD > 0
 
     const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
 
@@ -215,11 +215,11 @@ TEST_CASE("voxel:ChunkLod: validacion de malla (validate pasa sin errores)") {
     CHECK(mesh2.transparent.validate().empty());
 }
 
-TEST_CASE("voxel:ChunkLod: costuras: dos chunks vecinos al mismo LOD no tienen caras internas") {
+TEST_CASE("voxel:ChunkLod: seams: two neighboring chunks at the same LOD have no internal faces") {
     TestBlocks tb;
     VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, 8));
     world.loadChunk({0, 0, 0});
-    world.loadChunk({1, 0, 0}); // Vecino en +X
+    world.loadChunk({1, 0, 0}); // Neighbor in +X
 
     const ChunkSnapshot snapA = ChunkSnapshot::capture(world, {0, 0, 0});
     const ChunkSnapshot snapB = ChunkSnapshot::capture(world, {1, 0, 0});
@@ -231,35 +231,35 @@ TEST_CASE("voxel:ChunkLod: costuras: dos chunks vecinos al mismo LOD no tienen c
     const ChunkMesh meshA = buildLodChunkMesh(snapA, tb.registry, 1, options);
     const ChunkMesh meshB = buildLodChunkMesh(snapB, tb.registry, 1, options);
 
-    // En el chunk A, el límite con B es x = 16. No debe haber vértices ni caras orientadas hacia +X en x = 16
+    // In chunk A, the boundary with B is x = 16. There must be no vertices or +X-facing faces at x = 16
     for (std::size_t i = 0; i < meshA.opaque.positions.size(); ++i) {
         const glm::vec3& pos = meshA.opaque.positions[i];
         const glm::vec3& norm = meshA.opaque.normals[i];
         if (norm.x > 0.9f) {
-            // No debe haber cara hacia +X en la interfaz compartida
+            // No +X-facing face on the shared boundary
             CHECK(pos.x < 15.99f);
         }
     }
 
-    // En el chunk B, el límite con A es x = 0. No debe haber caras orientadas hacia -X en x = 0
+    // In chunk B, the boundary with A is x = 0. There must be no -X-facing faces at x = 0
     for (std::size_t i = 0; i < meshB.opaque.positions.size(); ++i) {
         const glm::vec3& pos = meshB.opaque.positions[i];
         const glm::vec3& norm = meshB.opaque.normals[i];
         if (norm.x < -0.9f) {
-            // No debe haber cara hacia -X en la interfaz compartida
+            // No -X-facing face on the shared boundary
             CHECK(pos.x > 0.01f);
         }
     }
 }
 
-TEST_CASE("voxel:ChunkLod: faldas presentes en los bordes expuestos") {
+TEST_CASE("voxel:ChunkLod: skirts present on exposed edges") {
     TestBlocks tb;
     VoxelWorld world(tb.registry, std::make_unique<FlatGenerator>(tb.stone, 8));
-    world.loadChunk({0, 0, 0}); // Chunk aislado: sus 4 bordes laterales dan al aire
+    world.loadChunk({0, 0, 0}); // Isolated chunk: all 4 side borders face air
 
     const ChunkSnapshot snap = ChunkSnapshot::capture(world, {0, 0, 0});
 
-    // Con faldas (factor 2): debe haber vértices que bajen hasta y = -2
+    // With skirts (factor 2): there should be vertices extending down to y = -2
     ChunkMeshOptions optWithSkirts;
     optWithSkirts.lodSkirts = true;
     const ChunkMesh meshWithSkirts = buildLodChunkMesh(snap, tb.registry, 1, optWithSkirts);
@@ -273,7 +273,7 @@ TEST_CASE("voxel:ChunkLod: faldas presentes en los bordes expuestos") {
     }
     CHECK(hasSkirtVertices);
 
-    // Sin faldas: no debe haber ningún vértice con y < 0
+    // Without skirts: there should be no vertex with y < 0
     ChunkMeshOptions optNoSkirts;
     optNoSkirts.lodSkirts = false;
     const ChunkMesh meshNoSkirts = buildLodChunkMesh(snap, tb.registry, 1, optNoSkirts);
@@ -283,12 +283,12 @@ TEST_CASE("voxel:ChunkLod: faldas presentes en los bordes expuestos") {
     }
 }
 
-TEST_CASE("voxel:ChunkLod: agua en LOD > 0 genera malla transparente en la superficie") {
+TEST_CASE("voxel:ChunkLod: water at LOD > 0 generates transparent surface mesh") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
 
-    // Piedra hasta y = 4, agua en y = 5..7
+    // Stone up to y = 4, water at y = 5..7
     for (int y = 0; y <= 4; ++y) {
         for (int z = 0; z < kChunkSize; ++z) {
             for (int x = 0; x < kChunkSize; ++x) {
@@ -316,7 +316,7 @@ TEST_CASE("voxel:ChunkLod: agua en LOD > 0 genera malla transparente en la super
     }
 }
 
-TEST_CASE("voxel:ChunkLod: superficie plana emite caras superiores a y_top exacto (y=5 -> 6, y=4 -> 5)") {
+TEST_CASE("voxel:ChunkLod: flat surface emits top faces at exact y_top (y=5 -> 6, y=4 -> 5)") {
     TestBlocks tb;
 
     for (const int topBlockY : {5, 4}) {
@@ -342,8 +342,7 @@ TEST_CASE("voxel:ChunkLod: superficie plana emite caras superiores a y_top exact
                     }
                 }
                 CHECK(topVertices > 0);
-                // Con greedy en superficie plana homogénea, la cara superior se fusiona en 1 quad (4
-                // vértices)
+                // With greedy on a uniform flat surface, the top face merges into 1 quad (4 vertices)
                 if (greedy) {
                     CHECK(topVertices == 4);
                 }
@@ -352,13 +351,12 @@ TEST_CASE("voxel:ChunkLod: superficie plana emite caras superiores a y_top exact
     }
 }
 
-TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 1 y LOD 2") {
+TEST_CASE("voxel:ChunkLod: two-level terrain (y=4 and y=9) has no cracks in LOD 1 and LOD 2") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
 
-    // Mitad izquierda (x < 8): bloques 0..4 (tope en y = 5); mitad derecha (x >= 8): bloques 0..9 (tope en y
-    // = 10)
+    // Left half (x < 8): blocks 0..4 (top at y = 5); right half (x >= 8): blocks 0..9 (top at y = 10)
     for (int z = 0; z < kChunkSize; ++z) {
         for (int x = 0; x < kChunkSize; ++x) {
             const int maxY = (x < 8) ? 4 : 9;
@@ -377,8 +375,7 @@ TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 
         const ChunkMesh mesh = buildLodChunkMesh(snap, tb.registry, lod, opt);
         CHECK(mesh.opaque.validate().empty());
 
-        // 1. Raycast vertical hacia abajo en 256 puntos (16x16): siempre golpea una cara superior a la altura
-        // exacta
+        // 1. Downward vertical raycast at 256 points (16x16): always hits a top face at the exact height
         for (int z = 0; z < kChunkSize; ++z) {
             for (int x = 0; x < kChunkSize; ++x) {
                 const float expectedY = (x < 8) ? 5.0f : 10.0f;
@@ -401,7 +398,7 @@ TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 
             }
         }
 
-        // 2. Raycast horizontal contra el escalón en x = 8 entre y = 5 y y = 10: sin grietas
+        // 2. Horizontal raycast against the step at x = 8 between y = 5 and y = 10: no cracks
         for (int yStep = 5; yStep < 10; ++yStep) {
             for (int z = 0; z < kChunkSize; z += 2) {
                 const Ray ray{glm::vec3(7.5f, static_cast<float>(yStep) + 0.5f, static_cast<float>(z) + 0.5f),
@@ -426,7 +423,7 @@ TEST_CASE("voxel:ChunkLod: terreno a dos alturas (y=4 y y=9) sin grietas en LOD 
 }
 
 TEST_CASE(
-    "voxel:ChunkLod: agua poco profunda (piedra y<=6, agua y=7) queda sobre la cara opaca en LOD 1 y 2") {
+    "voxel:ChunkLod: shallow water (stone y<=6, water y=7) stays above the opaque face in LOD 1 and 2") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
@@ -466,13 +463,13 @@ TEST_CASE(
     }
 }
 
-TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra y<=5 en LOD 1 y 2") {
+TEST_CASE("voxel:ChunkLod: shore half land y=7 and half water y=7 over stone y<=5 in LOD 1 and 2") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
 
-    // Mitad izquierda (x < 8): tierra opaca 0..7 (tope en 8)
-    // Mitad derecha (x >= 8): piedra 0..5 (tope opaco en 6) + agua 6..7 (quad transparente en 8)
+    // Left half (x < 8): opaque land 0..7 (top at 8)
+    // Right half (x >= 8): stone 0..5 (opaque top at 6) + water 6..7 (transparent quad at 8)
     for (int z = 0; z < kChunkSize; ++z) {
         for (int x = 0; x < kChunkSize; ++x) {
             if (x < 8) {
@@ -500,13 +497,13 @@ TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra 
         CHECK(mesh.transparent.validate().empty());
         REQUIRE_FALSE(mesh.transparent.empty());
 
-        // Quad de agua solo en la mitad derecha a y = 8
+        // Water quad only on the right half at y = 8
         for (const auto& pos : mesh.transparent.positions) {
             CHECK(pos.x >= 7.99f);
             CHECK(pos.y == doctest::Approx(8.0f));
         }
 
-        // Raycast hacia abajo sobre la malla opaca: x < 8 golpea a y = 8; x >= 8 golpea a y = 6
+        // Downward raycast on the opaque mesh: x < 8 hits at y = 8; x >= 8 hits at y = 6
         for (int z = 0; z < kChunkSize; z += 2) {
             for (int x = 0; x < kChunkSize; x += 2) {
                 const float expectedOpaqueY = (x < 8) ? 8.0f : 6.0f;
@@ -530,7 +527,7 @@ TEST_CASE("voxel:ChunkLod: playa mitad tierra y=7 y mitad agua y=7 sobre piedra 
     }
 }
 
-TEST_CASE("voxel:ChunkLod: terreno sobre un lago subterráneo conserva su cara superior en LOD 1 y 2") {
+TEST_CASE("voxel:ChunkLod: terrain above an underground lake keeps its top face in LOD 1 and 2") {
     TestBlocks tb;
     VoxelWorld world(tb.registry);
     world.loadChunk({0, 0, 0});
@@ -541,7 +538,7 @@ TEST_CASE("voxel:ChunkLod: terreno sobre un lago subterráneo conserva su cara s
                 world.setBlock({x, y, z}, tb.stone);
             }
             world.setBlock({x, 3, z}, tb.water);
-            // y 4..11: aire (por defecto)
+            // y 4..11: air (default)
             world.setBlock({x, 12, z}, tb.stone);
             world.setBlock({x, 13, z}, tb.stone);
         }

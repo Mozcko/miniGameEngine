@@ -9,7 +9,7 @@ using namespace mge;
 using mge_test::FlatGenerator;
 using mge_test::TestBlocks;
 
-TEST_CASE("VoxelWorld: chunks sin cargar son aire; loadChunk genera una sola vez") {
+TEST_CASE("VoxelWorld: unloaded chunks are air; loadChunk generates only once") {
     TestBlocks b;
     VoxelWorld world(b.registry, std::make_unique<FlatGenerator>(b.stone, 4));
     CHECK(world.getBlock(0, 0, 0) == kAir);
@@ -22,7 +22,7 @@ TEST_CASE("VoxelWorld: chunks sin cargar son aire; loadChunk genera una sola vez
     CHECK(world.getBlock(0, 4, 0) == kAir);
 
     chunk.set(0, 0, 0, b.glass);
-    world.loadChunk({0, 0, 0}); // Ya existe: no se vuelve a generar
+    world.loadChunk({0, 0, 0}); // Already exists: not regenerated
     CHECK(world.getBlock(0, 0, 0) == b.glass);
 
     world.unloadChunk({0, 0, 0});
@@ -30,7 +30,7 @@ TEST_CASE("VoxelWorld: chunks sin cargar son aire; loadChunk genera una sola vez
     CHECK(world.chunkCount() == 0);
 }
 
-TEST_CASE("VoxelWorld: get/set entre chunks, con coordenadas negativas y verticales") {
+TEST_CASE("VoxelWorld: get/set across chunks, including negative and vertical coordinates") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     for (int x = -1; x <= 0; x++)
@@ -48,16 +48,16 @@ TEST_CASE("VoxelWorld: get/set entre chunks, con coordenadas negativas y vertica
     }
     CHECK(world.isSolid({0, 0, 0}));
     CHECK_FALSE(world.isSolid({1, 0, 0}));
-    CHECK_FALSE(world.setBlock({100, 0, 0}, b.stone)); // Chunk sin cargar
+    CHECK_FALSE(world.setBlock({100, 0, 0}, b.stone)); // Unloaded chunk
 }
 
-TEST_CASE("VoxelWorld: marcas de sucio y propagación al vecino del borde") {
+TEST_CASE("VoxelWorld: dirty flags and propagation to border neighbor") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     for (int x = -1; x <= 1; x++) world.loadChunk({x, 0, 0});
-    CHECK(world.dirtyChunks().size() == 3); // Recién cargados: sucios
+    CHECK(world.dirtyChunks().size() == 3); // Newly loaded: dirty
     for (const ChunkCoord& c : world.loadedChunks()) world.clearDirty(c);
-    world.loadChunk({2, 0, 0}); // Cargar un chunk ensucia a sus vecinos cargados (solo los de cara)
+    world.loadChunk({2, 0, 0}); // Loading a chunk marks its loaded face neighbors dirty
     CHECK(world.isDirty({2, 0, 0}));
     CHECK(world.isDirty({1, 0, 0}));
     CHECK_FALSE(world.isDirty({0, 0, 0}));
@@ -71,22 +71,22 @@ TEST_CASE("VoxelWorld: marcas de sucio y propagación al vecino del borde") {
     CHECK_FALSE(world.isDirty({1, 0, 0}));
     world.clearDirty({0, 0, 0});
 
-    world.setBlock({0, 5, 5}, b.stone); // Borde -X: también el chunk de la izquierda
+    world.setBlock({0, 5, 5}, b.stone); // -X border: also dirties the chunk to the left
     CHECK(world.isDirty({0, 0, 0}));
     CHECK(world.isDirty({-1, 0, 0}));
     CHECK_FALSE(world.isDirty({1, 0, 0}));
     for (const ChunkCoord& c : world.loadedChunks()) world.clearDirty(c);
 
-    world.setBlock({15, 0, 15}, b.stone); // Borde +X (+Y y +Z no cargados: se ignoran)
+    world.setBlock({15, 0, 15}, b.stone); // +X border (+Y and +Z unloaded: ignored)
     const auto dirty = world.dirtyChunks();
     CHECK(dirty.size() == 2);
     CHECK(std::find(dirty.begin(), dirty.end(), ChunkCoord{1, 0, 0}) != dirty.end());
 
-    world.markDirty({50, 0, 0}); // Sin cargar: no hace nada
+    world.markDirty({50, 0, 0}); // Unloaded: does nothing
     CHECK_FALSE(world.isDirty({50, 0, 0}));
 }
 
-TEST_CASE("VoxelWorld: el generador es determinista e independiente del orden de carga") {
+TEST_CASE("VoxelWorld: generator is deterministic and independent of load order") {
     TestBlocks b;
     VoxelWorld a(b.registry, std::make_unique<FlatGenerator>(b.stone, 20));
     VoxelWorld c(b.registry, std::make_unique<FlatGenerator>(b.stone, 20));

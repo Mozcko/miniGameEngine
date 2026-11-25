@@ -8,14 +8,14 @@
 
 using namespace mge;
 
-TEST_CASE(
-    "spatialHash: dos cajas solapadas dan un par, cajas tocándose dan un par y cajas lejanas dan cero") {
+TEST_CASE("spatialHash: overlapping boxes yield one pair, touching boxes yield one pair, and distant boxes "
+          "yield zero") {
     SpatialHash hash(2.0f);
     CHECK(hash.cellSize() == 2.0f);
 
     std::vector<std::pair<std::uint32_t, std::uint32_t>> pairs;
 
-    // Caso A: Cajas solapadas
+    // Case A: Overlapping boxes
     hash.insert(1, Aabb({0.0f, 0.0f, 0.0f}, {2.0f, 2.0f, 2.0f}));
     hash.insert(2, Aabb({1.0f, 1.0f, 1.0f}, {3.0f, 3.0f, 3.0f}));
     CHECK(hash.size() == 2);
@@ -24,7 +24,7 @@ TEST_CASE(
     CHECK(pairs.size() == 1);
     CHECK(pairs[0] == std::make_pair(1u, 2u));
 
-    // Caso B: Cajas tocándose en una cara (comparten x = 2.0)
+    // Case B: Boxes touching on a face (sharing x = 2.0)
     hash.clear();
     CHECK(hash.size() == 0);
     hash.insert(10, Aabb({0.0f, 0.0f, 0.0f}, {2.0f, 2.0f, 2.0f}));
@@ -33,7 +33,7 @@ TEST_CASE(
     CHECK(pairs.size() == 1);
     CHECK(pairs[0] == std::make_pair(10u, 20u));
 
-    // Caso C: Cajas lejanas
+    // Case C: Distant boxes
     hash.clear();
     hash.insert(100, Aabb({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
     hash.insert(200, Aabb({10.0f, 10.0f, 10.0f}, {11.0f, 11.0f, 11.0f}));
@@ -41,23 +41,23 @@ TEST_CASE(
     CHECK(pairs.empty());
 }
 
-TEST_CASE("spatialHash: cajas que abarcan varias celdas no producen pares duplicados") {
+TEST_CASE("spatialHash: boxes spanning multiple cells do not produce duplicate pairs") {
     SpatialHash hash(2.0f);
 
-    // Caja grande que abarca múltiples celdas (de -4 a +4 en cada eje = 4x4x4 = 64 celdas)
+    // Large box spanning multiple cells (from -4 to +4 on each axis = 4x4x4 = 64 cells)
     hash.insert(1, Aabb({-4.0f, -4.0f, -4.0f}, {4.0f, 4.0f, 4.0f}));
-    // Caja pequeña contenida en su interior
+    // Small box contained inside it
     hash.insert(2, Aabb({0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}));
 
     std::vector<std::pair<std::uint32_t, std::uint32_t>> pairs;
     hash.computePairs(pairs);
 
-    // Debe contener el par exactamente una vez
+    // Must contain the pair exactly once
     CHECK(pairs.size() == 1);
     CHECK(pairs[0] == std::make_pair(1u, 2u));
 }
 
-TEST_CASE("spatialHash: coordenadas negativas funcionan correctamente en computePairs y query") {
+TEST_CASE("spatialHash: negative coordinates work correctly in computePairs and query") {
     SpatialHash hash(2.0f);
 
     hash.insert(5, Aabb({-10.0f, -10.0f, -10.0f}, {-8.0f, -8.0f, -8.0f}));
@@ -80,12 +80,12 @@ TEST_CASE("spatialHash: coordenadas negativas funcionan correctamente en compute
     CHECK(ids[0] == 7u);
 }
 
-TEST_CASE("spatialHash: caja que abarca más de 8 celdas por eje funciona correctamente") {
+TEST_CASE("spatialHash: box spanning more than 8 cells per axis works correctly") {
     SpatialHash hash(1.0f);
 
-    // Caja de 12 unidades en X (abarca 12 celdas en X)
+    // 12-unit box along X (spans 12 cells along X)
     hash.insert(1, Aabb({0.0f, 0.0f, 0.0f}, {12.0f, 1.0f, 1.0f}));
-    // Caja tocando el extremo final
+    // Box touching the far end
     hash.insert(2, Aabb({11.5f, 0.5f, 0.5f}, {13.0f, 1.5f, 1.5f}));
 
     std::vector<std::pair<std::uint32_t, std::uint32_t>> pairs;
@@ -99,8 +99,8 @@ TEST_CASE("spatialHash: caja que abarca más de 8 celdas por eje funciona correc
     CHECK(ids[0] == 1u);
 }
 
-TEST_CASE("spatialHash: test aleatorizado de 200 cajas contra fuerza bruta (computePairs, query, clear y "
-          "reinsert)") {
+TEST_CASE("spatialHash: randomized test of 200 boxes against brute force (computePairs, query, clear, "
+          "and reinsert)") {
     Pcg32 rng(42ull);
     constexpr std::size_t kBoxCount = 200;
 
@@ -125,7 +125,7 @@ TEST_CASE("spatialHash: test aleatorizado de 200 cajas contra fuerza bruta (comp
 
     CHECK(hash.size() == kBoxCount);
 
-    // 1. Pares por fuerza bruta O(n^2)
+    // 1. Brute-force O(n^2) pairs
     std::vector<std::pair<std::uint32_t, std::uint32_t>> bruteForcePairs;
     for (std::size_t i = 0; i < testBoxes.size(); ++i) {
         for (std::size_t j = i + 1; j < testBoxes.size(); ++j) {
@@ -141,10 +141,10 @@ TEST_CASE("spatialHash: test aleatorizado de 200 cajas contra fuerza bruta (comp
     std::vector<std::pair<std::uint32_t, std::uint32_t>> hashPairs;
     hash.computePairs(hashPairs);
 
-    // computePairs coincide exactamente con la lista de fuerza bruta
+    // computePairs matches the brute-force list exactly
     CHECK(hashPairs == bruteForcePairs);
 
-    // 2. query() coincide con fuerza bruta para múltiples consultas aleatorias
+    // 2. query() matches brute force across multiple random queries
     for (int q = 0; q < 50; ++q) {
         const glm::vec3 qPos(-50.0f + rng.nextFloat01() * 100.0f, -50.0f + rng.nextFloat01() * 100.0f,
                              -50.0f + rng.nextFloat01() * 100.0f);
@@ -167,7 +167,7 @@ TEST_CASE("spatialHash: test aleatorizado de 200 cajas contra fuerza bruta (comp
         CHECK(hashIds == bruteForceIds);
     }
 
-    // 3. clear() y reinsert da el mismo resultado idéntico
+    // 3. clear() and reinsert produces the exact same result
     hash.clear();
     CHECK(hash.size() == 0);
     std::vector<std::pair<std::uint32_t, std::uint32_t>> clearedPairs;

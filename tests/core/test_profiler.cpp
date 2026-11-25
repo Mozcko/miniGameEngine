@@ -13,7 +13,7 @@
 
 using namespace mge;
 
-TEST_CASE("Profiler: scopes anidados tienen depth 0/1 y tiempo padre >= tiempo hijo") {
+TEST_CASE("Profiler: nested scopes have depth 0/1 and parent time >= child time") {
     Profiler profiler;
     profiler.beginFrame();
     {
@@ -35,7 +35,7 @@ TEST_CASE("Profiler: scopes anidados tienen depth 0/1 y tiempo padre >= tiempo h
     CHECK(entries[0].lastMs >= entries[1].lastMs);
 }
 
-TEST_CASE("Profiler: contador de llamadas (calls) por frame") {
+TEST_CASE("Profiler: call counter (calls) per frame") {
     Profiler profiler;
     profiler.beginFrame();
     for (int i = 0; i < 5; ++i) {
@@ -48,7 +48,7 @@ TEST_CASE("Profiler: contador de llamadas (calls) por frame") {
     CHECK(entries[0].name == "work");
     CHECK(entries[0].calls == 5);
 
-    // Siguiente frame con 2 llamadas
+    // Next frame with 2 calls
     profiler.beginFrame();
     for (int i = 0; i < 2; ++i) {
         MGE_PROFILE_SCOPE(profiler, "work");
@@ -58,7 +58,7 @@ TEST_CASE("Profiler: contador de llamadas (calls) por frame") {
     CHECK(entries[0].calls == 2);
 }
 
-TEST_CASE("Profiler: orden estable de entradas entre frames") {
+TEST_CASE("Profiler: stable entry ordering across frames") {
     Profiler profiler;
     profiler.beginFrame();
     { MGE_PROFILE_SCOPE(profiler, "first"); }
@@ -71,7 +71,7 @@ TEST_CASE("Profiler: orden estable de entradas entre frames") {
     CHECK(profiler.entries()[1].name == "second");
     CHECK(profiler.entries()[2].name == "third");
 
-    // Frame 2: se ejecutan en distinto orden
+    // Frame 2: executed in a different order
     profiler.beginFrame();
     { MGE_PROFILE_SCOPE(profiler, "third"); }
     { MGE_PROFILE_SCOPE(profiler, "first"); }
@@ -83,7 +83,7 @@ TEST_CASE("Profiler: orden estable de entradas entre frames") {
     CHECK(profiler.entries()[2].name == "third");
 }
 
-TEST_CASE("Profiler: desactivado no registra entradas ni mediciones") {
+TEST_CASE("Profiler: disabled profiler records no entries or measurements") {
     Profiler profiler;
     profiler.setEnabled(false);
     CHECK_FALSE(profiler.enabled());
@@ -95,7 +95,7 @@ TEST_CASE("Profiler: desactivado no registra entradas ni mediciones") {
     CHECK(profiler.entries().empty());
 }
 
-TEST_CASE("Profiler: averageMs converge hacia lastMs") {
+TEST_CASE("Profiler: averageMs converges toward lastMs") {
     Profiler profiler;
     std::vector<float> lastMsValues;
     lastMsValues.reserve(30);
@@ -118,7 +118,7 @@ TEST_CASE("Profiler: averageMs converge hacia lastMs") {
     CHECK(e[0].averageMs <= *maxIt);
 }
 
-TEST_CASE("Profiler: Application con World y dos sistemas produce entradas con los nombres de los sistemas") {
+TEST_CASE("Profiler: Application with World and two systems produces entries with the system names") {
     struct TestProfilerApp : public Application {
         explicit TestProfilerApp(ApplicationConfig cfg) : Application(std::move(cfg)) {}
     };

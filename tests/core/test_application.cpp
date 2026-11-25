@@ -9,7 +9,7 @@
 using namespace mge;
 
 namespace {
-    // Registro compartido de llamadas, para verificar el orden
+    // Shared call log to verify execution order
     using CallLog = std::vector<std::string>;
 
     class RecordingModule : public Module {
@@ -32,7 +32,7 @@ namespace {
         bool m_initOk;
     };
 
-    // Módulo que pide salir en su N-ésimo frame (como una ventana que se cierra)
+    // Module that requests stop on its N-th frame (like a closing window)
     class QuitModule : public Module {
     public:
         explicit QuitModule(std::uint64_t quitOnFrame) : m_quitOnFrame(quitOnFrame) {}
@@ -53,7 +53,7 @@ namespace {
 
         int updates = 0;
         int renders = 0;
-        int stopAfterUpdates = 0; // 0 = no pedir salir
+        int stopAfterUpdates = 0; // 0 = do not request stop
 
     protected:
         bool onInit() override {
@@ -84,7 +84,7 @@ namespace {
         return config;
     }
 
-    // Silencia el log de errores esperados durante un test
+    // Silences expected error logs during a test
     struct QuietLog {
         QuietLog() {
             Log::setSink([](const LogRecord&) {});
@@ -93,7 +93,7 @@ namespace {
     };
 }
 
-TEST_CASE("Una app headless sin módulos corre exactamente maxFrames frames") {
+TEST_CASE("A headless app without modules runs exactly maxFrames frames") {
     CallLog log;
     TestApp app(headlessConfig(10), log);
     CHECK(app.run() == 0);
@@ -103,7 +103,7 @@ TEST_CASE("Una app headless sin módulos corre exactamente maxFrames frames") {
     CHECK_FALSE(app.isRunning());
 }
 
-TEST_CASE("Orden: módulos se inicializan en orden, el juego después, y todo se cierra al revés") {
+TEST_CASE("Order: modules initialize in order, game next, and everything shuts down in reverse") {
     CallLog log;
     TestApp app(headlessConfig(1), log);
     app.addModule<RecordingModule>("A", log);
@@ -115,7 +115,7 @@ TEST_CASE("Orden: módulos se inicializan en orden, el juego después, y todo se
     CHECK(log == expected);
 }
 
-TEST_CASE("Si un módulo falla al iniciar, solo se cierran los anteriores y el juego no arranca") {
+TEST_CASE("If a module fails to initialize, only previous ones shut down and the game does not start") {
     QuietLog quiet;
     CallLog log;
     TestApp app(headlessConfig(5), log);
@@ -129,7 +129,7 @@ TEST_CASE("Si un módulo falla al iniciar, solo se cierran los anteriores y el j
     CHECK(app.updates == 0);
 }
 
-TEST_CASE("Si onInit del juego falla, se cierran los módulos y run() devuelve 1") {
+TEST_CASE("If game onInit fails, modules shut down and run() returns 1") {
     QuietLog quiet;
     CallLog log;
     TestApp app(headlessConfig(5), log, /*initOk=*/false);
@@ -140,16 +140,16 @@ TEST_CASE("Si onInit del juego falla, se cierran los módulos y run() devuelve 1
     CHECK(log == expected);
 }
 
-TEST_CASE("requestStop desde el juego termina al final del frame actual") {
+TEST_CASE("requestStop from the game ends at the end of the current frame") {
     CallLog log;
-    TestApp app(headlessConfig(0), log); // Sin límite de frames
+    TestApp app(headlessConfig(0), log); // No frame limit
     app.stopAfterUpdates = 3;
     CHECK(app.run() == 0);
     CHECK(app.updates == 3);
-    CHECK(app.renders == 3); // El frame en curso se completa
+    CHECK(app.renders == 3); // Current frame completes
 }
 
-TEST_CASE("Un módulo que pide salir en onFrameBegin evita el update de ese frame") {
+TEST_CASE("A module requesting stop in onFrameBegin skips that frame's update") {
     CallLog log;
     TestApp app(headlessConfig(0), log);
     app.addModule<QuitModule>(4);
@@ -157,7 +157,7 @@ TEST_CASE("Un módulo que pide salir en onFrameBegin evita el update de ese fram
     CHECK(app.updates == 3);
 }
 
-TEST_CASE("getModule encuentra módulos por tipo") {
+TEST_CASE("getModule finds modules by type") {
     CallLog log;
     TestApp app(headlessConfig(1), log);
     auto& recording = app.addModule<RecordingModule>("A", log);
@@ -165,7 +165,7 @@ TEST_CASE("getModule encuentra módulos por tipo") {
     CHECK(app.getModule<QuitModule>() == nullptr);
 }
 
-TEST_CASE("setExitCode define lo que devuelve run()") {
+TEST_CASE("setExitCode sets the return value of run()") {
     CallLog log;
     TestApp app(headlessConfig(1), log);
     app.setExitCode(3);
@@ -173,7 +173,7 @@ TEST_CASE("setExitCode define lo que devuelve run()") {
 }
 
 namespace {
-    // Fija/borra una variable de entorno durante un test (POSIX)
+    // Sets/unsets an environment variable during a test (POSIX)
     struct ScopedEnv {
         std::string name;
         ScopedEnv(const char* n, const char* value) : name(n) { setenv(n, value, 1); }
@@ -181,7 +181,7 @@ namespace {
     };
 }
 
-TEST_CASE("MGE_MAX_FRAMES limita los frames si el config no fija maxFrames") {
+TEST_CASE("MGE_MAX_FRAMES limits frames if config does not set maxFrames") {
     CallLog log;
     ScopedEnv env("MGE_MAX_FRAMES", "7");
     TestApp app(headlessConfig(0), log);
@@ -189,7 +189,7 @@ TEST_CASE("MGE_MAX_FRAMES limita los frames si el config no fija maxFrames") {
     CHECK(app.updates == 7);
 }
 
-TEST_CASE("maxFrames del config tiene prioridad sobre MGE_MAX_FRAMES") {
+TEST_CASE("config maxFrames takes priority over MGE_MAX_FRAMES") {
     CallLog log;
     ScopedEnv env("MGE_MAX_FRAMES", "7");
     TestApp app(headlessConfig(2), log);
@@ -197,7 +197,7 @@ TEST_CASE("maxFrames del config tiene prioridad sobre MGE_MAX_FRAMES") {
     CHECK(app.updates == 2);
 }
 
-TEST_CASE("Un MGE_MAX_FRAMES inválido se ignora") {
+TEST_CASE("An invalid MGE_MAX_FRAMES is ignored") {
     QuietLog quiet;
     CallLog log;
     ScopedEnv env("MGE_MAX_FRAMES", "abc");
@@ -207,10 +207,10 @@ TEST_CASE("Un MGE_MAX_FRAMES inválido se ignora") {
     CHECK(app.updates == 4);
 }
 
-TEST_CASE("requestStop dentro de onInit evita el loop (regresión: antes se ignoraba)") {
+TEST_CASE("requestStop inside onInit skips the loop (regression: previously ignored)") {
     class StopInInit : public Application {
     public:
-        StopInInit() : Application(ApplicationConfig{}) {} // Sin maxFrames: si se ignorara, no terminaría
+        StopInInit() : Application(ApplicationConfig{}) {} // No maxFrames: if ignored, it would never end
         int updates = 0;
         bool shutdownCalled = false;
 
@@ -220,7 +220,7 @@ TEST_CASE("requestStop dentro de onInit evita el loop (regresión: antes se igno
             return true;
         }
         void onUpdate(float) override {
-            if (++updates > 3) requestStop(); // Red de seguridad para que el test no se cuelgue
+            if (++updates > 3) requestStop(); // Safety net so the test never hangs
         }
         void onShutdown() override { shutdownCalled = true; }
     };
@@ -230,7 +230,7 @@ TEST_CASE("requestStop dentro de onInit evita el loop (regresión: antes se igno
     CHECK(app.shutdownCalled);
 }
 
-TEST_CASE("MGE_VSYNC del entorno pisa ApplicationConfig::vsync") {
+TEST_CASE("MGE_VSYNC from environment overrides ApplicationConfig::vsync") {
     {
         ScopedEnv env("MGE_VSYNC", "0");
         CHECK_FALSE(Application(ApplicationConfig{}).getConfig().vsync);
@@ -241,6 +241,6 @@ TEST_CASE("MGE_VSYNC del entorno pisa ApplicationConfig::vsync") {
         off.vsync = false;
         CHECK(Application(off).getConfig().vsync);
     }
-    ScopedEnv env("MGE_VSYNC", "tal vez"); // Inválido: se ignora
+    ScopedEnv env("MGE_VSYNC", "maybe"); // Invalid: ignored
     CHECK(Application(ApplicationConfig{}).getConfig().vsync);
 }

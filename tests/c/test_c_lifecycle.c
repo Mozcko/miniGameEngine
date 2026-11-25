@@ -11,7 +11,7 @@ typedef struct LifecycleState {
 static bool on_init(mge_app* app, void* user_data) {
     LifecycleState* s = (LifecycleState*)user_data;
     s->initCalled = true;
-    mge_log_info("TestC", "on_init ejecutado correctamente");
+    mge_log_info("TestC", "on_init executed successfully");
     (void)app;
     return true;
 }
@@ -73,11 +73,11 @@ int test_c_lifecycle(void) {
     TEST_ASSERT(state.renderCount >= 5);
     TEST_ASSERT(state.shutdownCalled);
 
-    // Verificación de versiones
+    // Version check
     TEST_ASSERT_EQ(mge_c_api_version(), MGE_C_API_VERSION);
     TEST_ASSERT(mge_version_string() != NULL);
 
-    // Validación de struct_size en config y callbacks (Item 5)
+    // Validation of struct_size in config and callbacks (Item 5)
     mge_app_config zeroCfg = config;
     zeroCfg.struct_size = 0;
     TEST_ASSERT_EQ(mge_app_run(&zeroCfg, &callbacks), MGE_ERROR_INVALID_ARGUMENT);
@@ -96,7 +96,7 @@ int test_c_lifecycle(void) {
     smallCb.struct_size = sizeof(mge_app_callbacks) - 1;
     TEST_ASSERT_EQ(mge_app_run(&config, &smallCb), MGE_ERROR_INVALID_ARGUMENT);
 
-    // Estructuras extendidas (struct_size > sizeof) deben aceptarse sin error
+    // Extended structs (struct_size > sizeof) should be accepted without error
     typedef struct ExtendedConfig {
         mge_app_config base;
         uint64_t future_fields[4];

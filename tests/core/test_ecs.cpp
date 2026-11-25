@@ -27,11 +27,11 @@ namespace {
     };
     struct Tag {};
     struct Named {
-        std::string name; // Componente no trivial (se mueve en el swap-and-pop)
+        std::string name; // Non-trivial component (moved during swap-and-pop)
     };
 }
 
-TEST_CASE("Entidades: crear, destruir, reciclar índices e invalidar handles viejos") {
+TEST_CASE("Entities: create, destroy, recycle indices, and invalidate old handles") {
     Registry registry;
     Entity a = registry.create();
     Entity b = registry.create();
@@ -44,18 +44,18 @@ TEST_CASE("Entidades: crear, destruir, reciclar índices e invalidar handles vie
     CHECK_FALSE(registry.valid(a));
     CHECK(registry.aliveCount() == 1);
 
-    Entity c = registry.create(); // Reutiliza el índice de a con otra generación
+    Entity c = registry.create(); // Reuses a's index with a new generation
     CHECK(c.index == a.index);
     CHECK(c.generation != a.generation);
     CHECK(registry.valid(c));
-    CHECK_FALSE(registry.valid(a)); // El handle viejo sigue inválido
+    CHECK_FALSE(registry.valid(a)); // Old handle remains invalid
 
-    registry.destroy(a); // Destruir un handle inválido no hace nada
+    registry.destroy(a); // Destroying an invalid handle is a no-op
     CHECK(registry.valid(c));
     CHECK_FALSE(registry.valid(kNullEntity));
 }
 
-TEST_CASE("Componentes: add, get, has, tryGet, remove, reemplazo") {
+TEST_CASE("Components: add, get, has, tryGet, remove, replace") {
     Registry registry;
     Entity e = registry.create();
     CHECK_FALSE(registry.has<Position>(e));
@@ -67,17 +67,17 @@ TEST_CASE("Componentes: add, get, has, tryGet, remove, reemplazo") {
     registry.get<Position>(e).x = 5.0f;
     CHECK(registry.tryGet<Position>(e)->x == doctest::Approx(5.0f));
 
-    registry.add<Position>(e, Position{9.0f, 9.0f}); // Reemplaza
+    registry.add<Position>(e, Position{9.0f, 9.0f}); // Replaces
     CHECK(registry.count<Position>() == 1);
     CHECK(registry.get<Position>(e).x == doctest::Approx(9.0f));
 
     registry.remove<Position>(e);
     CHECK_FALSE(registry.has<Position>(e));
     CHECK(registry.count<Position>() == 0);
-    registry.remove<Position>(e); // Quitar algo que no está: no pasa nada
+    registry.remove<Position>(e); // Removing a missing component is a no-op
 }
 
-TEST_CASE("Destruir una entidad quita todos sus componentes y no rompe los demás (swap-and-pop)") {
+TEST_CASE("Destroying an entity removes all its components without breaking others (swap-and-pop)") {
     Registry registry;
     std::vector<Entity> entities;
     for (int i = 0; i < 5; i++) {
@@ -86,19 +86,19 @@ TEST_CASE("Destruir una entidad quita todos sus componentes y no rompe los demá
         registry.add<Position>(e, Position{static_cast<float>(i), 0.0f});
         entities.push_back(e);
     }
-    registry.destroy(entities[1]); // Del medio: el último ocupa su lugar
+    registry.destroy(entities[1]); // From the middle: the last element takes its slot
     CHECK(registry.count<Named>() == 4);
     CHECK(registry.get<Named>(entities[4]).name == "e4");
     CHECK(registry.get<Position>(entities[4]).x == doctest::Approx(4.0f));
     CHECK(registry.get<Named>(entities[0]).name == "e0");
 
-    // Una entidad nueva en el índice reciclado no hereda componentes
+    // A new entity at the recycled index does not inherit components
     Entity recycled = registry.create();
     CHECK(recycled.index == entities[1].index);
     CHECK_FALSE(registry.has<Named>(recycled));
 }
 
-TEST_CASE("view<A, B> recorre solo las entidades con ambos componentes") {
+TEST_CASE("view<A, B> iterates only over entities with both components") {
     Registry registry;
     std::set<std::uint32_t> withBoth;
     for (int i = 0; i < 10; i++) {
@@ -114,15 +114,15 @@ TEST_CASE("view<A, B> recorre solo las entidades con ambos componentes") {
     std::set<std::uint32_t> visited;
     registry.each<Position, Velocity>([&](Entity e, Position& p, Velocity& v) {
         visited.insert(e.index);
-        p.x += v.dx; // Se puede modificar dentro del each
+        p.x += v.dx; // Can mutate inside each
     });
     CHECK(visited == withBoth);
     CHECK(registry.view<Position, Velocity>().count() == 4);
     CHECK(registry.view<Position, Tag>().count() == 1);
-    CHECK(registry.view<Position, Named>().count() == 0); // Tipo sin pool todavía
+    CHECK(registry.view<Position, Named>().count() == 0); // Type without a pool yet
 }
 
-TEST_CASE("TransformSystem: matrices de mundo con jerarquía (padres antes que hijos)") {
+TEST_CASE("TransformSystem: world matrices with hierarchy (parents before children)") {
     Registry registry;
     Entity root = registry.create();
     Entity child = registry.create();
@@ -145,12 +145,12 @@ TEST_CASE("TransformSystem: matrices de mundo con jerarquía (padres antes que h
     CHECK(origin(root).x == doctest::Approx(10.0f));
     CHECK(origin(child).x == doctest::Approx(10.0f));
     CHECK(origin(child).y == doctest::Approx(5.0f));
-    // El nieto hereda la escala 2 del hijo: su (1,0,0) local queda a 2 unidades
+    // Grandchild inherits child's scale of 2: its local (1,0,0) ends up 2 units away
     CHECK(origin(grandchild).x == doctest::Approx(12.0f));
     CHECK(origin(grandchild).y == doctest::Approx(5.0f));
 }
 
-TEST_CASE("TransformSystem: rotación, padre destruido y ciclos") {
+TEST_CASE("TransformSystem: rotation, destroyed parent, and cycles") {
     Registry registry;
     Entity pivot = registry.create();
     Transform rotated;
@@ -160,7 +160,7 @@ TEST_CASE("TransformSystem: rotación, padre destruido y ciclos") {
     registry.add<Transform>(arm, Transform{{1.0f, 0.0f, 0.0f}});
     registry.add<Parent>(arm, Parent{pivot});
 
-    // Ciclo a <-> b: no debe colgarse
+    // Cycle a <-> b: must not hang
     Entity a = registry.create();
     Entity b = registry.create();
     registry.add<Transform>(a);
@@ -168,36 +168,36 @@ TEST_CASE("TransformSystem: rotación, padre destruido y ciclos") {
     registry.add<Parent>(a, Parent{b});
     registry.add<Parent>(b, Parent{a});
 
-    Log::setSink([](const LogRecord&) {}); // Silenciar el aviso del ciclo
+    Log::setSink([](const LogRecord&) {}); // Silence cycle warning
     TransformSystem::update(registry);
     Log::setSink(nullptr);
 
     glm::vec3 armWorld = glm::vec3(registry.get<WorldTransform>(arm).matrix * glm::vec4(0, 0, 0, 1));
     CHECK(armWorld.x == doctest::Approx(0.0f).epsilon(1e-5));
-    CHECK(armWorld.z == doctest::Approx(-1.0f)); // +X girado 90° sobre Y -> -Z
+    CHECK(armWorld.z == doctest::Approx(-1.0f)); // +X rotated 90° around Y -> -Z
     CHECK(registry.has<WorldTransform>(a));
 
-    // Padre destruido: el hijo pasa a ser raíz
+    // Destroyed parent: child becomes a root
     registry.destroy(pivot);
     TransformSystem::update(registry);
     armWorld = glm::vec3(registry.get<WorldTransform>(arm).matrix * glm::vec4(0, 0, 0, 1));
     CHECK(armWorld.x == doctest::Approx(1.0f));
 }
 
-TEST_CASE("World: los sistemas corren por fase y en orden de registro") {
+TEST_CASE("World: systems run by phase and in registration order") {
     World world;
     std::vector<std::string> calls;
     world.addSystem(SystemPhase::Update, "a", [&](World&, float) { calls.push_back("update.a"); });
     world.addSystem(SystemPhase::Fixed, "physics", [&](World&, float) { calls.push_back("fixed"); });
     world.addSystem(SystemPhase::Update, "b", [&](World&, float) { calls.push_back("update.b"); });
     world.run(SystemPhase::Update, 0.016f);
-    world.run(SystemPhase::Render, 0.016f); // Sin sistemas
+    world.run(SystemPhase::Render, 0.016f); // No systems
     std::vector<std::string> expected = {"update.a", "update.b"};
     CHECK(calls == expected);
     CHECK(world.systemCount(SystemPhase::Fixed) == 1);
 }
 
-TEST_CASE("Una app headless corre los sistemas del World en sus fases durante N frames") {
+TEST_CASE("A headless app runs World systems in their phases for N frames") {
     class EcsApp : public Application {
     public:
         EcsApp() : Application(makeConfig()) { setClock(std::make_unique<ManualClock>(1.0 / 60.0)); }
@@ -212,7 +212,7 @@ TEST_CASE("Una app headless corre los sistemas del World en sus fases durante N 
                 registry.add<Position>(e);
                 registry.add<Velocity>(e, Velocity{1.0f, 0.0f});
             }
-            // Movimiento en el paso fijo: determinista
+            // Movement in fixed step: deterministic
             world().addSystem(SystemPhase::Fixed, "movement", [](World& w, float dt) {
                 w.registry().each<Position, Velocity>(
                     [dt](Entity, Position& p, Velocity& v) { p.x += v.dx * dt; });
@@ -235,11 +235,11 @@ TEST_CASE("Una app headless corre los sistemas del World en sus fases durante N 
     CHECK(app.run() == 0);
     CHECK(app.updateSystems == 60);
     CHECK(app.renderSystems == 60);
-    // 60 pasos fijos de 1/60 s a 1 u/s = 1 unidad
+    // 60 fixed steps of 1/60 s at 1 u/s = 1 unit
     app.world().registry().each<Position>([](Entity, Position& p) { CHECK(p.x == doctest::Approx(1.0f)); });
 }
 
-TEST_CASE("ECS runtime: alineación estricta a 16 y 32 bytes") {
+TEST_CASE("ECS runtime: strict 16-byte and 32-byte alignment") {
     Registry registry;
     const ComponentTypeId align16 = registry.registerRuntimeComponent("Align16", 24, 16);
     const ComponentTypeId align32 = registry.registerRuntimeComponent("Align32", 48, 32);
@@ -254,7 +254,7 @@ TEST_CASE("ECS runtime: alineación estricta a 16 y 32 bytes") {
     }
 }
 
-TEST_CASE("ECS runtime: operaciones addRaw, getRaw, hasRaw, removeRaw") {
+TEST_CASE("ECS runtime: addRaw, getRaw, hasRaw, removeRaw operations") {
     Registry registry;
     struct CustomData {
         float x, y, z;
@@ -269,7 +269,7 @@ TEST_CASE("ECS runtime: operaciones addRaw, getRaw, hasRaw, removeRaw") {
     CHECK_FALSE(registry.hasRaw(e1, customType));
     CHECK_FALSE(registry.hasRaw(e2, customType));
 
-    // addRaw inicializa la memoria en cero
+    // addRaw zero-initializes memory
     auto* d1 = static_cast<CustomData*>(registry.addRaw(e1, customType));
     REQUIRE(d1 != nullptr);
     CHECK(d1->x == 0.0f);
@@ -291,7 +291,7 @@ TEST_CASE("ECS runtime: operaciones addRaw, getRaw, hasRaw, removeRaw") {
     CHECK_FALSE(registry.removeRaw(e1, customType));
 }
 
-TEST_CASE("ECS runtime: eachRaw con múltiples componentes") {
+TEST_CASE("ECS runtime: eachRaw with multiple components") {
     Registry registry;
     const ComponentTypeId tA = registry.registerRuntimeComponent("TypeA", sizeof(int), alignof(int));
     const ComponentTypeId tB = registry.registerRuntimeComponent("TypeB", sizeof(float), alignof(float));
@@ -330,7 +330,7 @@ TEST_CASE("ECS runtime: eachRaw con múltiples componentes") {
     CHECK(sumFloat == doctest::Approx(5.0f));
 }
 
-TEST_CASE("ECS runtime: destruir entidad limpia los componentes raw") {
+TEST_CASE("ECS runtime: destroying an entity cleans up raw components") {
     Registry registry;
     const ComponentTypeId typeId = registry.registerRuntimeComponent("Test", sizeof(double), alignof(double));
 
@@ -342,7 +342,7 @@ TEST_CASE("ECS runtime: destruir entidad limpia los componentes raw") {
     CHECK_FALSE(registry.hasRaw(e, typeId));
 }
 
-TEST_CASE("ECS runtime: registrar muchos tipos de componentes") {
+TEST_CASE("ECS runtime: registering many component types") {
     Registry registry;
     std::vector<ComponentTypeId> ids;
     ids.reserve(50);
@@ -362,10 +362,10 @@ TEST_CASE("ECS runtime: registrar muchos tipos de componentes") {
     }
 }
 
-TEST_CASE("ECS runtime: validación de tamaño, alineación y conflictos en registerRuntimeComponent") {
+TEST_CASE("ECS runtime: size, alignment, and conflict validation in registerRuntimeComponent") {
     Registry registry;
 
-    // align == 0 usa alignof(std::max_align_t)
+    // align == 0 uses alignof(std::max_align_t)
     const ComponentTypeId defaultAlignId = registry.registerRuntimeComponent("DefaultAlign", 16, 0);
     CHECK(defaultAlignId != kInvalidComponentType);
     Entity e = registry.create();
@@ -373,16 +373,16 @@ TEST_CASE("ECS runtime: validación de tamaño, alineación y conflictos en regi
     REQUIRE(p != nullptr);
     CHECK(reinterpret_cast<std::uintptr_t>(p) % alignof(std::max_align_t) == 0);
 
-    // Mismo nombre y mismo layout → idempotente
+    // Same name and same layout → idempotent
     const ComponentTypeId velId = registry.registerRuntimeComponent("Velocity", 12, 4);
     CHECK(velId != kInvalidComponentType);
     CHECK(registry.registerRuntimeComponent("Velocity", 12, 4) == velId);
 
-    // Mismo nombre con tamaño o alineación distintos → error (no colisiona ni desborda)
+    // Same name with different size or alignment → error (does not collide or overflow)
     CHECK(registry.registerRuntimeComponent("Velocity", 64, 4) == kInvalidComponentType);
     CHECK(registry.registerRuntimeComponent("Velocity", 12, 16) == kInvalidComponentType);
 
-    // Nombre vacío o parámetros fuera de rango
+    // Empty name or out-of-range parameters
     CHECK(registry.registerRuntimeComponent("", 16, 4) == kInvalidComponentType);
     CHECK(registry.registerRuntimeComponent("BadAlign3", 16, 3) == kInvalidComponentType);
     CHECK(registry.registerRuntimeComponent("BadAlign6", 16, 6) == kInvalidComponentType);
@@ -390,7 +390,7 @@ TEST_CASE("ECS runtime: validación de tamaño, alineación y conflictos en regi
     CHECK(registry.registerRuntimeComponent("TooLarge", 1024u * 1024u, 16) == kInvalidComponentType);
 }
 
-TEST_CASE("ECS runtime: IDs inválidos y entidades inválidas retornan nulo o false en Release") {
+TEST_CASE("ECS runtime: invalid IDs and invalid entities return null or false in Release") {
     Registry registry;
     Entity e = registry.create();
     constexpr ComponentTypeId kUnknownId = 999;
@@ -411,7 +411,7 @@ TEST_CASE("ECS runtime: IDs inválidos y entidades inválidas retornan nulo o fa
     CHECK_FALSE(registry.hasRaw(dead, validId));
 }
 
-TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguros") {
+TEST_CASE("ECS runtime and templated: safe add-during-each and destroy-during-each") {
     Registry registry;
     const ComponentTypeId valId = registry.registerRuntimeComponent("Val", sizeof(int), alignof(int));
 
@@ -422,7 +422,7 @@ TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguro
         initialRaw.push_back(e);
     }
 
-    // add-during-each en eachRaw: forzar múltiples realojamientos de RawPool sin UAF ni visitar los nuevos
+    // add-during-each in eachRaw: force multiple RawPool reallocations without UAF or visiting new ones
     int visitedRawCount = 0;
     int sumRaw = 0;
     const ComponentTypeId rawTypes[1] = {valId};
@@ -438,7 +438,7 @@ TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguro
     CHECK(visitedRawCount == 8);
     CHECK(sumRaw == 36);
 
-    // destroy-during-each en eachRaw: destruir la siguiente entidad pendiente la omite de forma segura
+    // destroy-during-each in eachRaw: destroying the next pending entity skips it safely
     int visitedAfterDestroy = 0;
     registry.eachRaw(rawTypes, 1, [&](Entity e, void**) {
         visitedAfterDestroy++;
@@ -450,7 +450,7 @@ TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguro
     CHECK(visitedAfterDestroy < 88);
     CHECK_FALSE(registry.valid(initialRaw[1]));
 
-    // Misma seguridad para View<T>::each con add y destroy durante iteración
+    // Same safety for View<T>::each with add and destroy during iteration
     Registry typedReg;
     std::vector<Entity> typedEnts;
     for (int i = 0; i < 6; ++i) {
@@ -474,7 +474,7 @@ TEST_CASE("ECS runtime y templated: add-during-each y destroy-during-each seguro
     CHECK_FALSE(typedReg.valid(typedEnts[1]));
 }
 
-TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") {
+TEST_CASE("ECS runtime: pointers survive additions (spawner pattern) and eachRaw") {
     struct SpawnerItem {
         int id = 0;
         double value = 0.0;
@@ -492,7 +492,7 @@ TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") 
     anchorPtr->value = 3.25;
     CHECK(registry.getRaw(anchor, itemType) == anchorPtr);
 
-    // Agregar 1000 entidades con el mismo componente (cruza múltiples páginas)
+    // Add 1000 entities with the same component (crosses multiple pages)
     std::vector<Entity> others;
     others.reserve(1000);
     for (int i = 0; i < 1000; ++i) {
@@ -504,7 +504,7 @@ TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") 
         others.push_back(e);
     }
 
-    // Escribir y leer a través del puntero antiguo después de 1000 altas
+    // Write and read through the old pointer after 1000 additions
     CHECK(anchorPtr->id == 77);
     CHECK(anchorPtr->value == doctest::Approx(3.25));
     anchorPtr->id = 999;
@@ -515,8 +515,8 @@ TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") 
     CHECK(fetchedAnchor->id == 999);
     CHECK(fetchedAnchor->value == doctest::Approx(12.5));
 
-    // Patrón spawner dentro de eachRaw: leer → crear entidades con el mismo componente → escribir con el
-    // puntero viejo
+    // Spawner pattern inside eachRaw: read → create entities with the same component → write via old
+    // pointer
     const ComponentTypeId types[1] = {itemType};
     int visited = 0;
     registry.eachRaw(types, 1, [&](Entity e, void** ptrs) {
@@ -537,7 +537,7 @@ TEST_CASE("ECS runtime: punteros sobreviven altas (patrón spawner) y eachRaw") 
     CHECK(static_cast<SpawnerItem*>(registry.getRaw(others[0], itemType))->id == 10);
 }
 
-TEST_CASE("ECS runtime: alineación a 64 bytes en límites de página y tras 1000 altas") {
+TEST_CASE("ECS runtime: 64-byte alignment across page boundaries and after 1000 additions") {
     Registry registry;
     const ComponentTypeId align64Type = registry.registerRuntimeComponent("Align64", 40, 64);
     REQUIRE(align64Type != kInvalidComponentType);
@@ -557,7 +557,7 @@ TEST_CASE("ECS runtime: alineación a 64 bytes en límites de página y tras 100
         ptrs.push_back(p);
     }
 
-    // Verificar índices clave (primera página, borde 63/64/65 y resto) y contenido intacto
+    // Verify key indices (first page, 63/64/65 boundary, and rest) and intact contents
     CHECK(reinterpret_cast<std::uintptr_t>(ptrs[0]) % 64 == 0);
     CHECK(reinterpret_cast<std::uintptr_t>(ptrs[63]) % 64 == 0);
     CHECK(reinterpret_cast<std::uintptr_t>(ptrs[64]) % 64 == 0);
@@ -571,7 +571,7 @@ TEST_CASE("ECS runtime: alineación a 64 bytes en límites de página y tras 100
     }
 }
 
-TEST_CASE("ECS runtime: swap-and-pop conserva valores de las entidades restantes") {
+TEST_CASE("ECS runtime: swap-and-pop preserves values of remaining entities") {
     struct Entry {
         int index;
         std::uint64_t magic;
@@ -597,19 +597,19 @@ TEST_CASE("ECS runtime: swap-and-pop conserva valores de las entidades restantes
         ptrs.push_back(p);
     }
 
-    // Quitar una entidad intermedia en la primera página y otra en la segunda página
+    // Remove a middle entity in the first page and another in the second page
     CHECK(registry.removeRaw(entities[1], entryType));
     CHECK_FALSE(registry.hasRaw(entities[1], entryType));
     registry.destroy(entities[65]);
     CHECK_FALSE(registry.hasRaw(entities[65], entryType));
 
-    // Los punteros de elementos no movidos ni removidos (ej. 0, 10, 64) siguen válidos
+    // Pointers to unmoved and unremoved elements (e.g. 0, 10, 64) remain valid
     CHECK(registry.getRaw(entities[0], entryType) == ptrs[0]);
     CHECK(registry.getRaw(entities[10], entryType) == ptrs[10]);
     CHECK(registry.getRaw(entities[64], entryType) == ptrs[64]);
     ptrs[10]->index = 1010;
 
-    // Todos los restantes mantienen sus valores
+    // All remaining entities keep their values
     for (int i = 0; i < kTotal; ++i) {
         if (i == 1 || i == 65) continue;
         REQUIRE(registry.hasRaw(entities[static_cast<std::size_t>(i)], entryType));
@@ -621,7 +621,7 @@ TEST_CASE("ECS runtime: swap-and-pop conserva valores de las entidades restantes
     }
 }
 
-TEST_CASE("ECS runtime: move constructor y move assignment de RawPool") {
+TEST_CASE("ECS runtime: RawPool move constructor and move assignment") {
     ecs_detail::RawPool poolA(sizeof(int), 64);
     std::vector<Entity> entities;
     for (std::uint32_t i = 0; i < 130; ++i) {

@@ -1,5 +1,5 @@
 #pragma once
-// Verificaciones geométricas reutilizables para los tests de mallas (primitivas, operaciones, SDF)
+// Reusable geometric checks for mesh tests (primitives, operations, SDF)
 
 #include <mge/procgen/MeshData.h>
 
@@ -12,7 +12,7 @@
 
 namespace mge_test {
 
-    // Id canónico por posición (suelda vértices duplicados de costuras y polos)
+    // Canonical ID by position (welds duplicate vertices at seams and poles)
     inline std::vector<std::uint32_t> weldIds(const mge::MeshData& mesh, float epsilon = 1e-4f) {
         std::map<std::tuple<long, long, long>, std::uint32_t> seen;
         std::vector<std::uint32_t> ids(mesh.vertexCount());
@@ -27,8 +27,8 @@ namespace mge_test {
         return ids;
     }
 
-    // Hermética y con orientación consistente: tras soldar, cada arista dirigida aparece una sola
-    // vez y su opuesta también una sola vez. Los triángulos degenerados (tras soldar) se ignoran.
+    // Watertight with consistent orientation: after welding, each directed edge appears exactly
+    // once and its opposite also appears exactly once. Degenerate triangles (after welding) are ignored.
     inline bool isWatertight(const mge::MeshData& mesh) {
         const std::vector<std::uint32_t> ids = weldIds(mesh);
         std::map<std::pair<std::uint32_t, std::uint32_t>, int> edges;
@@ -46,7 +46,7 @@ namespace mge_test {
         return !edges.empty();
     }
 
-    // Cada triángulo (no degenerado) gira de forma que su normal coincide con las de sus vértices
+    // Every (non-degenerate) triangle winds so its face normal agrees with its vertex normals
     inline bool windingMatchesNormals(const mge::MeshData& mesh) {
         for (std::size_t t = 0; t + 2 < mesh.indices.size(); t += 3) {
             const auto a = mesh.indices[t], b = mesh.indices[t + 1], c = mesh.indices[t + 2];
@@ -65,7 +65,7 @@ namespace mge_test {
         return true;
     }
 
-    // Para formas convexas centradas en el origen: toda normal apunta hacia afuera
+    // For convex shapes centered at the origin: every normal points outward
     inline bool normalsPointOutward(const mge::MeshData& mesh) {
         for (std::size_t i = 0; i < mesh.vertexCount(); i++) {
             if (glm::dot(mesh.normals[i], mesh.positions[i]) <= 0.0f) return false;

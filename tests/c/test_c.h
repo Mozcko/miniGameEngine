@@ -12,7 +12,7 @@
 #define TEST_ASSERT(cond)                                                                                    \
     do {                                                                                                     \
         if (!(cond)) {                                                                                       \
-            fprintf(stderr, "FALLO en %s:%d: %s\n", __FILE__, __LINE__, #cond);                              \
+            fprintf(stderr, "FAIL at %s:%d: %s\n", __FILE__, __LINE__, #cond);                               \
             return 1;                                                                                        \
         }                                                                                                    \
     } while (0)
@@ -20,7 +20,7 @@
 #define TEST_ASSERT_EQ(a, b)                                                                                 \
     do {                                                                                                     \
         if ((a) != (b)) {                                                                                    \
-            fprintf(stderr, "FALLO en %s:%d: %s != %s\n", __FILE__, __LINE__, #a, #b);                       \
+            fprintf(stderr, "FAIL at %s:%d: %s != %s\n", __FILE__, __LINE__, #a, #b);                        \
             return 1;                                                                                        \
         }                                                                                                    \
     } while (0)
@@ -28,7 +28,7 @@
 #define TEST_ASSERT_STR_EQ(a, b)                                                                             \
     do {                                                                                                     \
         if (strcmp((a), (b)) != 0) {                                                                         \
-            fprintf(stderr, "FALLO en %s:%d: '%s' != '%s'\n", __FILE__, __LINE__, (a), (b));                 \
+            fprintf(stderr, "FAIL at %s:%d: '%s' != '%s'\n", __FILE__, __LINE__, (a), (b));                  \
             return 1;                                                                                        \
         }                                                                                                    \
     } while (0)

@@ -3,7 +3,7 @@
 
 using namespace mge;
 
-TEST_CASE("BlockRegistry: el aire viene registrado como id 0") {
+TEST_CASE("BlockRegistry: air is registered as id 0") {
     BlockRegistry registry;
     CHECK(registry.size() == 1);
     CHECK(registry.get(kAir).name == "air");
@@ -12,7 +12,7 @@ TEST_CASE("BlockRegistry: el aire viene registrado como id 0") {
     CHECK(registry.get(kAir).shape == BlockShape::None);
 }
 
-TEST_CASE("BlockRegistry: ids consecutivos, búsqueda por nombre") {
+TEST_CASE("BlockRegistry: consecutive ids, lookup by name") {
     BlockRegistry registry;
     BlockDesc stone;
     stone.name = "stone";
@@ -32,7 +32,7 @@ TEST_CASE("BlockRegistry: ids consecutivos, búsqueda por nombre") {
     CHECK_FALSE(registry.find("lava").has_value());
 }
 
-TEST_CASE("BlockDesc: color, tiles por cara o ambos") {
+TEST_CASE("BlockDesc: color, per-face tiles, or both") {
     BlockDesc colorOnly;
     CHECK_FALSE(colorOnly.textured());
 
@@ -48,7 +48,7 @@ TEST_CASE("BlockDesc: color, tiles por cara o ambos") {
     for (int f = 0; f < kBlockFaceCount; f++) CHECK(grass.tiles[f] == 7);
 }
 
-TEST_CASE("TextureAtlas: UV de un tile, fila 0 arriba") {
+TEST_CASE("TextureAtlas: tile UVs, row 0 at top") {
     TextureAtlas atlas{16, 16};
     const float step = 1.0f / 16.0f;
     for (int tile : {0, 3, 21, 207, 255}) {
@@ -62,8 +62,8 @@ TEST_CASE("TextureAtlas: UV de un tile, fila 0 arriba") {
         CHECK(uv.min.y == doctest::Approx(1.0f - (row + 1) * step));
     }
 
-    // Atlas no cuadrado
-    const UvRect uv = TextureAtlas{4, 2}.tileUv(5); // Columna 1, fila 1
+    // Non-square atlas
+    const UvRect uv = TextureAtlas{4, 2}.tileUv(5); // Column 1, row 1
     CHECK(uv.min.x == doctest::Approx(0.25f));
     CHECK(uv.max.x == doctest::Approx(0.5f));
     CHECK(uv.min.y == doctest::Approx(0.0f));

@@ -25,7 +25,7 @@ namespace {
         return crc ^ 0xFFFFFFFFu;
     }
 
-    // Lector mínimo para el PNG que escribe writePng: valida los CRC y desarma los bloques "stored"
+    // Minimal reader for PNGs written by writePng: validates CRCs and unpacks "stored" blocks
     bool decodeOwnPng(const std::vector<std::uint8_t>& png, std::uint32_t& width, std::uint32_t& height,
                       std::vector<std::uint8_t>& rgba) {
         const std::uint8_t signature[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
@@ -46,7 +46,7 @@ namespace {
             at += 12 + length;
         }
         std::vector<std::uint8_t> raw;
-        for (std::size_t at = 2;;) { // Salta el encabezado zlib
+        for (std::size_t at = 2;;) { // Skip zlib header
             const bool last = zlib[at] & 1;
             const std::size_t length = zlib[at + 1] | (std::size_t(zlib[at + 2]) << 8);
             raw.insert(raw.end(), zlib.begin() + std::ptrdiff_t(at + 5),
@@ -58,7 +58,7 @@ namespace {
         if (raw.size() != (row + 1) * height) return false;
         rgba.clear();
         for (std::uint32_t y = 0; y < height; y++) {
-            if (raw[y * (row + 1)] != 0) return false; // Filtro "ninguno"
+            if (raw[y * (row + 1)] != 0) return false; // "None" filter
             rgba.insert(rgba.end(), raw.begin() + std::ptrdiff_t(y * (row + 1) + 1),
                         raw.begin() + std::ptrdiff_t((y + 1) * (row + 1)));
         }
@@ -66,20 +66,20 @@ namespace {
     }
 }
 
-TEST_CASE("Image: set/get con recorte y fuera de rango") {
+TEST_CASE("Image: set/get with clamping and out-of-range coordinates") {
     Image image(4, 3, {0, 0, 1, 1});
     CHECK(image.width() == 4);
     CHECK(image.pixels().size() == 4 * 3 * 4);
     CHECK(image.get(0, 0) == glm::vec4(0, 0, 1, 1));
-    image.set(1, 2, {2.0f, -1.0f, 0.5f, 1.0f}); // Se recorta a [0, 1]
+    image.set(1, 2, {2.0f, -1.0f, 0.5f, 1.0f}); // Clamped to [0, 1]
     CHECK(image.get(1, 2).r == doctest::Approx(1.0f));
     CHECK(image.get(1, 2).g == doctest::Approx(0.0f));
     CHECK(image.get(1, 2).b == doctest::Approx(128.0f / 255.0f));
     CHECK(image.get(-1, 0) == glm::vec4(0.0f));
-    image.set(9, 9, glm::vec4(1.0f)); // Se ignora
+    image.set(9, 9, glm::vec4(1.0f)); // Ignored
 }
 
-TEST_CASE("writePng: PNG válido (CRC, bloques stored) con los mismos píxeles, también > 64 KB") {
+TEST_CASE("writePng: valid PNG (CRC, stored blocks) with identical pixels, including > 64 KB") {
     Image image(150, 120);
     for (int y = 0; y < 120; y++)
         for (int x = 0; x < 150; x++)
@@ -94,12 +94,12 @@ TEST_CASE("writePng: PNG válido (CRC, bloques stored) con los mismos píxeles, 
     REQUIRE(decodeOwnPng(png, w, h, rgba));
     CHECK(w == 150);
     CHECK(h == 120);
-    CHECK(rgba == image.pixels()); // 150×120×4 + filas = 72 120 bytes: más de un bloque stored
+    CHECK(rgba == image.pixels()); // 150×120×4 + rows = 72,120 bytes: more than one stored block
     std::filesystem::remove(path);
-    CHECK_FALSE(writePng(Image(), path)); // Vacía
+    CHECK_FALSE(writePng(Image(), path)); // Empty
 }
 
-TEST_CASE("texgen: deterministas por semilla y cada uno pinta solo su rect") {
+TEST_CASE("texgen: deterministic per seed and each generator only paints its rect") {
     namespace tg = texgen;
     const tg::Palette palette({0.1f, 0.2f, 0.3f, 1.0f}, {0.8f, 0.7f, 0.6f, 1.0f});
     CHECK(palette.sample(0.0f) == glm::vec4(0.1f, 0.2f, 0.3f, 1.0f));
@@ -107,7 +107,7 @@ TEST_CASE("texgen: deterministas por semilla y cada uno pinta solo su rect") {
 
     auto paintAll = [&](std::uint32_t seed) {
         Image image(64, 64, {1, 0, 1, 1});
-        const tg::Rect r = tg::tileRect(1, 2, 32); // Tile de arriba a la derecha
+        const tg::Rect r = tg::tileRect(1, 2, 32); // Top-right tile
         CHECK(r.x == 32);
         CHECK(r.y == 0);
         tg::noise(image, r, palette, 4.0f, seed);
@@ -120,10 +120,10 @@ TEST_CASE("texgen: deterministas por semilla y cada uno pinta solo su rect") {
     const Image a = paintAll(5), b = paintAll(5), c = paintAll(6);
     CHECK(a.pixels() == b.pixels());
     CHECK(a.pixels() != c.pixels());
-    CHECK(a.get(5, 5) == glm::vec4(1, 0, 1, 1)); // Tile 0 sin tocar
+    CHECK(a.get(5, 5) == glm::vec4(1, 0, 1, 1)); // Tile 0 untouched
 }
 
-TEST_CASE("texgen: plantas y hojas tienen huecos transparentes (para la pasada cutout)") {
+TEST_CASE("texgen: plants and leaves have transparent gaps (for the cutout pass)") {
     namespace tg = texgen;
     Image image(32, 64);
     tg::plant(image, {0, 0, 32, 32}, {0.2f, 0.5f, 0.1f, 1}, {0.9f, 0.1f, 0.1f, 1}, 5, 1);
@@ -134,8 +134,8 @@ TEST_CASE("texgen: plantas y hojas tienen huecos transparentes (para la pasada c
             (image.get(x, y).a < 0.5f ? transparentPlant : opaquePlant)++;
             transparentLeaves += image.get(x, y + 32).a < 0.5f;
         }
-    CHECK(transparentPlant > 32 * 32 / 2); // Mayormente fondo
-    CHECK(opaquePlant > 20);               // Tallo + flor
+    CHECK(transparentPlant > 32 * 32 / 2); // Mostly background
+    CHECK(opaquePlant > 20);               // Stem + flower
     CHECK(transparentLeaves > 32 * 32 / 10);
     CHECK(transparentLeaves < 32 * 32 / 2);
 }

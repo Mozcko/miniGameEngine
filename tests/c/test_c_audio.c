@@ -3,7 +3,7 @@
 static bool on_init_audio(mge_app* app, void* user_data) {
     int* result = (int*)user_data;
 
-    // 1. Render offline de preset SFX (JUMP)
+    // 1. Offline render of SFX preset (JUMP)
     mge_audio_sample* sfxJump = mge_audio_sfx_create_preset(app, MGE_SFX_JUMP, 1234);
     if (!sfxJump) {
         *result = 1;
@@ -16,24 +16,24 @@ static bool on_init_audio(mge_app* app, void* user_data) {
         return false;
     }
 
-    // Comprobar que no es silencio absoluto (RMS > 0)
+    // Check it is not complete silence (RMS > 0)
     float rms = mge_audio_sample_rms(sfxJump);
     if (rms <= 0.001f) {
         *result = 3;
         return false;
     }
 
-    // 2. Render de preset SFX COIN
+    // 2. Render SFX preset COIN
     mge_audio_sample* sfxCoin = mge_audio_sfx_create_preset(app, MGE_SFX_COIN, 42);
     if (!sfxCoin || mge_audio_sample_rms(sfxCoin) <= 0.001f) {
         *result = 4;
         return false;
     }
 
-    // 3. Reproducción (en modo headless sin device real no falla)
+    // 3. Playback (does not fail in headless mode without a real device)
     mge_audio_play(app, sfxJump, 1.0f, 0.0f);
 
-    // 4. Canciones y control de volumen
+    // 4. Songs and volume control
     mge_audio_song_play(app, "platformer", 0.0f);
     mge_audio_song_stop(app, 0.0f);
 
