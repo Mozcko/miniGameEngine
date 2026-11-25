@@ -1,6 +1,6 @@
-// Galería procedural: genera mallas con mge_procgen (y mge_voxel) y las exporta a OBJ en <build>/gallery/
-// para verlas en Blender o cualquier visor OBJ. Headless (sin ventana ni GPU); también es un
-// smoke test: sale con código 1 si alguna malla es inválida o no se pudo escribir.
+// Procedural gallery: generates meshes with mge_procgen (and mge_voxel) and exports them to OBJ in
+// <build>/gallery/ for viewing in Blender or any OBJ viewer. Headless (no window or GPU); also acts as a
+// smoke test: exits with code 1 if any mesh is invalid or fails to write.
 #include <mge/mge.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace {
-    // Un quad de colores: la malla más simple, para probar MeshData + OBJ
+    // A colored quad: the simplest mesh, for testing MeshData + OBJ
     mge::MeshData coloredQuad() {
         mge::MeshData mesh;
         const glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -25,7 +25,7 @@ namespace {
         return mesh;
     }
 
-    // Estrella de 5 puntas (polígono cóncavo) para extruir
+    // 5-pointed star (concave polygon) for extrusion
     std::vector<glm::vec2> star() {
         std::vector<glm::vec2> points;
         for (int i = 0; i < 10; i++) {
@@ -36,17 +36,17 @@ namespace {
         return points;
     }
 
-    // Operaciones de malla (#21)
+    // Mesh operations (#21)
     void addMeshOps(std::vector<std::pair<std::string, mge::MeshData>>& meshes) {
         meshes.emplace_back("op_extrude_star", mge::extrude(star(), 0.4f, {0.95f, 0.8f, 0.2f, 1.0f}));
 
-        // Florero por torno: perfil de abajo hacia arriba, cerrado en la base
+        // Lathed vase: profile from bottom to top, closed at the base
         meshes.emplace_back(
             "op_lathe_vase",
             mge::lathe({{0.0f, 0.0f}, {0.5f, 0.0f}, {0.7f, 0.4f}, {0.4f, 1.2f}, {0.35f, 1.6f}, {0.5f, 1.9f}},
                        48, {0.3f, 0.6f, 0.9f, 1.0f}));
 
-        // Resorte: un círculo barrido por una hélice
+        // Spring: a circle swept along a helix
         std::vector<glm::vec2> circle;
         for (int i = 0; i < 12; i++) {
             const float a = static_cast<float>(i) / 12.0f * 6.2831853f;
@@ -60,12 +60,12 @@ namespace {
         meshes.emplace_back("op_sweep_spring",
                             mge::sweep(circle, helix, false, true, {0.8f, 0.3f, 0.3f, 1.0f}));
 
-        // Icosfera facetada (normales planas)
+        // Faceted icosphere (flat normals)
         mge::MeshData faceted = mge::primitives::icosphere(1.0f, 1, {0.7f, 0.9f, 0.5f, 1.0f});
         mge::recomputeNormals(faceted, mge::NormalMode::Flat);
         meshes.emplace_back("op_flat_icosphere", faceted);
 
-        // Escena combinada: transformar y unir primitivas en una sola malla
+        // Combined scene: transform and merge primitives into a single mesh
         mge::MeshData scene = mge::primitives::plane(6.0f, 6.0f, 1, 1, {0.4f, 0.4f, 0.45f, 1.0f});
         mge::MeshData column = mge::primitives::cylinder(0.3f, 2.0f, 24, true, {0.9f, 0.9f, 0.85f, 1.0f});
         for (int i = 0; i < 4; i++) {
@@ -77,7 +77,7 @@ namespace {
         meshes.emplace_back("op_merged_scene", scene);
     }
 
-    // Ruido (#22): terreno = plano subdividido desplazado por fbm, coloreado por altura
+    // Noise (#22): terrain = subdivided plane displaced by fbm, colored by elevation
     mge::MeshData noiseTerrain() {
         const mge::Noise noise(2024);
         mge::FractalSettings settings;
@@ -88,7 +88,7 @@ namespace {
             glm::vec3& p = mesh.positions[i];
             const float h = noise.fbm(mge::NoiseType::Simplex, p.x, p.z, settings);
             p.y = h * 2.0f;
-            // Agua, arena, pasto, roca, nieve
+            // Water, sand, grass, rock, snow
             if (h < -0.2f)
                 mesh.colors[i] = {0.15f, 0.35f, 0.75f, 1.0f};
             else if (h < -0.1f)
@@ -131,8 +131,8 @@ namespace {
                                                      {0.6f, 0.4f, 0.25f, 1.0f}));
     }
 
-    // Voxels (#25, #26): un mundo de 4×2×4 chunks solo con colores (sin texturas), mallado con greedy + AO.
-    // Es el camino procedural de mge_voxel; el sandbox usa el otro (atlas de texturas).
+    // Voxels (#25, #26): a 4×2×4 chunk world using flat colors only (no textures), meshed with greedy + AO.
+    // This is the procedural path of mge_voxel; the sandbox uses the other path (texture atlas).
     struct VoxelBlocks {
         mge::BlockRegistry registry;
         mge::BlockId grass, dirt, stone, sand, water, snow;
@@ -217,8 +217,8 @@ namespace {
             naiveTriangles += plain.opaque.triangleCount() + plain.transparent.triangleCount();
         }
         MGE_LOG_INFO("Gallery", "voxels: ", opaque.triangleCount() + transparent.triangleCount(),
-                     " triángulos con greedy, ", naiveTriangles, " sin greedy");
-        // Escala 1/8 para verlo del mismo tamaño que el resto de la galería
+                     " triangles with greedy, ", naiveTriangles, " without greedy");
+        // Scale by 1/8 to match the size of the rest of the gallery
         const glm::mat4 shrink = glm::scale(glm::mat4(1.0f), glm::vec3(0.125f));
         mge::transformMesh(opaque, shrink);
         mge::transformMesh(transparent, shrink);
@@ -226,7 +226,7 @@ namespace {
         meshes.emplace_back("voxel_water", std::move(transparent));
     }
 
-    // Generadores de texturas (#34): una muestra de cada uno en una imagen de 4×2 tiles de 64 px
+    // Texture generators (#34): one sample of each in a 4×2 image of 64 px tiles
     bool writeTextureSamples(const std::filesystem::path& path) {
         namespace tg = mge::texgen;
         constexpr int kTile = 64;
@@ -252,7 +252,7 @@ namespace {
         return mge::writePng(image, path);
     }
 
-    // Atlas de la fuente embebida (#41), ampliado ×4 sobre fondo oscuro para verlo en cualquier visor
+    // Embedded font atlas (#41), zoomed ×4 on a dark background for viewing in any image viewer
     bool writeFontSample(const std::filesystem::path& path) {
         const mge::Font font = mge::Font::builtin();
         const mge::Image& atlas = font.atlas();
@@ -276,7 +276,7 @@ namespace {
             std::vector<std::pair<std::string, mge::MeshData>> meshes;
             meshes.emplace_back("quad", coloredQuad());
 
-            // Primitivas (#20)
+            // Primitives (#20)
             namespace prim = mge::primitives;
             meshes.emplace_back("plane", prim::plane(4.0f, 4.0f, 8, 8, {0.4f, 0.8f, 0.3f, 1.0f}));
             meshes.emplace_back("box", prim::box({1.0f, 2.0f, 1.5f}, {0.9f, 0.5f, 0.2f, 1.0f}));
@@ -295,7 +295,7 @@ namespace {
             for (const auto& [name, mesh] : meshes) {
                 const std::string error = mesh.validate();
                 if (!error.empty()) {
-                    MGE_LOG_ERROR("Gallery", name, ": malla inválida: ", error);
+                    MGE_LOG_ERROR("Gallery", name, ": invalid mesh: ", error);
                     setExitCode(1);
                     continue;
                 }
@@ -308,7 +308,8 @@ namespace {
             if (!writeTextureSamples(outDir / "texture_generators.png")) setExitCode(1);
             if (!writeFontSample(outDir / "font_builtin.png")) setExitCode(1);
             MGE_LOG_INFO("Gallery", written,
-                         " mallas, texture_generators.png y font_builtin.png exportados a ", outDir.string());
+                         " meshes, texture_generators.png and font_builtin.png exported to ",
+                         outDir.string());
             requestStop();
             return true;
         }

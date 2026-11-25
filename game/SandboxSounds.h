@@ -16,7 +16,7 @@ namespace mge {
 
 namespace sandbox {
 
-    // Materiales sonoros para pasos y manipulación de bloques
+    // Sound materials for footsteps and block interactions
     enum class SoundMaterial : std::uint8_t {
         Grass = 0,
         Stone = 1,
@@ -26,11 +26,11 @@ namespace sandbox {
         Count = 5
     };
 
-    // Clasificación de un bloque a partir de su nombre o id
+    // Classifies a block from its name or ID
     SoundMaterial soundMaterialForBlock(std::string_view name);
     SoundMaterial soundMaterialForBlock(mge::BlockId id, const mge::BlockRegistry& registry);
 
-    // Conjunto de efectos de sonido sintetizados del sandbox (sin archivos)
+    // Synthesized sound effects set for the sandbox (no external files)
     class SandboxSounds {
     public:
         static constexpr std::size_t kFootstepVariants = 4;
@@ -67,7 +67,7 @@ namespace sandbox {
         const mge::SfxParams& splash() const { return m_splash; }
         const mge::SfxParams& throwSound() const { return m_throw; }
 
-        // Retorna todos los parámetros de efectos para verificación o precarga
+        // Returns all effect parameters for verification or preloading
         std::vector<mge::SfxParams> allParams() const;
 
     private:
@@ -78,7 +78,7 @@ namespace sandbox {
         mge::SfxParams m_throw;
     };
 
-    // Identificadores de samples registrados en el mezclador/módulo de audio
+    // Sample IDs registered in the mixer/audio module
     struct RegisteredSounds {
         struct MaterialIds {
             std::array<mge::SampleId, SandboxSounds::kFootstepVariants> footsteps{};
@@ -92,7 +92,7 @@ namespace sandbox {
         mge::SampleId throwSound = mge::kInvalidSample;
     };
 
-    // Registra todos los sonidos en el Mixer o AudioModule sin cargar archivos
+    // Registers all sounds in the Mixer or AudioModule without loading files
     RegisteredSounds registerSandboxSounds(mge::Mixer& mixer, const SandboxSounds& sounds);
     RegisteredSounds registerSandboxSounds(mge::AudioModule& audio, const SandboxSounds& sounds);
 

@@ -5,7 +5,7 @@ namespace mge::python {
     void registerEngine(nanobind::module_& m) {
         namespace nb = nanobind;
 
-        // Excepción de runtime del motor
+        // Engine runtime exception
         nb::exception<EngineError>(m, "EngineError", PyExc_RuntimeError);
 
         initMath(m);

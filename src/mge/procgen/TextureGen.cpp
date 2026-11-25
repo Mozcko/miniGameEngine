@@ -26,7 +26,7 @@ namespace mge::texgen {
     }
 
     namespace {
-        // Recorre los píxeles del rect (coordenadas locales u, v en píxeles)
+        // Iterates over the pixels of rect (local coordinates u, v in pixels)
         template <typename F> void each(const Rect& rect, F&& fn) {
             for (int v = 0; v < rect.height; v++)
                 for (int u = 0; u < rect.width; u++) fn(u, v, rect.x + u, rect.y + v);
@@ -61,14 +61,14 @@ namespace mge::texgen {
         const int brickW = std::max(1, rect.width / columns);
         each(rect, [&](int u, int v, int x, int y) {
             const int row = v / brickH;
-            const int shifted = u + (row % 2) * brickW / 2; // Filas desfasadas medio ladrillo
+            const int shifted = u + (row % 2) * brickW / 2; // Rows offset by half a brick
             const int col = shifted / brickW;
             const bool joint = (v % brickH) < mortar || (shifted % brickW) < mortar;
             if (joint) {
                 image.set(x, y, mortarColor);
                 return;
             }
-            // Cada ladrillo con su tono, y un poco de grano
+            // Each brick gets its own tone, plus a bit of grain
             const float tone = unit(hash2i(col, row, seed));
             const float grain = unit(hash2i(u, v, seed + 1)) * 0.15f;
             image.set(x, y, brick.sample(std::clamp(tone * 0.85f + grain, 0.0f, 1.0f)));
@@ -81,10 +81,10 @@ namespace mge::texgen {
         each(rect, [&](int u, int v, int x, int y) {
             const int board = v / boardH;
             if (v % boardH == boardH - 1) {
-                image.set(x, y, wood.sample(0.0f) * glm::vec4(0.6f, 0.6f, 0.6f, 1.0f)); // Separación oscura
+                image.set(x, y, wood.sample(0.0f) * glm::vec4(0.6f, 0.6f, 0.6f, 1.0f)); // Dark seam
                 return;
             }
-            // Vetas a lo largo de la tabla
+            // Grain along the board
             const float grain =
                 n.value(float(u) * 0.08f, float(v) * 0.9f + float(board) * 7.0f) * 0.5f + 0.5f;
             const float tone = unit(hash2i(board, 0, seed)) * 0.3f;
@@ -129,10 +129,10 @@ namespace mge::texgen {
 
     void plant(Image& image, const Rect& rect, const glm::vec4& stem, const glm::vec4& bloom, int bloomRadius,
                std::uint32_t seed) {
-        each(rect, [&](int, int, int x, int y) { image.set(x, y, glm::vec4(0.0f)); }); // Transparente
+        each(rect, [&](int, int, int x, int y) { image.set(x, y, glm::vec4(0.0f)); }); // Transparent
         const int cx = rect.width / 2 + int(unit(hash2i(0, 0, seed)) * 4.0f) - 2;
         const int bloomY = rect.height / 3;
-        // Tallo con una hoja a cada lado
+        // Stem with one leaf on each side
         for (int v = bloomY; v < rect.height; v++) {
             image.set(rect.x + cx, rect.y + v, stem);
             image.set(rect.x + cx + 1, rect.y + v, stem * glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
@@ -142,7 +142,7 @@ namespace mge::texgen {
             image.set(rect.x + cx - i, rect.y + leafY - i / 2, stem);
             image.set(rect.x + cx + 1 + i, rect.y + leafY - i / 3, stem);
         }
-        // Flor (o copita de hojas)
+        // Flower (or leafy crown)
         each(rect, [&](int u, int v, int x, int y) {
             const int dx = u - cx, dy = v - bloomY;
             if (dx * dx + dy * dy <= bloomRadius * bloomRadius) {
@@ -155,8 +155,7 @@ namespace mge::texgen {
     void leaves(Image& image, const Rect& rect, const Palette& palette, float holes, std::uint32_t seed) {
         noise(image, rect, palette, 6.0f, seed, 2);
         each(rect, [&](int u, int v, int x, int y) {
-            if (unit(hash2i(u / 2, v / 2, seed + 7)) < holes)
-                image.set(x, y, glm::vec4(0.0f)); // Huecos de 2×2
+            if (unit(hash2i(u / 2, v / 2, seed + 7)) < holes) image.set(x, y, glm::vec4(0.0f)); // 2×2 holes
         });
     }
 

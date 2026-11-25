@@ -24,7 +24,7 @@ namespace platformer {
             return false;
         }
 
-        // Una casilla del archivo. false = carácter desconocido
+        // One cell from the file. false = unknown character
         bool readCell(char c, int x, int y, Level& level) {
             Tile tile = Tile::Empty;
             switch (c) {
@@ -70,7 +70,7 @@ namespace platformer {
             lines.erase(lines.begin());
         }
         if (lines.empty()) {
-            fail(error, "el nivel no tiene filas");
+            fail(error, "level has no rows");
             return std::nullopt;
         }
         level.height = int(lines.size());
@@ -83,13 +83,13 @@ namespace platformer {
                 const char c = lines[std::size_t(y)][std::size_t(x)];
                 if (c == '@') hasSpawn = true;
                 if (!readCell(c, x, y, level)) {
-                    fail(error, std::string("carácter desconocido '") + c + "' en la fila " +
-                                    std::to_string(y + 1) + ", columna " + std::to_string(x + 1));
+                    fail(error, std::string("unknown character '") + c + "' at row " + std::to_string(y + 1) +
+                                    ", column " + std::to_string(x + 1));
                     return std::nullopt;
                 }
             }
         if (!hasSpawn) {
-            fail(error, "el nivel no tiene '@' (inicio del jugador)");
+            fail(error, "level has no '@' (player spawn)");
             return std::nullopt;
         }
         return level;
@@ -99,7 +99,7 @@ namespace platformer {
         const std::filesystem::path full = path.is_absolute() ? path : mge::assetPath(path.generic_string());
         std::ifstream file(full);
         if (!file) {
-            fail(error, "no se pudo abrir " + full.string());
+            fail(error, "failed to open " + full.string());
             return std::nullopt;
         }
         std::stringstream text;

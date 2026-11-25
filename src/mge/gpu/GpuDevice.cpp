@@ -10,17 +10,17 @@ namespace mge {
 
     namespace {
         template <typename Handle, typename T> Handle wrap(SDL_GPUDevice* device, T* raw, const char* what) {
-            if (!raw) MGE_LOG_ERROR("Gpu", "No se pudo crear ", what, ": ", SDL_GetError());
+            if (!raw) MGE_LOG_ERROR("Gpu", "Failed to create ", what, ": ", SDL_GetError());
             return Handle(device, raw);
         }
     }
 
     std::unique_ptr<GpuDevice> GpuDevice::create(const GpuDeviceOptions& options) {
-        // Por ahora solo SPIR-V (Vulkan); MSL/DXIL llegan con macOS/Windows (#29)
+        // SPIR-V (Vulkan) only for now; MSL/DXIL arrive with macOS/Windows (#29)
         SDL_GPUDevice* device =
             SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, options.debug, options.driver);
         if (!device) {
-            MGE_LOG_ERROR("Gpu", "No hay una GPU compatible (SDL GPU, SPIR-V): ", SDL_GetError());
+            MGE_LOG_ERROR("Gpu", "No compatible GPU found (SDL GPU, SPIR-V): ", SDL_GetError());
             return nullptr;
         }
         auto result = std::unique_ptr<GpuDevice>(new GpuDevice(device));
@@ -29,18 +29,18 @@ namespace mge {
                                                 SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
         });
 
-        // Qué GPU y driver tocaron (las propiedades son opcionales según el backend)
+        // Which GPU and driver were selected (properties are optional depending on the backend)
         const SDL_PropertiesID props = SDL_GetGPUDeviceProperties(device);
         const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "?");
         const char* driver = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, "?");
         const char* version = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, nullptr);
         if (!version) version = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "?");
         MGE_LOG_INFO("Gpu", "Device ", SDL_GetGPUDeviceDriver(device), ": ", name, " (", driver, " ", version,
-                     "), profundidad ",
+                     "), depth ",
                      result->m_depthFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT   ? "D32"
                      : result->m_depthFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM ? "D24"
                                                                                 : "D16",
-                     options.debug ? ", modo debug (validación si las capas están instaladas)" : "");
+                     options.debug ? ", debug mode (validation if layers are installed)" : "");
         return result;
     }
 
@@ -59,7 +59,7 @@ namespace mge {
         SDL_GPUBufferCreateInfo info{};
         info.usage = usage;
         info.size = size;
-        return wrap<GpuBuffer>(m_device, SDL_CreateGPUBuffer(m_device, &info), "un buffer");
+        return wrap<GpuBuffer>(m_device, SDL_CreateGPUBuffer(m_device, &info), "buffer");
     }
 
     GpuTransferBuffer GpuDevice::createTransferBuffer(SDL_GPUTransferBufferUsage usage, std::uint32_t size) {
@@ -67,11 +67,11 @@ namespace mge {
         info.usage = usage;
         info.size = size;
         return wrap<GpuTransferBuffer>(m_device, SDL_CreateGPUTransferBuffer(m_device, &info),
-                                       "un transfer buffer");
+                                       "transfer buffer");
     }
 
     GpuTexture GpuDevice::createTexture(const SDL_GPUTextureCreateInfo& info) {
-        return wrap<GpuTexture>(m_device, SDL_CreateGPUTexture(m_device, &info), "una textura");
+        return wrap<GpuTexture>(m_device, SDL_CreateGPUTexture(m_device, &info), "texture");
     }
 
     GpuTexture GpuDevice::createRenderTarget(std::uint32_t width, std::uint32_t height,
@@ -102,16 +102,16 @@ namespace mge {
     }
 
     GpuSampler GpuDevice::createSampler(const SDL_GPUSamplerCreateInfo& info) {
-        return wrap<GpuSampler>(m_device, SDL_CreateGPUSampler(m_device, &info), "un sampler");
+        return wrap<GpuSampler>(m_device, SDL_CreateGPUSampler(m_device, &info), "sampler");
     }
 
     GpuShader GpuDevice::createShader(const SDL_GPUShaderCreateInfo& info) {
-        return wrap<GpuShader>(m_device, SDL_CreateGPUShader(m_device, &info), "un shader");
+        return wrap<GpuShader>(m_device, SDL_CreateGPUShader(m_device, &info), "shader");
     }
 
     GpuShader GpuDevice::createShader(const ShaderCode& code, const ShaderResources& resources) {
         if (code.stage == ShaderStage::Compute) {
-            MGE_LOG_ERROR("Gpu", "createShader: los shaders de cómputo van en createComputePipeline");
+            MGE_LOG_ERROR("Gpu", "createShader: compute shaders belong in createComputePipeline");
             return {};
         }
         SDL_GPUShaderCreateInfo info{};
@@ -130,7 +130,7 @@ namespace mge {
 
     GpuGraphicsPipeline GpuDevice::createGraphicsPipeline(const GraphicsPipelineDesc& desc) {
         if (!desc.vertexShader || !desc.fragmentShader || !*desc.vertexShader || !*desc.fragmentShader) {
-            MGE_LOG_ERROR("Gpu", "createGraphicsPipeline: faltan los shaders");
+            MGE_LOG_ERROR("Gpu", "createGraphicsPipeline: missing shaders");
             return {};
         }
         SDL_GPUColorTargetDescription color{};
@@ -178,22 +178,22 @@ namespace mge {
 
     GpuGraphicsPipeline GpuDevice::createGraphicsPipeline(const SDL_GPUGraphicsPipelineCreateInfo& info) {
         return wrap<GpuGraphicsPipeline>(m_device, SDL_CreateGPUGraphicsPipeline(m_device, &info),
-                                         "un pipeline gráfico");
+                                         "graphics pipeline");
     }
 
     GpuComputePipeline GpuDevice::createComputePipeline(const SDL_GPUComputePipelineCreateInfo& info) {
         return wrap<GpuComputePipeline>(m_device, SDL_CreateGPUComputePipeline(m_device, &info),
-                                        "un pipeline de cómputo");
+                                        "compute pipeline");
     }
 
     GpuComputePipeline GpuDevice::createComputePipeline(const ComputePipelineDesc& desc) {
         if (!desc.bytecode.code || desc.bytecode.size == 0) {
-            MGE_LOG_ERROR("Gpu", "createComputePipeline: código vacío");
+            MGE_LOG_ERROR("Gpu", "createComputePipeline: empty bytecode");
             return GpuComputePipeline{};
         }
         if (desc.bytecode.stage != ShaderStage::Compute) {
             MGE_LOG_ERROR("Gpu",
-                          "createComputePipeline: el shader debe ser de cómputo (ShaderStage::Compute)");
+                          "createComputePipeline: shader must be a compute shader (ShaderStage::Compute)");
             return GpuComputePipeline{};
         }
         SDL_GPUComputePipelineCreateInfo info{};
@@ -215,7 +215,7 @@ namespace mge {
 
     CommandBuffer GpuDevice::acquireCommandBuffer() {
         SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(m_device);
-        if (!cmd) MGE_LOG_ERROR("Gpu", "No se pudo obtener un command buffer: ", SDL_GetError());
+        if (!cmd) MGE_LOG_ERROR("Gpu", "Failed to acquire command buffer: ", SDL_GetError());
         return CommandBuffer(m_device, cmd);
     }
 
@@ -231,7 +231,7 @@ namespace mge {
         if (!staging) return false;
         void* mapped = SDL_MapGPUTransferBuffer(m_device, staging.get(), false);
         if (!mapped) {
-            MGE_LOG_ERROR("Gpu", "No se pudo mapear el transfer buffer: ", SDL_GetError());
+            MGE_LOG_ERROR("Gpu", "Failed to map transfer buffer: ", SDL_GetError());
             return false;
         }
         std::memcpy(mapped, data, size);
@@ -246,7 +246,7 @@ namespace mge {
             const bool allowCycle = cycle && offset == 0;
             SDL_UploadToGPUBuffer(copy.get(), &source, &destination, allowCycle);
         }
-        // El transfer buffer se puede liberar ya: SDL lo mantiene vivo hasta que la copia termine
+        // The transfer buffer can be released now: SDL keeps it alive until the copy completes
         return cmd.submit();
     }
 
@@ -258,7 +258,7 @@ namespace mge {
         if (!staging) return false;
         void* mapped = SDL_MapGPUTransferBuffer(m_device, staging.get(), false);
         if (!mapped) {
-            MGE_LOG_ERROR("Gpu", "No se pudo mapear el transfer buffer: ", SDL_GetError());
+            MGE_LOG_ERROR("Gpu", "Failed to map transfer buffer: ", SDL_GetError());
             return false;
         }
         std::memcpy(mapped, rgba, size);
@@ -328,7 +328,7 @@ namespace mge {
     std::vector<std::uint8_t> GpuDevice::downloadBuffer(const GpuBuffer& buffer, std::size_t size) {
         if (!buffer || size == 0) return {};
         if (size > std::numeric_limits<std::uint32_t>::max()) {
-            MGE_LOG_ERROR("Gpu", "downloadBuffer: el tamaño excede UINT32_MAX: ", size);
+            MGE_LOG_ERROR("Gpu", "downloadBuffer: size exceeds UINT32_MAX: ", size);
             return {};
         }
         const auto byteSize = static_cast<std::uint32_t>(size);

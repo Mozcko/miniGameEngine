@@ -8,7 +8,7 @@
 
 namespace mge {
 
-    // Caja alineada a los ejes. Vacía por defecto (min > max): merge/expand la llenan.
+    // Axis-aligned bounding box. Empty by default (min > max): merge/expand populate it.
     struct Aabb {
         glm::vec3 min{1e30f};
         glm::vec3 max{-1e30f};
@@ -21,13 +21,13 @@ namespace mge {
 
         bool isEmpty() const { return min.x > max.x || min.y > max.y || min.z > max.z; }
         glm::vec3 center() const { return (min + max) * 0.5f; }
-        glm::vec3 extents() const { return (max - min) * 0.5f; } // Mitad del tamaño
+        glm::vec3 extents() const { return (max - min) * 0.5f; } // Half size
         glm::vec3 size() const { return max - min; }
 
         void expand(const glm::vec3& point);
         void merge(const Aabb& other);
-        bool contains(const glm::vec3& point) const; // Bordes incluidos
-        bool intersects(const Aabb& other) const;    // Tocarse cuenta como intersección
+        bool contains(const glm::vec3& point) const; // Boundary included
+        bool intersects(const Aabb& other) const;    // Touching counts as intersection
     };
 
     struct Sphere {
@@ -39,7 +39,7 @@ namespace mge {
         bool intersects(const Aabb& box) const;
     };
 
-    // Plano: dot(normal, p) + d = 0. normal unitaria; distancia con signo positiva del lado de la normal.
+    // Plane: dot(normal, p) + d = 0. Unit normal; signed distance is positive on the normal side.
     struct Plane {
         glm::vec3 normal{0.0f, 1.0f, 0.0f};
         float d = 0.0f;
@@ -48,7 +48,7 @@ namespace mge {
         float distance(const glm::vec3& point) const { return glm::dot(normal, point) + d; }
     };
 
-    // Rayo: origin + t * direction (direction se normaliza en el constructor)
+    // Ray: origin + t * direction (direction is normalized in the constructor)
     struct Ray {
         glm::vec3 origin{0.0f};
         glm::vec3 direction{0.0f, 0.0f, -1.0f};
@@ -58,22 +58,22 @@ namespace mge {
         glm::vec3 at(float t) const { return origin + direction * t; }
     };
 
-    // Rango de Z de la proyección: [0, 1] (SDL GPU, Vulkan, D3D, Metal) o [-1, 1] (OpenGL, glm::perspective)
+    // Projection Z range: [0, 1] (SDL GPU, Vulkan, D3D, Metal) or [-1, 1] (OpenGL, glm::perspective)
     enum class DepthRange {
         ZeroToOne,
         MinusOneToOne
     };
 
-    // Frustum de cámara: 6 planos con la normal hacia adentro (left, right, bottom, top, near, far)
+    // Camera frustum: 6 planes with inward-pointing normals (left, right, bottom, top, near, far)
     class Frustum {
     public:
-        // Extrae los planos de projection * view (Gribb–Hartmann). Solo cambia el plano cercano:
-        // z >= 0 con ZeroToOne (por defecto, el del motor) o z >= -w con MinusOneToOne.
+        // Extracts planes from projection * view (Gribb–Hartmann). Only the near plane differs:
+        // z >= 0 with ZeroToOne (default, used by the engine) or z >= -w with MinusOneToOne.
         static Frustum fromViewProjection(const glm::mat4& viewProjection,
                                           DepthRange depthRange = DepthRange::ZeroToOne);
 
         bool contains(const glm::vec3& point) const;
-        // Conservador: puede devolver true para cajas/esferas apenas afuera cerca de las esquinas
+        // Conservative: may return true for boxes/spheres slightly outside near corners
         bool intersects(const Sphere& sphere) const;
         bool intersects(const Aabb& box) const;
 
@@ -83,12 +83,12 @@ namespace mge {
         std::array<Plane, 6> m_planes{};
     };
 
-    // --- Intersecciones de rayos: devuelven la distancia t >= 0 al primer impacto ---
-    // Si el origen está dentro de la caja/esfera, t = 0.
+    // --- Ray intersections: return distance t >= 0 to the first hit ---
+    // If the origin is inside the box/sphere, t = 0.
     std::optional<float> intersectRayAabb(const Ray& ray, const Aabb& box);
     std::optional<float> intersectRaySphere(const Ray& ray, const Sphere& sphere);
-    std::optional<float> intersectRayPlane(const Ray& ray, const Plane& plane); // nullopt si es paralelo
-    // Möller–Trumbore, doble cara. nullopt si el rayo es paralelo o no toca el triángulo.
+    std::optional<float> intersectRayPlane(const Ray& ray, const Plane& plane); // nullopt if parallel
+    // Möller–Trumbore, double-sided. nullopt if the ray is parallel or misses the triangle.
     std::optional<float> intersectRayTriangle(const Ray& ray, const glm::vec3& a, const glm::vec3& b,
                                               const glm::vec3& c);
 }

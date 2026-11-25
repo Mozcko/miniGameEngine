@@ -21,7 +21,7 @@ namespace mge {
             return out.str();
         }
 
-        // Verde a 60 FPS o más, amarillo hasta 30, rojo por debajo
+        // Green at 60 FPS or higher, yellow down to 30, red below
         glm::vec4 barColor(float ms) {
             if (ms <= kTarget60Ms) return {0.35f, 0.9f, 0.4f, 0.9f};
             if (ms <= kTarget30Ms) return {1.0f, 0.85f, 0.25f, 0.9f};
@@ -94,12 +94,12 @@ namespace mge {
     glm::vec2 DebugOverlay::build(Batch2D& batch, const Font& font, const Texture2D* atlasTexture,
                                   const glm::vec2& pos, float scale) const {
         if (!font.valid()) return glm::vec2(0.0f);
-        // Textos primero: el fondo se dibuja antes y tiene que medirlos
+        // Build text first: the background is drawn before it and needs to measure it
         const float average = averageMs();
         const float wait = averageWaitMs();
         std::vector<std::string> header = {"FPS " + std::to_string(int(std::lround(fps()))) + "   " +
                                                fixed1(average) + " ms (max " + fixed1(maxMs()) + ")",
-                                           "CPU " + fixed1(std::max(average - wait, 0.0f)) + " ms   espera " +
+                                           "CPU " + fixed1(std::max(average - wait, 0.0f)) + " ms   wait " +
                                                fixed1(wait) + " ms"};
         std::vector<std::string> lines;
         lines.reserve(m_counters.size());
@@ -132,7 +132,7 @@ namespace mge {
             pen.y += lineHeight;
         }
 
-        // Gráfico: una barra por frame (el más nuevo a la derecha) y guías en 60 y 30 FPS
+        // Graph: one bar per frame (newest on the right) and reference lines at 60 and 30 FPS
         const glm::vec2 graph = pen + glm::vec2(0.0f, pad * 0.5f);
         batch.rect(graph, graphSize, {0.0f, 0.0f, 0.0f, 0.5f});
         const float firstX = graph.x + float(kHistory - m_count) * scale;

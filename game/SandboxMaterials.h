@@ -7,11 +7,11 @@
 
 namespace sandbox {
 
-    // Atlas del sandbox generado por código (#34): mismas posiciones de tiles que
-    // Minecraft-like_3d_tileset.png (16×16 tiles de 32 px), incluidos los cuadros animados del agua y la
-    // lava. Con él, el sandbox se dibuja sin cargar ninguna imagen (ADR 0004: los dos caminos).
+    // Sandbox atlas generated in code (#34): same tile positions as
+    // Minecraft-like_3d_tileset.png (16×16 tiles of 32 px), including the animated water and lava
+    // frames. With it, the sandbox renders without loading any image (ADR 0004: both paths).
     mge::Image buildProceduralAtlas(std::uint32_t seed = 1337);
 
-    // Tiles que pinta buildProceduralAtlas (los que usan los bloques + los cuadros de animación)
+    // Tiles painted by buildProceduralAtlas (those used by blocks + animation frames)
     const std::vector<int>& proceduralTiles();
 }

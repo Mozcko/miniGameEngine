@@ -36,13 +36,13 @@ namespace mge {
 
     Renderer2D::Renderer2D(GpuDevice& device, SDL_GPUTextureFormat colorFormat) : m_device(device) {
         ShaderResources vertexResources;
-        vertexResources.uniformBuffers = 1; // Proyección
+        vertexResources.uniformBuffers = 1; // Projection
         ShaderResources fragmentResources;
         fragmentResources.samplers = 1;
         const GpuShader vertex = device.createShader(shaders::kUiVert, vertexResources);
         const GpuShader fragment = device.createShader(shaders::kUiFrag, fragmentResources);
 
-        // Sin profundidad ni culling, con mezcla alfa: se dibuja en orden, encima de la escena
+        // No depth or culling, with alpha blending: drawn in order, on top of the scene
         GraphicsPipelineDesc desc;
         desc.vertexShader = &vertex;
         desc.fragmentShader = &fragment;
@@ -55,7 +55,7 @@ namespace mge {
         m_linear = makeSampler(device, SDL_GPU_FILTER_LINEAR);
         m_white = Texture2D::white(device);
         m_builtin = GpuFont::create(device, Font::builtin());
-        if (!valid()) MGE_LOG_ERROR("Graphics", "No se pudo crear el Renderer2D");
+        if (!valid()) MGE_LOG_ERROR("Graphics", "Failed to create Renderer2D");
     }
 
     void Renderer2D::begin(std::uint32_t width, std::uint32_t height, float scale) {
@@ -79,7 +79,8 @@ namespace mge {
             m_buffer = m_device.createBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
                                              m_capacity * std::uint32_t(sizeof(GpuVertex)));
         }
-        // cycle: si el frame anterior todavía usa el buffer, SDL da otro por detrás (sin pisarlo)
+        // cycle: if the previous frame still uses the buffer, SDL provides another behind the scenes (without
+        // overwriting it)
         if (!m_buffer || !m_device.uploadToBuffer(m_buffer, vertices().data(),
                                                   count * std::uint32_t(sizeof(GpuVertex)), true)) {
             clear();
@@ -95,7 +96,7 @@ namespace mge {
             return;
         }
         SDL_BindGPUGraphicsPipeline(pass.get(), m_pipeline.get());
-        // Píxeles lógicos → NDC (SDL GPU: y hacia arriba): y = 0 arriba
+        // Logical pixels -> NDC (SDL GPU: y pointing up): y = 0 at top
         const glm::mat4 projection =
             glm::orthoRH_ZO(0.0f, m_logicalSize.x, m_logicalSize.y, 0.0f, -1.0f, 1.0f);
         SDL_PushGPUVertexUniformData(cmd.get(), 0, &projection, sizeof(projection));
@@ -104,7 +105,7 @@ namespace mge {
 
         for (const Draw2DCommand& command : commands()) {
             if (command.vertexCount == 0) continue;
-            // Recorte en píxeles físicos, dentro de la imagen
+            // Scissor in physical pixels, clamped to the image
             SDL_Rect scissor{0, 0, int(m_width), int(m_height)};
             if (command.clip) {
                 const glm::vec2 lo = glm::clamp(glm::floor(command.clip->pos * m_scale), glm::vec2(0.0f),

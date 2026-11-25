@@ -6,11 +6,11 @@
 
 namespace mge {
 
-    // Traducción SDL3 -> input del core. Funciones puras: se pueden testear sin ventana.
+    // SDL3 -> core input translation. Pure functions: testable without a window.
     Key keyFromScancode(SDL_Scancode scancode);
-    // MouseButton::Count si el botón no está mapeado
+    // MouseButton::Count if the button is not mapped
     MouseButton mouseButtonFromSdl(Uint8 button);
 
-    // Aplica un evento de SDL al estado de input (teclas, botones, movimiento, rueda, foco)
+    // Applies an SDL event to the input state (keys, buttons, motion, wheel, focus)
     void applySdlEvent(InputState& input, const SDL_Event& event);
 }

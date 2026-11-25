@@ -43,15 +43,15 @@ TEST_CASE("validate detects out-of-range indices, mismatched lengths, and incomp
     bad.indices.push_back(7);
     bad.indices.push_back(0);
     bad.indices.push_back(1);
-    CHECK(bad.validate().find("fuera de rango") != std::string::npos);
+    CHECK(bad.validate().find("out of range") != std::string::npos);
 
     MeshData mismatched = unitQuad();
     mismatched.uvs.pop_back();
-    CHECK(mismatched.validate().find("distinto largo") != std::string::npos);
+    CHECK(mismatched.validate().find("mismatched attribute lengths") != std::string::npos);
 
     MeshData partial = unitQuad();
     partial.indices.pop_back();
-    CHECK(partial.validate().find("múltiplo de 3") != std::string::npos);
+    CHECK(partial.validate().find("multiple of 3") != std::string::npos);
 
     CHECK(MeshData{}.validate().empty()); // An empty mesh is valid
 }

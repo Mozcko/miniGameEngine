@@ -11,8 +11,8 @@
 
 namespace mge {
 
-    // Chunks cúbicos de 16³ bloques, apilados también en vertical.
-    // Convención: el bloque (x, y, z) ocupa el cubo [x, x+1) × [y, y+1) × [z, z+1) del mundo.
+    // Cubic chunks of 16³ blocks, also stacked vertically.
+    // Convention: block (x, y, z) occupies the cube [x, x+1) × [y, y+1) × [z, z+1) in world space.
     inline constexpr int kChunkSize = 16;
     inline constexpr int kChunkVolume = kChunkSize * kChunkSize * kChunkSize;
 
@@ -39,8 +39,8 @@ namespace mge {
         }
     };
 
-    // --- Coordenadas: mundo → chunk → local (correctas también con negativos) ---
-    // División y módulo hacia -infinito: floorDiv(-1, 16) = -1, floorMod(-1, 16) = 15
+    // --- Coordinates: world → chunk → local (also accurate with negative values) ---
+    // Floor division and modulo towards -infinity: floorDiv(-1, 16) = -1, floorMod(-1, 16) = 15
     constexpr int floorDiv(int a, int b) {
         return a / b - ((a % b != 0) && ((a < 0) != (b < 0)) ? 1 : 0);
     }
@@ -54,16 +54,16 @@ namespace mge {
     inline glm::ivec3 localOf(const glm::ivec3& block) {
         return {floorMod(block.x, kChunkSize), floorMod(block.y, kChunkSize), floorMod(block.z, kChunkSize)};
     }
-    // Primer bloque (esquina mínima) del chunk en coordenadas de mundo
+    // First block (minimum corner) of the chunk in world coordinates
     inline glm::ivec3 chunkOrigin(const ChunkCoord& c) {
         return {c.x * kChunkSize, c.y * kChunkSize, c.z * kChunkSize};
     }
-    // Bloque que contiene un punto del mundo
+    // Block containing a world-space point
     inline glm::ivec3 blockAt(const glm::vec3& p) {
         return glm::ivec3(glm::floor(p));
     }
 
-    // Bloques de un chunk (8 KB). Índice: x varía más rápido, luego z, luego y.
+    // Blocks of a chunk (8 KB). Index: x varies fastest, then z, then y.
     class ChunkData {
     public:
         static constexpr int index(int x, int y, int z) { return (y * kChunkSize + z) * kChunkSize + x; }
@@ -71,7 +71,7 @@ namespace mge {
             return x >= 0 && x < kChunkSize && y >= 0 && y < kChunkSize && z >= 0 && z < kChunkSize;
         }
 
-        // Coordenadas locales (0..15); fuera de rango → aire (get) o se ignora (set)
+        // Local coordinates (0..15); out of range → air (get) or ignored (set)
         BlockId get(int x, int y, int z) const { return inside(x, y, z) ? m_blocks[index(x, y, z)] : kAir; }
         BlockId get(const glm::ivec3& local) const { return get(local.x, local.y, local.z); }
         void set(int x, int y, int z, BlockId id) {
@@ -80,12 +80,12 @@ namespace mge {
         void set(const glm::ivec3& local, BlockId id) { set(local.x, local.y, local.z, id); }
 
         void fill(BlockId id) { m_blocks.fill(id); }
-        bool isEmpty() const; // Solo aire
+        bool isEmpty() const; // Air only
         const std::array<BlockId, kChunkVolume>& blocks() const { return m_blocks; }
-        /// Acceso directo mutable al arreglo plano de bloques (orden: x más rápido, luego z, luego y).
+        /// Direct mutable access to the flat block array (order: x fastest, then z, then y).
         std::array<BlockId, kChunkVolume>& blocks() { return m_blocks; }
 
     private:
-        std::array<BlockId, kChunkVolume> m_blocks{}; // Todo aire
+        std::array<BlockId, kChunkVolume> m_blocks{}; // All air
     };
 }

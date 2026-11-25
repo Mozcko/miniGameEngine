@@ -32,12 +32,12 @@ extern "C" {
 #define MGE_C_API_VERSION ((MGE_C_API_VERSION_MAJOR << 16) | MGE_C_API_VERSION_MINOR)
 
 /**
- * Retorna la versión compilada de la API de C: (MAJOR << 16) | MINOR.
+ * Returns the compiled C API version: (MAJOR << 16) | MINOR.
  */
 MGE_C_API uint32_t mge_c_api_version(void);
 
 /**
- * Retorna la cadena de versión del motor (ej: "1.0.0" o "1.1.0").
+ * Returns the engine version string (e.g., "1.0.0" or "1.1.0").
  */
 MGE_C_API const char* mge_version_string(void);
 
@@ -54,8 +54,8 @@ typedef enum mge_result {
 } mge_result;
 
 /**
- * Retorna el último mensaje de error registrado en el hilo actual.
- * El puntero es válido hasta la siguiente llamada a la API en el mismo hilo.
+ * Returns the last error message recorded on the current thread.
+ * The pointer remains valid until the next API call on the same thread.
  */
 MGE_C_API const char* mge_last_error(void);
 
@@ -112,15 +112,15 @@ typedef enum mge_module_flags {
 } mge_module_flags;
 
 typedef struct mge_app_config {
-    size_t struct_size; /* sizeof(mge_app_config) para compatibilidad ABI */
+    size_t struct_size; /* sizeof(mge_app_config) for ABI compatibility */
     const char* title;
     int32_t width;
     int32_t height;
     bool headless;
     bool vsync;
-    int32_t tick_rate;  /* Pasos fijos por segundo (ej: 60) */
-    int32_t max_frames; /* 0 = sin límite; >0 sale automáticamente tras n frames */
-    uint32_t modules;   /* Máscara de mge_module_flags */
+    int32_t tick_rate;  /* Fixed steps per second (e.g., 60) */
+    int32_t max_frames; /* 0 = unlimited; >0 exits automatically after n frames */
+    uint32_t modules;   /* Bitmask of mge_module_flags */
 } mge_app_config;
 
 typedef struct mge_app_callbacks {
@@ -134,17 +134,17 @@ typedef struct mge_app_callbacks {
 } mge_app_callbacks;
 
 /**
- * Inicializa y ejecuta la aplicación hasta que se solicite salir.
- * Devuelve 0 en salida normal o código de error distinto de cero.
+ * Initializes and runs the application until stop is requested.
+ * Returns 0 on normal exit or a non-zero error code.
  */
 MGE_C_API int mge_app_run(const mge_app_config* config, const mge_app_callbacks* callbacks);
 
 /**
- * Solicita la finalización controlada del bucle principal de la aplicación.
+ * Requests a controlled shutdown of the application's main loop.
  */
 MGE_C_API void mge_app_request_stop(mge_app* app);
 
-/* Consultas de tiempo */
+/* Time queries */
 MGE_C_API float mge_time_delta(mge_app* app);
 MGE_C_API float mge_time_fixed_delta(mge_app* app);
 MGE_C_API float mge_time_alpha(mge_app* app);
@@ -164,14 +164,14 @@ MGE_C_API void mge_input_mouse_delta(mge_app* app, float* dx, float* dy);
 MGE_C_API void mge_input_set_cursor_lock(mge_app* app, bool locked);
 
 /**
- * Inyecta una pulsación o liberación de tecla con fines de prueba (headless test injection).
+ * Injects a key press or release for testing purposes (headless test injection).
  */
 MGE_C_API void mge_test_inject_key(mge_app* app, const char* key_name, bool down);
 
 /* --- ECS --- */
 typedef struct mge_transform {
     float position[3];
-    float rotation[4]; /* xyzw cuaternión */
+    float rotation[4]; /* xyzw quaternion */
     float scale[3];
 } mge_transform;
 
@@ -204,7 +204,7 @@ MGE_C_API mge_entity mge_entity_create(mge_app* app);
 MGE_C_API void mge_entity_destroy(mge_app* app, mge_entity entity);
 MGE_C_API bool mge_entity_is_valid(mge_app* app, mge_entity entity);
 
-/* Componentes integrados */
+/* Built-in components */
 MGE_C_API mge_result mge_transform_set(mge_app* app, mge_entity entity, const mge_transform* transform);
 MGE_C_API mge_result mge_transform_get(mge_app* app, mge_entity entity, mge_transform* out_transform);
 MGE_C_API bool mge_transform_has(mge_app* app, mge_entity entity);
@@ -227,36 +227,36 @@ MGE_C_API mge_result mge_rigid_body_get(mge_app* app, mge_entity entity, mge_rig
 MGE_C_API bool mge_rigid_body_has(mge_app* app, mge_entity entity);
 MGE_C_API void mge_rigid_body_remove(mge_app* app, mge_entity entity);
 
-/* Componentes en tiempo de ejecución (dinámicos) */
+/* Runtime (dynamic) components */
 MGE_C_API mge_component_id mge_component_register(mge_app* app, const char* name, size_t size, size_t align);
 /**
- * Los punteros devueltos por mge_component_add y mge_component_get o entregados a
- * mge_component_each permanecen válidos al agregar componentes. Quitar un componente
- * (mge_component_remove) o destruir una entidad (mge_entity_destroy) invalida los punteros
- * a ese componente y al que era el último en su pool.
- * Las entidades creadas o modificadas durante mge_component_each no se visitan en esa pasada;
- * las destruidas o sin componente se omiten de forma segura.
+ * Pointers returned by mge_component_add and mge_component_get or passed to
+ * mge_component_each remain valid when adding components. Removing a component
+ * (mge_component_remove) or destroying an entity (mge_entity_destroy) invalidates pointers
+ * to that component and to the one that was last in its pool.
+ * Entities created or modified during mge_component_each are not visited in that pass;
+ * destroyed entities or entities without the component are safely skipped.
  */
 MGE_C_API void* mge_component_add(mge_app* app, mge_entity entity, mge_component_id comp_id);
 /**
- * Devuelve un puntero a la memoria del componente o NULL si no existe.
- * Los punteros permanecen válidos al agregar componentes; quitar un componente o destruir
- * una entidad invalida los punteros a ese componente y al que era el último en su pool.
+ * Returns a pointer to the component memory, or NULL if it does not exist.
+ * Pointers remain valid when adding components; removing a component or destroying
+ * an entity invalidates pointers to that component and to the one that was last in its pool.
  */
 MGE_C_API void* mge_component_get(mge_app* app, mge_entity entity, mge_component_id comp_id);
 MGE_C_API bool mge_component_has(mge_app* app, mge_entity entity, mge_component_id comp_id);
 MGE_C_API void mge_component_remove(mge_app* app, mge_entity entity, mge_component_id comp_id);
 /**
- * Itera las entidades que poseen todos los componentes indicados.
- * Los punteros recibidos en el callback permanecen válidos al agregar componentes; quitar un
- * componente o destruir una entidad invalida los punteros a ese componente y al que era el
- * último en su pool. Las entidades creadas durante la iteración no se visitan en esa pasada.
+ * Iterates over entities that have all the specified components.
+ * Pointers passed to the callback remain valid when adding components; removing a
+ * component or destroying an entity invalidates pointers to that component and to the one
+ * that was last in its pool. Entities created during iteration are not visited in that pass.
  */
 MGE_C_API void mge_component_each(mge_app* app, const mge_component_id* comp_ids, size_t comp_count,
                                   void (*callback)(mge_entity entity, void** components, void* user_data),
                                   void* user_data);
 
-/* Sistemas */
+/* Systems */
 typedef enum mge_system_phase {
     MGE_PHASE_FIXED = 0,
     MGE_PHASE_UPDATE = 1,

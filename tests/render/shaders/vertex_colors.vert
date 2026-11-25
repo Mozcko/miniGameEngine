@@ -1,5 +1,5 @@
 #version 450
-// Triangle with a color per vertex (interpolated): tests rasterization and interpolation
+// Triangle with one color per vertex (interpolated): tests rasterization and interpolation
 const vec2 kPositions[3] = vec2[](vec2(0.0, 0.8), vec2(-0.8, -0.7), vec2(0.8, -0.7));
 const vec3 kColors[3] = vec3[](vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0));
 

@@ -5,7 +5,8 @@
 
 #include <cstring>
 
-// stb_image con funciones static: no choca con otra copia de stb_image en el mismo programa (ej: tests)
+// stb_image with static functions: avoids collisions with another copy of stb_image in the same binary (e.g.
+// tests)
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -13,7 +14,7 @@
 namespace mge {
 
     namespace {
-        // Filas invertidas (la GPU guarda la imagen al revés: ver Texture2D.h)
+        // Flipped rows (the GPU stores the image upside down: see Texture2D.h)
         std::vector<std::uint8_t> flipRows(const std::uint8_t* rgba, std::uint32_t width,
                                            std::uint32_t height) {
             const std::size_t row = std::size_t(width) * 4;
@@ -49,9 +50,9 @@ namespace mge {
     Texture2D Texture2D::fromFile(GpuDevice& device, const std::filesystem::path& path, bool keepCpuCopy) {
         const std::filesystem::path full = path.is_absolute() ? path : assetPath(path.generic_string());
         int width = 0, height = 0, channels = 0;
-        stbi_uc* pixels = stbi_load(full.string().c_str(), &width, &height, &channels, 4); // Siempre RGBA
+        stbi_uc* pixels = stbi_load(full.string().c_str(), &width, &height, &channels, 4); // Always RGBA
         if (!pixels) {
-            MGE_LOG_ERROR("Texture", "No se pudo leer ", full.string(), ": ", stbi_failure_reason());
+            MGE_LOG_ERROR("Texture", "Failed to read ", full.string(), ": ", stbi_failure_reason());
             return {};
         }
         Texture2D texture = fromPixels(device, static_cast<std::uint32_t>(width),
@@ -70,7 +71,7 @@ namespace mge {
                                  std::uint32_t height, const std::uint8_t* rgba) {
         if (!m_texture || x + width > m_width || y + height > m_height) return false;
         const std::vector<std::uint8_t> flipped = flipRows(rgba, width, height);
-        // En la GPU la región está espejada en vertical
+        // On the GPU the region is flipped vertically
         return device.uploadToTexture(m_texture, x, m_height - y - height, width, height, flipped.data());
     }
 

@@ -1,5 +1,5 @@
-# Galería de audio (#50): sonidos del sintetizador → <build>/gallery/audio/*.wav (+ espectrogramas .png).
-# Headless: se compila siempre, también sin módulos.
+# Audio gallery (#50): synthesizer sounds → <build>/gallery/audio/*.wav (+ .png spectrograms).
+# Headless: always built, even without modules.
 mge_add_game(audio_gallery
     SOURCES AudioGallery.cpp
     LIBRARIES mge_synth mge_procgen

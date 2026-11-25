@@ -10,7 +10,7 @@
 
 namespace mge::texgen {
 
-    // Región de una imagen (un tile de un atlas, o la imagen entera)
+    // Region of an image (an atlas tile, or the entire image)
     struct Rect {
         int x = 0;
         int y = 0;
@@ -18,7 +18,7 @@ namespace mge::texgen {
         int height = 0;
     };
 
-    // Degradado de colores: sample(0) = primer color, sample(1) = último
+    // Color gradient: sample(0) = first color, sample(1) = last
     class Palette {
     public:
         struct Stop {
@@ -33,34 +33,33 @@ namespace mge::texgen {
         std::vector<Stop> m_stops;
     };
 
-    // Todos deterministas: misma semilla → mismos píxeles. Escriben solo dentro de rect.
-    // Ruido fbm (value noise, `scale` = celdas por lado del rect) pasado por la paleta
+    // All deterministic: same seed → same pixels. Only write inside rect.
+    // Value-noise fbm (`scale` = cells per side of rect) mapped through the palette
     void noise(Image& image, const Rect& rect, const Palette& palette, float scale, std::uint32_t seed,
                int octaves = 3);
-    // Puntos sueltos de otro color sobre lo que ya hay (densidad 0..1)
+    // Scattered dots of another color over existing pixels (density 0..1)
     void speckle(Image& image, const Rect& rect, const glm::vec4& color, float density, std::uint32_t seed);
-    // Ladrillos desfasados por fila con junta de `mortar` píxeles
+    // Offset brick rows with a `mortar`-pixel joint
     void bricks(Image& image, const Rect& rect, const Palette& brick, const glm::vec4& mortarColor, int rows,
                 int columns, int mortar, std::uint32_t seed);
-    // Tablas horizontales con vetas y separaciones
+    // Horizontal wooden planks with grain and seams
     void planks(Image& image, const Rect& rect, const Palette& wood, int boards, std::uint32_t seed);
-    // Manchas (vetas de mineral) de `color` sobre lo que ya hay
+    // Mineral spots (ore veins) of `color` over existing pixels
     void ore(Image& image, const Rect& rect, const glm::vec4& color, int spots, int spotRadius,
              std::uint32_t seed);
-    // Franjas verticales irregulares (corteza)
+    // Irregular vertical bands (bark)
     void stripes(Image& image, const Rect& rect, const Palette& palette, int count, std::uint32_t seed);
-    // Anillos concéntricos (tronco cortado)
+    // Concentric rings (cut log)
     void rings(Image& image, const Rect& rect, const Palette& palette, float spacing, std::uint32_t seed);
-    // Planta en cruz: tallo + flor o hojas sobre fondo transparente (para la pasada cutout)
+    // Cross plant: stem + flower or leaves on a transparent background (for the cutout pass)
     void plant(Image& image, const Rect& rect, const glm::vec4& stem, const glm::vec4& bloom, int bloomRadius,
                std::uint32_t seed);
-    // Hojas: ruido verde con huecos transparentes (holes 0..1)
+    // Leaves: green noise with transparent holes (holes 0..1)
     void leaves(Image& image, const Rect& rect, const Palette& palette, float holes, std::uint32_t seed);
-    // Borde de `width` píxeles (vidrio, marcos)
+    // Border of `width` pixels (glass, frames)
     void frame(Image& image, const Rect& rect, const glm::vec4& color, int width);
 
-    // Rect del tile `index` en un atlas de columns columnas y tiles de tileSize px (tile 0 arriba a la
-    // izquierda)
+    // Rect of tile `index` in an atlas with `columns` columns and `tileSize`-px tiles (tile 0 top-left)
     inline Rect tileRect(int index, int columns, int tileSize) {
         return {(index % columns) * tileSize, (index / columns) * tileSize, tileSize, tileSize};
     }

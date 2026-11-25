@@ -15,8 +15,8 @@ namespace mge {
 
     using GpuResourceId = std::uint64_t;
 
-    // Registra recursos de GPU creados a través de bindings para asegurar que se liberen
-    // antes de destruir el SDL_GPUDevice, evitando cuelgues en el shutdown.
+    // Tracks GPU resources created through bindings to ensure they are released
+    // before destroying the SDL_GPUDevice, preventing hangs on shutdown.
     class GpuResourceTracker {
     public:
         struct Entry {
@@ -42,7 +42,7 @@ namespace mge {
         void releaseAll() {
             if (m_entries.empty()) return;
 
-            // Contar tipos para el warning
+            // Count kinds for the warning
             std::map<std::string, std::size_t> counts;
             for (const auto& entry : m_entries) {
                 counts[entry.kind]++;

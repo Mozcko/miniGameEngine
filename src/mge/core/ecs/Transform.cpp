@@ -16,12 +16,12 @@ namespace mge {
     }
 
     namespace {
-        // Profundidad máxima de la jerarquía antes de asumir un ciclo
+        // Maximum hierarchy depth before assuming a cycle
         constexpr int kMaxDepth = 256;
 
         struct Solver {
             Registry& registry;
-            std::unordered_map<std::uint32_t, glm::mat4> done; // index -> matriz de mundo del frame
+            std::unordered_map<std::uint32_t, glm::mat4> done; // index -> world matrix for this frame
 
             glm::mat4 world(Entity entity, int depth) {
                 auto it = done.find(entity.index);
@@ -33,9 +33,8 @@ namespace mge {
                 const Parent* parent = registry.tryGet<Parent>(entity);
                 if (parent && registry.has<Transform>(parent->entity)) {
                     if (depth >= kMaxDepth) {
-                        MGE_LOG_WARN("ECS",
-                                     "Jerarquía de Transform demasiado profunda o con ciclo en la entidad ",
-                                     entity.index, "; se trata como raíz");
+                        MGE_LOG_WARN("ECS", "Transform hierarchy too deep or cyclic at entity ", entity.index,
+                                     "; treating as root");
                     } else {
                         matrix = world(parent->entity, depth + 1) * matrix;
                     }
@@ -47,7 +46,7 @@ namespace mge {
     }
 
     void TransformSystem::update(Registry& registry) {
-        // Primero juntar las entidades (agregar WorldTransform durante la iteración no está permitido)
+        // Collect entities first (adding WorldTransform during iteration is not allowed)
         std::vector<Entity> entities;
         registry.each<Transform>([&](Entity entity, Transform&) { entities.push_back(entity); });
 

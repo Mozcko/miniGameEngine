@@ -22,7 +22,7 @@ namespace mge {
     }
 
     ChunkStreamer::~ChunkStreamer() {
-        // Los trabajos leen el generador y el registry: esperar a que terminen antes de soltarlos
+        // Jobs read the generator and registry: wait for them to finish before releasing
         for (auto& [coord, future] : m_generating) {
             if (future.valid()) future.wait();
         }
@@ -71,7 +71,7 @@ namespace mge {
 
         if (d > maxR) return -1;
 
-        // Histéresis de 1 chunk para evitar parpadeo en las fronteras de los anillos
+        // 1-chunk hysteresis to avoid flickering at ring boundaries
         if (currentLod == 0) {
             if (d <= r0 + 1) return 0;
             if (r1 > 0 && d <= r1 + 1) return 1;
@@ -91,7 +91,7 @@ namespace mge {
             return -1;
         }
 
-        // Sin LOD previo (currentLod < 0)
+        // No previous LOD (currentLod < 0)
         if (d <= r0) return 0;
         if (r1 > 0 && d <= r1) return 1;
         if (r2 > 0 && d <= r2) return 2;
@@ -99,7 +99,8 @@ namespace mge {
     }
 
     bool ChunkStreamer::neighboursReady(const ChunkCoord& c) const {
-        // Los 4 vecinos horizontales con datos; arriba y abajo también, salvo fuera del rango vertical
+        // The 4 horizontal neighbours must have data; above and below as well, unless outside the vertical
+        // range
         const ChunkCoord horizontal[4] = {
             {c.x - 1, c.y, c.z}, {c.x + 1, c.y, c.z}, {c.x, c.y, c.z - 1}, {c.x, c.y, c.z + 1}};
         for (const ChunkCoord& n : horizontal) {
@@ -118,7 +119,7 @@ namespace mge {
         unloadFar(out, center);
         requestGeneration(center, budget);
         requestMeshes(out, center, budget);
-        // Ocioso: nada en curso y nada nuevo que hacer este update (budget intacto tras pedir)
+        // Idle: nothing in flight and nothing new to do this update (budget untouched after requesting)
         m_lastUpdateIdle = budget == std::max(1, m_settings.maxResultsPerUpdate) && out.meshes.empty() &&
                            m_generating.empty() && m_meshing.empty();
         return out;
@@ -131,7 +132,7 @@ namespace mge {
                 continue;
             }
             ChunkData data = it->second.get();
-            // Si mientras tanto el centro se alejó, el resultado ya no hace falta
+            // If the center moved away in the meantime, this result is no longer needed
             if (columnDistance(it->first, center) <= m_settings.loadRadius + m_settings.unloadMargin) {
                 if (m_onChunkInserted) {
                     m_onChunkInserted(it->first, data);
@@ -155,7 +156,7 @@ namespace mge {
             const ChunkCoord coord = it->first;
             const int requestedLod = it->second.requestedLod;
 
-            // Viejo si el chunk se descargó, se volvió a ensuciar, o cambió de anillo LOD mientras se mallaba
+            // Stale if the chunk was unloaded, marked dirty again, or changed LOD ring while meshing
             const int prevLod = chunkLod(coord);
             const int curLod = targetLod(coord, center, prevLod);
 
@@ -183,7 +184,7 @@ namespace mge {
             out.unloaded.push_back(c);
         }
 
-        // Presupuesto de memoria: los más lejanos primero, nunca dentro del radio de malla
+        // Memory budget: farthest first, never inside the mesh radius
         const int maxR = m_settings.maxMeshRadius();
         if (m_settings.maxLoadedChunks == 0 || m_world.chunkCount() <= m_settings.maxLoadedChunks) {
             return;
@@ -219,7 +220,7 @@ namespace mge {
             return std::abs(a.x - center.x) + std::abs(a.z - center.z) <
                    std::abs(b.x - center.x) + std::abs(b.z - center.z);
         });
-        // Respetar el presupuesto de memoria: no generar más de lo que se puede tener cargado
+        // Respect memory budget: do not generate more than can be kept loaded
         std::size_t room =
             m_settings.maxLoadedChunks == 0
                 ? missing.size()
@@ -244,7 +245,8 @@ namespace mge {
                 if (m_onChunkInserted) {
                     m_onChunkInserted(c, data);
                 }
-                m_world.insertChunk(c, data); // Sin hilos: generar acá, con el mismo límite por update
+                m_world.insertChunk(c,
+                                    data); // Single-threaded: generate here, with the same per-update budget
                 budget--;
             }
             room--;
@@ -255,13 +257,13 @@ namespace mge {
         std::vector<ChunkCoord> candidates;
         const int maxR = m_settings.maxMeshRadius();
 
-        // 1. Chunks sucios dentro del radio
+        // 1. Dirty chunks within radius
         for (const ChunkCoord& c : m_world.dirtyChunks()) {
             if (columnDistance(c, center) > maxR || m_meshing.count(c) != 0) continue;
             if (neighboursReady(c)) candidates.push_back(c);
         }
 
-        // 2. Chunks ya mallados cuyo anillo de LOD cambió
+        // 2. Already-meshed chunks whose LOD ring changed
         for (const auto& [c, curLod] : m_chunkLod) {
             if (m_meshing.count(c) != 0 || m_world.isDirty(c)) continue;
             if (!m_world.isLoaded(c)) continue;
@@ -285,7 +287,7 @@ namespace mge {
                 if (static_cast<int>(m_generating.size() + m_meshing.size()) >= m_settings.maxJobsInFlight) {
                     break;
                 }
-                // El snapshot se toma acá (hilo principal); el trabajo solo lo lee
+                // Snapshot is captured here (main thread); the job only reads it
                 auto snapshot = std::make_shared<ChunkSnapshot>(ChunkSnapshot::capture(m_world, c));
                 m_meshing.emplace(
                     c,
@@ -294,7 +296,7 @@ namespace mge {
                                 }),
                                 lod});
                 m_world.clearDirty(
-                    c); // Si se edita mientras tanto vuelve a ensuciarse y el resultado se descarta
+                    c); // If edited in the meantime, it becomes dirty again and the result is discarded
             } else {
                 if (budget <= 0) break;
                 const ChunkSnapshot snapshot = ChunkSnapshot::capture(m_world, c);

@@ -14,10 +14,10 @@ namespace mge {
         struct Transforms {
             glm::mat4 viewProjection;
             glm::mat4 model;
-            glm::vec4 material; // x: escala del detalle, y: intensidad
+            glm::vec4 material; // x: detail scale, y: strength
         };
 
-        // Igual que el bloque Lighting de mesh.frag (todo vec4: sin sorpresas de alineación std140)
+        // Matches the Lighting block in mesh.frag (all vec4: no std140 alignment surprises)
         struct LightingUniform {
             glm::vec4 toSun;
             glm::vec4 sunColor;
@@ -56,8 +56,8 @@ namespace mge {
         desc.depthFormat = device.depthFormat();
         m_opaque = device.createGraphicsPipeline(desc);
 
-        // Cutout: descarta alfa < 0.5 y escribe profundidad. Con back-face culling, como un cubo opaco con
-        // agujeros (las plantas en cruz ya traen sus dos caras como quads separados)
+        // Cutout: discards alpha < 0.5 and writes depth. With back-face culling, like an opaque cube with
+        // holes (crossed plants already provide both sides as separate quads)
         desc.fragmentShader = &cutoutFragment;
         m_cutout = device.createGraphicsPipeline(desc);
         desc.fragmentShader = &fragment;
@@ -66,7 +66,7 @@ namespace mge {
         desc.depthWrite = false;
         m_transparent = device.createGraphicsPipeline(desc);
 
-        // Líneas de depuración: lista de líneas, sin culling, con prueba de profundidad pero sin escribirla
+        // Debug lines: line list, no culling, depth-tested without depth writes
         ShaderResources lineVertexResources;
         lineVertexResources.uniformBuffers = 1;
         const GpuShader lineVertex = device.createShader(shaders::kDebugLinesVert, lineVertexResources);
@@ -82,7 +82,7 @@ namespace mge {
         lines.blend = BlendMode::Alpha;
         m_lines = device.createGraphicsPipeline(lines);
 
-        // Píxeles nítidos (texturas tipo pixel art) y sin repetir fuera de [0, 1], como el renderer GL
+        // Crisp pixels (pixel-art style textures) without repeating outside [0, 1], matching the GL renderer
         SDL_GPUSamplerCreateInfo sampler{};
         sampler.min_filter = SDL_GPU_FILTER_NEAREST;
         sampler.mag_filter = SDL_GPU_FILTER_NEAREST;
@@ -92,7 +92,7 @@ namespace mge {
         sampler.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
         m_sampler = device.createSampler(sampler);
         m_white = Texture2D::white(device);
-        if (!valid()) MGE_LOG_ERROR("Graphics", "No se pudo crear el MeshRenderer");
+        if (!valid()) MGE_LOG_ERROR("Graphics", "Failed to create MeshRenderer");
     }
 
     bool MeshRenderer::begin(CommandBuffer& cmd, SDL_GPUTexture* target, std::uint32_t width,
@@ -112,7 +112,7 @@ namespace mge {
         m_cmd = &cmd;
         m_boundPipeline = nullptr;
         m_stats = {};
-        m_lightingDirty = true; // Command buffer nuevo: hay que volver a subir la luz
+        m_lightingDirty = true; // New command buffer: must re-upload lighting uniforms
         return static_cast<bool>(m_pass);
     }
 
@@ -162,8 +162,7 @@ namespace mge {
         SDL_GPUBufferBinding binding{vertices.get(), 0};
         SDL_BindGPUVertexBuffers(m_pass.get(), 0, &binding, 1);
         SDL_DrawGPUPrimitives(m_pass.get(), vertexCount, 1, 0, 0);
-        // La próxima malla vuelve a subir sus uniforms (este pipeline usó el slot 0 del vértice con otro
-        // layout)
+        // The next mesh re-uploads its uniforms (this pipeline used vertex slot 0 with a different layout)
     }
 
     void MeshRenderer::end() {

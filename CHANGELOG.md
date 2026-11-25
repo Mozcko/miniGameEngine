@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-24
+
+Polish release: the 1.0.x polish epic (#189) – ECS pointer stability, rigid-body contacts, LOD terrain and water, and
+per-face transparency sorting.
+
 ### Fixed
-- **Per-chunk transparent face sorting** (#180): `ChunkMesh` now records chunk-local `transparentFaceCentroids` (one per quad) and `mge_voxel` exposes `sortQuadsBackToFront`; `GpuDevice::updateBuffer` supports in-place buffer updates (with optional offset/cycling); nearby transparent chunks in the sandbox re-sort their index buffer asynchronously on `JobSystem` when the camera moves > 1 block, turns > 15°, or the chunk re-meshes, profiled under `transparent.sort`.
-- **LOD shallow water visibility** (#178): in `buildLodChunkMesh`, opaque top faces under water columns sit at the highest opaque block strictly below the flat liquid quad (and are dropped if they would ever reach `>= waterTopY`), preventing depth-test failure on distant 1–2 block deep lakes without using a depth epsilon.
+- **Per-chunk transparent face sorting** (#180): `ChunkMesh` now records chunk-local `transparentFaceCentroids` (one per quad) and `mge_voxel` exposes `sortQuadsBackToFront`; `GpuDevice::updateBuffer` supports in-place buffer updates (with optional offset/cycling); nearby transparent chunks in the sandbox re-sort their index buffer asynchronously on `JobSystem` when the camera moves > 1 block, turns > 15°, or the chunk re-meshes, profiled under `transparent.sort`. Sorting is per face centre, so large greedy-merged faces can still order approximately.
+- **LOD shallow water visibility** (#178): in `buildLodChunkMesh`, opaque top faces under water columns sit at the highest opaque block strictly below the flat liquid quad (an opaque top face that would tie with the water height is dropped; faces above the water, e.g. terrain over an underground lake, are kept), preventing depth-test failure on distant 1–2 block deep lakes without using a depth epsilon.
 - **LOD terrain column height** (#179): `buildLodChunkMesh` now emits exposed top faces at the exact height (`highest opaque y + 1`) of each $f\times f$ column instead of the coarse $f^3$ cell top, and adjusts side faces to span up to `y_top` and bridge height steps between adjacent columns while preserving greedy merging and border skirts.
-- **Rigid body resting-contact friction and sphere-vs-voxel collision** (#181): `PhysicsWorld::step` now uses sequential impulses with accumulated normal/tangential impulses (including gravity support for resting contacts) so stacked bodies stop sliding under friction, and resolves spheres against nearby solid voxels using closest-point narrowphase after an inscribed-cube `moveAabb` sweep so spheres roll off block edges while staying tunnel-proof.
+- **Rigid body resting-contact friction and sphere-vs-voxel collision** (#181): `PhysicsWorld::step` now uses sequential impulses with accumulated normal/tangential impulses (including gravity support for resting contacts) so friction is clamped against the accumulated normal impulse (a resting box hit sideways in the same step no longer slides), and resolves spheres against nearby solid voxels using closest-point narrowphase after an inscribed-cube `moveAabb` sweep so spheres roll off block edges while staying tunnel-proof.
 - **Stable runtime ECS component storage** (#176): `ecs_detail::RawPool` now uses fixed 64-element aligned pages instead of a single reallocating buffer, so pointers from `addRaw`/`getRaw`/`eachRaw` (`mge_component_add`/`get`/`each`) remain valid across adds (the spawner pattern). Removal (`removeRaw`/`destroy`) keeps swap-and-pop and invalidates pointers to that component and to the one that was last in its pool.
 
 ## [1.0.1] - 2026-11-18

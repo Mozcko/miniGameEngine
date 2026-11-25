@@ -8,10 +8,10 @@
 
 namespace mge {
 
-    // Fuentes TTF opcionales (#41), horneadas con stb_truetype en un atlas (sin SDL_ttf). La fuente por
-    // defecto sigue siendo Font::builtin(), que no necesita archivos.
-    // pixelHeight: alto de la línea en píxeles. Si algo falla se registra en el log y la fuente es inválida.
+    // Optional TTF fonts (#41), baked with stb_truetype into an atlas (no SDL_ttf). The default font
+    // remains Font::builtin(), which requires no files.
+    // pixelHeight: line height in pixels. On failure, an error is logged and the returned font is invalid.
     Font loadTtfFont(const std::vector<std::uint8_t>& ttfBytes, float pixelHeight);
-    // path relativo → se busca con mge::assetPath (assets/)
+    // relative path -> resolved via mge::assetPath (assets/)
     Font loadTtfFontFile(const std::filesystem::path& path, float pixelHeight);
 }

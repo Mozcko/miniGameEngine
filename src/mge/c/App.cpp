@@ -8,7 +8,7 @@ extern "C" {
 
 int mge_app_run(const mge_app_config* config, const mge_app_callbacks* callbacks) {
     if (!callbacks) {
-        mge::c_impl::setLastError("mge_app_run: callbacks no puede ser nulo");
+        mge::c_impl::setLastError("mge_app_run: callbacks cannot be null");
         return MGE_ERROR_INVALID_ARGUMENT;
     }
 

@@ -12,7 +12,7 @@ namespace mge {
         constexpr float kTiny = 1e-5f;
         constexpr float kMaxDelta = 256.0f;
 
-        // Comprueba si la caja ya interseca el volumen interior del bloque al iniciar el paso
+        // Checks if the box already overlaps the block's interior volume at the start of the step
         bool boxOverlapsBlock(const Aabb& box, const glm::ivec3& block, float tiny) {
             for (int i = 0; i < 3; ++i) {
                 const float blockMin = static_cast<float>(block[i]);
@@ -24,7 +24,7 @@ namespace mge {
             return true;
         }
 
-        // Mueve la caja a lo largo de un único eje detectando colisiones contra bloques sólidos
+        // Moves the box along a single axis while detecting collisions against solid blocks
         void moveSingleAxis(Aabb& currentBox, int axis, float deltaVal, const SolidQuery& isSolid, float skin,
                             bool& outBlocked, bool& outGrounded) {
             outBlocked = false;
@@ -34,7 +34,7 @@ namespace mge {
                 return;
             }
 
-            // Volumen barrido a lo largo del eje actual
+            // Swept volume along the current axis
             glm::vec3 sweptMin = currentBox.min;
             glm::vec3 sweptMax = currentBox.max;
             if (deltaVal > 0.0f) {
@@ -43,7 +43,7 @@ namespace mge {
                 sweptMin[axis] += deltaVal;
             }
 
-            // Rango de bloques enteros que intersectan el volumen barrido
+            // Integer block range intersecting the swept volume
             const int minX = static_cast<int>(std::floor(sweptMin.x));
             const int maxX = std::max(minX, static_cast<int>(std::floor(sweptMax.x - kTiny)));
             const int minY = static_cast<int>(std::floor(sweptMin.y));
@@ -61,7 +61,7 @@ namespace mge {
                             if (!isSolid(blockPos)) {
                                 continue;
                             }
-                            // Ignora bloques que la caja ya intersecaba antes de iniciar este eje
+                            // Ignore blocks the box already overlapped before starting this axis
                             if (boxOverlapsBlock(currentBox, blockPos, kTiny)) {
                                 continue;
                             }
@@ -107,13 +107,13 @@ namespace mge {
             currentBox.max[axis] += allowed;
         }
 
-        // Ejecuta el movimiento secuencial normal en el orden Y, X, Z
+        // Executes the standard sequential movement in Y, X, Z order
         MoveResult moveSequence(const Aabb& initialBox, const glm::vec3& deltaVec, const SolidQuery& isSolid,
                                 float skin) {
             MoveResult result;
             result.box = initialBox;
 
-            // Orden estricto de resolución: Y, luego X, luego Z
+            // Strict resolution order: Y, then X, then Z
             const int axes[3] = {1, 0, 2};
             for (int axis : axes) {
                 bool blockedAxis = false;
@@ -131,7 +131,7 @@ namespace mge {
             return result;
         }
 
-        // Comprueba si la caja está apoyada en el suelo al inicio mediante una sonda de -skin * 2 en Y
+        // Checks if the box is supported by the ground at the start using a -skin * 2 probe along Y
         bool isGroundedProbe(const Aabb& box, const SolidQuery& isSolid, float skin) {
             Aabb probeBox = box;
             bool blockedY = false;
@@ -153,7 +153,7 @@ namespace mge {
 
         const float skin = (std::isnan(options.skin) || options.skin < 0.0f) ? 1e-4f : options.skin;
 
-        // Acotar cada componente del delta para prevenir escaneos excesivos ante deltas espurios
+        // Clamp each delta component to prevent excessive scans on spurious deltas
         glm::vec3 clampedDelta = delta;
         for (int i = 0; i < 3; ++i) {
             if (std::abs(clampedDelta[i]) > kMaxDelta) {
@@ -167,28 +167,28 @@ namespace mge {
 
         const bool groundedAtStart = isGroundedProbe(box, isSolid, skin);
 
-        // Movimiento normal Y -> X -> Z
+        // Standard Y -> X -> Z movement
         MoveResult normalResult = moveSequence(box, clampedDelta, isSolid, skin);
 
-        // Escalón (step-up): solo si stepHeight > 0, delta.y <= 0, hubo bloqueo horizontal y estaba apoyado
+        // Step-up: only if stepHeight > 0, delta.y <= 0, horizontal move was blocked, and grounded at start
         const bool horizontalBlocked = normalResult.blocked.x || normalResult.blocked.z;
         if (options.stepHeight > 0.0f && clampedDelta.y <= 0.0f && horizontalBlocked && groundedAtStart) {
             Aabb stepBox = box;
             bool blocked = false;
             bool grounded = false;
 
-            // 1. Subir stepHeight
+            // 1. Move up by stepHeight
             moveSingleAxis(stepBox, 1, options.stepHeight, isSolid, skin, blocked, grounded);
 
-            // 2. Mover X
+            // 2. Move along X
             bool blockedX = false;
             moveSingleAxis(stepBox, 0, clampedDelta.x, isSolid, skin, blockedX, grounded);
 
-            // 3. Mover Z
+            // 3. Move along Z
             bool blockedZ = false;
             moveSingleAxis(stepBox, 2, clampedDelta.z, isSolid, skin, blockedZ, grounded);
 
-            // 4. Bajar (stepHeight + |delta.y|)
+            // 4. Move down by (stepHeight + |delta.y|)
             bool blockedDownY = false;
             bool groundedDown = false;
             const float downDist = -(options.stepHeight + std::abs(clampedDelta.y));
@@ -200,7 +200,7 @@ namespace mge {
             const float stepMovedZ = stepBox.min.z - box.min.z;
             const float stepHorizSq = stepMovedX * stepMovedX + stepMovedZ * stepMovedZ;
 
-            // Conservar el resultado escalonado solo si avanzó más horizontalmente que el camino plano
+            // Keep the stepped result only if it made more horizontal progress than the flat path
             if (stepHorizSq > normalHorizSq + 1e-6f) {
                 MoveResult stepResult;
                 stepResult.box = stepBox;

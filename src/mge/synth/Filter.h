@@ -11,11 +11,11 @@ namespace mge {
         BandPass
     };
 
-    // Filtro de estado variable (SVF "TPT", #47): pasa bajos, pasa altos o pasa banda de 12 dB/octava,
-    // estable con cualquier corte y resonancia. Sin memoria dinámica (hilo de audio)
+    // State-variable filter (TPT SVF, #47): 12 dB/octave low-pass, high-pass, or band-pass,
+    // stable at any cutoff and resonance. No dynamic allocation (audio thread)
     class Filter {
     public:
-        // cutoff en Hz (se limita a [10, 0.45 × sampleRate]); resonance 0..1 (0 = sin pico)
+        // cutoff in Hz (clamped to [10, 0.45 × sampleRate]); resonance 0..1 (0 = no peak)
         void set(FilterMode mode, float cutoff, float resonance, int sampleRate);
         void reset() { m_ic1 = m_ic2 = 0.0f; }
         float process(float input);

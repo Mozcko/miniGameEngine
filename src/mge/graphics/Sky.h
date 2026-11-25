@@ -11,19 +11,19 @@ namespace mge {
 
     class MeshRenderer;
 
-    // Renderizador de cielo procedural (#35): dibuja un triángulo de pantalla completa dentro del
-    // render pass de MeshRenderer antes de la geometría opaca. Reconstruye el rayo de vista en el
-    // espacio del mundo a partir de inverseViewProjection y cameraPosition.
-    // Nota: Las nubes procedurales quedan previstas como trabajo futuro.
+    // Procedural sky renderer (#35): draws a fullscreen triangle inside MeshRenderer's
+    // render pass before opaque geometry. Reconstructs the view ray in world space
+    // from inverseViewProjection and cameraPosition.
+    // Note: Procedural clouds are planned as future work.
     class SkyRenderer {
     public:
         SkyRenderer(GpuDevice& device, SDL_GPUTextureFormat colorFormat, SDL_GPUTextureFormat depthFormat);
 
         bool valid() const { return static_cast<bool>(m_pipeline); }
 
-        // Dentro del render pass de MeshRenderer, ANTES de lo opaco: triángulo de pantalla completa,
-        // sin depth write, depth test ALWAYS (o a z = 1 con LESS_OR_EQUAL), color = cielo según la
-        // dirección de vista.
+        // Inside MeshRenderer's render pass, BEFORE opaque: fullscreen triangle,
+        // no depth write, depth test ALWAYS (or at z = 1 with LESS_OR_EQUAL), color = sky by
+        // view direction.
         void draw(MeshRenderer& renderer, const glm::mat4& inverseViewProjection,
                   const glm::vec3& cameraPosition, const SkySettings& sky);
 
