@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Compara resultados de benchmark con una línea base JSON
-# Uso: scripts/bench-compare.sh <current.json> [baseline.json]
+# Compares benchmark results against a JSON baseline
+# Usage: scripts/bench-compare.sh <current.json> [baseline.json]
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-    echo "Uso: $0 <current.json> [baseline.json]" >&2
+    echo "Usage: $0 <current.json> [baseline.json]" >&2
     exit 0
 fi
 
@@ -12,11 +12,11 @@ current_file="$1"
 baseline_file="${2:-}"
 
 if [[ ! -f "$current_file" ]]; then
-    echo "Aviso: no se encontró '$current_file'" >&2
+    echo "Warning: '$current_file' not found" >&2
     exit 0
 fi
 
-# Si no hay archivo base o no existe
+# If no baseline file was provided or it does not exist
 if [[ -z "$baseline_file" || ! -f "$baseline_file" ]]; then
     table=$(jq -r '
       def list(x): if (x | type) == "array" then x else x.benchmarks end;
@@ -33,7 +33,7 @@ if [[ -z "$baseline_file" || ! -f "$baseline_file" ]]; then
     exit 0
 fi
 
-# Hay archivo base: comparar cada benchmark por nombre
+# Baseline file exists: compare each benchmark by name
 table=$(jq -r -s '
   def list(x): if (x | type) == "array" then x else x.benchmarks end;
   .[0] as $f0 | .[1] as $f1 |

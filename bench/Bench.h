@@ -15,7 +15,7 @@
 
 namespace mge::bench {
 
-    // Evita que el compilador optimice y elimine variables no leídas
+    // Prevents the compiler from optimizing away unread variables
     template <typename T> inline void doNotOptimize(const T& val) {
 #if defined(__clang__) || defined(__GNUC__)
         asm volatile("" : : "r,m"(val) : "memory");
@@ -111,7 +111,7 @@ namespace mge::bench {
 
         void printTable() const {
             if (m_results.empty()) {
-                std::printf("No se ejecutaron benchmarks.\n");
+                std::printf("No benchmarks were run.\n");
                 return;
             }
             std::printf("\n=================================================================================="
@@ -140,8 +140,7 @@ namespace mge::bench {
             }
             std::ofstream out(path);
             if (!out.is_open()) {
-                std::fprintf(stderr, "Error: no se pudo abrir '%s' para escribir JSON de benchmarks\n",
-                             path.c_str());
+                std::fprintf(stderr, "Error: could not open '%s' to write benchmark JSON\n", path.c_str());
                 return false;
             }
             out << "{\n  \"benchmarks\": [\n";
@@ -187,12 +186,12 @@ namespace mge::bench {
         }
 
         static void printHelp(const char* prog) {
-            std::printf("Uso: %s [opciones]\n", prog);
-            std::printf("Opciones:\n");
-            std::printf("  --json <path>       Guarda los resultados en formato JSON\n");
-            std::printf("  --filter <substr>   Ejecuta solo benchmarks cuyo nombre contiene <substr>\n");
-            std::printf("  --quick             Modo rapido con menos iteraciones (para smoke CI)\n");
-            std::printf("  --help, -h          Muestra esta ayuda\n");
+            std::printf("Usage: %s [options]\n", prog);
+            std::printf("Options:\n");
+            std::printf("  --json <path>       Save results in JSON format\n");
+            std::printf("  --filter <substr>   Run only benchmarks whose name contains <substr>\n");
+            std::printf("  --quick             Quick mode with fewer iterations (for CI smoke)\n");
+            std::printf("  --help, -h          Show this help\n");
         }
 
         std::string m_jsonPath;

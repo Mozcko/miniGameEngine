@@ -1,28 +1,28 @@
-# Shaders: GLSL (Vulkan) → SPIR-V en tiempo de compilación, embebido en headers C++ (#29).
-# Ningún programa lee archivos de shader en tiempo de ejecución.
+# Shaders: GLSL (Vulkan) → SPIR-V at build time, embedded in C++ headers (#29).
+# No program reads shader files at runtime.
 #
 #   mge_add_shaders(<target> SHADERS <a.vert> <b.frag> ...)
 #
-# Por cada shader genera <build>/.../generated/shaders/<nombre>_<etapa>.h con la constante
-# mge::shaders::k<Nombre><Etapa> (un mge::ShaderCode: bytes SPIR-V + etapa). Incluir con
-# #include <shaders/triangle_vert.h>. La etapa sale de la extensión: .vert, .frag, .comp.
-# Editar un shader lo recompila (y a quien incluye su header).
+# For each shader, generates <build>/.../generated/shaders/<name>_<stage>.h with the constant
+# mge::shaders::k<Name><Stage> (an mge::ShaderCode: SPIR-V bytes + stage). Include with
+# #include <shaders/triangle_vert.h>. The stage comes from the extension: .vert, .frag, .comp.
+# Editing a shader recompiles it (and anything that includes its header).
 #
-# Compilador: glslang del sistema (Fedora: glslang, Ubuntu: glslang-tools) o, si no está,
-# glslang compilado desde el código fuente (FetchContent, versión fija), como SDL.
+# Compiler: system glslang (Fedora: glslang, Ubuntu: glslang-tools) or, if missing,
+# glslang built from source (FetchContent, pinned version), just like SDL.
 include_guard(GLOBAL)
 
 find_program(MGE_GLSLANG_EXECUTABLE NAMES glslang glslangValidator
-    DOC "Compilador GLSL → SPIR-V (glslang)")
+    DOC "GLSL → SPIR-V compiler (glslang)")
 if(MGE_GLSLANG_EXECUTABLE)
-    message(STATUS "glslang: usando el del sistema (${MGE_GLSLANG_EXECUTABLE})")
+    message(STATUS "glslang: using system executable (${MGE_GLSLANG_EXECUTABLE})")
     set(MGE_GLSLANG_COMMAND "${MGE_GLSLANG_EXECUTABLE}")
     set(MGE_GLSLANG_TARGET "")
 else()
     if(NOT MGE_FROM_INSTALLED_PACKAGE)
-        message(STATUS "glslang: no está instalado, se compila desde el código fuente")
+        message(STATUS "glslang: not installed, building from source")
         include(FetchContent)
-        # Solo el compilador de línea de comandos: sin optimizador (SPIRV-Tools), HLSL, tests ni install
+        # Command-line compiler only: no optimizer (SPIRV-Tools), HLSL, tests, or install
         set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
         set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
         set(ENABLE_HLSL OFF CACHE BOOL "" FORCE)
@@ -38,13 +38,13 @@ else()
         set(MGE_GLSLANG_COMMAND "$<TARGET_FILE:glslang-standalone>")
         set(MGE_GLSLANG_TARGET glslang-standalone)
     else()
-        message(FATAL_ERROR "glslang no encontrado en el sistema. mge_add_shaders requiere glslang o glslangValidator.")
+        message(FATAL_ERROR "glslang not found on the system. mge_add_shaders requires glslang or glslangValidator.")
     endif()
 endif()
 
 set(MGE_EMBED_SPIRV_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/MgeEmbedSpirv.cmake")
 
-# Directorio de includes de shaders (.glsl) del motor
+# Engine shader include directory (.glsl)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include")
     get_filename_component(MGE_DEFAULT_SHADER_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../include/mge/shaders/include" ABSOLUTE)
 elseif(DEFINED miniGameEngine_SOURCE_DIR AND EXISTS "${miniGameEngine_SOURCE_DIR}/src/mge/graphics/shaders/include")
@@ -55,8 +55,8 @@ elseif(EXISTS "${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
     set(MGE_DEFAULT_SHADER_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src/mge/graphics/shaders/include")
 endif()
 
-# Todos los headers de shaders generados: scripts/lint.sh lo compila antes de clang-tidy
-# (que necesita los headers aunque no se haya compilado nada más)
+# All generated shader headers: scripts/lint.sh builds this before clang-tidy
+# (which needs the headers even if nothing else was built)
 if(NOT TARGET mge_generated_shaders)
     add_custom_target(mge_generated_shaders)
 endif()
@@ -64,7 +64,7 @@ endif()
 function(mge_add_shaders target)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "" "" "SHADERS;INCLUDE_DIRS")
     if(NOT ARG_SHADERS)
-        message(FATAL_ERROR "mge_add_shaders(${target}): falta SHADERS")
+        message(FATAL_ERROR "mge_add_shaders(${target}): missing SHADERS")
     endif()
     set(out_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
     set(headers "")
@@ -82,7 +82,7 @@ function(mge_add_shaders target)
         get_filename_component(source "${shader}" ABSOLUTE)
         get_filename_component(file_name "${shader}" NAME)
         if(NOT file_name MATCHES "\\.(vert|frag|comp)$")
-            message(FATAL_ERROR "mge_add_shaders(${target}): ${file_name} debe terminar en .vert, .frag o .comp")
+            message(FATAL_ERROR "mge_add_shaders(${target}): ${file_name} must end in .vert, .frag or .comp")
         endif()
         if(file_name MATCHES "\\.vert$")
             set(stage_flag "-S" "vert")
@@ -104,7 +104,7 @@ function(mge_add_shaders target)
                     -P "${MGE_EMBED_SPIRV_SCRIPT}"
             DEPFILE "${depfile}"
             DEPENDS "${source}" "${MGE_EMBED_SPIRV_SCRIPT}" ${MGE_GLSLANG_TARGET}
-            COMMENT "Shader ${file_name} → SPIR-V embebido"
+            COMMENT "Shader ${file_name} → embedded SPIR-V"
             VERBATIM)
         target_sources(${target} PRIVATE "${header}")
         list(APPEND headers "${header}")

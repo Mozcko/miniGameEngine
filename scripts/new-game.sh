@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wrapper sobre 'mge new' para crear juegos nuevos a partir de plantillas.
-# Uso: scripts/new-game.sh [nombre] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]
+# Wrapper around 'mge new' to create new games from templates.
+# Usage: scripts/new-game.sh [name] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <directory>]
 #   scripts/new-game.sh space_shooter
 #   scripts/new-game.sh space_shooter --template 3d
 #   scripts/new-game.sh arcade_plane --template 2d
@@ -12,7 +12,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 usage() {
-    echo "Uso: scripts/new-game.sh [nombre] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <carpeta>]"
+    echo "Usage: scripts/new-game.sh [name] [--lang <c|cpp|python>] [--template <3d|2d|headless|window>] [--headless] [--dir <directory>]"
 }
 
 name=""
@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
-        -*) echo "Opción desconocida: $1" >&2; usage >&2; exit 1 ;;
+        -*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
         *)
             if [[ -z "$name" ]]; then
                 name="$1"
@@ -73,12 +73,12 @@ else
     fi
 fi
 
-# Compatibilidad con ci_window sin flag --template
+# Compatibility with ci_window without the --template flag
 if [[ "$name" == "ci_window" && "$has_template_flag" == false ]]; then
     template="window"
 fi
 
-# Localizar el ejecutable mge
+# Locate the mge executable
 mge_bin=""
 for candidate in "./build/mge" "./build-ci/mge" "./build-release/mge"; do
     if [[ -x "$candidate" ]]; then
@@ -91,7 +91,7 @@ if [[ -z "$mge_bin" ]]; then
     if command -v mge >/dev/null 2>&1; then
         mge_bin="mge"
     else
-        echo "Compilando herramienta mge CLI..."
+        echo "Building mge CLI tool..."
         if [[ -d "build" ]]; then
             cmake --build build --target mge
             mge_bin="./build/mge"
