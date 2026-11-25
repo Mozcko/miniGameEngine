@@ -12,6 +12,7 @@ add_library(mge_core STATIC
     Clock.h Clock.cpp
     FlyController.h FlyController.cpp
     Time.h
+    math/Ease.h
     math/Geometry.h math/Geometry.cpp
     ecs/Camera.h ecs/Camera.cpp
     ecs/Entity.h
@@ -62,6 +63,7 @@ mge_install_headers(core
     Clock.h
     FlyController.h
     Time.h
+    math/Ease.h
     math/Geometry.h
     ecs/Camera.h
     ecs/Entity.h

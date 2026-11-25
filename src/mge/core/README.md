@@ -10,6 +10,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Module.h` | `mge` | Interface for optional engine modules (`onInit`/`onFrameBegin`/`onFrameEnd`/`onShutdown`) |
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
+| `math/Ease.h` | `mge::ease` | Standard easing functions (linear, sine, quad, cubic, quart, quint, expo, circ, back, elastic, bounce, smoothstep), `EaseType`, `evaluate`, `lerp` |
 | `math/Geometry.h/.cpp` | `mge` | `Aabb`, `Sphere`, `Plane`, `Ray`, `Frustum` (from view‑projection), ray tests (`intersectRayAabb/Sphere/Plane/Triangle`) |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
@@ -99,6 +100,16 @@ Tests: `tests/core/test_input.cpp`.
 Pattern: `Pcg32 rng(hash2i(worldX, worldZ, worldSeed), /*stream=*/1);`. Never use `rand()`.
 Tests: `tests/core/test_random.cpp` (reference vectors, streams, bounds, χ² uniformity, hash
 grid with no collisions).
+
+---
+
+## Easing – `<mge/core/math/Ease.h>` (header-only, `mge::ease`)
+
+Standard Robert Penner easing curves (`linear`, `in`/`out`/`inOut` for `Sine`, `Quad`, `Cubic`, `Quart`,
+`Quint`, `Expo`, `Circ`, `Back`, `Elastic`, `Bounce`) plus `smoothstep` and `smootherstep`. Polynomial,
+back, bounce, and smoothstep curves are `constexpr`. Includes `EaseType` + `function(type)` /
+`evaluate(type, t)` for runtime selection and `lerp(from, to, t[, ease])` for scalars and GLM vectors.
+Tests: `tests/core/test_ease.cpp`.
 
 ---
 

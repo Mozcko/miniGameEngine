@@ -15,4 +15,5 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(mge::ease::lerp(0.0f, 10.0f, 0.5f, mge::ease::EaseType::InQuad) == doctest::Approx(2.5f));
 }

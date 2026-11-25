@@ -22,6 +22,7 @@
 #include <mge/core/ecs/Registry.h>
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/ecs/World.h>
+#include <mge/core/math/Ease.h>
 #include <mge/core/math/Geometry.h>
 
 // --- Generación procedural (headless) ---

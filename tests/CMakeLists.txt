@@ -22,6 +22,7 @@ add_executable(mge_core_tests
     core/test_application.cpp
     core/test_assets.cpp
     core/test_camera.cpp
+    core/test_ease.cpp
     core/test_ecs.cpp
     core/test_geometry.cpp
     core/test_input.cpp
