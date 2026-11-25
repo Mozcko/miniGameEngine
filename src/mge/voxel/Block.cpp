@@ -33,14 +33,14 @@ namespace mge {
     }
 
     BlockId BlockRegistry::add(BlockDesc desc) {
-        MGE_ASSERT(m_blocks.size() < 0xFFFF, "BlockRegistry lleno");
-        MGE_ASSERT(!find(desc.name).has_value(), "Nombre de bloque repetido: ", desc.name);
+        MGE_ASSERT(m_blocks.size() < 0xFFFF, "BlockRegistry is full");
+        MGE_ASSERT(!find(desc.name).has_value(), "Duplicate block name: ", desc.name);
         m_blocks.push_back(std::move(desc));
         return static_cast<BlockId>(m_blocks.size() - 1);
     }
 
     const BlockDesc& BlockRegistry::get(BlockId id) const {
-        MGE_ASSERT(id < m_blocks.size(), "BlockId desconocido: ", id);
+        MGE_ASSERT(id < m_blocks.size(), "Unknown BlockId: ", id);
         return id < m_blocks.size() ? m_blocks[id] : m_blocks[kAir];
     }
 
@@ -55,7 +55,7 @@ namespace mge {
         const int row = tile / columns;
         const float du = 1.0f / static_cast<float>(columns);
         const float dv = 1.0f / static_cast<float>(rows);
-        // Las imágenes se cargan con la fila 0 arriba: V se invierte
+        // Images are loaded with row 0 at the top: V is inverted
         return {{col * du, 1.0f - (row + 1) * dv}, {(col + 1) * du, 1.0f - row * dv}};
     }
 }

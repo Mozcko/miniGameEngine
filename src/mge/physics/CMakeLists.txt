@@ -1,4 +1,4 @@
-# Módulo de física (headless: core + voxel). Se compila siempre, también sin módulos.
+# Physics module (headless: core + voxel). Always built, even without modules.
 add_library(mge_physics STATIC
     GridQuery.h
     VoxelRaycast.h
@@ -17,7 +17,7 @@ target_include_directories(mge_physics PUBLIC
 target_link_libraries(mge_physics PUBLIC mge_core mge_voxel)
 mge_set_warnings(mge_physics)
 
-# Para <mge/mge.h>: quien enlace este módulo ve MGE_HAS_PHYSICS
+# For <mge/mge.h>: anything linking this module sees MGE_HAS_PHYSICS
 target_compile_definitions(mge_physics INTERFACE MGE_HAS_PHYSICS=1)
 
 mge_install_headers(physics
