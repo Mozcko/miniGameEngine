@@ -135,8 +135,8 @@ namespace sandbox {
         for (int wx = origin.x - kTreeRadius; wx < origin.x + kChunkSize + kTreeRadius; wx++) {
             for (int wz = origin.z - kTreeRadius; wz < origin.z + kChunkSize + kTreeRadius; wz++) {
                 const Column& col = columnAt(wx, wz);
-                // Highest point of a tree is surface + 7 (trunk of 5 + canopy); if it doesn't touch this chunk,
-                // skip
+                // Highest point of a tree is surface + 7 (trunk of 5 + canopy); if it doesn't touch this
+                // chunk, skip
                 if (col.height + 7 < bottom || col.height + 1 > top) continue;
                 if (col.surface != m_blocks.grass) continue;
 

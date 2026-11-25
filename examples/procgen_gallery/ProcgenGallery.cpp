@@ -1,5 +1,5 @@
-// Procedural gallery: generates meshes with mge_procgen (and mge_voxel) and exports them to OBJ in <build>/gallery/
-// for viewing in Blender or any OBJ viewer. Headless (no window or GPU); also acts as a
+// Procedural gallery: generates meshes with mge_procgen (and mge_voxel) and exports them to OBJ in
+// <build>/gallery/ for viewing in Blender or any OBJ viewer. Headless (no window or GPU); also acts as a
 // smoke test: exits with code 1 if any mesh is invalid or fails to write.
 #include <mge/mge.h>
 
@@ -308,7 +308,8 @@ namespace {
             if (!writeTextureSamples(outDir / "texture_generators.png")) setExitCode(1);
             if (!writeFontSample(outDir / "font_builtin.png")) setExitCode(1);
             MGE_LOG_INFO("Gallery", written,
-                         " meshes, texture_generators.png and font_builtin.png exported to ", outDir.string());
+                         " meshes, texture_generators.png and font_builtin.png exported to ",
+                         outDir.string());
             requestStop();
             return true;
         }

@@ -83,8 +83,8 @@ namespace platformer {
                 const char c = lines[std::size_t(y)][std::size_t(x)];
                 if (c == '@') hasSpawn = true;
                 if (!readCell(c, x, y, level)) {
-                    fail(error, std::string("unknown character '") + c + "' at row " +
-                                    std::to_string(y + 1) + ", column " + std::to_string(x + 1));
+                    fail(error, std::string("unknown character '") + c + "' at row " + std::to_string(y + 1) +
+                                    ", column " + std::to_string(x + 1));
                     return std::nullopt;
                 }
             }

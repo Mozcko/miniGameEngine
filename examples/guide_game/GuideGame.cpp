@@ -105,8 +105,7 @@ namespace {
             m_audio->playSong(m_themeSong, 1.0f);
 
             reset();
-            MGE_LOG_INFO("GuideGame",
-                         "Game started. WASD: move, Space: jump, R: restart, Esc: quit");
+            MGE_LOG_INFO("GuideGame", "Game started. WASD: move, Space: jump, R: restart, Esc: quit");
             return true;
         }
 
@@ -288,8 +287,7 @@ namespace {
                            glm::vec4(0.06f, 0.08f, 0.12f, 0.92f));
                 m_ui->rectOutline({cx - 180.0f, cy - 60.0f}, {360.0f, 120.0f},
                                   glm::vec4(1.0f, 0.3f, 0.3f, 1.0f));
-                m_ui->text({cx - 85.0f, cy - 35.0f}, "GAME OVER", glm::vec4(1.0f, 0.3f, 0.3f, 1.0f),
-                           2.5f);
+                m_ui->text({cx - 85.0f, cy - 35.0f}, "GAME OVER", glm::vec4(1.0f, 0.3f, 0.3f, 1.0f), 2.5f);
                 m_ui->text({cx - 130.0f, cy + 15.0f}, "PRESS 'R' TO RESTART", glm::vec4(1.0f), 1.8f);
             }
 

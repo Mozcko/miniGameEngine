@@ -264,9 +264,8 @@ public:
         if (m_platform->wasActionPressed("DebugDraw")) m_showDebug = !m_showDebug;
         if (m_platform->wasActionPressed("FreezeFrustum")) {
             m_frustumFrozen = !m_frustumFrozen;
-            MGE_LOG_INFO("Sandbox", m_frustumFrozen
-                                        ? "Frustum frozen (F4): fly outside to see culling"
-                                        : "Frustum unfrozen");
+            MGE_LOG_INFO("Sandbox", m_frustumFrozen ? "Frustum frozen (F4): fly outside to see culling"
+                                                    : "Frustum unfrozen");
         }
         if (m_platform->wasActionPressed("ToggleAtlas")) {
             if (m_atlas == &m_pngAtlas)
@@ -664,9 +663,9 @@ public:
     }
 
 private:
-    static constexpr int kBaseRenderDistance = 4;    // Base distance without LOD (9×9 chunks)
-    static constexpr int kDoubleRenderDistance = 8;  // Doubled distance with LOD (17×17 chunks)
-    static constexpr int kTransparentSortRadius = 2; // Radius in chunks around the camera (#180)
+    static constexpr int kBaseRenderDistance = 4;                // Base distance without LOD (9×9 chunks)
+    static constexpr int kDoubleRenderDistance = 8;              // Doubled distance with LOD (17×17 chunks)
+    static constexpr int kTransparentSortRadius = 2;             // Radius in chunks around the camera (#180)
     static constexpr float kTransparentSortMoveThreshold = 1.0f; // Re-sort if camera moves > 1 block
     static constexpr float kTransparentSortAngleCos = 0.965925826f; // cos(15°): re-sort if turned > 15°
 
@@ -887,8 +886,7 @@ private:
             std::snprintf(hourBuf, sizeof(hourBuf), "%02d:%02d", hourInt, minuteInt);
             m_overlay.setCounter("time", hourBuf);
             m_overlay.setCounter("draw", std::to_string(render.totalDrawCalls()) + " calls, " +
-                                             std::to_string(render.totalTriangles() / 1000) +
-                                             "k triangles");
+                                             std::to_string(render.totalTriangles() / 1000) + "k triangles");
             std::array<int, 3> lodChunks = {0, 0, 0};
             std::array<std::size_t, 3> lodTris = {0, 0, 0};
             for (const auto& [coord, gpu] : m_gpuChunks) {
@@ -1024,7 +1022,8 @@ private:
         return true;
     }
 
-    // Copies one tile from the original atlas onto another (water and lava animation). 32 px tiles, row 0 at top
+    // Copies one tile from the original atlas onto another (water and lava animation). 32 px tiles, row 0 at
+    // top
     void copyTile(int source, int destination) {
         constexpr int kTile = 32;
         const int columns = static_cast<int>(m_atlas->width()) / kTile;

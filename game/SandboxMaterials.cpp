@@ -103,16 +103,16 @@ namespace sandbox {
             p.emplace_back(10, [](mge::Image& im, const Rect& r, std::uint32_t s) {
                 tg::noise(im, r, kTnt, 3.0f, s, 2);
             });
-            p.emplace_back(
-                11, [](mge::Image& im, const Rect& r, std::uint32_t s) { // Cobweb: threads over transparent background
-                    tg::plant(im, r, {0.0f, 0.0f, 0.0f, 0.0f}, {0.92f, 0.92f, 0.95f, 1.0f}, 0, s);
-                    for (int i = 0; i < r.width; i++) {
-                        im.set(r.x + i, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
-                        im.set(r.x + r.width - 1 - i, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
-                        im.set(r.x + i, r.y + r.height / 2, {0.9f, 0.9f, 0.92f, 1.0f});
-                        im.set(r.x + r.width / 2, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
-                    }
-                });
+            p.emplace_back(11, [](mge::Image& im, const Rect& r,
+                                  std::uint32_t s) { // Cobweb: threads over transparent background
+                tg::plant(im, r, {0.0f, 0.0f, 0.0f, 0.0f}, {0.92f, 0.92f, 0.95f, 1.0f}, 0, s);
+                for (int i = 0; i < r.width; i++) {
+                    im.set(r.x + i, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
+                    im.set(r.x + r.width - 1 - i, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
+                    im.set(r.x + i, r.y + r.height / 2, {0.9f, 0.9f, 0.92f, 1.0f});
+                    im.set(r.x + r.width / 2, r.y + i, {0.9f, 0.9f, 0.92f, 1.0f});
+                }
+            });
             p.emplace_back(12, [](mge::Image& im, const Rect& r, std::uint32_t s) {
                 tg::plant(im, r, rgb(0.20f, 0.50f, 0.15f), rgb(0.85f, 0.10f, 0.12f), 5, s); // Rose
             });
@@ -143,15 +143,14 @@ namespace sandbox {
                 tg::rings(im, r, kRings, 4.0f, s);
                 tg::frame(im, r, kBark.sample(0.4f), 2);
             });
-            p.emplace_back(
-                49, [](mge::Image& im, const Rect& r, std::uint32_t) { // Glass: nearly transparent with a frame
-                    for (int v = 0; v < r.height; v++)
-                        for (int u = 0; u < r.width; u++)
-                            im.set(r.x + u, r.y + v, {0.80f, 0.90f, 0.95f, 0.15f});
-                    tg::frame(im, r, {0.85f, 0.92f, 0.97f, 0.9f}, 2);
-                    for (int i = 4; i < 12; i++)
-                        im.set(r.x + i + 4, r.y + i, {1.0f, 1.0f, 1.0f, 0.6f}); // Highlight
-                });
+            p.emplace_back(49, [](mge::Image& im, const Rect& r,
+                                  std::uint32_t) { // Glass: nearly transparent with a frame
+                for (int v = 0; v < r.height; v++)
+                    for (int u = 0; u < r.width; u++) im.set(r.x + u, r.y + v, {0.80f, 0.90f, 0.95f, 0.15f});
+                tg::frame(im, r, {0.85f, 0.92f, 0.97f, 0.9f}, 2);
+                for (int i = 4; i < 12; i++)
+                    im.set(r.x + i + 4, r.y + i, {1.0f, 1.0f, 1.0f, 0.6f}); // Highlight
+            });
             p.emplace_back(52, [](mge::Image& im, const Rect& r, std::uint32_t s) {
                 tg::leaves(im, r, kLeaves, 0.25f, s);
             });

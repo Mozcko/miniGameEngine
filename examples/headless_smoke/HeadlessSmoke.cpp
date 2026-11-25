@@ -90,9 +90,9 @@ namespace {
         void onShutdown() override {
             const mge::StreamingStats stats = m_streamer->stats();
             MGE_LOG_INFO("Smoke", "Streaming: ", m_streamedMeshes, " meshes, ", stats.loaded,
-                         " loaded (limit ", m_streamBound, "), pool reused ",
-                         m_streamWorld.reusedCount(), " times, discarded ", stats.discarded,
-                         ", worst main-thread update ", m_worstStreamMs, " ms");
+                         " loaded (limit ", m_streamBound, "), pool reused ", m_streamWorld.reusedCount(),
+                         " times, discarded ", stats.discarded, ", worst main-thread update ",
+                         m_worstStreamMs, " ms");
             if (m_streamedMeshes == 0) fail("streaming: no meshes received", 0, 0);
             m_streamer.reset();
             if (m_failures == 0) {
