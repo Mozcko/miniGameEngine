@@ -11,7 +11,7 @@
 | glslang | GLSL → SPIR‑V shader compiler (build time, #29) | `find_program(glslang / glslangValidator)`; if missing, **built from source** (pinned 16.2.0, SHA‑256) | `glslang` | `glslang-tools` |
 | Vulkan validation layers (optional) | GPU API error checking in Debug builds | loaded at runtime | `vulkan-validation-layers` | `vulkan-validationlayers` |
 | GLM | math (header‑only) | **no** – must be on the default include path | `glm-devel` | `libglm-dev` |
-| stb_image | PNG loading (header‑only) | **no** – included as `<stb/stb_image.h>` | `stb_image-devel` (or `stb-devel`) | `libstb-dev` |
+| stb (`stb_image`, `stb_truetype`, `stb_vorbis`) | PNG, TTF and OGG Vorbis loading (single-file) | **no** – included as `<stb/stb_*.h>` / `<stb/stb_vorbis.c>` | `stb-devel` | `libstb-dev` |
 
 `STB_IMAGE_IMPLEMENTATION` is defined in `src/mge/graphics/Texture2D.cpp` with `STB_IMAGE_STATIC`
 (private to that file). The render tests have their own copy, plus stb_image_write.

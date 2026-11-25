@@ -4,6 +4,8 @@
 #include <mge/synth/Mixer.h>
 #include <mge/synth/Sfx.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <vector>
 
@@ -35,6 +37,12 @@ namespace mge {
 
         // WAV → Sample at the mixer's sample rate (relative → mge::assetPath). kInvalidSample on failure
         SampleId loadWav(const std::filesystem::path& path);
+        // OGG Vorbis (#235) → Sample at the mixer's sample rate (relative → mge::assetPath).
+        // kInvalidSample on failure
+        SampleId loadOgg(const std::filesystem::path& path);
+        SampleId loadOggFromMemory(const std::uint8_t* oggBytes, std::size_t size);
+        // Loads WAV or OGG based on file extension (case-insensitive). kInvalidSample on failure
+        SampleId loadSound(const std::filesystem::path& path);
         SampleId addSample(Sample sample) { return m_mixer.addSample(std::move(sample)); }
         // Renders an sfxr effect (#48) at the mixer's sample rate and registers it: mge::sfx::jump(), coin()…
         SampleId addSfx(const SfxParams& params, std::uint64_t seed = 0) {

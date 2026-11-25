@@ -109,4 +109,5 @@
 // --- Audio ---
 #ifdef MGE_HAS_AUDIO
 #include <mge/audio/AudioModule.h>
+#include <mge/audio/OggLoader.h>
 #endif

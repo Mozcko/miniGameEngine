@@ -2,7 +2,8 @@
 
 | File | Namespace | Purpose |
 |------|-----------|---------|
-| `AudioModule.h/.cpp` | `mge` | Plays the engine's `Mixer` (from [`mge_synth`](../synth/README.md)) on the default playback device through an SDL3 audio stream, and loads WAV files into it |
+| `AudioModule.h/.cpp` | `mge` | Plays the engine's `Mixer` (from [`mge_synth`](../synth/README.md)) on the default playback device through an SDL3 audio stream, and loads WAV/OGG files into it |
+| `OggLoader.h/.cpp` | `mge` | Non-streamed OGG Vorbis decoder (`stb_vorbis`, #235) converting to float32 PCM at the requested sample rate |
 
 Depends on `mge_core`, `mge_synth` and SDL3. All the mixing and synthesis lives in the headless
 `mge_synth`; this module is only the device glue. Sound can come from code (tones, and in later M5
@@ -21,6 +22,8 @@ and mute ([ADR 0004](../../../docs/adr/0004-procedural-first-assets-optional.md)
 | `setBusVolume(AudioBus, 0..1)`, `setDelay(DelaySettings)` | Effects/music volume; the shared echo |
 | `addSong(Song)` → `SongId`; `playSong(id, fade)`, `stopMusic(fade)` | Code‑defined music that loops, with crossfades (#49) |
 | `loadWav(path)` → `SampleId` | `SDL_LoadWAV` + `SDL_ConvertAudioSamples` to float32 at the mixer rate (mono stays mono). Relative paths go through `mge::assetPath`. `kInvalidSample` on failure (logged) |
+| `loadOgg(path)` / `loadOggFromMemory(bytes, size)` → `SampleId` | Decodes an entire OGG Vorbis stream with `stb_vorbis` (#235) to float32 at the mixer rate (mono stays mono). Relative paths go through `mge::assetPath`. `kInvalidSample` on failure (logged) |
+| `loadSound(path)` → `SampleId` | Dispatches to `loadWav` or `loadOgg` based on file extension (`.wav` / `.ogg`, case-insensitive) |
 | `addSample(Sample)` → `SampleId` | Register a sound made by code |
 | `addSfx(SfxParams, seed)` → `SampleId` | Render an sfxr‑style effect (#48) at the mixer rate and register it: `addSfx(mge::sfx::coin())` |
 | `play(id, gain = 1, pan = 0)` | Plays a sample; pan −1..1 at constant power |

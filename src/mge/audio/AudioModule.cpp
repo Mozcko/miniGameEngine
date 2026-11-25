@@ -1,4 +1,5 @@
 #include <mge/audio/AudioModule.h>
+#include <mge/audio/OggLoader.h>
 
 #include <mge/core/Assets.h>
 #include <mge/core/Log.h>
@@ -6,6 +7,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -108,5 +110,30 @@ namespace mge {
         const SampleId id = m_mixer.addSample(std::move(sample));
         if (id == kInvalidSample) MGE_LOG_ERROR("Audio", "Sample bank is full: ", full.string());
         return id;
+    }
+
+    SampleId AudioModule::loadOgg(const std::filesystem::path& path) {
+        Sample sample = loadOggFile(path, m_mixer.sampleRate());
+        if (sample.empty()) return kInvalidSample;
+        const SampleId id = m_mixer.addSample(std::move(sample));
+        if (id == kInvalidSample) MGE_LOG_ERROR("Audio", "Sample bank is full: ", path.string());
+        return id;
+    }
+
+    SampleId AudioModule::loadOggFromMemory(const std::uint8_t* oggBytes, std::size_t size) {
+        Sample sample = mge::loadOgg(oggBytes, size, m_mixer.sampleRate());
+        if (sample.empty()) return kInvalidSample;
+        const SampleId id = m_mixer.addSample(std::move(sample));
+        if (id == kInvalidSample) MGE_LOG_ERROR("Audio", "Sample bank is full");
+        return id;
+    }
+
+    SampleId AudioModule::loadSound(const std::filesystem::path& path) {
+        std::string ext = path.extension().string();
+        for (char& ch : ext) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        if (ext == ".wav") return loadWav(path);
+        if (ext == ".ogg") return loadOgg(path);
+        MGE_LOG_ERROR("Audio", "Unsupported audio format: ", path.string());
+        return kInvalidSample;
     }
 }

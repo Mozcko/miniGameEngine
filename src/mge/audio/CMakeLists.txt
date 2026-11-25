@@ -1,6 +1,7 @@
 # Audio (#46): plays the mge_synth mixer on the default playback device (SDL3 audio streams)
 add_library(mge_audio STATIC
     AudioModule.h AudioModule.cpp
+    OggLoader.h OggLoader.cpp
 )
 add_library(mge::audio ALIAS mge_audio)
 set_target_properties(mge_audio PROPERTIES EXPORT_NAME audio)
@@ -16,4 +17,5 @@ target_compile_definitions(mge_audio INTERFACE MGE_HAS_AUDIO=1)
 
 mge_install_headers(audio
     AudioModule.h
+    OggLoader.h
 )
