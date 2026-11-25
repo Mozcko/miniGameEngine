@@ -79,7 +79,8 @@ namespace mge {
             m_buffer = m_device.createBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
                                              m_capacity * std::uint32_t(sizeof(GpuVertex)));
         }
-        // cycle: if the previous frame still uses the buffer, SDL provides another behind the scenes (without overwriting it)
+        // cycle: if the previous frame still uses the buffer, SDL provides another behind the scenes (without
+        // overwriting it)
         if (!m_buffer || !m_device.uploadToBuffer(m_buffer, vertices().data(),
                                                   count * std::uint32_t(sizeof(GpuVertex)), true)) {
             clear();

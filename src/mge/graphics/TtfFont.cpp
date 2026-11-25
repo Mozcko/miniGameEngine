@@ -39,8 +39,8 @@ namespace mge {
         int size = 128;
         for (;; size *= 2) {
             if (size > kMaxAtlasSize) {
-                MGE_LOG_ERROR("Font", "Glyphs at ", pixelHeight, " px do not fit in a ",
-                              kMaxAtlasSize, " px atlas");
+                MGE_LOG_ERROR("Font", "Glyphs at ", pixelHeight, " px do not fit in a ", kMaxAtlasSize,
+                              " px atlas");
                 return {};
             }
             coverage.assign(std::size_t(size) * std::size_t(size), 0);
@@ -81,8 +81,7 @@ namespace mge {
         const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(file)),
                                               std::istreambuf_iterator<char>());
         Font font = loadTtfFont(bytes, pixelHeight);
-        if (font.valid())
-            MGE_LOG_INFO("Font", "Font ", full.filename().string(), " (", pixelHeight, " px)");
+        if (font.valid()) MGE_LOG_INFO("Font", "Font ", full.filename().string(), " (", pixelHeight, " px)");
         return font;
     }
 }

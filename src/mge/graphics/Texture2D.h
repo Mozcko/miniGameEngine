@@ -33,7 +33,8 @@ namespace mge {
         // Replaces a region (image coordinates, row 0 at top) with RGBA8 pixels
         bool updateRegion(GpuDevice& device, std::uint32_t x, std::uint32_t y, std::uint32_t width,
                           std::uint32_t height, const std::uint8_t* rgba);
-        // Copies a region from the ORIGINAL image (keepCpuCopy) to another location in the texture (animated tiles)
+        // Copies a region from the ORIGINAL image (keepCpuCopy) to another location in the texture (animated
+        // tiles)
         bool copyFromOriginal(GpuDevice& device, std::uint32_t srcX, std::uint32_t srcY, std::uint32_t width,
                               std::uint32_t height, std::uint32_t dstX, std::uint32_t dstY);
 

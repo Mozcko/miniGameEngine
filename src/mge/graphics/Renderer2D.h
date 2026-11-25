@@ -48,7 +48,8 @@ namespace mge {
         }
         const GpuFont& builtinFont() const { return m_builtin; }
 
-        // Uploads the batch and draws it onto target (loads existing contents). Must call begin() again afterwards
+        // Uploads the batch and draws it onto target (loads existing contents). Must call begin() again
+        // afterwards
         void flush(CommandBuffer& cmd, SDL_GPUTexture* target);
 
         // From the last flush

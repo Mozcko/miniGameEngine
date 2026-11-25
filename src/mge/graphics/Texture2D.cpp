@@ -5,7 +5,8 @@
 
 #include <cstring>
 
-// stb_image with static functions: avoids collisions with another copy of stb_image in the same binary (e.g. tests)
+// stb_image with static functions: avoids collisions with another copy of stb_image in the same binary (e.g.
+// tests)
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>

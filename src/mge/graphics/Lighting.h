@@ -8,7 +8,8 @@ namespace mge {
     // (sky above, ground below, based on normal), and linear distance fog from the camera.
     //   color = albedo × (ambient(n) + sun × max(n·toSun, 0)), blended with fog
     struct Lighting {
-        glm::vec3 sunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f)); // Direction light travels toward
+        glm::vec3 sunDirection =
+            glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f)); // Direction light travels toward
         glm::vec3 sunColor = glm::vec3(0.75f, 0.72f, 0.65f);
         glm::vec3 skyAmbient = glm::vec3(0.50f, 0.55f, 0.65f);    // Upward normals
         glm::vec3 groundAmbient = glm::vec3(0.30f, 0.27f, 0.24f); // Downward normals
