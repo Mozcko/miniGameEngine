@@ -17,17 +17,17 @@
 
 namespace mge {
 
-    // Tiempos de CPU por nombre, agregados por frame. Un Profiler por Application (sin singletons).
-    // Solo hilo principal (MGE_ASSERT si se usa desde otro hilo).
+    // CPU timings by name, aggregated per frame. One Profiler per Application (no singletons).
+    // Main thread only (MGE_ASSERT if used from another thread).
     class Profiler {
     public:
         struct Entry {
             std::string name;
-            float lastMs = 0.0f;     // Total del último frame terminado
-            float averageMs = 0.0f;  // Promedio móvil exponencial (alpha 0.1)
-            float maxMs = 0.0f;      // Máximo de las últimas ~2 s (o de kWindowFrames frames)
-            std::uint32_t calls = 0; // Llamadas en el último frame
-            int depth = 0;           // Anidamiento (para indentar en el overlay)
+            float lastMs = 0.0f;     // Total from the last completed frame
+            float averageMs = 0.0f;  // Exponential moving average (alpha 0.1)
+            float maxMs = 0.0f;      // Maximum over the last ~2 s (or kWindowFrames frames)
+            std::uint32_t calls = 0; // Calls in the last frame
+            int depth = 0;           // Nesting depth (for indentation in the overlay)
         };
 
         Profiler();
@@ -39,15 +39,15 @@ namespace mge {
         Profiler& operator=(Profiler&&) = delete;
 
         void beginFrame();
-        void endFrame();                   // Cierra el frame: pasa los acumulados a lastMs/averageMs
+        void endFrame();                   // Closes the frame: moves accumulators into lastMs/averageMs
         void begin(std::string_view name); // Prefer ScopedTimer
         void end();
-        const std::vector<Entry>& entries() const; // En orden de primera aparición (estable entre frames)
+        const std::vector<Entry>& entries() const; // In order of first appearance (stable across frames)
         void setEnabled(bool enabled);
-        bool enabled() const; // Desactivado = begin/end no hacen nada (coste ~0)
+        bool enabled() const; // Disabled = begin/end are no-ops (~0 cost)
 
     private:
-        static constexpr std::size_t kWindowFrames = 120; // ~2 s a 60 FPS
+        static constexpr std::size_t kWindowFrames = 120; // ~2 s at 60 FPS
 
         struct OpenScope {
             std::size_t entryIndex;
@@ -108,7 +108,7 @@ namespace mge {
 
 #if defined(MGE_PROFILING) && MGE_PROFILING
 #if defined(TRACY_ENABLE)
-// Con Tracy activado, `name` debe ser un string literal (ej: "update") para ZoneScopedN
+// With Tracy enabled, `name` must be a string literal (e.g., "update") for ZoneScopedN
 #define MGE_PROFILE_SCOPE(profiler, name)                                                                    \
     ZoneScopedN(name);                                                                                       \
     ::mge::ScopedTimer MGE_CONCAT(mgeProfileScope, __LINE__)((profiler), (name))

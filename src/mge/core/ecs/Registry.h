@@ -20,10 +20,10 @@
 namespace mge {
 
     namespace ecs_detail {
-        // Almacenamiento "sparse set" de un tipo de componente:
-        //   sparse[entity.index] -> posición en los arreglos densos (o kAbsent)
-        //   dense[i] = entidad dueña, data[i] = componente
-        // Iterar es recorrer arreglos contiguos; agregar/quitar/buscar es O(1).
+        // Sparse-set storage for a component type:
+        //   sparse[entity.index] -> position in dense arrays (or kAbsent)
+        //   dense[i] = owning entity, data[i] = component
+        // Iteration traverses contiguous arrays; add/remove/lookup is O(1).
         class PoolBase {
         public:
             virtual ~PoolBase() = default;
@@ -44,7 +44,7 @@ namespace mge {
         public:
             template <typename... Args> T& emplace(Entity entity, Args&&... args) {
                 if (contains(entity.index)) {
-                    // Reemplazar el componente existente
+                    // Replace existing component
                     T& existing = m_data[m_sparse[entity.index]];
                     existing = T{std::forward<Args>(args)...};
                     return existing;
@@ -58,7 +58,7 @@ namespace mge {
 
             void remove(std::uint32_t index) override {
                 if (!contains(index)) return;
-                // Swap-and-pop: el último ocupa el hueco (los arreglos quedan contiguos)
+                // Swap-and-pop: the last element fills the gap (arrays remain contiguous)
                 const std::uint32_t position = m_sparse[index];
                 const std::uint32_t last = static_cast<std::uint32_t>(m_dense.size() - 1);
                 if (position != last) {
@@ -78,10 +78,10 @@ namespace mge {
             std::vector<T> m_data;
         };
 
-        // Almacenamiento "sparse set" de tipo borrado para componentes en tiempo de ejecución.
-        // Mantiene memoria alineada en páginas fijas (kPageSize) que nunca se mueven ni liberan
-        // hasta destruir el pool: los punteros sobreviven a altas (addRaw), mientras que las bajas
-        // usan swap-and-pop (invalidan el puntero quitado y el del último elemento movido al hueco).
+        // Type-erased sparse-set storage for runtime components.
+        // Keeps aligned memory in fixed-size pages (kPageSize) that are never moved or freed
+        // until the pool is destroyed: pointers survive additions (addRaw), whereas removals
+        // use swap-and-pop (invalidating the removed pointer and the last element moved into its slot).
         class RawPool : public PoolBase {
         public:
             static constexpr std::size_t kPageSize = 64;
@@ -130,7 +130,7 @@ namespace mge {
                 const std::size_t pos = m_dense.size();
                 const std::size_t pageIndex = pos / kPageSize;
                 if (pageIndex >= m_pages.size()) {
-                    // Crecimiento geométrico antes de operator new para evitar realojamientos O(n^2) y fugas
+                    // Geometric growth before operator new to avoid O(n^2) reallocations and leaks
                     if (m_pages.size() == m_pages.capacity()) {
                         m_pages.reserve(m_pages.empty() ? 8 : m_pages.capacity() * 2);
                     }
@@ -164,7 +164,7 @@ namespace mge {
 
             const void* get(std::uint32_t index) const { return slotPtr(m_sparse[index]); }
 
-            // Retorna nullptr si no existe; evita doble búsqueda en m_sparse durante eachRaw.
+            // Returns nullptr if absent; avoids a double lookup in m_sparse during eachRaw.
             void* tryGetRaw(std::uint32_t index) {
                 if (index >= m_sparse.size()) return nullptr;
                 const std::uint32_t pos = m_sparse[index];
@@ -198,7 +198,7 @@ namespace mge {
             std::vector<std::byte*> m_pages;
         };
 
-        // Id único por tipo de componente (0, 1, 2...), asignado la primera vez que se usa el tipo
+        // Unique ID per component type (0, 1, 2...), assigned the first time the type is used
         inline std::size_t nextTypeId() {
             static std::size_t counter = 0;
             return counter++;
@@ -220,19 +220,19 @@ namespace mge {
 
     template <typename... Ts> class View;
 
-    // Registro de entidades y componentes (ECS liviano). Un componente es cualquier tipo movible.
-    // No es thread-safe. No agregar ni quitar componentes de los tipos que se están iterando
-    // dentro de un each(): usar una lista diferida.
+    // Entity and component registry (lightweight ECS). Any movable type can be a component.
+    // Not thread-safe. Do not add or remove components of the types being iterated
+    // inside an each(): use a deferred list instead.
     class Registry {
     public:
         Entity create();
-        // Destruye la entidad y todos sus componentes. Ignora handles inválidos.
+        // Destroys the entity and all of its components. Ignores invalid handles.
         void destroy(Entity entity);
         bool valid(Entity entity) const;
         std::size_t aliveCount() const { return m_alive; }
 
         template <typename T, typename... Args> T& add(Entity entity, Args&&... args) {
-            MGE_ASSERT(valid(entity), "add() sobre una entidad inválida");
+            MGE_ASSERT(valid(entity), "add() called on an invalid entity");
             return pool<T>().emplace(entity, std::forward<Args>(args)...);
         }
 
@@ -242,11 +242,11 @@ namespace mge {
         }
 
         template <typename T> T& get(Entity entity) {
-            MGE_ASSERT(has<T>(entity), "get() de un componente que la entidad no tiene");
+            MGE_ASSERT(has<T>(entity), "get() called for a component the entity does not have");
             return pool<T>().get(entity.index);
         }
 
-        // nullptr si la entidad no es válida o no tiene el componente
+        // nullptr if the entity is invalid or does not have the component
         template <typename T> T* tryGet(Entity entity) {
             return has<T>(entity) ? &pool<T>().get(entity.index) : nullptr;
         }
@@ -261,17 +261,17 @@ namespace mge {
             return p ? p->size() : 0;
         }
 
-        // Entidades que tienen TODOS los componentes Ts
+        // Entities that have ALL components Ts
         template <typename... Ts> View<Ts...> view();
 
-        // Atajo: registry.each<A, B>([](Entity e, A& a, B& b) { ... });
+        // Shortcut: registry.each<A, B>([](Entity e, A& a, B& b) { ... });
         template <typename... Ts, typename Fn> void each(Fn&& fn);
 
-        // --- Componentes en tiempo de ejecución (C, Python, etc.) ---
-        // Los punteros devueltos por addRaw(), getRaw() y eachRaw() permanecen válidos al agregar
-        // componentes (las páginas nunca se reubican). Quitar un componente (removeRaw) o destruir
-        // una entidad (destroy) hace swap-and-pop e invalida los punteros a ese componente y al que
-        // era el último en su pool.
+        // --- Runtime components (C, Python, etc.) ---
+        // Pointers returned by addRaw(), getRaw(), and eachRaw() remain valid when adding
+        // components (pages are never relocated). Removing a component (removeRaw) or destroying
+        // an entity (destroy) performs swap-and-pop and invalidates pointers to that component and
+        // to the one that was last in its pool.
         bool isValidRuntimeComponent(ComponentTypeId type) const {
             return type < m_rawPools.size() && m_rawPools[type] != nullptr;
         }
@@ -309,32 +309,32 @@ namespace mge {
             return const_cast<ecs_detail::Pool<T>*>(std::as_const(*this).findPool<T>());
         }
 
-        std::vector<std::uint32_t> m_generations; // Generación actual de cada índice
-        std::vector<std::uint32_t> m_freeIndices; // Índices libres para reutilizar
+        std::vector<std::uint32_t> m_generations; // Current generation of each index
+        std::vector<std::uint32_t> m_freeIndices; // Free indices available for reuse
         std::size_t m_alive = 0;
-        std::vector<std::unique_ptr<ecs_detail::PoolBase>> m_pools;   // Por typeId
-        std::vector<std::unique_ptr<ecs_detail::RawPool>> m_rawPools; // Por ComponentTypeId
+        std::vector<std::unique_ptr<ecs_detail::PoolBase>> m_pools;   // Indexed by typeId
+        std::vector<std::unique_ptr<ecs_detail::RawPool>> m_rawPools; // Indexed by ComponentTypeId
         std::unordered_map<std::string, ComponentTypeId> m_runtimeComponentNames;
         std::vector<RuntimeComponentInfo> m_runtimeComponents;
     };
 
-    // Vista sobre las entidades que tienen todos los componentes Ts. Recorre el pool más chico
-    // y verifica los demás, así el costo es proporcional al componente menos común.
+    // View over entities that have all components Ts. Iterates the smallest pool
+    // and checks the rest, so cost is proportional to the least common component.
     template <typename... Ts> class View {
     public:
         explicit View(Registry& registry) : m_registry(registry) {}
 
         template <typename Fn> void each(Fn&& fn) {
             const ecs_detail::PoolBase* smallest = smallestPool();
-            if (!smallest || smallest->size() == 0) return; // Algún tipo no tiene ningún componente todavía
-            // Copiar la lista de entidades: el callback puede agregar/quitar componentes o destruir
-            // entidades sin invalidar el iterador ni visitar entidades creadas durante este pase.
+            if (!smallest || smallest->size() == 0) return; // Some type has no components yet
+            // Copy the entity list: the callback may add/remove components or destroy
+            // entities without invalidating the iterator or visiting entities created during this pass.
             const std::vector<Entity> entities = smallest->entities();
             for (Entity entity : entities) {
                 if (!m_registry.valid(entity)) {
                     continue;
                 }
-                // Re-obtener los pools por si un pool se creó o creció durante la iteración
+                // Re-fetch pools in case a pool was created or resized during iteration
                 auto pools = std::make_tuple(m_registry.findPool<Ts>()...);
                 if ((std::get<ecs_detail::Pool<Ts>*>(pools) && ...) &&
                     (std::get<ecs_detail::Pool<Ts>*>(pools)->contains(entity.index) && ...)) {

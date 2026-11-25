@@ -4,9 +4,9 @@
 
 namespace mge {
 
-    // --- Mezcladores stateless (64 bits) ---
+    // --- Stateless mixers (64-bit) ---
 
-    // Finalizador de SplitMix64: mezcla bien todos los bits (avalancha). Sin estado.
+    // SplitMix64 finalizer: thoroughly mixes all bits (avalanche). Stateless.
     constexpr std::uint64_t mix64(std::uint64_t x) {
         x += 0x9E3779B97F4A7C15ull;
         x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
@@ -14,15 +14,15 @@ namespace mge {
         return x ^ (x >> 31);
     }
 
-    // SplitMix64 con estado: útil para derivar varias semillas de una sola
+    // Stateful SplitMix64: useful for deriving multiple seeds from a single one
     constexpr std::uint64_t splitmix64(std::uint64_t& state) {
         std::uint64_t result = mix64(state);
         state += 0x9E3779B97F4A7C15ull;
         return result;
     }
 
-    // --- Hash de coordenadas enteras (stateless, determinista en todas las plataformas) ---
-    // Mismo (x, z, seed) -> mismo valor siempre; vecinos dan valores no correlacionados.
+    // --- Integer coordinate hash (stateless, deterministic across all platforms) ---
+    // Same (x, z, seed) -> always the same value; neighbors produce uncorrelated values.
     constexpr std::uint32_t hash2i(std::int32_t x, std::int32_t z, std::uint32_t seed) {
         std::uint64_t packed =
             (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32) | static_cast<std::uint32_t>(z);
@@ -36,13 +36,13 @@ namespace mge {
         return static_cast<std::uint32_t>(h >> 32);
     }
 
-    // u32 -> float en [0, 1) usando los 24 bits altos (exactos en float)
+    // u32 -> float in [0, 1) using the top 24 bits (exact in float)
     constexpr float toFloat01(std::uint32_t value) {
         return static_cast<float>(value >> 8) * (1.0f / 16777216.0f);
     }
 
-    // --- PCG32 (O'Neill, pcg-random.org): generador rápido, pequeño y de buena calidad ---
-    // Igual al "pcg32_srandom/pcg32_random" de referencia, así que se puede verificar con sus vectores.
+    // --- PCG32 (O'Neill, pcg-random.org): fast, small, high-quality generator ---
+    // Matches the reference "pcg32_srandom/pcg32_random", so it can be verified against its test vectors.
     class Pcg32 {
     public:
         explicit Pcg32(std::uint64_t seed = 0x853C49E6748FEA9Bull,
@@ -50,7 +50,7 @@ namespace mge {
             reseed(seed, stream);
         }
 
-        // Distintos streams con la misma semilla dan secuencias independientes
+        // Different streams with the same seed produce independent sequences
         void reseed(std::uint64_t seed, std::uint64_t stream = 0xDA3E39CB94B95BDBull) {
             m_state = 0u;
             m_increment = (stream << 1u) | 1u;
@@ -69,7 +69,8 @@ namespace mge {
 
         float nextFloat01() { return toFloat01(nextU32()); }
 
-        // Entero uniforme en [0, bound) sin sesgo (rechazo, como pcg32_boundedrand). bound 0 -> 0.
+        // Uniform integer in [0, bound) without bias (rejection sampling, like pcg32_boundedrand). bound 0 ->
+        // 0.
         std::uint32_t nextBounded(std::uint32_t bound) {
             if (bound == 0) return 0;
             std::uint32_t threshold = (0u - bound) % bound;
@@ -79,7 +80,7 @@ namespace mge {
             }
         }
 
-        // Entero uniforme en [minInclusive, maxExclusive)
+        // Uniform integer in [minInclusive, maxExclusive)
         std::int32_t range(std::int32_t minInclusive, std::int32_t maxExclusive) {
             if (maxExclusive <= minInclusive) return minInclusive;
             std::uint32_t span =
@@ -87,7 +88,7 @@ namespace mge {
             return static_cast<std::int32_t>(static_cast<std::int64_t>(minInclusive) + nextBounded(span));
         }
 
-        // true con probabilidad p (0..1)
+        // true with probability p (0..1)
         bool chance(float p) { return nextFloat01() < p; }
 
     private:

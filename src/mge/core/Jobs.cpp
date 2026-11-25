@@ -18,11 +18,11 @@ namespace mge {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_stopping = true;
-            dropped.swap(m_queue); // Sin ejecutar: sus futures quedan en broken_promise
+            dropped.swap(m_queue); // Not executed: their futures end up as broken_promise
         }
         m_workAvailable.notify_all();
         for (std::thread& thread : m_threads) thread.join();
-        // `dropped` se destruye aquí, fuera del lock (destruye las packaged_task)
+        // `dropped` is destroyed here, outside the lock (destroys the packaged_task instances)
     }
 
     void JobSystem::enqueue(std::function<void()> job) {
@@ -44,7 +44,7 @@ namespace mge {
                 m_queue.pop_front();
                 m_running++;
             }
-            job(); // packaged_task: las excepciones quedan en el future
+            job(); // packaged_task: exceptions are stored in the future
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_running--;

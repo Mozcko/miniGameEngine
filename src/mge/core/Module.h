@@ -4,23 +4,23 @@ namespace mge {
 
     class Application;
 
-    // Un módulo opcional del motor (plataforma/ventana, audio, render...). La Application los
-    // inicializa en el orden en que se agregaron y los cierra en orden inverso.
-    // El core no conoce ningún módulo concreto: así puede correr sin ventana ni GPU (ADR 0003).
+    // An optional engine module (platform/window, audio, render...). Application initializes them
+    // in the order they were added and shuts them down in reverse order.
+    // The core knows no concrete module: this allows running without a window or GPU (ADR 0003).
     class Module {
     public:
         virtual ~Module() = default;
 
-        // Nombre para el log
+        // Name for logging
         virtual const char* name() const = 0;
 
-        // false = error fatal: la aplicación no arranca (los módulos ya inicializados se cierran)
+        // false = fatal error: the application does not start (already-initialized modules are shut down)
         virtual bool onInit(Application& /*app*/) { return true; }
-        // Al inicio de cada frame (ej: leer eventos del sistema)
+        // At the start of each frame (e.g., poll OS events)
         virtual void onFrameBegin(Application& /*app*/) {}
-        // Al final de cada frame (ej: presentar la imagen)
+        // At the end of each frame (e.g., present the image)
         virtual void onFrameEnd(Application& /*app*/) {}
-        // Solo se llama si onInit devolvió true
+        // Only called if onInit returned true
         virtual void onShutdown(Application& /*app*/) {}
     };
 }

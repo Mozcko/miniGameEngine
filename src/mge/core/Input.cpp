@@ -105,7 +105,7 @@ namespace mge {
     }
 
     bool ActionMap::wasPressed(const InputState& input, const std::string& action) const {
-        // Presionada en este frame por algún binding, y ningún otro binding ya la tenía apretada
+        // Pressed this frame by some binding, and no other binding was already holding it down
         const auto* bindings = find(action);
         if (!bindings) return false;
         bool pressedNow = false;
@@ -120,7 +120,7 @@ namespace mge {
     }
 
     bool ActionMap::wasReleased(const InputState& input, const std::string& action) const {
-        // Soltada en este frame y ningún binding sigue apretado
+        // Released this frame and no binding is still held down
         const auto* bindings = find(action);
         if (!bindings) return false;
         bool releasedNow = false;

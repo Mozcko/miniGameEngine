@@ -3,31 +3,31 @@
 
 namespace mge {
 
-    // Estado de tiempo de una Application (app.time()). Lo actualiza el loop; el juego lo lee.
-    // Paso fijo: onFixedUpdate corre a tickRate con fixedDelta(); onUpdate recibe delta() (variable).
+    // Time state of an Application (app.time()). Updated by the loop; read by the game.
+    // Fixed timestep: onFixedUpdate runs at tickRate with fixedDelta(); onUpdate receives delta() (variable).
     class Time {
     public:
-        // --- Frame actual (variable) ---
-        float delta() const { return m_delta; }                 // Escalado (0 en pausa)
-        float unscaledDelta() const { return m_unscaledDelta; } // Real (UI, animaciones en pausa)
+        // --- Current frame (variable) ---
+        float delta() const { return m_delta; }                 // Scaled (0 when paused)
+        float unscaledDelta() const { return m_unscaledDelta; } // Real (UI, animations while paused)
 
-        // --- Paso fijo ---
+        // --- Fixed timestep ---
         float fixedDelta() const { return m_fixedDelta; }
-        // Fracción [0, 1) del siguiente paso fijo ya transcurrida: para interpolar el render
+        // Fraction [0, 1) of the next fixed step already elapsed: for render interpolation
         float alpha() const { return m_alpha; }
 
-        // --- Totales ---
-        double elapsed() const { return m_elapsed; }                 // Escalado
+        // --- Totals ---
+        double elapsed() const { return m_elapsed; }                 // Scaled
         double unscaledElapsed() const { return m_unscaledElapsed; } // Real
         std::uint64_t frameCount() const { return m_frameCount; }
         std::uint64_t fixedStepCount() const { return m_fixedStepCount; }
 
-        // --- Escala: 1 = normal, 0 = pausa, 0.5 = cámara lenta ---
+        // --- Scale: 1 = normal, 0 = paused, 0.5 = slow motion ---
         float timeScale() const { return m_timeScale; }
         void setTimeScale(float scale) { m_timeScale = scale < 0.0f ? 0.0f : scale; }
 
     private:
-        friend class Application; // Solo el loop escribe el estado
+        friend class Application; // Only the loop writes the state
 
         float m_delta = 0.0f;
         float m_unscaledDelta = 0.0f;
