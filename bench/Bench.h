@@ -140,8 +140,7 @@ namespace mge::bench {
             }
             std::ofstream out(path);
             if (!out.is_open()) {
-                std::fprintf(stderr, "Error: could not open '%s' to write benchmark JSON\n",
-                             path.c_str());
+                std::fprintf(stderr, "Error: could not open '%s' to write benchmark JSON\n", path.c_str());
                 return false;
             }
             out << "{\n  \"benchmarks\": [\n";
