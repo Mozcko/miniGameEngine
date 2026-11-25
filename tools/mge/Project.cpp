@@ -381,6 +381,9 @@ namespace mge::cli {
                 std::string templateType;
                 ProjectLanguage lang = ProjectLanguage::Cpp;
                 while (std::getline(in, line)) {
+                    if (!line.empty() && line.back() == '\r') {
+                        line.pop_back();
+                    }
                     if (line.rfind("name=", 0) == 0) {
                         name = line.substr(5);
                     } else if (line.rfind("template=", 0) == 0) {
@@ -528,7 +531,7 @@ namespace mge::cli {
             }
 
             std::filesystem::path rel = std::filesystem::relative(entry.path(), tmplDir);
-            std::string relStr = rel.string();
+            std::string relStr = rel.generic_string();
 
             // Replace placeholders in file paths
             replaceAll(relStr, "@GAME_CLASS@", className);

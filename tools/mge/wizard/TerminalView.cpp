@@ -8,6 +8,12 @@
 
 #ifdef _WIN32
 #include <conio.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #else
 #include <cerrno>
@@ -66,12 +72,21 @@ namespace mge::cli::wizard {
                 }
 #ifdef _WIN32
                 m_hIn = GetStdHandle(STD_INPUT_HANDLE);
-                if (m_hIn != INVALID_HANDLE_VALUE) {
-                    GetConsoleMode(m_hIn, &m_origInMode);
+                if (m_hIn != INVALID_HANDLE_VALUE && m_hIn != nullptr &&
+                    GetConsoleMode(m_hIn, &m_origInMode) != 0) {
                     DWORD mode = m_origInMode;
-                    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+                    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
                     SetConsoleMode(m_hIn, mode);
                     m_active = true;
+                }
+                m_hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (m_hOut != INVALID_HANDLE_VALUE && m_hOut != nullptr &&
+                    GetConsoleMode(m_hOut, &m_origOutMode) != 0) {
+                    if ((m_origOutMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0) {
+                        if (SetConsoleMode(m_hOut, m_origOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0) {
+                            m_outModeChanged = true;
+                        }
+                    }
                 }
 #else
                 if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
@@ -106,8 +121,12 @@ namespace mge::cli::wizard {
                     return;
                 }
 #ifdef _WIN32
-                if (m_hIn != INVALID_HANDLE_VALUE) {
+                if (m_hIn != INVALID_HANDLE_VALUE && m_hIn != nullptr) {
                     SetConsoleMode(m_hIn, m_origInMode);
+                }
+                if (m_outModeChanged && m_hOut != INVALID_HANDLE_VALUE && m_hOut != nullptr) {
+                    SetConsoleMode(m_hOut, m_origOutMode);
+                    m_outModeChanged = false;
                 }
 #else
                 tcsetattr(STDIN_FILENO, TCSAFLUSH, &m_origTerm);
@@ -128,6 +147,9 @@ namespace mge::cli::wizard {
 #ifdef _WIN32
             HANDLE m_hIn{INVALID_HANDLE_VALUE};
             DWORD m_origInMode{0};
+            HANDLE m_hOut{INVALID_HANDLE_VALUE};
+            DWORD m_origOutMode{0};
+            bool m_outModeChanged{false};
 #else
             struct termios m_origTerm{};
 #endif
@@ -161,6 +183,7 @@ namespace mge::cli::wizard {
                 case 80: return Key::Down;
                 case 75: return Key::Left;
                 case 77: return Key::Right;
+                default: break;
                 }
                 return Key::None;
             }

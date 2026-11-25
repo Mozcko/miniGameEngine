@@ -80,7 +80,10 @@ fi
 
 # Locate the mge executable
 mge_bin=""
-for candidate in "./build/mge" "./build-ci/mge" "./build-release/mge"; do
+for candidate in \
+    "./build/mge" "./build/mge.exe" "./build/Debug/mge.exe" "./build/Release/mge.exe" \
+    "./build-ci/mge" "./build-ci/mge.exe" "./build-ci/Debug/mge.exe" \
+    "./build-release/mge" "./build-release/mge.exe" "./build-release/Release/mge.exe"; do
     if [[ -x "$candidate" ]]; then
         mge_bin="$candidate"
         break

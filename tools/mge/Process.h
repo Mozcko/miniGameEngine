@@ -19,4 +19,14 @@ namespace mge::cli {
     // Returns the canonical absolute path of the running mge executable
     std::filesystem::path getExecutablePath();
 
+    // Returns whether stdin / stdout is connected to an interactive terminal (TTY)
+    bool isStdinTty();
+    bool isStdoutTty();
+
+    // Enables ANSI virtual terminal color processing when supported by the console
+    bool enableTerminalColors();
+
+    // Configures the console for UTF-8 and ANSI output on Windows (no-op on POSIX)
+    void initTerminal();
+
 } // namespace mge::cli

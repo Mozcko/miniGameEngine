@@ -8,24 +8,78 @@
 #include <mge/Version.h>
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <unistd.h>
 
 namespace mge::cli {
 
     namespace {
 
+        std::string presetBuildConfig(const std::string& preset) {
+            if (preset == "release") {
+                return "Release";
+            }
+            if (preset == "minsize") {
+                return "MinSizeRel";
+            }
+            return "Debug";
+        }
+
+        std::filesystem::path resolvePresetBuildDir(const std::filesystem::path& rootDir,
+                                                    const std::string& preset) {
+            std::filesystem::path presetDir = rootDir / ("build-" + preset);
+            if (std::filesystem::exists(presetDir / "CMakeCache.txt")) {
+                return presetDir;
+            }
+            std::filesystem::path defaultDir = rootDir / "build";
+            if (std::filesystem::exists(defaultDir / "CMakeCache.txt")) {
+                return defaultDir;
+            }
+            return (preset == "dev") ? defaultDir : presetDir;
+        }
+
+        bool isMultiConfigBuildDir(const std::filesystem::path& buildDir) {
+            std::filesystem::path cache = buildDir / "CMakeCache.txt";
+            if (!std::filesystem::is_regular_file(cache)) {
+                return false;
+            }
+            std::ifstream in(cache);
+            std::string line;
+            while (std::getline(in, line)) {
+                if (line.rfind("CMAKE_CONFIGURATION_TYPES:", 0) == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         std::filesystem::path findExecutableBinary(const std::filesystem::path& rootDir,
                                                    const std::string& targetName, const std::string& preset) {
-            std::vector<std::filesystem::path> candidates = {
-                rootDir / "build" / targetName,
-                rootDir / "build" / (targetName + ".exe"),
-                rootDir / ("build-" + preset) / targetName,
-                rootDir / ("build-" + preset) / (targetName + ".exe"),
-            };
+            const std::string configDir = presetBuildConfig(preset);
+            std::vector<std::filesystem::path> buildDirs;
+            if (preset == "dev") {
+                buildDirs = {rootDir / "build", rootDir / ("build-" + preset)};
+            } else {
+                buildDirs = {rootDir / ("build-" + preset), rootDir / "build"};
+            }
+
+            std::vector<std::filesystem::path> candidates;
+            for (const auto& bDir : buildDirs) {
+#ifdef _WIN32
+                candidates.push_back(bDir / (targetName + ".exe"));
+                candidates.push_back(bDir / configDir / (targetName + ".exe"));
+                candidates.push_back(bDir / targetName);
+                candidates.push_back(bDir / configDir / targetName);
+#else
+                candidates.push_back(bDir / targetName);
+                candidates.push_back(bDir / configDir / targetName);
+                candidates.push_back(bDir / (targetName + ".exe"));
+                candidates.push_back(bDir / configDir / (targetName + ".exe"));
+#endif
+            }
 
             for (const auto& path : candidates) {
                 if (std::filesystem::is_regular_file(path)) {
@@ -34,17 +88,20 @@ namespace mge::cli {
             }
 
             // Recursive search inside build directories
-            std::vector<std::filesystem::path> buildDirs = {rootDir / "build", rootDir / ("build-" + preset)};
-
             for (const auto& bDir : buildDirs) {
                 if (std::filesystem::is_directory(bDir)) {
                     for (const auto& entry : std::filesystem::recursive_directory_iterator(bDir)) {
                         if (entry.is_regular_file()) {
-                            std::string stem = entry.path().stem().string();
                             std::string filename = entry.path().filename().string();
-                            if (stem == targetName || filename == targetName) {
+#ifdef _WIN32
+                            if (filename == targetName + ".exe") {
                                 return entry.path();
                             }
+#else
+                            if (filename == targetName) {
+                                return entry.path();
+                            }
+#endif
                         }
                     }
                 }
@@ -54,13 +111,20 @@ namespace mge::cli {
         }
 
         std::string findPythonExecutable(const std::filesystem::path& rootDir) {
-            std::filesystem::path venvPy = rootDir / ".venv" / "bin" / "python";
 #ifdef _WIN32
             std::filesystem::path venvPyWin = rootDir / ".venv" / "Scripts" / "python.exe";
             if (std::filesystem::is_regular_file(venvPyWin)) {
                 return venvPyWin.string();
             }
-#endif
+            if (commandExists("python")) {
+                return "python";
+            }
+            if (commandExists("python3")) {
+                return "python3";
+            }
+            return "python";
+#else
+            std::filesystem::path venvPy = rootDir / ".venv" / "bin" / "python";
             if (std::filesystem::is_regular_file(venvPy)) {
                 return venvPy.string();
             }
@@ -71,6 +135,7 @@ namespace mge::cli {
                 return "python";
             }
             return "python3";
+#endif
         }
 
     } // namespace
@@ -83,7 +148,7 @@ namespace mge::cli {
 
         // If called with no arguments
         if (argc == 0) {
-            if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+            if (isStdinTty() && isStdoutTty()) {
                 wizard::WizardModel model;
                 if (!wizard::runInteractiveWizard(model)) {
                     return 130;
@@ -215,7 +280,7 @@ namespace mge::cli {
         }
 
         if (options.name.empty()) {
-            if (acceptDefaults || !isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
+            if (acceptDefaults || !isStdinTty() || !isStdoutTty()) {
                 std::cerr << "Error: project name is required.\n"
                           << "Usage: mge new <name> [options]\n";
                 return 1;
@@ -317,7 +382,12 @@ namespace mge::cli {
             }
         }
 
-        return runCommand({"cmake", "--build", "--preset", preset}, proj.rootDir);
+        std::vector<std::string> buildArgs = {"cmake", "--build", "--preset", preset};
+        if (isMultiConfigBuildDir(resolvePresetBuildDir(proj.rootDir, preset))) {
+            buildArgs.push_back("--config");
+            buildArgs.push_back(presetBuildConfig(preset));
+        }
+        return runCommand(buildArgs, proj.rootDir);
     }
 
     int cmdRun(int argc, char* argv[]) {
@@ -400,7 +470,12 @@ namespace mge::cli {
         }
 
         // Build the specific target
-        int buildRc = runCommand({"cmake", "--build", "--preset", preset, "--target", target}, proj.rootDir);
+        std::vector<std::string> buildArgs = {"cmake", "--build", "--preset", preset, "--target", target};
+        if (isMultiConfigBuildDir(resolvePresetBuildDir(proj.rootDir, preset))) {
+            buildArgs.push_back("--config");
+            buildArgs.push_back(presetBuildConfig(preset));
+        }
+        int buildRc = runCommand(buildArgs, proj.rootDir);
         if (buildRc != 0) {
             return buildRc;
         }
@@ -468,7 +543,12 @@ namespace mge::cli {
             }
         }
 
-        return runCommand({"ctest", "--preset", preset}, proj.rootDir);
+        std::vector<std::string> testArgs = {"ctest", "--preset", preset};
+        if (isMultiConfigBuildDir(resolvePresetBuildDir(proj.rootDir, preset))) {
+            testArgs.push_back("-C");
+            testArgs.push_back(presetBuildConfig(preset));
+        }
+        return runCommand(testArgs, proj.rootDir);
     }
 
     int cmdCheck(int argc, char* argv[]) {
@@ -502,11 +582,21 @@ namespace mge::cli {
         if (proj.type == ProjectType::EngineRepo) {
             std::filesystem::path lintScript = proj.rootDir / "scripts" / "lint.sh";
             if (std::filesystem::is_regular_file(lintScript)) {
+#ifdef _WIN32
+                if (commandExists("bash")) {
+                    std::vector<std::string> args = {"bash", lintScript.string()};
+                    if (fix) {
+                        args.push_back("--fix");
+                    }
+                    return runCommand(args, proj.rootDir);
+                }
+#else
                 std::vector<std::string> args = {lintScript.string()};
                 if (fix) {
                     args.push_back("--fix");
                 }
                 return runCommand(args, proj.rootDir);
+#endif
             }
         }
 

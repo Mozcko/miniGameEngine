@@ -12,6 +12,8 @@
 #include <string_view>
 
 int main(int argc, char* argv[]) {
+    mge::cli::initTerminal();
+
     if (argc < 2) {
         mge::cli::printGeneralHelp();
         return 0;

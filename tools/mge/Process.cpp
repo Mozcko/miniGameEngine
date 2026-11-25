@@ -19,7 +19,16 @@
 #endif
 
 #if defined(_WIN32)
+#include <algorithm>
+#include <cctype>
+#include <cstdio>
+#include <io.h>
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #endif
 
@@ -167,18 +176,305 @@ namespace mge::cli {
 
         return false;
     }
+
+    bool isStdinTty() {
+        return isatty(STDIN_FILENO) != 0;
+    }
+
+    bool isStdoutTty() {
+        return isatty(STDOUT_FILENO) != 0;
+    }
+
+    bool enableTerminalColors() {
+        return true;
+    }
+
+    void initTerminal() {}
 #else
-    int runCommand(const std::vector<std::string>& /*args*/, const std::filesystem::path& /*workingDir*/) {
-        return -1;
+    namespace {
+
+        std::wstring utf8ToWide(const std::string& str) {
+            if (str.empty()) {
+                return {};
+            }
+            int needed =
+                MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), nullptr, 0);
+            if (needed <= 0) {
+                return {};
+            }
+            std::wstring result(static_cast<size_t>(needed), L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), result.data(), needed);
+            return result;
+        }
+
+        std::string quoteWindowsArg(const std::string& arg) {
+            if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos) {
+                return arg;
+            }
+            std::string quoted;
+            quoted.push_back('"');
+            for (size_t i = 0; i < arg.size(); ++i) {
+                size_t numBackslashes = 0;
+                while (i < arg.size() && arg[i] == '\\') {
+                    ++numBackslashes;
+                    ++i;
+                }
+                if (i == arg.size()) {
+                    quoted.append(numBackslashes * 2, '\\');
+                    break;
+                }
+                if (arg[i] == '"') {
+                    quoted.append(numBackslashes * 2 + 1, '\\');
+                    quoted.push_back('"');
+                } else {
+                    quoted.append(numBackslashes, '\\');
+                    quoted.push_back(arg[i]);
+                }
+            }
+            quoted.push_back('"');
+            return quoted;
+        }
+
+        bool isBatchScript(const std::filesystem::path& path) {
+            std::string ext = path.extension().string();
+            for (char& ch : ext) {
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            }
+            return ext == ".bat" || ext == ".cmd";
+        }
+
+        std::vector<std::wstring> getPathExts() {
+            std::vector<std::wstring> exts;
+            const char* pathextEnv = std::getenv("PATHEXT");
+            std::string pathext =
+                (pathextEnv != nullptr && pathextEnv[0] != '\0') ? pathextEnv : ".COM;.EXE;.BAT;.CMD";
+            std::stringstream ss(pathext);
+            std::string item;
+            while (std::getline(ss, item, ';')) {
+                if (!item.empty()) {
+                    exts.push_back(utf8ToWide(item));
+                }
+            }
+            return exts;
+        }
+
+        std::filesystem::path resolveWindowsCommand(const std::string& commandName) {
+            if (commandName.empty()) {
+                return {};
+            }
+
+            const bool hasDirSep = commandName.find('/') != std::string::npos ||
+                                   commandName.find('\\') != std::string::npos ||
+                                   commandName.find(':') != std::string::npos;
+            std::wstring wideCmd = utf8ToWide(commandName);
+            if (wideCmd.empty()) {
+                return {};
+            }
+
+            auto isRegularFile = [](const std::filesystem::path& p) {
+                std::error_code ec;
+                return std::filesystem::is_regular_file(p, ec);
+            };
+
+            if (hasDirSep) {
+                std::filesystem::path direct(wideCmd);
+                if (isRegularFile(direct)) {
+                    return direct;
+                }
+                if (!direct.has_extension()) {
+                    for (const auto& ext : getPathExts()) {
+                        std::filesystem::path candidate = direct;
+                        candidate += ext;
+                        if (isRegularFile(candidate)) {
+                            return candidate;
+                        }
+                    }
+                }
+                return {};
+            }
+
+            auto searchWithExt = [&](const wchar_t* ext) -> std::filesystem::path {
+                DWORD needed = SearchPathW(nullptr, wideCmd.c_str(), ext, 0, nullptr, nullptr);
+                if (needed == 0) {
+                    return {};
+                }
+                std::wstring buf(static_cast<size_t>(needed), L'\0');
+                DWORD written = SearchPathW(nullptr, wideCmd.c_str(), ext, needed, buf.data(), nullptr);
+                if (written == 0 || written >= needed) {
+                    return {};
+                }
+                buf.resize(static_cast<size_t>(written));
+                std::filesystem::path found(buf);
+                return isRegularFile(found) ? found : std::filesystem::path{};
+            };
+
+            std::filesystem::path directMatch = searchWithExt(nullptr);
+            if (!directMatch.empty()) {
+                return directMatch;
+            }
+            for (const auto& ext : getPathExts()) {
+                std::filesystem::path match = searchWithExt(ext.c_str());
+                if (!match.empty()) {
+                    return match;
+                }
+            }
+            return {};
+        }
+
+        int runWindowsProcess(const std::vector<std::string>& args, const std::filesystem::path& workingDir,
+                              std::string* capturedOutput) {
+            if (args.empty()) {
+                return -1;
+            }
+
+            std::filesystem::path resolved = resolveWindowsCommand(args[0]);
+            if (resolved.empty()) {
+                return 127;
+            }
+
+            std::wstring appName;
+            std::wstring cmdLine;
+            if (isBatchScript(resolved)) {
+                std::filesystem::path cmdExe = resolveWindowsCommand("cmd.exe");
+                appName = cmdExe.empty() ? L"cmd.exe" : cmdExe.wstring();
+                std::string inner = quoteWindowsArg(resolved.string());
+                for (size_t i = 1; i < args.size(); ++i) {
+                    inner.push_back(' ');
+                    inner += quoteWindowsArg(args[i]);
+                }
+                cmdLine = utf8ToWide("cmd.exe /d /s /c \"" + inner + "\"");
+            } else {
+                appName = resolved.wstring();
+                std::string joined = quoteWindowsArg(args[0]);
+                for (size_t i = 1; i < args.size(); ++i) {
+                    joined.push_back(' ');
+                    joined += quoteWindowsArg(args[i]);
+                }
+                cmdLine = utf8ToWide(joined);
+            }
+
+            HANDLE readPipe = nullptr;
+            HANDLE writePipe = nullptr;
+            STARTUPINFOW si{};
+            si.cb = sizeof(si);
+            BOOL inheritHandles = FALSE;
+
+            if (capturedOutput != nullptr) {
+                SECURITY_ATTRIBUTES sa{};
+                sa.nLength = sizeof(sa);
+                sa.bInheritHandle = TRUE;
+                sa.lpSecurityDescriptor = nullptr;
+
+                if (CreatePipe(&readPipe, &writePipe, &sa, 0) == 0) {
+                    return -1;
+                }
+                SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+
+                si.dwFlags = STARTF_USESTDHANDLES;
+                si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+                si.hStdOutput = writePipe;
+                si.hStdError = writePipe;
+                inheritHandles = TRUE;
+            }
+
+            std::wstring wideWorkDir;
+            const wchar_t* workDirPtr = nullptr;
+            if (!workingDir.empty()) {
+                wideWorkDir = workingDir.wstring();
+                workDirPtr = wideWorkDir.c_str();
+            }
+
+            // CreateProcessW requires a mutable null-terminated command-line buffer
+            std::vector<wchar_t> mutableCmdLine(cmdLine.begin(), cmdLine.end());
+            mutableCmdLine.push_back(L'\0');
+
+            PROCESS_INFORMATION pi{};
+            BOOL created = CreateProcessW(appName.c_str(), mutableCmdLine.data(), nullptr, nullptr,
+                                          inheritHandles, 0, nullptr, workDirPtr, &si, &pi);
+
+            if (writePipe != nullptr) {
+                CloseHandle(writePipe);
+                writePipe = nullptr;
+            }
+
+            if (created == 0) {
+                if (readPipe != nullptr) {
+                    CloseHandle(readPipe);
+                }
+                return -1;
+            }
+
+            if (capturedOutput != nullptr && readPipe != nullptr) {
+                std::array<char, 512> buffer{};
+                DWORD bytesRead = 0;
+                while (ReadFile(readPipe, buffer.data(), static_cast<DWORD>(buffer.size()), &bytesRead,
+                                nullptr) != 0 &&
+                       bytesRead > 0) {
+                    capturedOutput->append(buffer.data(), static_cast<size_t>(bytesRead));
+                }
+                CloseHandle(readPipe);
+                readPipe = nullptr;
+            }
+
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            DWORD exitCode = 1;
+            if (GetExitCodeProcess(pi.hProcess, &exitCode) == 0) {
+                exitCode = 1;
+            }
+
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return static_cast<int>(exitCode);
+        }
+
+    } // namespace
+
+    int runCommand(const std::vector<std::string>& args, const std::filesystem::path& workingDir) {
+        return runWindowsProcess(args, workingDir, nullptr);
     }
 
-    int runCommandCapture(const std::vector<std::string>& /*args*/, std::string& /*outOutput*/,
-                          const std::filesystem::path& /*workingDir*/) {
-        return -1;
+    int runCommandCapture(const std::vector<std::string>& args, std::string& outOutput,
+                          const std::filesystem::path& workingDir) {
+        outOutput.clear();
+        return runWindowsProcess(args, workingDir, &outOutput);
     }
 
-    bool commandExists(const std::string& /*commandName*/) {
-        return false;
+    bool commandExists(const std::string& commandName) {
+        return !resolveWindowsCommand(commandName).empty();
+    }
+
+    bool isStdinTty() {
+        return _isatty(_fileno(stdin)) != 0;
+    }
+
+    bool isStdoutTty() {
+        return _isatty(_fileno(stdout)) != 0;
+    }
+
+    bool enableTerminalColors() {
+        static bool initialized = false;
+        static bool enabled = false;
+        if (!initialized) {
+            initialized = true;
+            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            if (hOut != INVALID_HANDLE_VALUE && hOut != nullptr) {
+                DWORD mode = 0;
+                if (GetConsoleMode(hOut, &mode) != 0) {
+                    if ((mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0) {
+                        enabled = true;
+                    } else if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0) {
+                        enabled = true;
+                    }
+                }
+            }
+        }
+        return enabled;
+    }
+
+    void initTerminal() {
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+        (void)enableTerminalColors();
     }
 #endif
 
@@ -210,10 +506,22 @@ namespace mge::cli {
             return std::filesystem::path(buffer);
         }
 #elif defined(_WIN32)
-        wchar_t buffer[MAX_PATH];
-        DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
-        if (len > 0) {
-            return std::filesystem::path(buffer);
+        std::vector<wchar_t> buffer(MAX_PATH);
+        while (buffer.size() <= 32768) {
+            DWORD len = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+            if (len == 0) {
+                break;
+            }
+            if (len < buffer.size()) {
+                std::filesystem::path rawPath(buffer.data());
+                std::error_code ec;
+                auto canonical = std::filesystem::canonical(rawPath, ec);
+                if (!ec) {
+                    return canonical;
+                }
+                return rawPath;
+            }
+            buffer.resize(buffer.size() * 2);
         }
 #endif
         return std::filesystem::current_path() / "mge";

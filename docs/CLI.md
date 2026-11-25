@@ -4,9 +4,9 @@
 
 ## Installation and Availability
 
-When the engine is compiled as a top-level project (`MGE_BUILD_CLI=ON`), the `mge` executable is built directly into the root of the build directory (`build/mge`).
+When the engine is compiled as a top-level project (`MGE_BUILD_CLI=ON`), the `mge` executable is built directly into the root of the build directory (`build/mge` on Linux/macOS, `build/mge.exe` or `build/<Config>/mge.exe` on Windows).
 
-When the engine is installed (`MGE_INSTALL=ON`), the tool is installed to `bin/mge` and its project templates are placed in `share/mge/templates/`.
+When the engine is installed (`MGE_INSTALL=ON`), the tool is installed to `bin/mge` (`bin/mge.exe` on Windows) and its project templates are placed in `share/mge/templates/`.
 
 ```bash
 # Check version
