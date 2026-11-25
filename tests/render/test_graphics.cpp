@@ -168,7 +168,8 @@ namespace {
         renderer.end();
         REQUIRE(cmd.submitAndWait());
         CHECK(renderer.drawCalls() > 9);
-        CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] > 0); // Leaves and flowers
+        CHECK(renderer.stats().triangles[static_cast<std::size_t>(MeshPass::Cutout)] >
+              0); // Leaves and flowers
 
         const mge_test::Image image{kSize, kSize, device.downloadTexture(target, kSize, kSize)};
         // Default tolerance (1%): Intel and lavapipe differ by ~0.3% (texel and triangle edges)
@@ -347,7 +348,7 @@ TEST_CASE("Render: procedural detail on solid-color blocks (MeshMaterial, #34)")
     for (int x = 0; x < 8; x++)
         for (int z = 0; z < 8; z++)
             for (int y = 0; y <= (x + z) / 4; y++) world.setBlock({x, y, z}, s); // Steps
-    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0}); // Greedy: large flat faces
+    const ChunkMesh mesh = buildChunkMesh(world, {0, 0, 0});                     // Greedy: large flat faces
     const GpuMesh gpuMesh = device.uploadMesh(mesh.opaque);
 
     MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
@@ -426,8 +427,7 @@ TEST_CASE("Render: debug lines (box, sphere, axes) with depth testing (#38)") {
                        eye);
     renderer.draw(cube, glm::mat4(1.0f));
     debug.flush(renderer);
-    renderer.draw(cube,
-                  glm::translate(glm::mat4(1.0f), {0, -3, 0})); // Meshes after lines: still render fine
+    renderer.draw(cube, glm::translate(glm::mat4(1.0f), {0, -3, 0})); // Meshes after lines: still render fine
     renderer.end();
     REQUIRE(cmd.submitAndWait());
 

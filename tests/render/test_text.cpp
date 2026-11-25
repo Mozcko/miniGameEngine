@@ -177,8 +177,7 @@ TEST_CASE("Batch2D: hundreds of elements in few draw calls (rects do not break t
     CHECK(batch.commands().size() == 3); // Different filter
 }
 
-TEST_CASE(
-    "Batch2D: nested clips (intersection) split batches and fully clipped items emit no vertices") {
+TEST_CASE("Batch2D: nested clips (intersection) split batches and fully clipped items emit no vertices") {
     Batch2D batch;
     batch.rect({0, 0}, {5, 5}, {1, 1, 1, 1});
     batch.pushClip({{10, 10}, {100, 50}});

@@ -131,7 +131,8 @@ TEST_CASE("ADSR envelope: attack times, decay to sustain, release to zero") {
     CHECK(samples < 2500);
 }
 
-TEST_CASE("Filter: low-pass attenuates highs, high-pass attenuates lows, and stays stable at high resonance") {
+TEST_CASE(
+    "Filter: low-pass attenuates highs, high-pass attenuates lows, and stays stable at high resonance") {
     const auto filtered = [](FilterMode mode, float cutoff, float resonance, float hz) {
         Filter f;
         f.set(mode, cutoff, resonance, kRate);
@@ -172,7 +173,8 @@ TEST_CASE("Delay: an impulse returns every delay seconds, getting quieter each t
     CHECK(out[4799] == doctest::Approx(0.0f));
 }
 
-TEST_CASE("Mixer: a note plays with its envelope, releases automatically after duration, and frees the voice") {
+TEST_CASE(
+    "Mixer: a note plays with its envelope, releases automatically after duration, and frees the voice") {
     Mixer mixer(kRate);
     Instrument lead;
     lead.wave = Waveform::Triangle;

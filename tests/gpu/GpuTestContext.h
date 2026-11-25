@@ -15,9 +15,9 @@
 // - Uses SDL's "offscreen" video driver unless SDL_VIDEODRIVER specifies otherwise.
 // - Without a compatible GPU, the test is skipped with a notice; with MGE_REQUIRE_GPU=1 (CI), it fails.
 // - Requests Vulkan validation layers (debug mode). Errors are printed by the layer to stdout/stderr
-//   (SDL does not receive them) and CTest fails the test if "Validation Error" appears (FAIL_REGULAR_EXPRESSION):
-//   incorrect API usage or unreleased resources when destroying the device will fail the test.
-//   With MGE_REQUIRE_VALIDATION=1 (CI), it fails if the layers are not active.
+//   (SDL does not receive them) and CTest fails the test if "Validation Error" appears
+//   (FAIL_REGULAR_EXPRESSION): incorrect API usage or unreleased resources when destroying the device will
+//   fail the test. With MGE_REQUIRE_VALIDATION=1 (CI), it fails if the layers are not active.
 //   tests/gpu/ValidationProbe.cpp verifies that validation errors reach the output.
 namespace mge_test {
 

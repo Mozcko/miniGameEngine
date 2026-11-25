@@ -78,8 +78,7 @@ namespace mge_test {
             for (int c = 0; c < 4; c++)
                 maxDelta = std::max(maxDelta, std::abs(int(image.rgba[i * 4 + c]) - int(data[i * 4 + c])));
             if (maxDelta > options.channelTolerance) different++;
-            diff.rgba[i * 4 + 0] =
-                static_cast<std::uint8_t>(std::min(255, maxDelta * 4)); // Red = difference
+            diff.rgba[i * 4 + 0] = static_cast<std::uint8_t>(std::min(255, maxDelta * 4)); // Red = difference
             diff.rgba[i * 4 + 3] = 255;
         }
         stbi_image_free(data);

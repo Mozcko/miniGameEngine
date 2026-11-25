@@ -570,8 +570,8 @@ TEST_CASE("RigidBody: accumulated friction stops resting box hit laterally in th
 
     physics.step(registry, 1.0f / 60.0f);
 
-    // Without accumulated impulses, pair (0, 1) has jn = 0 on iterations 1..3 and restingBox stays at vx = 0.2.
-    // With accumulated impulses, floor friction absorbs the push on subsequent iterations.
+    // Without accumulated impulses, pair (0, 1) has jn = 0 on iterations 1..3 and restingBox stays at vx =
+    // 0.2. With accumulated impulses, floor friction absorbs the push on subsequent iterations.
     const auto& finalResting = registry.get<RigidBody>(restingBox);
     CHECK(finalResting.velocity.x < 0.05f);
 }

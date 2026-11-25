@@ -48,7 +48,8 @@ int main() {
 
     // Intentional error: fragment shader uses a uniform buffer (set 3) but 0 are declared
     const mge::GpuShader vertex = device->createShader(mge::shaders::kTestTriangleVert);
-    const mge::GpuShader fragment = device->createShader(mge::shaders::kTestTriangleFrag); // Missing resources
+    const mge::GpuShader fragment =
+        device->createShader(mge::shaders::kTestTriangleFrag); // Missing resources
     mge::GraphicsPipelineDesc desc;
     desc.vertexShader = &vertex;
     desc.fragmentShader = &fragment;

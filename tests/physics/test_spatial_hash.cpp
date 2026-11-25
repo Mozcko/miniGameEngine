@@ -8,8 +8,8 @@
 
 using namespace mge;
 
-TEST_CASE(
-    "spatialHash: overlapping boxes yield one pair, touching boxes yield one pair, and distant boxes yield zero") {
+TEST_CASE("spatialHash: overlapping boxes yield one pair, touching boxes yield one pair, and distant boxes "
+          "yield zero") {
     SpatialHash hash(2.0f);
     CHECK(hash.cellSize() == 2.0f);
 

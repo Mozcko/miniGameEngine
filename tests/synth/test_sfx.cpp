@@ -44,8 +44,7 @@ TEST_CASE("Presets: jump rises, hurt drops, coin is two notes") {
     CHECK(pitch(coin, 0.08f, 0.2f) == doctest::Approx(987.77f * 1.335f).epsilon(0.03));
 }
 
-TEST_CASE(
-    "Presets: explosion is darkening noise; power-up rises repeatedly; click is short") {
+TEST_CASE("Presets: explosion is darkening noise; power-up rises repeatedly; click is short") {
     const Sample boom = renderSfx(sfx::explosion(), kRate);
     const float early = an::spectralCentroid(boom.data, kRate, at(0.02f));
     const float late = an::spectralCentroid(boom.data, kRate, at(0.6f));
