@@ -55,7 +55,7 @@
 
 namespace mge::python {
 
-    // Excepción personalizada del motor en Python
+    // Custom engine exception in Python
     class EngineError : public std::runtime_error {
     public:
         using std::runtime_error::runtime_error;
