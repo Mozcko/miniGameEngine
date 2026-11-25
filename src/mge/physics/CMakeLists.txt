@@ -1,9 +1,10 @@
-# Physics module (headless: core + voxel). Always built, even without modules.
+# Physics module (headless: core + procgen + voxel). Always built, even without modules.
 add_library(mge_physics STATIC
     GridQuery.h
     VoxelRaycast.h
     VoxelCollision.h VoxelCollision.cpp
     CharacterController.h CharacterController.cpp
+    CapsuleCharacterController.h CapsuleCharacterController.cpp
     SpatialHash.h SpatialHash.cpp
     RigidBody.h RigidBody.cpp
     PhysicsWorld.h PhysicsWorld.cpp
@@ -14,13 +15,14 @@ target_include_directories(mge_physics PUBLIC
     $<BUILD_INTERFACE:${miniGameEngine_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(mge_physics PUBLIC mge_core mge_voxel)
+target_link_libraries(mge_physics PUBLIC mge_core mge_procgen mge_voxel)
 mge_set_warnings(mge_physics)
 
 # For <mge/mge.h>: anything linking this module sees MGE_HAS_PHYSICS
 target_compile_definitions(mge_physics INTERFACE MGE_HAS_PHYSICS=1)
 
 mge_install_headers(physics
+    CapsuleCharacterController.h
     CharacterController.h
     GridQuery.h
     PhysicsWorld.h
