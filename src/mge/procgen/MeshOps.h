@@ -9,49 +9,49 @@
 
 namespace mge {
 
-    // --- Transformar y combinar ---
+    // --- Transform and combine ---
 
-    // Aplica la matriz a posiciones y normales (normales con la inversa transpuesta, renormalizadas).
-    // Si la matriz refleja (determinante < 0) invierte el orden de los triángulos para que sigan
-    // siendo antihorarios vistos desde afuera.
+    // Applies the matrix to positions and normals (normals via inverse transpose, renormalized).
+    // If the matrix mirrors (determinant < 0), flips triangle order so winding stays
+    // counter-clockwise viewed from outside.
     void transformMesh(MeshData& mesh, const glm::mat4& matrix);
 
-    // Agrega src al final de dst (los índices de src se desplazan)
+    // Appends src to the end of dst (src indices are offset)
     void appendMesh(MeshData& dst, const MeshData& src);
     MeshData mergeMeshes(const MeshData& a, const MeshData& b);
 
-    // Une vértices idénticos (posición, normal, color y UV dentro de epsilon). Las aristas duras
-    // (normales distintas) y las costuras de UV se conservan.
+    // Merges identical vertices (position, normal, color, and UV within epsilon). Hard edges
+    // (different normals) and UV seams are preserved.
     void weldVertices(MeshData& mesh, float epsilon = 1e-5f);
 
-    // Invierte el sentido de todos los triángulos y las normales (la malla "mira hacia adentro")
+    // Reverses all triangles and flips normals (turns the mesh inside out)
     void flipWinding(MeshData& mesh);
 
     enum class NormalMode {
-        Smooth, // Promedio ponderado por área de las caras que comparten la POSICIÓN (suaviza costuras)
-        Flat    // Cada triángulo con sus propios 3 vértices y la normal de la cara (aspecto facetado)
+        Smooth, // Area-weighted average of faces sharing the same POSITION (smooths seams)
+        Flat    // Each triangle gets its own 3 vertices with the face normal (faceted look)
     };
     void recomputeNormals(MeshData& mesh, NormalMode mode);
 
-    // --- Construir a partir de perfiles 2D ---
+    // --- Build from 2D profiles ---
 
-    // Triangula un polígono simple (sin auto‑intersecciones; puede ser cóncavo) con ear clipping.
-    // Acepta orden horario o antihorario. Devuelve índices de triángulos antihorarios.
+    // Triangulates a simple polygon (no self-intersections; concave allowed) via ear clipping.
+    // Accepts clockwise or counter-clockwise input. Returns counter-clockwise triangle indices.
     std::vector<std::uint32_t> triangulatePolygon(const std::vector<glm::vec2>& polygon);
 
-    // Extruye un polígono del plano XY a lo largo de Z, de -depth/2 a +depth/2, con tapas.
-    // Caras laterales planas (aristas duras). Resultado hermético.
+    // Extrudes an XY-plane polygon along Z, from -depth/2 to +depth/2, with end caps.
+    // Flat side faces (hard edges). Watertight result.
     MeshData extrude(const std::vector<glm::vec2>& polygon, float depth,
                      const glm::vec4& color = glm::vec4(1.0f));
 
-    // Torno: revoluciona un perfil (x = radio, y = altura) alrededor del eje Y.
-    // Ordenar el perfil de abajo hacia arriba para que las normales miren hacia afuera.
-    // Un punto con x = 0 es un polo (cierra la forma).
+    // Lathe: revolves a profile (x = radius, y = height) around the Y axis.
+    // Order the profile bottom-to-top for outward-facing normals.
+    // A point with x = 0 is a pole (closes the shape).
     MeshData lathe(const std::vector<glm::vec2>& profile, int segments = 32,
                    const glm::vec4& color = glm::vec4(1.0f));
 
-    // Barrido: lleva un perfil cerrado (plano XY) a lo largo de un camino 3D con marcos de transporte
-    // paralelo (sin giros bruscos). Con caps = true cierra los extremos (si el camino no es cerrado).
+    // Sweep: carries a closed profile (XY plane) along a 3D path using parallel-transport frames
+    // (no sudden twists). With caps = true closes the ends (when the path is not closed).
     MeshData sweep(const std::vector<glm::vec2>& profile, const std::vector<glm::vec3>& path,
                    bool closedPath = false, bool caps = true, const glm::vec4& color = glm::vec4(1.0f));
 }

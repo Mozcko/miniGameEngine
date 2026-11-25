@@ -11,9 +11,9 @@
 
 namespace mge {
 
-    // Malla en CPU, independiente de la GPU (se genera y se testea sin ventana).
-    // Arreglos separados (SoA) del mismo largo: cada vértice tiene posición, normal, color y UV.
-    // indices: triángulos (3 por triángulo), en sentido antihorario visto desde afuera.
+    // CPU mesh, independent of the GPU (generated and tested without a window).
+    // Separate arrays (SoA) of equal length: every vertex has position, normal, color, and UV.
+    // indices: triangles (3 per triangle), counter-clockwise viewed from outside.
     struct MeshData {
         std::vector<glm::vec3> positions;
         std::vector<glm::vec3> normals;
@@ -25,7 +25,7 @@ namespace mge {
                                 const glm::vec4& color = glm::vec4(1.0f),
                                 const glm::vec2& uv = glm::vec2(0.0f));
         void addTriangle(std::uint32_t a, std::uint32_t b, std::uint32_t c);
-        // Dos triángulos: (a, b, c) y (a, c, d)
+        // Two triangles: (a, b, c) and (a, c, d)
         void addQuad(std::uint32_t a, std::uint32_t b, std::uint32_t c, std::uint32_t d);
 
         std::size_t vertexCount() const { return positions.size(); }
@@ -36,11 +36,11 @@ namespace mge {
         void clear();
 
         Aabb bounds() const;
-        // Vacío si la malla es válida; si no, describe el primer problema encontrado
+        // Empty if the mesh is valid; otherwise describes the first problem found
         std::string validate() const;
     };
 
-    // Exporta a Wavefront OBJ (posiciones + color por vértice, UV, normales) para inspeccionar
-    // la malla en Blender o cualquier visor. Devuelve false si no pudo escribir el archivo.
+    // Exports to Wavefront OBJ (positions + per-vertex color, UVs, normals) to inspect
+    // the mesh in Blender or any viewer. Returns false if the file could not be written.
     bool writeObj(const MeshData& mesh, const std::filesystem::path& path);
 }
