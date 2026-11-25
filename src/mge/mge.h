@@ -23,6 +23,7 @@
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/ecs/World.h>
 #include <mge/core/math/Geometry.h>
+#include <mge/core/math/Smoothing.h>
 
 // --- Generación procedural (headless) ---
 #ifdef MGE_HAS_PROCGEN

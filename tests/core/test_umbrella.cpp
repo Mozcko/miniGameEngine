@@ -12,7 +12,12 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     registry.add<mge::Transform>(entity);
     mge::Pcg32 rng(1);
     mge::InputState input;
+    float smoothed = mge::damp(0.0f, 10.0f, 5.0f, 0.1f);
+    float vel = 0.0f;
+    float spring = mge::smoothDamp(0.0f, 10.0f, vel, 0.2f, 0.1f);
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(smoothed > 0.0f);
+    CHECK(spring > 0.0f);
 }

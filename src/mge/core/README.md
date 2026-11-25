@@ -11,6 +11,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
 | `math/Geometry.h/.cpp` | `mge` | `Aabb`, `Sphere`, `Plane`, `Ray`, `Frustum` (from view‑projection), ray tests (`intersectRayAabb/Sphere/Plane/Triangle`) |
+| `math/Smoothing.h` | `mge` | Frame-rate independent smoothing: `damp`, `dampAngle`, `dampFactor`, `deltaAngle`, `smoothDamp`, `smoothDampAngle` |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
@@ -115,6 +116,22 @@ grid with no collisions).
 
 Used for frustum culling through `CameraMatrices::frustum` (see Cameras below). Tests:
 `tests/core/test_geometry.cpp`, `tests/core/test_camera.cpp`.
+
+---
+
+## Smoothing – `<mge/core/math/Smoothing.h>` (header-only)
+
+Frame-rate independent smoothing helpers for cameras, UI, and gameplay values:
+
+| Function | Notes |
+|----------|-------|
+| `dampFactor(lambda, dt)` | Exponential decay factor `1 - exp(-lambda * dt)` in `[0, 1]`. Returns `0` when `dt <= 0` or `lambda <= 0` |
+| `damp(current, target, lambda, dt)` | First-order exponential decay for `float`, `glm::vec2/3/4`, and `glm::quat` (shortest-arc slerp) |
+| `dampAngle(current, target, lambda, dt)` | Exponential decay for angles in radians along the shortest arc (via `deltaAngle`) |
+| `smoothDamp(current, target, velocity, smoothTime, dt[, maxSpeed])` | Critically damped spring for `float` and `glm::vec2/3/4`. Smooth acceleration, no overshoot, optional speed cap |
+| `smoothDampAngle(current, target, velocity, smoothTime, dt[, maxSpeed])` | Critically damped spring for angles in radians along the shortest arc |
+
+Tests: `tests/core/test_smoothing.cpp`.
 
 ---
 
