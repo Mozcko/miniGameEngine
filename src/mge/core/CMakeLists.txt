@@ -2,6 +2,9 @@
 add_library(mge_core STATIC
     Application.h Application.cpp
     Assets.h Assets.cpp
+    Coroutine.h Coroutine.cpp
+    Easing.h
+    EventBus.h
     Input.h Input.cpp
     Jobs.h Jobs.cpp
     Log.h Log.cpp
@@ -12,6 +15,8 @@ add_library(mge_core STATIC
     Clock.h Clock.cpp
     FlyController.h FlyController.cpp
     Time.h
+    Timer.h Timer.cpp
+    Tween.h Tween.cpp
     math/Geometry.h math/Geometry.cpp
     ecs/Camera.h ecs/Camera.cpp
     ecs/Entity.h
@@ -52,6 +57,9 @@ mge_set_warnings(mge_core)
 mge_install_headers(core
     Application.h
     Assets.h
+    Coroutine.h
+    Easing.h
+    EventBus.h
     Input.h
     Jobs.h
     Log.h
@@ -62,6 +70,8 @@ mge_install_headers(core
     Clock.h
     FlyController.h
     Time.h
+    Timer.h
+    Tween.h
     math/Geometry.h
     ecs/Camera.h
     ecs/Entity.h

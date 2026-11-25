@@ -16,6 +16,11 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |
 | `Clock.h/.cpp` | `mge` | Time source: `SteadyClock` (real time), `ManualClock` (tests / deterministic headless runs, optional auto‑step) |
 | `Time.h` | `mge` | App‑owned time state (`app.time()`): scaled/unscaled delta, fixed delta, interpolation alpha, totals, time scale |
+| `Easing.h` | `mge::ease` | Standard easing curves (`linear`, `Quad`, `Cubic`, `Quart`, `Quint`, `Sine`, `Expo`, `Circ`, `Back`, `Elastic`, `Bounce`, `smoothStep`, `smootherStep`) and `EaseType` lookup |
+| `Timer.h/.cpp` | `mge` | Value-type `Timer` & `Cooldown` helpers + re-entrancy-safe callback scheduler `TimerManager` (`after`, `every`, `pause`/`resume`/`cancel`) |
+| `Tween.h/.cpp` | `mge` | `TweenManager` & `TweenSequence` supporting `float`, `double`, `glm::vec2/3/4`, `glm::quat` (slerp), easings, delays, `Loop`/`PingPong`, and callbacks |
+| `Coroutine.h/.cpp` | `mge` | Cooperative C++17 coroutines: `Coroutine` step builder (`then`, `waitSeconds`, `waitFrames`, `waitUntil`, `waitWhile`, `yieldStep`, `repeat`), `Wait`, and `CoroutineRunner` |
+| `EventBus.h` | `mge` | Type-safe pub/sub `EventBus` with `subscribe`, `subscribeOnce`, RAII `ScopedSubscription`, immediate `emit`, and FIFO deferred `enqueue`/`flush` |
 | `Profiler.h/.cpp` | `mge` | Per-frame CPU profiling instrumentation: `Profiler`, `ScopedTimer`, `MGE_PROFILE_SCOPE` |
 
 

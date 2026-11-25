@@ -12,7 +12,16 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     registry.add<mge::Transform>(entity);
     mge::Pcg32 rng(1);
     mge::InputState input;
+    mge::Timer timer(1.0f);
+    mge::TweenManager tweens;
+    mge::CoroutineRunner coroutines;
+    mge::EventBus events;
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(mge::ease::outQuad(1.0f) == doctest::Approx(1.0f));
+    CHECK_FALSE(timer.isFinished());
+    CHECK(tweens.activeCount() == 0);
+    CHECK(coroutines.runningCount() == 0);
+    CHECK(events.queuedCount() == 0);
 }
