@@ -11,6 +11,7 @@ by the CI `core-only` job, which builds this target on a machine without SDL/GL 
 | `Input.h/.cpp` | `mge` | `Key`/`MouseButton` enums, `InputState` (per‑frame edges, mouse, wheel), `ActionMap` (named actions and axes). SDL‑free: the platform module feeds it, tests inject it |
 | `Random.h` | `mge` | Deterministic randomness: `Pcg32` (reference PCG32), `mix64`/`splitmix64`, coordinate hashes `hash2i`/`hash3i`, `toFloat01` |
 | `math/Geometry.h/.cpp` | `mge` | `Aabb`, `Sphere`, `Plane`, `Ray`, `Frustum` (from view‑projection), ray tests (`intersectRayAabb/Sphere/Plane/Triangle`) |
+| `nav/GridPathfinding.h/.cpp` | `mge` | Headless 2D grid A* pathfinding: `NavGrid`, `GridPathOptions`, `GridPathResult`, `findGridPath`, `simplifyGridPath` |
 | `ecs/` | `mge` | Lightweight ECS: `Entity`, `Registry` (sparse sets, views), `Transform`/`Parent`/`WorldTransform` + `TransformSystem`, `World` (systems per phase) |
 | `Log.h/.cpp` | `mge` | Logging (`MGE_LOG_*` macros, levels, categories, sinks) and assertions (`MGE_ASSERT`, `MGE_VERIFY`) |
 | `Assets.h/.cpp` | `mge` | `assetPath(rel)` / `assetRoot()` / `setAssetRoot()` / `executableDir()`: cwd‑independent asset paths (env `MGE_ASSET_DIR` → exe dir → exe/../assets → source tree) |

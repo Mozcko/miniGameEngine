@@ -12,7 +12,9 @@ TEST_CASE("<mge/mge.h> brings in the core API") {
     registry.add<mge::Transform>(entity);
     mge::Pcg32 rng(1);
     mge::InputState input;
+    mge::NavGrid grid(4, 4);
     CHECK(registry.has<mge::Transform>(entity));
     CHECK(rng.range(0, 10) < 10);
     CHECK_FALSE(input.isDown(mge::Key::A));
+    CHECK(mge::findGridPath(grid, {0, 0}, {3, 3}).found);
 }

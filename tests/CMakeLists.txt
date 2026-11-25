@@ -24,6 +24,7 @@ add_executable(mge_core_tests
     core/test_camera.cpp
     core/test_ecs.cpp
     core/test_geometry.cpp
+    core/test_grid_pathfinding.cpp
     core/test_input.cpp
     core/test_jobs.cpp
     core/test_log.cpp

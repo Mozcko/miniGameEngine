@@ -13,6 +13,7 @@ add_library(mge_core STATIC
     FlyController.h FlyController.cpp
     Time.h
     math/Geometry.h math/Geometry.cpp
+    nav/GridPathfinding.h nav/GridPathfinding.cpp
     ecs/Camera.h ecs/Camera.cpp
     ecs/Entity.h
     ecs/Registry.h ecs/Registry.cpp
@@ -63,6 +64,7 @@ mge_install_headers(core
     FlyController.h
     Time.h
     math/Geometry.h
+    nav/GridPathfinding.h
     ecs/Camera.h
     ecs/Entity.h
     ecs/Registry.h
