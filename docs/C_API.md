@@ -298,3 +298,26 @@ mge_add_c_game(my_c_game
 | `mge_voxel_world_get_block(world, x, y, z)` | Gets block ID at world integer coordinates (auto-loads chunk if generator exists). |
 | `mge_voxel_world_set_block(world, x, y, z, id)` | Sets block ID at world integer coordinates (auto-loads chunk). |
 | `mge_voxel_world_raycast(world, origin, dir, max_dist, &hit)` | Casts ray through voxel world using fast DDA; returns hit coordinates and normal. |
+
+---
+
+## 5. Using `mge_c` from Other Languages (Zig & Odin)
+
+Any language with a C FFI can link against `mge_c` as a shared library (`-DMGE_BUILD_C_SHARED=ON`),
+which bundles the C++ engine modules behind the pure C99 ABI in `<mge/c/mge_c.h>`:
+
+```bash
+cmake --preset dev -DMGE_BUILD_C_SHARED=ON
+cmake --build --preset dev --target mge_c_shared
+```
+
+This repository includes working examples for both **Zig** and **Odin**:
+
+- **Zig** ([`examples/zig/`](../examples/zig/README.md)): imports `<mge/c/mge_c.h>` directly with `@cImport` and builds via `zig build run`.
+- **Odin** ([`examples/odin/`](../examples/odin/README.md)): provides foreign bindings in `examples/odin/mge/mge_c.odin` and builds via `odin build`.
+
+To build `libmge_c` and smoke-test both examples in one step (skips any toolchain not installed unless `--require-zig` / `--require-odin` is passed):
+
+```bash
+scripts/check-c-api-examples.sh
+```
