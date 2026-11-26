@@ -207,12 +207,12 @@ TEST_CASE("ThirdPersonCamera: collision probe with Geometry::intersectRayAabb") 
 
     // Wall behind the player at z in [2.5, 3.5]
     const Aabb wall({-5.0f, 0.0f, 2.5f}, {5.0f, 5.0f, 3.5f});
-    cam.setCollisionProbe([&wall](const glm::vec3& origin, const glm::vec3& dir,
-                                  float maxDist) -> std::optional<float> {
-        const auto hit = intersectRayAabb(Ray(origin, dir), wall);
-        if (hit && *hit <= maxDist) return hit;
-        return std::nullopt;
-    });
+    cam.setCollisionProbe(
+        [&wall](const glm::vec3& origin, const glm::vec3& dir, float maxDist) -> std::optional<float> {
+            const auto hit = intersectRayAabb(Ray(origin, dir), wall);
+            if (hit && *hit <= maxDist) return hit;
+            return std::nullopt;
+        });
 
     cam.snap({0.0f, 0.0f, 0.0f});
     CHECK(cam.isColliding());

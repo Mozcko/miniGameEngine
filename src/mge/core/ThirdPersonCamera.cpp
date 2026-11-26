@@ -14,6 +14,7 @@ namespace mge {
         constexpr float kEpsilon = 1e-5f;
         constexpr float kMaxVerticalDot = 0.9995f;
 
+        // TODO(#229): use mge::damp once it lands
         float dampAlpha(float rate, float dt) {
             if (rate <= 0.0f) return 1.0f;
             return 1.0f - std::exp(-rate * dt);
@@ -344,7 +345,8 @@ namespace mge {
     std::optional<std::size_t> switchLockOnTarget(const glm::vec3& origin, const glm::vec3& viewForward,
                                                   const glm::vec3& viewRight,
                                                   const std::vector<glm::vec3>& candidates,
-                                                  std::size_t currentIndex, int direction, float maxDistance) {
+                                                  std::size_t currentIndex, int direction,
+                                                  float maxDistance) {
         if (direction == 0 || candidates.empty() || maxDistance <= 0.0f) return std::nullopt;
         const float fwdLenSq = glm::dot(viewForward, viewForward);
         const float rightLenSq = glm::dot(viewRight, viewRight);
