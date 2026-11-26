@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <type_traits>
 
 using namespace mge;
@@ -37,6 +38,12 @@ TEST_CASE("GpuVertex: interleaved MeshData with all attributes (including color)
 TEST_CASE("GPU: clear a texture and read it back") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
+
+    const char* driver = gpu.device().driverName();
+    REQUIRE(driver != nullptr);
+#if defined(__APPLE__)
+    CHECK(std::string(driver) == "metal");
+#endif
 
     GpuTexture target = gpu.device().createRenderTarget(16, 8);
     REQUIRE(target);

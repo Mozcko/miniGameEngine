@@ -21,7 +21,10 @@ target_include_directories(mge_gpu PUBLIC
 mge_add_shaders(mge_gpu SHADERS shaders/noise.comp)
 target_link_libraries(mge_gpu PUBLIC mge_core mge_procgen mge_platform SDL3::SDL3)
 # GPU validation (Vulkan layers) enabled by default in Debug
-target_compile_definitions(mge_gpu PRIVATE $<$<CONFIG:Debug>:MGE_GPU_DEBUG_DEFAULT=1>)
+target_compile_definitions(mge_gpu PRIVATE
+    $<$<CONFIG:Debug>:MGE_GPU_DEBUG_DEFAULT=1>
+    $<$<BOOL:${MGE_SHADERS_MSL}>:MGE_SHADERS_MSL=1>
+)
 mge_set_warnings(mge_gpu)
 
 # For <mge/mge.h>: anyone linking this module sees MGE_HAS_GPU

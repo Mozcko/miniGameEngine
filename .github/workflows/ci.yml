@@ -70,6 +70,52 @@ jobs:
           cmake --build --preset ci --target ci_window ci_headless ci_headless_tests
           ctest --preset ci -R "ci_window|ci_headless"
 
+  # macOS build and tests with Metal via SDL3 GPU (Issue #183)
+  macos:
+    name: macos (Metal)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Homebrew downloads and stb headers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/include/stb
+          key: ${{ runner.os }}-brew-${{ hashFiles('scripts/ci-install-deps-macos.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-
+
+      - name: Install dependencies (Homebrew + stb)
+        run: bash scripts/ci-install-deps-macos.sh
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: macos-clang
+
+      - name: Configure (ci preset, warnings as errors, MSL shaders)
+        run: >
+          cmake --preset ci -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+
+      - name: Build
+        run: cmake --build --preset ci
+
+      - name: Test (non-GPU suite)
+        run: ctest --preset ci -LE gpu
+
+      - name: Test (Metal GPU & render suite)
+        # Standard GitHub-hosted macOS VMs may lack a paravirtualized Metal device;
+        # GpuTestContext runs on Metal (asserting driverName == "metal") when available
+        # and skips cleanly otherwise. Vulkan validation probe and offscreen swapchain
+        # smoke tests are Linux/Vulkan-specific.
+        run: ctest --preset ci -R "^(gpu:|render:)"
+
   # AddressSanitizer + UndefinedBehaviorSanitizer: unit tests, headless smoke (1000 frames, sin
   # módulos) y el sandbox real 120 frames offscreen (Mesa llvmpipe). Sin servidor gráfico.
   sanitizers:

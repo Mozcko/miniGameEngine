@@ -20,6 +20,11 @@ target_include_directories(mge_graphics PUBLIC
     $<BUILD_INTERFACE:${miniGameEngine_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
 )
+# stb headers (<stb/stb_image.h>, <stb/stb_truetype.h>): pick up non-default roots (e.g. Homebrew)
+find_path(MGE_STB_INCLUDE_DIR stb/stb_image.h)
+if(MGE_STB_INCLUDE_DIR AND NOT MGE_STB_INCLUDE_DIR STREQUAL "/usr/include")
+    target_include_directories(mge_graphics SYSTEM PRIVATE $<BUILD_INTERFACE:${MGE_STB_INCLUDE_DIR}>)
+endif()
 target_link_libraries(mge_graphics PUBLIC mge_gpu mge_procgen)
 mge_set_warnings(mge_graphics)
 mge_add_shaders(mge_graphics SHADERS shaders/mesh.vert shaders/mesh.frag shaders/mesh_cutout.frag

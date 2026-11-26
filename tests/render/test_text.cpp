@@ -26,7 +26,8 @@ namespace {
         for (const char* candidate : {"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
                                       "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
                                       "/usr/share/fonts/google-droid-sans-fonts/DroidSans.ttf",
-                                      "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf"})
+                                      "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+                                      "/System/Library/Fonts/Supplemental/Arial.ttf"})
             if (std::filesystem::exists(candidate)) return candidate;
         return {};
     }
