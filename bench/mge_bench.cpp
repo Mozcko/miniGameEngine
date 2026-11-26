@@ -5,6 +5,7 @@
 #include <mge/core/ecs/Registry.h>
 #include <mge/core/ecs/Transform.h>
 #include <mge/core/math/Geometry.h>
+#include <mge/physics/MeshCollider.h>
 #include <mge/physics/PhysicsWorld.h>
 #include <mge/physics/RigidBody.h>
 #include <mge/physics/SpatialHash.h>
@@ -508,6 +509,37 @@ namespace {
             hash->computePairs(pairs);
             doNotOptimize(pairs);
         });
+
+        // e) MeshCollider BVH: 10k static triangles, 1k raycasts (#203)
+        auto meshCollider = std::make_shared<MeshCollider>();
+        constexpr int kGridSide = 71; // 71 * 71 * 2 = 10,082 triangles
+        for (int gz = 0; gz < kGridSide; ++gz) {
+            for (int gx = 0; gx < kGridSide; ++gx) {
+                const float x0 = static_cast<float>(gx);
+                const float z0 = static_cast<float>(gz);
+                const float y0 = std::sin(x0 * 0.2f) * std::cos(z0 * 0.2f);
+                const glm::vec3 v0(x0, y0, z0);
+                const glm::vec3 v1(x0 + 1.0f, y0, z0);
+                const glm::vec3 v2(x0 + 1.0f, y0, z0 + 1.0f);
+                const glm::vec3 v3(x0, y0, z0 + 1.0f);
+                meshCollider->addTriangle(v0, v2, v1);
+                meshCollider->addTriangle(v0, v3, v2);
+            }
+        }
+        meshCollider->build();
+
+        constexpr int kMeshRayCount = 1000;
+        runner.add("physics: MeshCollider BVH 1k raycasts (10k tris)", "ns/ray", kMeshRayCount,
+                   [meshCollider] {
+                       std::optional<MeshRaycastHit> lastHit;
+                       for (int i = 0; i < kMeshRayCount; ++i) {
+                           const float ox = static_cast<float>((i * 17) % kGridSide) + 0.35f;
+                           const float oz = static_cast<float>((i * 29) % kGridSide) + 0.65f;
+                           const Ray ray(glm::vec3(ox, 10.0f, oz), glm::vec3(0.0f, -1.0f, 0.0f));
+                           lastHit = meshCollider->raycast(ray, 50.0f);
+                       }
+                       doNotOptimize(lastHit);
+                   });
     }
 
 } // namespace
