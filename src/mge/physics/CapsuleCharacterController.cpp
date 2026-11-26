@@ -310,9 +310,8 @@ namespace mge {
                 const ShapeCastHit downHit =
                     collider.capsuleCast(downCap, glm::vec3(0.0f, -downDist, 0.0f), skin, candidates);
 
-                const bool landingWalkable =
-                    downHit.hit &&
-                    (downHit.normal.y >= minWalkableNormalY || downHit.faceNormal.y >= minWalkableNormalY);
+                const bool landingWalkable = downHit.hit && (downHit.normal.y >= minWalkableNormalY ||
+                                                             downHit.faceNormal.y >= minWalkableNormalY);
 
                 if (landingWalkable) {
                     const glm::vec3 candidateFeet =
@@ -570,34 +569,32 @@ namespace mge {
     }
 
     void addCapsuleCharacterSystem(World& world, const MeshCollider& collider) {
-        world.addSystem(
-            SystemPhase::Fixed, "CapsuleCharacterSystem", [&collider](World& w, float dt) {
-                w.registry().each<CapsuleCharacterController, Transform>(
-                    [dt, &collider](Entity /*e*/, CapsuleCharacterController& controller,
-                                    Transform& transform) {
-                        stepCapsuleCharacter(controller, transform, dt, collider);
-                    });
-            });
+        world.addSystem(SystemPhase::Fixed, "CapsuleCharacterSystem", [&collider](World& w, float dt) {
+            w.registry().each<CapsuleCharacterController, Transform>(
+                [dt, &collider](Entity /*e*/, CapsuleCharacterController& controller, Transform& transform) {
+                    stepCapsuleCharacter(controller, transform, dt, collider);
+                });
+        });
     }
 
     void addCapsuleCharacterCameraSystem(World& world, const Time& time) {
         world.addSystem(SystemPhase::Render, "CapsuleCharacterCameraSystem", [&time](World& w, float /*dt*/) {
             auto& reg = w.registry();
-            reg.each<CapsuleCharacterCamera, Transform>([&reg, &time](Entity /*e*/,
-                                                                      const CapsuleCharacterCamera& cam,
-                                                                      Transform& camTransform) {
-                if (!reg.valid(cam.target)) {
-                    return;
-                }
-                const auto* controller = reg.tryGet<CapsuleCharacterController>(cam.target);
-                const auto* targetTransform = reg.tryGet<Transform>(cam.target);
-                if (!controller || !targetTransform) {
-                    return;
-                }
-                camTransform.position =
-                    capsuleCharacterEyePosition(*controller, *targetTransform, time.alpha());
-                camTransform.rotation = glm::quatLookAt(controller->forward(), glm::vec3(0.0f, 1.0f, 0.0f));
-            });
+            reg.each<CapsuleCharacterCamera, Transform>(
+                [&reg, &time](Entity /*e*/, const CapsuleCharacterCamera& cam, Transform& camTransform) {
+                    if (!reg.valid(cam.target)) {
+                        return;
+                    }
+                    const auto* controller = reg.tryGet<CapsuleCharacterController>(cam.target);
+                    const auto* targetTransform = reg.tryGet<Transform>(cam.target);
+                    if (!controller || !targetTransform) {
+                        return;
+                    }
+                    camTransform.position =
+                        capsuleCharacterEyePosition(*controller, *targetTransform, time.alpha());
+                    camTransform.rotation =
+                        glm::quatLookAt(controller->forward(), glm::vec3(0.0f, 1.0f, 0.0f));
+                });
         });
     }
 

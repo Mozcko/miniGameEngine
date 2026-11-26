@@ -345,8 +345,7 @@ TEST_CASE("capsule: ground snapping sticks to downhill slopes, skips on jump, an
     SUBCASE("Walking off a cliff exceeding groundSnapDistance becomes airborne and falls") {
         MeshCollider world;
         // Elevated platform at y = 5.0 for x <= 2.0, lower floor at y = 0.0
-        addQuad(world, {-10.0f, 5.0f, -6.0f}, {-10.0f, 5.0f, 6.0f}, {2.0f, 5.0f, 6.0f},
-                {2.0f, 5.0f, -6.0f});
+        addQuad(world, {-10.0f, 5.0f, -6.0f}, {-10.0f, 5.0f, 6.0f}, {2.0f, 5.0f, 6.0f}, {2.0f, 5.0f, -6.0f});
         addQuad(world, {-10.0f, 0.0f, -6.0f}, {-10.0f, 0.0f, 6.0f}, {15.0f, 0.0f, 6.0f},
                 {15.0f, 0.0f, -6.0f});
         world.build();
@@ -553,8 +552,7 @@ TEST_CASE("capsule: ECS systems addCapsuleCharacterSystem and addCapsuleCharacte
 
     const auto& camTransform = world.registry().get<Transform>(camera);
     const auto& currentCtrl = world.registry().get<CapsuleCharacterController>(player);
-    CHECK(camTransform.position.y ==
-          doctest::Approx(currentCtrl.previousPosition.y + currentCtrl.eyeHeight));
+    CHECK(camTransform.position.y == doctest::Approx(currentCtrl.previousPosition.y + currentCtrl.eyeHeight));
 
     Transform trFinal{glm::vec3(10.0f, 20.0f, 30.0f)};
     CapsuleCharacterController interpCtrl;
