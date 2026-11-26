@@ -54,6 +54,14 @@ target_link_libraries(mge_procgen_tests PRIVATE mge_procgen doctest_header)
 mge_set_warnings(mge_procgen_tests)
 doctest_discover_tests(mge_procgen_tests TEST_PREFIX "procgen: ")
 
+add_executable(mge_gltf_tests
+    test_main.cpp
+    gltf/test_gltf.cpp
+)
+target_link_libraries(mge_gltf_tests PRIVATE mge_gltf doctest_header)
+mge_set_warnings(mge_gltf_tests)
+doctest_discover_tests(mge_gltf_tests TEST_PREFIX "gltf: ")
+
 add_executable(mge_synth_tests
     test_main.cpp
     synth/test_mixer.cpp

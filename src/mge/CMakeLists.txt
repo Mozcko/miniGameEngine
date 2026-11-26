@@ -31,6 +31,7 @@ add_subdirectory(core)
 add_subdirectory(app)
 # Headless modules (no SDL or GPU): always built
 add_subdirectory(procgen)
+add_subdirectory(gltf)
 add_subdirectory(voxel)
 add_subdirectory(synth)
 add_subdirectory(physics)
@@ -62,6 +63,7 @@ if(MGE_INSTALL)
         mge_core
         mge_main
         mge_procgen
+        mge_gltf
         mge_voxel
         mge_synth
         mge_physics

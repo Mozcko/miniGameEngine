@@ -36,6 +36,12 @@
 #include <mge/procgen/TextureGen.h>
 #endif
 
+// --- glTF 2.0 model import (headless, optional format loader) ---
+#ifdef MGE_HAS_GLTF
+#include <mge/gltf/GltfLoader.h>
+#include <mge/gltf/GltfModel.h>
+#endif
+
 // --- Mundos voxel (headless) ---
 #ifdef MGE_HAS_VOXEL
 #include <mge/voxel/Block.h>
