@@ -11,7 +11,8 @@ and `<mge/mge.h>` exposes it automatically.
 | `VoxelRaycast.h` | Forwarding header for voxel raycasting (`mge::raycastVoxels`) |
 | `VoxelCollision.h/.cpp` | `MoveOptions`, `MoveResult`, `moveAabb(box, delta, isSolid/world, options)` |
 | `CharacterController.h/.cpp` | `CharacterMode`, `CharacterInput`, `CharacterController`, `CharacterCamera`, `stepCharacter`, ECS systems |
-| `CapsuleCharacterController.h/.cpp` | `MeshCollider` (BVH), `Capsule`, `moveCapsule`, `CapsuleCharacterController`, `CapsuleCharacterCamera`, slopes, steps, ground snapping |
+| `MeshCollider.h/.cpp` | `CollisionTriangle`, `Capsule`, `MeshRaycastHit`, `ShapeCastHit`, `ShapeContact`, `MeshCollider` (flat BVH, `queryAabb`, `raycast`, `sphereCast`, `capsuleCast`, `overlapSphere`, `overlapCapsule`) |
+| `CapsuleCharacterController.h/.cpp` | `moveCapsule`, `CapsuleCharacterController`, `CapsuleCharacterCamera`, slopes, steps, ground snapping (built on `MeshCollider`) |
 | `SpatialHash.h/.cpp` | `SpatialHash`: 3D uniform-grid broadphase, `computePairs`, `query` |
 | `RigidBody.h/.cpp` | `ShapeType` (Box, Sphere), `RigidBody` component |
 | `PhysicsWorld.h/.cpp` | `PhysicsSettings`, `PhysicsWorld`, `addPhysicsSystem` |

@@ -94,6 +94,7 @@ add_executable(mge_physics_tests
     test_main.cpp
     physics/test_collision.cpp
     physics/test_character.cpp
+    physics/test_mesh_collider.cpp
     physics/test_capsule_character.cpp
     physics/test_spatial_hash.cpp
     physics/test_rigid_body.cpp

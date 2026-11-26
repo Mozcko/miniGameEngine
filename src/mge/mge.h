@@ -65,6 +65,7 @@
 #include <mge/physics/CapsuleCharacterController.h>
 #include <mge/physics/CharacterController.h>
 #include <mge/physics/GridQuery.h>
+#include <mge/physics/MeshCollider.h>
 #include <mge/physics/PhysicsWorld.h>
 #include <mge/physics/RigidBody.h>
 #include <mge/physics/SpatialHash.h>

@@ -6,7 +6,7 @@
 #include <mge/core/ecs/World.h>
 #include <mge/core/math/Geometry.h>
 #include <mge/physics/CharacterController.h>
-#include <mge/procgen/MeshData.h>
+#include <mge/physics/MeshCollider.h>
 
 #include <glm/glm.hpp>
 
@@ -16,67 +16,6 @@
 #include <vector>
 
 namespace mge {
-
-    // Single world-space triangle used by MeshCollider for capsule queries.
-    struct CollisionTriangle {
-        glm::vec3 a{0.0f};
-        glm::vec3 b{0.0f};
-        glm::vec3 c{0.0f};
-        glm::vec3 normal{0.0f, 1.0f, 0.0f};
-        Aabb bounds;
-    };
-
-    // Static triangle mesh collider with a flat BVH for fast AABB queries.
-    // Call build() after adding triangles/meshes (fromMesh() builds automatically).
-    class MeshCollider {
-    public:
-        void clear();
-        void addTriangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
-        void addMesh(const MeshData& mesh, const glm::mat4& transform = glm::mat4(1.0f));
-        void build();
-
-        static MeshCollider fromMesh(const MeshData& mesh, const glm::mat4& transform = glm::mat4(1.0f));
-
-        bool empty() const { return m_triangles.empty(); }
-        std::size_t triangleCount() const { return m_triangles.size(); }
-        const CollisionTriangle& triangle(std::size_t index) const { return m_triangles[index]; }
-        Aabb bounds() const { return m_bounds; }
-
-        // Appends indices of triangles whose AABB intersects queryBox (clears outIndices first).
-        void queryAabb(const Aabb& queryBox, std::vector<std::uint32_t>& outIndices) const;
-
-    private:
-        struct BvhNode {
-            Aabb bounds;
-            std::uint32_t leftFirst = 0;
-            std::uint32_t count = 0; // 0 = internal node (leftFirst = left child, leftFirst + 1 = right)
-        };
-
-        void buildNode(std::uint32_t nodeIndex);
-
-        std::vector<CollisionTriangle> m_triangles;
-        std::vector<std::uint32_t> m_triIndices;
-        std::vector<BvhNode> m_nodes;
-        Aabb m_bounds;
-    };
-
-    // Upright capsule aligned with +Y. `feet` is the bottom-most point of the lower hemisphere.
-    struct Capsule {
-        glm::vec3 feet{0.0f};
-        float radius = 0.35f;
-        float height = 1.8f;
-
-        glm::vec3 bottomCenter() const { return feet + glm::vec3(0.0f, radius, 0.0f); }
-        glm::vec3 topCenter() const {
-            return feet + glm::vec3(0.0f, std::max(height - radius, radius), 0.0f);
-        }
-
-        Aabb bounds() const {
-            const float totalHeight = std::max(height, 2.0f * radius);
-            return Aabb(feet + glm::vec3(-radius, 0.0f, -radius),
-                        feet + glm::vec3(radius, totalHeight, radius));
-        }
-    };
 
     struct CapsuleMoveOptions {
         float maxSlopeAngle = 45.0f;      // Maximum walkable slope angle in degrees
