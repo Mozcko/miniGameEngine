@@ -174,40 +174,19 @@ TEST_CASE("Gamepad: connection, buttons, edges, and disconnect") {
     CHECK_FALSE(input.isDown(GamepadButton::Count, 0));
 }
 
-TEST_CASE("Gamepad: deadzones, response curves, sticks, and triggers") {
-    CHECK(applyAxisDeadzone(0.10f, 0.15f) == doctest::Approx(0.0f));
-    CHECK(applyAxisDeadzone(-0.15f, 0.15f) == doctest::Approx(0.0f));
-    CHECK(applyAxisDeadzone(1.0f, 0.15f) == doctest::Approx(1.0f));
-    CHECK(applyAxisDeadzone(-1.0f, 0.15f) == doctest::Approx(-1.0f));
-    CHECK(applyAxisDeadzone(0.575f, 0.15f) == doctest::Approx(0.5f));
-    CHECK(applyAxisDeadzone(0.575f, 0.15f, 2.0f) == doctest::Approx(0.25f));
-
-    // Radial deadzone on 2D sticks
-    const Vec2f inside = applyStickDeadzone({0.10f, 0.10f}, 0.20f);
-    CHECK(inside.x == doctest::Approx(0.0f));
-    CHECK(inside.y == doctest::Approx(0.0f));
-
-    const Vec2f halfRight = applyStickDeadzone({0.60f, 0.0f}, 0.20f);
-    CHECK(halfRight.x == doctest::Approx(0.5f));
-    CHECK(halfRight.y == doctest::Approx(0.0f));
-
-    // Diagonal beyond unit circle clamps magnitude to 1
-    const Vec2f diagonal = applyStickDeadzone({1.0f, 1.0f}, 0.15f);
-    CHECK(diagonal.x == doctest::Approx(0.70710678f));
-    CHECK(diagonal.y == doctest::Approx(0.70710678f));
-
+TEST_CASE("Gamepad: raw sticks, triggers, and clear") {
     InputState input;
     input.setGamepadConnected(0, true, "Pad");
-    input.setGamepadDeadzone(0.20f);
-    CHECK(input.gamepadDeadzone() == doctest::Approx(0.20f));
 
     input.setGamepadAxis(0, GamepadAxis::LeftX, 0.10f);
     CHECK(input.gamepadAxisRaw(GamepadAxis::LeftX, 0) == doctest::Approx(0.10f));
-    CHECK(input.gamepadAxis(GamepadAxis::LeftX, 0) == doctest::Approx(0.0f));
+    CHECK(input.gamepadAxis(GamepadAxis::LeftX, 0) == doctest::Approx(0.10f));
 
     input.setGamepadAxis(0, GamepadAxis::LeftX, 0.60f);
-    CHECK(input.gamepadAxis(GamepadAxis::LeftX, 0) == doctest::Approx(0.5f));
-    CHECK(input.gamepadStick(true, 0).x == doctest::Approx(0.5f));
+    input.setGamepadAxis(0, GamepadAxis::LeftY, -0.40f);
+    CHECK(input.gamepadAxis(GamepadAxis::LeftX, 0) == doctest::Approx(0.60f));
+    CHECK(input.gamepadStick(true, 0).x == doctest::Approx(0.60f));
+    CHECK(input.gamepadStick(true, 0).y == doctest::Approx(-0.40f));
 
     // Triggers clamp to [0, 1]
     input.setGamepadAxis(0, GamepadAxis::RightTrigger, -0.5f);
@@ -232,7 +211,6 @@ TEST_CASE("ActionMap: gamepad actions, analog axes, and rebinding") {
     actions.bindAxis("MoveX", GamepadAxis::LeftX, 1.0f, 0);
     actions.bindAxis("MoveY", GamepadAxis::LeftY, -1.0f, 0);
 
-    input.setGamepadDeadzone(0.0f);
     input.beginFrame();
     input.setGamepadButton(0, GamepadButton::South, true);
     CHECK(actions.isDown(input, "Jump"));

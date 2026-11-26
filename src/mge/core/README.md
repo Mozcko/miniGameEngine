@@ -78,7 +78,7 @@ mge::Vec2f look = platform.input().mouseDelta();
 |------|-----------|
 | `InputState::beginFrame()` | Saves the previous key/mouse/gamepad button state and resets mouse delta, wheel, and committed text input. The platform module calls it before applying the frame's events |
 | `isDown` / `wasPressed` / `wasReleased` | Level / pressed this frame / released this frame, for `Key`, `MouseButton`, and `GamepadButton` (up to `kMaxGamepads = 4` slots). Press + release within one frame leaves no edge |
-| `gamepadAxis` / `gamepadStick` / `applyAxisDeadzone` / `applyStickDeadzone` | Analog sticks (`[-1, 1]`) and triggers (`[0, 1]`) with configurable radial/axis deadzones and response curves |
+| `gamepadAxis` / `gamepadStick` | Analog sticks (`[-1, 1]`) and triggers (`[0, 1]`) (raw values; deadzones tracked in #230) |
 | `textInput()` / `textComposition()` | Committed UTF-8 text received this frame and active IME pre-edit composition (`TextComposition`) |
 | `mousePosition()`, `mouseDelta()`, `wheel()` | Position persists; delta and wheel accumulate per frame |
 | `clear()` | Releases all keys/buttons/axes and clears text input (focus lost; preserves gamepad connections) |

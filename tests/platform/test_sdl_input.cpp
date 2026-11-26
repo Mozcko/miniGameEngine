@@ -117,7 +117,6 @@ TEST_CASE("Gamepad button and axis translation") {
 
 TEST_CASE("Gamepad SDL events update state for the target slot") {
     InputState input;
-    input.setGamepadDeadzone(0.0f);
     input.beginFrame();
 
     SDL_Event btnDown{};

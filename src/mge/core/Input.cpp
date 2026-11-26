@@ -94,33 +94,6 @@ namespace mge {
         }
     }
 
-    // --- Deadzone helpers ---
-
-    float applyAxisDeadzone(float value, float deadzone, float exponent) {
-        const float clampedDeadzone = std::clamp(deadzone, 0.0f, 0.99f);
-        const float magnitude = std::fabs(value);
-        if (magnitude <= clampedDeadzone) return 0.0f;
-
-        float rescaled = std::min(1.0f, (magnitude - clampedDeadzone) / (1.0f - clampedDeadzone));
-        if (exponent > 0.0f && exponent != 1.0f) {
-            rescaled = std::pow(rescaled, exponent);
-        }
-        return value < 0.0f ? -rescaled : rescaled;
-    }
-
-    Vec2f applyStickDeadzone(Vec2f stick, float deadzone, float exponent) {
-        const float clampedDeadzone = std::clamp(deadzone, 0.0f, 0.99f);
-        const float length = std::sqrt(stick.x * stick.x + stick.y * stick.y);
-        if (length <= clampedDeadzone || length <= 0.0f) return {0.0f, 0.0f};
-
-        float rescaled = std::min(1.0f, (length - clampedDeadzone) / (1.0f - clampedDeadzone));
-        if (exponent > 0.0f && exponent != 1.0f) {
-            rescaled = std::pow(rescaled, exponent);
-        }
-        const float factor = rescaled / length;
-        return {stick.x * factor, stick.y * factor};
-    }
-
     // --- InputState ---
 
     void InputState::beginFrame() {
@@ -178,12 +151,8 @@ namespace mge {
     void InputState::setGamepadAxis(std::size_t gamepad, GamepadAxis axis, float value) {
         if (gamepad >= kMaxGamepads || axis == GamepadAxis::Count) return;
         const bool isTrigger = (axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger);
-        m_gamepads[gamepad].axes[index(axis)] = isTrigger ? std::clamp(value, 0.0f, 1.0f)
-                                                          : std::clamp(value, -1.0f, 1.0f);
-    }
-
-    void InputState::setGamepadDeadzone(float deadzone) {
-        m_gamepadDeadzone = std::clamp(deadzone, 0.0f, 0.99f);
+        m_gamepads[gamepad].axes[index(axis)] =
+            isTrigger ? std::clamp(value, 0.0f, 1.0f) : std::clamp(value, -1.0f, 1.0f);
     }
 
     void InputState::addTextInput(const std::string& utf8) {
@@ -275,15 +244,16 @@ namespace mge {
     }
 
     float InputState::gamepadAxis(GamepadAxis axis, std::size_t gamepad) const {
-        return applyAxisDeadzone(gamepadAxisRaw(axis, gamepad), m_gamepadDeadzone);
+        // TODO(#230): apply deadzones
+        return gamepadAxisRaw(axis, gamepad);
     }
 
     Vec2f InputState::gamepadStick(bool left, std::size_t gamepad) const {
         if (gamepad >= kMaxGamepads) return {0.0f, 0.0f};
         const GamepadAxis xAxis = left ? GamepadAxis::LeftX : GamepadAxis::RightX;
         const GamepadAxis yAxis = left ? GamepadAxis::LeftY : GamepadAxis::RightY;
-        return applyStickDeadzone({gamepadAxisRaw(xAxis, gamepad), gamepadAxisRaw(yAxis, gamepad)},
-                                  m_gamepadDeadzone);
+        // TODO(#230): apply deadzones
+        return {gamepadAxisRaw(xAxis, gamepad), gamepadAxisRaw(yAxis, gamepad)};
     }
 
     // --- InputBinding & AxisBinding ---

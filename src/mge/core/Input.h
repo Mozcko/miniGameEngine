@@ -134,16 +134,10 @@ namespace mge {
         bool active() const { return !text.empty(); }
     };
 
-    // Rescales a single analog axis with a deadzone and optional response curve exponent.
-    float applyAxisDeadzone(float value, float deadzone = 0.15f, float exponent = 1.0f);
-    // Rescales a 2D analog stick with a radial deadzone and optional response curve exponent.
-    Vec2f applyStickDeadzone(Vec2f stick, float deadzone = 0.15f, float exponent = 1.0f);
-
     // Keyboard, mouse, gamepad, and text input state for the current frame, with per-frame edges.
     class InputState {
     public:
         static constexpr std::size_t kMaxGamepads = 4;
-        static constexpr float kDefaultDeadzone = 0.15f;
 
         // Call at the start of each frame, BEFORE applying the frame's events
         void beginFrame();
@@ -159,7 +153,6 @@ namespace mge {
         void setGamepadConnected(std::size_t gamepad, bool connected, const std::string& name = {});
         void setGamepadButton(std::size_t gamepad, GamepadButton button, bool down);
         void setGamepadAxis(std::size_t gamepad, GamepadAxis axis, float value);
-        void setGamepadDeadzone(float deadzone);
 
         // Text input (UTF-8)
         void addTextInput(const std::string& utf8);
@@ -192,7 +185,6 @@ namespace mge {
         float gamepadAxisRaw(GamepadAxis axis, std::size_t gamepad = 0) const;
         float gamepadAxis(GamepadAxis axis, std::size_t gamepad = 0) const;
         Vec2f gamepadStick(bool left, std::size_t gamepad = 0) const;
-        float gamepadDeadzone() const { return m_gamepadDeadzone; }
 
         // Text input queries (committed UTF-8 text received this frame, plus active IME composition)
         const std::string& textInput() const { return m_textInput; }
@@ -221,7 +213,6 @@ namespace mge {
         float m_wheel = 0.0f;
 
         std::array<GamepadState, kMaxGamepads> m_gamepads{};
-        float m_gamepadDeadzone = kDefaultDeadzone;
 
         std::string m_textInput;
         TextComposition m_textComposition;
