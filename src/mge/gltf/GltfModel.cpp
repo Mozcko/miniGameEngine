@@ -39,9 +39,9 @@ namespace mge {
         std::vector<bool> visited(count, false);
 
         if (!scenes.empty()) {
-            const int sceneIdx =
-                (defaultScene >= 0 && static_cast<std::size_t>(defaultScene) < scenes.size()) ? defaultScene
-                                                                                              : 0;
+            const int sceneIdx = (defaultScene >= 0 && static_cast<std::size_t>(defaultScene) < scenes.size())
+                                     ? defaultScene
+                                     : 0;
             for (int rootIndex : scenes[static_cast<std::size_t>(sceneIdx)].rootNodes) {
                 traverseNode(nodes, rootIndex, glm::mat4(1.0f), 0, worldMatrices, visited);
             }
