@@ -5,10 +5,13 @@
 #include <game/SandboxBlocks.h>
 #include <game/SandboxMaterials.h>
 #include <game/SandboxTerrain.h>
+#include <mge/gltf/GltfLoader.h>
 #include <mge/graphics/DebugDraw.h>
+#include <mge/graphics/GpuModel.h>
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/SdfRenderer.h>
 #include <mge/graphics/Texture2D.h>
+#include <mge/procgen/Image.h>
 #include <mge/procgen/Primitives.h>
 #include <mge/procgen/Sdf.h>
 #include <mge/voxel/ChunkMesher.h>
@@ -19,7 +22,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 
@@ -647,4 +652,154 @@ TEST_CASE("Render: transparent face sorting within a chunk (front and back views
     CHECK(backPx[2] > backPx[0]);   // Blue > Red in back view
     CHECK(frontPx[0] > backPx[0]);  // More red from the front than from the back
     CHECK(backPx[2] > frontPx[2]);  // More blue from the back than from the front
+}
+
+TEST_CASE("Render: GpuModel upload, embedded PNG texture, and ECS hierarchy golden (#200)") {
+    GpuTestContext gpu;
+    if (!gpu.available()) return;
+    GpuDevice& device = gpu.device();
+
+    // 1. Build a small 16x16 checkerboard PNG in memory via mge::Image + writePng
+    mge::Image checker(16, 16);
+    for (int y = 0; y < 16; ++y) {
+        for (int x = 0; x < 16; ++x) {
+            const bool odd = (((x / 4) + (y / 4)) % 2) != 0;
+            checker.set(x, y,
+                        odd ? glm::vec4(0.95f, 0.45f, 0.15f, 1.0f) : glm::vec4(0.95f, 0.92f, 0.82f, 1.0f));
+        }
+    }
+    const std::filesystem::path tmpPng = std::filesystem::temp_directory_path() / "mge_gltf_golden_tex.png";
+    REQUIRE(writePng(checker, tmpPng));
+    std::vector<std::uint8_t> pngBytes;
+    {
+        std::ifstream in(tmpPng, std::ios::binary | std::ios::ate);
+        REQUIRE(in.good());
+        const auto sz = in.tellg();
+        REQUIRE(sz > 0);
+        in.seekg(0, std::ios::beg);
+        pngBytes.resize(static_cast<std::size_t>(sz));
+        REQUIRE(static_cast<bool>(in.read(reinterpret_cast<char*>(pngBytes.data()), sz)));
+    }
+    std::filesystem::remove(tmpPng);
+
+    // 2. Pack a cube (positions, normals, UVs, indices) + embedded PNG into a GLB binary chunk
+    const MeshData cube = primitives::box(glm::vec3(1.2f));
+    std::vector<std::uint8_t> bin;
+    auto appendRaw = [&](const void* ptr, std::size_t bytes) -> std::pair<std::size_t, std::size_t> {
+        while (bin.size() % 4 != 0) bin.push_back(0u);
+        const std::size_t offset = bin.size();
+        bin.resize(offset + bytes);
+        std::memcpy(bin.data() + offset, ptr, bytes);
+        return {offset, bytes};
+    };
+    const auto [posOff, posLen] = appendRaw(cube.positions.data(), cube.positions.size() * sizeof(glm::vec3));
+    const auto [nrmOff, nrmLen] = appendRaw(cube.normals.data(), cube.normals.size() * sizeof(glm::vec3));
+    const auto [uvOff, uvLen] = appendRaw(cube.uvs.data(), cube.uvs.size() * sizeof(glm::vec2));
+    const auto [idxOff, idxLen] = appendRaw(cube.indices.data(), cube.indices.size() * sizeof(std::uint32_t));
+    const auto [pngOff, pngLen] = appendRaw(pngBytes.data(), pngBytes.size());
+
+    const std::string json =
+        std::string(R"({"asset":{"version":"2.0"},"buffers":[{"byteLength":)") + std::to_string(bin.size()) +
+        R"(}],"bufferViews":[)" + R"({"buffer":0,"byteOffset":)" + std::to_string(posOff) +
+        R"(,"byteLength":)" + std::to_string(posLen) + R"(},)" + R"({"buffer":0,"byteOffset":)" +
+        std::to_string(nrmOff) + R"(,"byteLength":)" + std::to_string(nrmLen) + R"(},)" +
+        R"({"buffer":0,"byteOffset":)" + std::to_string(uvOff) + R"(,"byteLength":)" + std::to_string(uvLen) +
+        R"(},)" + R"({"buffer":0,"byteOffset":)" + std::to_string(idxOff) + R"(,"byteLength":)" +
+        std::to_string(idxLen) + R"(},)" + R"({"buffer":0,"byteOffset":)" + std::to_string(pngOff) +
+        R"(,"byteLength":)" + std::to_string(pngLen) + R"(}],)" + R"("accessors":[)" +
+        R"({"bufferView":0,"componentType":5126,"count":)" + std::to_string(cube.positions.size()) +
+        R"(,"type":"VEC3"},)" + R"({"bufferView":1,"componentType":5126,"count":)" +
+        std::to_string(cube.normals.size()) + R"(,"type":"VEC3"},)" +
+        R"({"bufferView":2,"componentType":5126,"count":)" + std::to_string(cube.uvs.size()) +
+        R"(,"type":"VEC2"},)" + R"({"bufferView":3,"componentType":5125,"count":)" +
+        std::to_string(cube.indices.size()) + R"(,"type":"SCALAR"}],)" +
+        R"("images":[{"mimeType":"image/png","bufferView":4}],)" + R"("textures":[{"source":0}],)" +
+        R"("materials":[)" +
+        R"({"name":"Checker","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},)" +
+        R"({"name":"Teal","pbrMetallicRoughness":{"baseColorFactor":[0.20,0.78,0.88,1.0]}}],)" +
+        R"("meshes":[)" +
+        R"({"name":"TexturedCube","primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0}]},)" +
+        R"({"name":"TintedCube","primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":1}]}],)" +
+        R"("nodes":[)" + R"({"name":"Parent","translation":[-0.85,0.0,0.0],"mesh":0,"children":[1]},)" +
+        R"({"name":"Child","translation":[1.85,0.35,0.0],"scale":[0.75,0.75,0.75],"mesh":1}],)" +
+        R"("scenes":[{"nodes":[0]}],"scene":0})";
+
+    std::vector<std::uint8_t> jsonBytes(json.begin(), json.end());
+    while (jsonBytes.size() % 4 != 0) jsonBytes.push_back(static_cast<std::uint8_t>(' '));
+    std::vector<std::uint8_t> binPadded = bin;
+    while (binPadded.size() % 4 != 0) binPadded.push_back(0u);
+
+    const std::uint32_t totalLen = 12u + 8u + static_cast<std::uint32_t>(jsonBytes.size()) + 8u +
+                                   static_cast<std::uint32_t>(binPadded.size());
+    std::vector<std::uint8_t> glb;
+    auto pushU32 = [&](std::uint32_t v) {
+        glb.push_back(static_cast<std::uint8_t>(v & 0xFFu));
+        glb.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFFu));
+        glb.push_back(static_cast<std::uint8_t>((v >> 16) & 0xFFu));
+        glb.push_back(static_cast<std::uint8_t>((v >> 24) & 0xFFu));
+    };
+    pushU32(0x46546C67u);
+    pushU32(2u);
+    pushU32(totalLen);
+    pushU32(static_cast<std::uint32_t>(jsonBytes.size()));
+    pushU32(0x4E4F534Au);
+    glb.insert(glb.end(), jsonBytes.begin(), jsonBytes.end());
+    pushU32(static_cast<std::uint32_t>(binPadded.size()));
+    pushU32(0x004E4942u);
+    glb.insert(glb.end(), binPadded.begin(), binPadded.end());
+
+    // 3. Parse -> upload -> instantiate in ECS -> update transforms -> enqueue -> render
+    const auto cpuModel = loadGltfFromMemory(glb.data(), glb.size());
+    REQUIRE(cpuModel.has_value());
+
+    GpuModel gpuModel = uploadModel(device, *cpuModel);
+    REQUIRE(gpuModel.valid());
+    REQUIRE(gpuModel.textures.size() == 1);
+    CHECK(gpuModel.textures[0]);
+    CHECK(gpuModel.textures[0].width() == 16);
+    CHECK(gpuModel.textures[0].height() == 16);
+
+    World world;
+    const ModelInstance instance = instantiateModel(world, gpuModel);
+    REQUIRE(instance.entities.size() == 2);
+    REQUIRE(instance.rootEntities.size() == 1);
+    CHECK(world.registry().has<Parent>(instance.entities[1]));
+    CHECK(world.registry().get<Parent>(instance.entities[1]).entity == instance.entities[0]);
+
+    TransformSystem::update(world.registry());
+
+    RenderQueue queue;
+    enqueueModelEntities(world, queue);
+    CHECK(queue.size() == 2);
+
+    const glm::vec3 eye(0.3f, 2.0f, 4.4f);
+    const glm::vec3 target(0.1f, 0.1f, 0.0f);
+    queue.sort(eye, glm::normalize(target - eye));
+
+    MeshRenderer renderer(device, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    REQUIRE(renderer.valid());
+    Lighting lighting;
+    lighting.sunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.5f));
+    lighting.fog = false;
+    renderer.setLighting(lighting);
+
+    constexpr std::uint32_t kSize = 160;
+    GpuTexture colorTarget = device.createRenderTarget(kSize, kSize);
+    CommandBuffer cmd = device.acquireCommandBuffer();
+    REQUIRE(renderer.begin(cmd, colorTarget.get(), kSize, kSize, {0.14f, 0.17f, 0.22f, 1.0f}));
+    renderer.setCamera(glm::perspectiveRH_ZO(glm::radians(48.0f), 1.0f, 0.1f, 50.0f) *
+                           glm::lookAt(eye, target, {0, 1, 0}),
+                       eye);
+    renderer.submit(queue);
+    renderer.end();
+    REQUIRE(cmd.submitAndWait());
+
+    const mge_test::Image image{kSize, kSize, device.downloadTexture(colorTarget, kSize, kSize)};
+    const mge_test::GoldenResult result = mge_test::compareWithGolden("gltf_model_hierarchy", image);
+    if (!result.message.empty()) MESSAGE(result.message);
+    CHECK(result.passed);
+
+    // Explicit release before GpuDevice teardown
+    gpuModel.clear();
+    CHECK(gpuModel.empty());
 }

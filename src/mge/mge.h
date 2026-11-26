@@ -105,6 +105,7 @@
 #include <mge/graphics/DayNight.h>
 #include <mge/graphics/DebugDraw.h>
 #include <mge/graphics/DebugOverlay.h>
+#include <mge/graphics/GpuModel.h>
 #include <mge/graphics/Lighting.h>
 #include <mge/graphics/MeshRenderer.h>
 #include <mge/graphics/Renderer2D.h>
