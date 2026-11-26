@@ -4,6 +4,7 @@
 #include <mge/core/Log.h>
 
 #include <cstring>
+#include <limits>
 
 // stb_image with static functions: avoids collisions with another copy of stb_image in the same binary (e.g.
 // tests)
@@ -59,6 +60,24 @@ namespace mge {
                                        static_cast<std::uint32_t>(height), pixels, keepCpuCopy);
         stbi_image_free(pixels);
         if (texture) MGE_LOG_DEBUG("Texture", full.filename().string(), ": ", width, "x", height);
+        return texture;
+    }
+
+    Texture2D Texture2D::fromMemory(GpuDevice& device, const std::uint8_t* bytes, std::size_t size,
+                                    bool keepCpuCopy) {
+        if (!bytes || size == 0 || size > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+            MGE_LOG_ERROR("Texture", "fromMemory: invalid input buffer");
+            return {};
+        }
+        int width = 0, height = 0, channels = 0;
+        stbi_uc* pixels = stbi_load_from_memory(bytes, static_cast<int>(size), &width, &height, &channels, 4);
+        if (!pixels) {
+            MGE_LOG_ERROR("Texture", "Failed to decode image from memory: ", stbi_failure_reason());
+            return {};
+        }
+        Texture2D texture = fromPixels(device, static_cast<std::uint32_t>(width),
+                                       static_cast<std::uint32_t>(height), pixels, keepCpuCopy);
+        stbi_image_free(pixels);
         return texture;
     }
 

@@ -27,6 +27,10 @@ namespace mge {
         // path: relative to the assets root (resolved with mge::assetPath) or absolute.
         static Texture2D fromFile(GpuDevice& device, const std::filesystem::path& path,
                                   bool keepCpuCopy = false);
+        // Decodes an encoded image (PNG, JPG, etc.) from memory via stb_image into an RGBA8 texture.
+        // Returns an invalid Texture2D on failure (reason is logged).
+        static Texture2D fromMemory(GpuDevice& device, const std::uint8_t* bytes, std::size_t size,
+                                    bool keepCpuCopy = false);
         // 1x1 white: for drawing untextured meshes with the same shader
         static Texture2D white(GpuDevice& device);
 

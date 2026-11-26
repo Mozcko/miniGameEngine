@@ -21,6 +21,7 @@ by default (`MODULES platform gpu graphics audio`).
 | `DayNight.h/.cpp` | `DayNight`, `SkySettings`: procedural day/night cycle, sun position and sky/lighting keyframe interpolation (#35) |
 | `Sky.h/.cpp` | `SkyRenderer`: procedural sky pass, fullscreen triangle before opaque geometry (#35) |
 | `SdfRenderer.h/.cpp` | `SdfRenderer`, `SdfFrame`: SDF raymarching pass, fullscreen triangle with depth test and write, intersecting meshes (#36) |
+| `GpuModel.h/.cpp` | `GpuModel`, `uploadModel(device, gltfModel)`, `ModelMeshComponent`, `instantiateModel(world, model)`, `enqueueModelEntities(world, queue)` (#200) |
 | `shaders/mesh.vert/.frag`, `mesh_cutout.frag` | Embedded GLSL (`mge_add_shaders`): `viewProjection * model * position`; `texture(albedo, uv) * color`, lit and fogged; the cutout variant discards alpha < 0.5 |
 | `shaders/include/mge/` | Shared GLSL libraries (`lighting.glsl`, `sdf.glsl`, `raymarch.glsl`, see [`shaders/README.md`](shaders/README.md)) |
 
