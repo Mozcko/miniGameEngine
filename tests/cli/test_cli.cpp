@@ -116,6 +116,7 @@ TEST_CASE("cli: project detection") {
     std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "mge_test_proj_detect";
     std::filesystem::remove_all(tempDir);
     std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir);
 
     // Without a project file
     auto infoEmpty = detectProject(tempDir);
@@ -221,9 +222,15 @@ TEST_CASE("cli: process execution and output capture") {
     CHECK_FALSE(commandExists("comando_que_definitivamente_no_existe_12345"));
 
     std::string out;
-    int rc = runCommandCapture({"echo", "mge_cli_test_output"}, out);
+    int rc = runCommandCapture({"cmake", "-E", "echo", "mge_cli_test_output"}, out);
     CHECK(rc == 0);
     CHECK(out.find("mge_cli_test_output") != std::string::npos);
+
+    // Arguments containing spaces are preserved without shell splitting
+    std::string spacedOut;
+    int spacedRc = runCommandCapture({"cmake", "-E", "echo", "hello world from mge"}, spacedOut);
+    CHECK(spacedRc == 0);
+    CHECK(spacedOut.find("hello world from mge") != std::string::npos);
 }
 
 TEST_CASE("cli: Python doctor diagnostics") {

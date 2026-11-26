@@ -50,7 +50,7 @@ No globbing: every target lists its sources explicitly – add new files to that
   installed package (`-DMGE_INSTALL=ON`, needs a system SDL3; `find_package(mge 1.0)`) or `FetchContent` (`GIT_TAG v1.0.2`)
   (#103, `docs/USING_THE_ENGINE.md`, sample `samples/consumer`). Install rules: public headers listed per module with
   `mge_install_headers(<module> …)`; new modules must be added to `MGE_EXPORT_TARGETS` (src/mge/CMakeLists.txt) and mgeConfig.
-- `tools/mge/` = the `mge` CLI (`mge_cli_core` lib + exe; POSIX only, skipped on Windows; prints with std::cout – the only place
+- `tools/mge/` = the `mge` CLI (`mge_cli_core` lib + exe; Linux, macOS, and Windows; prints with std::cout – the only place
   allowed) and its `wizard/` (pure `WizardModel` + `TerminalView`). Tests: `tests/cli/` (+ golden file trees in
   `tools/mge/tests/golden/`, `MGE_UPDATE_GOLDEN=1`).
 - `game/` = `sandbox_world` lib (SandboxBlocks/SandboxTerrain/SandboxSounds on `mge_voxel`, headless; namespace `sandbox`) + `sandbox` exe (written to the build dir root).

@@ -198,12 +198,7 @@ endif()
 
 # --- Tools (CLI) ---
 if(MGE_BUILD_CLI)
-    if(WIN32)
-        set(MGE_BUILD_CLI OFF CACHE BOOL "Build the mge CLI tool (tools/mge)" FORCE)
-        message(STATUS "mge CLI: disabled on Windows (tools/mge/Process.cpp requires POSIX)")
-    else()
-        add_subdirectory(tools/mge)
-    endif()
+    add_subdirectory(tools/mge)
 endif()
 
 # --- Unit tests ---

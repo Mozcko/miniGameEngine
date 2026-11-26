@@ -1,10 +1,5 @@
 # Engine command-line tool (mge CLI)
 
-if(WIN32)
-    message(STATUS "mge CLI: not yet supported on Windows")
-    return()
-endif()
-
 add_library(mge_cli_core STATIC
     Process.h Process.cpp
     Colors.h
@@ -23,7 +18,12 @@ target_include_directories(mge_cli_core PUBLIC
 
 target_compile_definitions(mge_cli_core PUBLIC
     MGE_SOURCE_TEMPLATES_DIR="${miniGameEngine_SOURCE_DIR}/templates"
+    $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_WARNINGS>
 )
+
+if(MSVC)
+    target_compile_options(mge_cli_core PUBLIC /utf-8)
+endif()
 
 target_link_libraries(mge_cli_core PUBLIC mge_core)
 mge_set_warnings(mge_cli_core)

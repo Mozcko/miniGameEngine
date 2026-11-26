@@ -36,35 +36,105 @@ namespace mge::cli {
             return trim(str);
         }
 
+        std::string findSystemPython() {
+#ifdef _WIN32
+            if (commandExists("python")) {
+                return "python";
+            }
+            if (commandExists("python3")) {
+                return "python3";
+            }
+            return {};
+#else
+            if (commandExists("python3")) {
+                return "python3";
+            }
+            if (commandExists("python")) {
+                return "python";
+            }
+            return {};
+#endif
+        }
+
+#ifdef _WIN32
+        std::vector<std::filesystem::path> splitEnvPaths(const char* envName) {
+            std::vector<std::filesystem::path> paths;
+            const char* val = std::getenv(envName);
+            if (val == nullptr || val[0] == '\0') {
+                return paths;
+            }
+            std::stringstream ss(val);
+            std::string entry;
+            while (std::getline(ss, entry, ';')) {
+                entry = trim(entry);
+                if (!entry.empty()) {
+                    paths.emplace_back(entry);
+                }
+            }
+            return paths;
+        }
+#endif
+
         DoctorItem checkCompiler() {
             DoctorItem item;
             item.name = "C++ Compiler";
             item.required = true;
 
             std::string compiler;
+            bool isMsvc = false;
             const char* cxxEnv = std::getenv("CXX");
             if (cxxEnv != nullptr && commandExists(cxxEnv)) {
                 compiler = cxxEnv;
-            } else if (commandExists("g++")) {
-                compiler = "g++";
-            } else if (commandExists("clang++")) {
-                compiler = "clang++";
-            } else if (commandExists("c++")) {
-                compiler = "c++";
+            }
+            if (compiler.empty()) {
+#ifdef _WIN32
+                if (commandExists("cl")) {
+                    compiler = "cl";
+                    isMsvc = true;
+                } else if (commandExists("clang-cl")) {
+                    compiler = "clang-cl";
+                } else if (commandExists("clang++")) {
+                    compiler = "clang++";
+                } else if (commandExists("g++")) {
+                    compiler = "g++";
+                }
+#else
+                if (commandExists("g++")) {
+                    compiler = "g++";
+                } else if (commandExists("clang++")) {
+                    compiler = "clang++";
+                } else if (commandExists("c++")) {
+                    compiler = "c++";
+                }
+#endif
             }
 
             if (compiler.empty()) {
                 item.ok = false;
                 item.detail = "Not found";
+#ifdef _WIN32
+                item.hint = "Install Visual Studio (Desktop development with C++), LLVM/Clang, or MinGW-w64";
+#else
                 item.hint =
                     "Install a C++17 compiler (e.g., sudo apt install g++ / sudo dnf install gcc-c++)";
+#endif
                 return item;
             }
 
+            if (!isMsvc) {
+                std::filesystem::path compPath(compiler);
+                std::string stem = compPath.stem().string();
+                if (stem == "cl" || stem == "CL") {
+                    isMsvc = true;
+                }
+            }
+
             std::string output;
-            if (runCommandCapture({compiler, "--version"}, output) != 0) {
+            int rc = isMsvc ? runCommandCapture({compiler}, output)
+                            : runCommandCapture({compiler, "--version"}, output);
+            if (rc != 0 && output.empty()) {
                 item.ok = false;
-                item.detail = compiler + " (error querying --version)";
+                item.detail = compiler + " (error querying version)";
                 item.hint = "Verify that the compiler works properly";
                 return item;
             }
@@ -77,7 +147,14 @@ namespace mge::cli {
                 int major = std::stoi(match[1].str());
                 bool isClang =
                     line.find("clang") != std::string::npos || line.find("Clang") != std::string::npos;
-                if (isClang) {
+                if (isMsvc) {
+                    if (major >= 19) {
+                        item.ok = true;
+                    } else {
+                        item.ok = false;
+                        item.hint = "MSVC >= 19 (Visual Studio 2019+) is required for full C++17 support";
+                    }
+                } else if (isClang) {
                     if (major >= 14) {
                         item.ok = true;
                     } else {
@@ -161,7 +238,11 @@ namespace mge::cli {
 
             item.ok = false;
             item.detail = "Not found (optional)";
+#ifdef _WIN32
+            item.hint = "Install Ninja for faster builds (winget install Ninja-build.Ninja)";
+#else
             item.hint = "Install ninja-build for faster builds (sudo apt install ninja-build)";
+#endif
             return item;
         }
 
@@ -184,6 +265,36 @@ namespace mge::cli {
             }
 
             // 2. Try standard headers or CMake directories
+#ifdef _WIN32
+            std::vector<std::filesystem::path> prefixes = splitEnvPaths("CMAKE_PREFIX_PATH");
+            for (const auto& dir : splitEnvPaths("SDL3_DIR")) {
+                prefixes.push_back(dir);
+            }
+            for (const auto& root : splitEnvPaths("VCPKG_ROOT")) {
+                prefixes.push_back(root / "installed" / "x64-windows");
+                prefixes.push_back(root / "installed" / "x64-windows-static");
+            }
+            for (const auto& prefix : prefixes) {
+                const std::vector<std::filesystem::path> candidates = {
+                    prefix / "SDL3Config.cmake",
+                    prefix / "include" / "SDL3" / "SDL.h",
+                    prefix / "lib" / "cmake" / "SDL3" / "SDL3Config.cmake",
+                    prefix / "share" / "sdl3" / "SDL3Config.cmake",
+                };
+                for (const auto& candidate : candidates) {
+                    if (std::filesystem::exists(candidate)) {
+                        item.ok = true;
+                        item.detail = "Found at " + candidate.string();
+                        return item;
+                    }
+                }
+            }
+
+            item.ok = false;
+            item.detail = "Not found";
+            item.hint = "Install SDL3 via vcpkg (vcpkg install sdl3) or set CMAKE_PREFIX_PATH";
+            return item;
+#else
             const std::vector<std::string> searchPaths = {
                 "/usr/include/SDL3/SDL.h", "/usr/local/include/SDL3/SDL.h",
                 "/usr/lib64/cmake/SDL3",   "/usr/lib/x86_64-linux-gnu/cmake/SDL3",
@@ -201,6 +312,7 @@ namespace mge::cli {
             item.detail = "Not found";
             item.hint = "Install libsdl3-dev or SDL3-devel (or build from https://github.com/libsdl-org/SDL)";
             return item;
+#endif
         }
 
         DoctorItem checkGlslang() {
@@ -226,10 +338,29 @@ namespace mge::cli {
                 }
             }
 
+#ifdef _WIN32
+            const char* vulkanSdk = std::getenv("VULKAN_SDK");
+            if (vulkanSdk != nullptr && vulkanSdk[0] != '\0') {
+                std::filesystem::path sdkBin = std::filesystem::path(vulkanSdk) / "Bin";
+                for (const char* exeName : {"glslang.exe", "glslangValidator.exe"}) {
+                    std::filesystem::path candidate = sdkBin / exeName;
+                    if (std::filesystem::is_regular_file(candidate)) {
+                        item.ok = true;
+                        item.detail = "Found in Vulkan SDK at " + candidate.string();
+                        return item;
+                    }
+                }
+            }
+            item.ok = false;
+            item.detail = "Not found";
+            item.hint = "Install the Vulkan SDK (https://vulkan.lunarg.com/) which includes glslangValidator";
+            return item;
+#else
             item.ok = false;
             item.detail = "Not found";
             item.hint = "Install glslang (sudo apt install glslang-tools / sudo dnf install glslang)";
             return item;
+#endif
         }
 
         DoctorItem checkVulkan() {
@@ -251,6 +382,21 @@ namespace mge::cli {
                 }
             }
 
+#ifdef _WIN32
+            const char* sysRootEnv = std::getenv("SystemRoot");
+            std::filesystem::path sysRoot =
+                (sysRootEnv != nullptr && sysRootEnv[0] != '\0') ? sysRootEnv : "C:\\Windows";
+            std::filesystem::path loaderDll = sysRoot / "System32" / "vulkan-1.dll";
+            if (std::filesystem::is_regular_file(loaderDll)) {
+                item.ok = true;
+                item.detail = "Vulkan loader found at " + loaderDll.string();
+                return item;
+            }
+            item.ok = false;
+            item.detail = "Not found";
+            item.hint = "Install the Vulkan SDK (https://vulkan.lunarg.com/) and up-to-date GPU drivers";
+            return item;
+#else
             // Alternative loader check
             bool loaderFound = false;
             std::string pkgTool =
@@ -317,6 +463,7 @@ namespace mge::cli {
             item.hint = "Install libvulkan-dev and mesa-vulkan-drivers (sudo apt install libvulkan-dev "
                         "mesa-vulkan-drivers)";
             return item;
+#endif
         }
 
         DoctorItem checkGlm() {
@@ -324,6 +471,32 @@ namespace mge::cli {
             item.name = "GLM Headers";
             item.required = true;
 
+#ifdef _WIN32
+            std::vector<std::filesystem::path> prefixes = splitEnvPaths("CMAKE_PREFIX_PATH");
+            for (const auto& dir : splitEnvPaths("GLM_DIR")) {
+                prefixes.push_back(dir);
+            }
+            for (const auto& dir : splitEnvPaths("INCLUDE")) {
+                prefixes.push_back(dir);
+            }
+            for (const auto& root : splitEnvPaths("VCPKG_ROOT")) {
+                prefixes.push_back(root / "installed" / "x64-windows");
+                prefixes.push_back(root / "installed" / "x64-windows-static");
+            }
+            for (const auto& prefix : prefixes) {
+                const std::vector<std::filesystem::path> candidates = {
+                    prefix / "glm" / "glm.hpp",
+                    prefix / "include" / "glm" / "glm.hpp",
+                };
+                for (const auto& candidate : candidates) {
+                    if (std::filesystem::exists(candidate)) {
+                        item.ok = true;
+                        item.detail = "Headers found at " + candidate.string();
+                        return item;
+                    }
+                }
+            }
+#else
             const std::vector<std::string> glmPaths = {"/usr/include/glm/glm.hpp",
                                                        "/usr/local/include/glm/glm.hpp"};
 
@@ -334,6 +507,7 @@ namespace mge::cli {
                     return item;
                 }
             }
+#endif
 
             std::string pkgTool =
                 commandExists("pkg-config") ? "pkg-config" : (commandExists("pkgconf") ? "pkgconf" : "");
@@ -348,7 +522,11 @@ namespace mge::cli {
 
             item.ok = false;
             item.detail = "Not found";
+#ifdef _WIN32
+            item.hint = "Install GLM via vcpkg (vcpkg install glm) or add glm to INCLUDE / CMAKE_PREFIX_PATH";
+#else
             item.hint = "Install libglm-dev (sudo apt install libglm-dev / sudo dnf install glm-devel)";
+#endif
             return item;
         }
 
@@ -371,11 +549,16 @@ namespace mge::cli {
         item.name = "Python 3";
         item.required = true;
 
-        std::string py = commandExists("python3") ? "python3" : (commandExists("python") ? "python" : "");
+        std::string py = findSystemPython();
         if (py.empty()) {
             item.ok = false;
             item.detail = "Not found";
+#ifdef _WIN32
+            item.hint =
+                "Install Python >= 3.10 (https://www.python.org/downloads/ or winget install Python.Python.3)";
+#else
             item.hint = "Install Python >= 3.10 (sudo apt install python3)";
+#endif
             return item;
         }
 
@@ -383,7 +566,7 @@ namespace mge::cli {
         if (runCommandCapture({py, "--version"}, output) != 0) {
             item.ok = false;
             item.detail = "Error querying Python version";
-            item.hint = "Verify that python3 works properly";
+            item.hint = "Verify that Python works properly";
             return item;
         }
 
@@ -412,15 +595,15 @@ namespace mge::cli {
         item.name = "pip";
         item.required = true;
 
-        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string py = findSystemPython();
         std::string output;
-        if (runCommandCapture({py, "-m", "pip", "--version"}, output) == 0) {
+        if (!py.empty() && runCommandCapture({py, "-m", "pip", "--version"}, output) == 0) {
             item.ok = true;
             item.detail = firstLine(output);
         } else {
             item.ok = false;
             item.detail = "Not found";
-            item.hint = "Install pip (python3 -m ensurepip or sudo apt install python3-pip)";
+            item.hint = "Install pip (python -m ensurepip or sudo apt install python3-pip)";
         }
         return item;
     }
@@ -430,9 +613,9 @@ namespace mge::cli {
         item.name = "venv";
         item.required = true;
 
-        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string py = findSystemPython();
         std::string output;
-        if (runCommandCapture({py, "-c", "import venv; print('OK')"}, output) == 0 &&
+        if (!py.empty() && runCommandCapture({py, "-c", "import venv; print('OK')"}, output) == 0 &&
             output.find("OK") != std::string::npos) {
             item.ok = true;
             item.detail = "Standard venv module available";
@@ -449,9 +632,10 @@ namespace mge::cli {
         item.name = "mge (Python bindings)";
         item.required = true;
 
-        std::string py = commandExists("python3") ? "python3" : "python";
+        std::string py = findSystemPython();
         std::string output;
-        if (runCommandCapture({py, "-c", "import mge; print(getattr(mge, '__version__', 'installed'))"},
+        if (!py.empty() &&
+            runCommandCapture({py, "-c", "import mge; print(getattr(mge, '__version__', 'installed'))"},
                               output) == 0) {
             std::string ver = firstLine(output);
             item.ok = true;

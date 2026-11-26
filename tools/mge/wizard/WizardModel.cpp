@@ -485,6 +485,16 @@ namespace mge::cli::wizard {
             std::stringstream buffer;
             buffer << file.rdbuf();
             std::string content = buffer.str();
+            // Normalize CRLF to LF so template hashes are identical across platforms
+            std::string normalized;
+            normalized.reserve(content.size());
+            for (size_t i = 0; i < content.size(); ++i) {
+                if (content[i] == '\r' && i + 1 < content.size() && content[i + 1] == '\n') {
+                    continue;
+                }
+                normalized.push_back(content[i]);
+            }
+            content = std::move(normalized);
 
             if (isTemplateIn) {
                 content = renderTemplateString(content, options, className, title, version);

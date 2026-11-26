@@ -567,6 +567,58 @@ jobs:
           cd "${RUNNER_TEMP:-/tmp}/my_cli_py_game"
           mge test
 
+  # mge CLI on Windows (Issue #182)
+  cli-windows:
+    name: mge cli (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GLM via vcpkg
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install glm:x64-windows
+
+      - name: Configure CLI and tests (Windows, MSVC)
+        shell: pwsh
+        run: |
+          cmake -S . -B build-cli-win `
+            -DCMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/include" `
+            -DMGE_BUILD_MODULES=OFF `
+            -DMGE_BUILD_CLI=ON `
+            -DMGE_BUILD_TESTS=ON `
+            -DMGE_BUILD_BENCHMARKS=OFF `
+            -DMGE_BUILD_EXAMPLES=OFF `
+            -DMGE_BUILD_SANDBOX=OFF
+
+      - name: Build mge CLI and CLI tests
+        shell: pwsh
+        run: cmake --build build-cli-win --config Release --target mge mge_cli_tests
+
+      - name: Run mge CLI unit and wizard tests
+        shell: pwsh
+        run: ctest --test-dir build-cli-win -C Release -R "^cli:" --output-on-failure
+
+      - name: Smoke test mge.exe commands
+        shell: pwsh
+        run: |
+          $mge = (Resolve-Path "build-cli-win\Release\mge.exe").Path
+          & $mge --version
+          & $mge --help
+          $projDir = Join-Path $env:RUNNER_TEMP "win_cli_game"
+          if (Test-Path $projDir) { Remove-Item -Recurse -Force $projDir }
+          & $mge new win_cli_game --template headless --no-git --dir $projDir
+          if (-not (Test-Path (Join-Path $projDir "mge.project"))) { throw "Missing mge.project" }
+          if (-not (Test-Path (Join-Path $projDir "CMakeLists.txt"))) { throw "Missing CMakeLists.txt" }
+          if (-not (Test-Path (Join-Path $projDir "LICENSE"))) { throw "Missing LICENSE" }
+          if (-not (Test-Path (Join-Path $projDir ".vscode\tasks.json"))) { throw "Missing .vscode/tasks.json" }
+          Push-Location $projDir
+          try {
+            & $mge clean
+          } finally {
+            Pop-Location
+          }
+
   # Python bindings (Issue #162)
   python:
     name: python (${{ matrix.python-version }})

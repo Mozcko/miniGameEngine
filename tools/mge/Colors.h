@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Process.h"
+
 #include <cstdlib>
 #include <string_view>
-#include <unistd.h>
 
 namespace mge::cli::colors {
 
@@ -19,8 +20,8 @@ namespace mge::cli::colors {
             return false;
         }
 
-        // Only enable if stdout is actually an interactive terminal (TTY)
-        return isatty(STDOUT_FILENO) != 0;
+        // Only enable if stdout is actually an interactive terminal (TTY) with ANSI support
+        return isStdoutTty() && enableTerminalColors();
     }
 
     inline const char* reset() {
