@@ -11,6 +11,7 @@ add_library(mge_core STATIC
     SpscQueue.h
     Clock.h Clock.cpp
     FlyController.h FlyController.cpp
+    ThirdPersonCamera.h ThirdPersonCamera.cpp
     Time.h
     math/Geometry.h math/Geometry.cpp
     ecs/Camera.h ecs/Camera.cpp
@@ -61,6 +62,7 @@ mge_install_headers(core
     SpscQueue.h
     Clock.h
     FlyController.h
+    ThirdPersonCamera.h
     Time.h
     math/Geometry.h
     ecs/Camera.h
