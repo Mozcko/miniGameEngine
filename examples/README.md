@@ -14,7 +14,12 @@ Small programs built on the engine, one folder each. `examples/CMakeLists.txt` l
 | `sdf_glide/` | `sdf_glide` | **SDF flight game (#66):** procedural endless canyon made of SDFs (rocks, twisted pillars, arches), glowing orb player, energy boost, light motes, synth sound effects and music. Smoke test: 60 frames offscreen |
 | `guide_game/` | `guide_game` | **User guide game (#67):** code-only 3D gem collector game from `docs/GUIDE.md` featuring procedural meshes, physics, synth audio and 2D HUD. Smoke test: 60 frames offscreen |
 | `headless_smoke/` | `headless_smoke` | An `mge::Application` with **no modules**: no window, no GPU, SDL never initialised. It runs 1000 frames, generating and meshing a sandbox chunk column (4 chunks tall) per frame (`mge_voxel` + `SandboxTerrain`), checking terrain invariants and mesh validity. It also travels 4 000 blocks with a `ChunkStreamer` on the job pool, fails if loaded chunks exceed the unload ring, and logs the worst main‑thread update. It exits non‑zero on failure (`setExitCode`). CTest: `smoke: headless_smoke headless 1000 frames`, also run under ASan/UBSan in CI |
+| `c_hello/` | `c_hello` | **C API example (#161):** pure C99 program using `<mge/c/mge_c.h>` (`mge_add_c_game`) with a spinning procedural cube, synthesized coin sound and 2D text. Smoke test: 60 frames offscreen |
+| `python/` | – | **Python bindings examples (#162):** `hello.py` (spinning cube, sky, audio, 2D HUD) and `headless_sim.py` (deterministic ECS simulation) |
+| `zig/` | – | **Zig on the C API (#186):** spinning cube, synthesized coin SFX and 2D text importing `<mge/c/mge_c.h>` via `@cImport` against `libmge_c` (`examples/zig/README.md`) |
+| `odin/` | – | **Odin on the C API (#186):** spinning cube, synthesized coin SFX and 2D text using Odin foreign bindings (`examples/odin/mge/mge_c.odin`) against `libmge_c` (`examples/odin/README.md`) |
 
 New game or tool: `scripts/new-game.sh <name> [--headless]` creates `examples/<name>/` from
-[`templates/`](../templates/README.md). Every program is declared with `mge_add_game()` (see
-`docs/BUILDING.md`, "Adding a game"). Examples are built when `MGE_BUILD_MODULES=ON`.
+[`templates/`](../templates/README.md). Every C++ program is declared with `mge_add_game()` (see
+`docs/BUILDING.md`, "Adding a game"). C++ and C examples are built when `MGE_BUILD_MODULES=ON`;
+check the Zig and Odin examples with `scripts/check-c-api-examples.sh`.

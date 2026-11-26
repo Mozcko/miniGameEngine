@@ -50,3 +50,9 @@ dist/
 .pytest_cache/
 .mypy_cache/
 
+# Zig / Odin examples
+.zig-cache/
+zig-out/
+examples/odin/odin_hello
+
+
