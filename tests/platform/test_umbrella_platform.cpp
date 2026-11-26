@@ -37,3 +37,15 @@ TEST_CASE("PlatformModule: action shortcuts (isActionDown, wasActionPressed, was
     CHECK_FALSE(platform.wasActionPressed("Jump"));
     CHECK(platform.wasActionReleased("Jump"));
 }
+
+TEST_CASE("PlatformModule: text input and rumble without a window") {
+    mge::PlatformModule platform;
+    CHECK_FALSE(platform.isTextInputActive());
+    platform.startTextInput();
+    CHECK(platform.isTextInputActive());
+    platform.input().addTextInput("abc");
+    CHECK(platform.textInput() == "abc");
+    platform.stopTextInput();
+    CHECK_FALSE(platform.isTextInputActive());
+    CHECK_FALSE(platform.rumbleGamepad(0, 0.5f, 0.5f, 100));
+}
