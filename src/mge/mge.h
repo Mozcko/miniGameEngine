@@ -71,6 +71,7 @@
 #ifdef MGE_HAS_PHYSICS
 #include <mge/physics/CapsuleCharacterController.h>
 #include <mge/physics/CharacterController.h>
+#include <mge/physics/CollisionWorld.h>
 #include <mge/physics/GridQuery.h>
 #include <mge/physics/MeshCollider.h>
 #include <mge/physics/PhysicsWorld.h>

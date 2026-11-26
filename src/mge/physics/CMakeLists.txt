@@ -5,6 +5,7 @@ add_library(mge_physics STATIC
     VoxelCollision.h VoxelCollision.cpp
     CharacterController.h CharacterController.cpp
     MeshCollider.h MeshCollider.cpp
+    CollisionWorld.h CollisionWorld.cpp
     CapsuleCharacterController.h CapsuleCharacterController.cpp
     SpatialHash.h SpatialHash.cpp
     RigidBody.h RigidBody.cpp
@@ -25,6 +26,7 @@ target_compile_definitions(mge_physics INTERFACE MGE_HAS_PHYSICS=1)
 mge_install_headers(physics
     CapsuleCharacterController.h
     CharacterController.h
+    CollisionWorld.h
     GridQuery.h
     MeshCollider.h
     PhysicsWorld.h
