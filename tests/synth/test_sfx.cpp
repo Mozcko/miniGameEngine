@@ -1,4 +1,4 @@
-// Efectos de sonido paramétricos (#48): cada preset tiene la forma que promete su nombre
+// Parametric sound effects (#48): each preset matches the shape its name promises
 #include <doctest/doctest.h>
 #include <mge/synth/Offline.h>
 #include <mge/synth/Sfx.h>
@@ -18,7 +18,7 @@ namespace {
     }
 }
 
-TEST_CASE("renderSfx: largo = attack + sustain + decay, determinista, en [-1, 1]") {
+TEST_CASE("renderSfx: length = attack + sustain + decay, deterministic, in [-1, 1]") {
     for (const auto& preset :
          {sfx::jump(), sfx::coin(), sfx::hurt(), sfx::explosion(), sfx::powerUp(), sfx::click()}) {
         const Sample a = renderSfx(preset, kRate);
@@ -27,12 +27,12 @@ TEST_CASE("renderSfx: largo = attack + sustain + decay, determinista, en [-1, 1]
         CHECK(a.data == renderSfx(preset, kRate).data);
         CHECK(an::peak(a.data) <= 1.0f);
         CHECK(an::peak(a.data) > 0.1f);
-        // Termina en silencio (sin chasquido al cortar)
+        // Ends in silence (no click when cut off)
         CHECK(std::abs(a.data.back()) < 0.02f);
     }
 }
 
-TEST_CASE("Presets: el salto sube, el golpe baja, la moneda son dos notas") {
+TEST_CASE("Presets: jump rises, hurt drops, coin is two notes") {
     const Sample jump = renderSfx(sfx::jump(), kRate);
     CHECK(pitch(jump, 0.08f, 0.15f) > 1.3f * pitch(jump, 0.0f, 0.05f));
 
@@ -44,17 +44,16 @@ TEST_CASE("Presets: el salto sube, el golpe baja, la moneda son dos notas") {
     CHECK(pitch(coin, 0.08f, 0.2f) == doctest::Approx(987.77f * 1.335f).epsilon(0.03));
 }
 
-TEST_CASE(
-    "Presets: la explosión es ruido que se oscurece; el power-up sube varias veces; el click es corto") {
+TEST_CASE("Presets: explosion is darkening noise; power-up rises repeatedly; click is short") {
     const Sample boom = renderSfx(sfx::explosion(), kRate);
     const float early = an::spectralCentroid(boom.data, kRate, at(0.02f));
     const float late = an::spectralCentroid(boom.data, kRate, at(0.6f));
     CHECK(early > 800.0f);
     CHECK(late < 0.6f * early);
-    CHECK(an::toneAmplitude(boom.data, 140.0f, kRate, 0, at(0.2f)) < 0.2f); // No es un tono
+    CHECK(an::toneAmplitude(boom.data, 140.0f, kRate, 0, at(0.2f)) < 0.2f); // Not a pitched tone
 
     const Sample power = renderSfx(sfx::powerUp(), kRate);
-    // Cada 0.11 s vuelve a empezar más grave y sube
+    // Every 0.11 s resets lower and sweeps up
     CHECK(pitch(power, 0.07f, 0.105f) > 1.15f * pitch(power, 0.005f, 0.04f));
     CHECK(pitch(power, 0.115f, 0.15f) < pitch(power, 0.07f, 0.105f));
     CHECK(pitch(power, 0.18f, 0.215f) > 1.15f * pitch(power, 0.115f, 0.15f));
@@ -63,13 +62,13 @@ TEST_CASE(
     CHECK(double(click.frameCount()) / kRate < 0.06);
 }
 
-TEST_CASE("Variaciones: con semilla cambian un poco, randomize siempre da algo audible") {
+TEST_CASE("Variations: seeded variants shift slightly, randomize always produces audible output") {
     const SfxParams base = sfx::coin();
     const SfxParams a = sfx::coin(1), b = sfx::coin(2);
     CHECK(a.baseFrequency != base.baseFrequency);
     CHECK(a.baseFrequency != b.baseFrequency);
-    CHECK(a.baseFrequency == doctest::Approx(base.baseFrequency).epsilon(0.08)); // Leve
-    CHECK(sfx::coin(1).baseFrequency == a.baseFrequency);                        // Determinista
+    CHECK(a.baseFrequency == doctest::Approx(base.baseFrequency).epsilon(0.08)); // Slight
+    CHECK(sfx::coin(1).baseFrequency == a.baseFrequency);                        // Deterministic
 
     const SfxParams wild = sfx::mutate(base, 1.0f, 3);
     CHECK(wild.duty >= 0.05f);

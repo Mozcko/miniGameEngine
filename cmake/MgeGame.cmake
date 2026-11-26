@@ -1,15 +1,15 @@
-# mge_add_game(): crea el ejecutable de un juego con una sola llamada.
+# mge_add_game(): creates a game executable in a single call.
 #
-#   mge_add_game(<nombre>
-#       SOURCES <archivos...>              # obligatorio
-#       [LIBRARIES <libs...>]              # librerías extra del juego (ej: sandbox_world)
-#       [MODULES platform gpu graphics audio]  # módulos del motor (por defecto: los cuatro)
-#       [HEADLESS]                         # sin módulos: sin ventana, GPU ni SDL
-#       [SMOKE_FRAMES <n>])                # registra un smoke test en CTest que corre n frames
+#   mge_add_game(<name>
+#       SOURCES <files...>                 # required
+#       [LIBRARIES <libs...>]              # extra game libraries (e.g. sandbox_world)
+#       [MODULES platform gpu graphics audio]  # engine modules (default: all four)
+#       [HEADLESS]                         # no modules: no window, GPU or SDL
+#       [SMOKE_FRAMES <n>])                # registers a CTest smoke test that runs n frames
 #
-# Además: enlaza mge_main (el main() del motor), aplica los warnings del proyecto, deja el
-# ejecutable en la raíz del build dir y crea el target run-<nombre> (y `run` para MGE_MAIN_GAME).
-set(MGE_MAIN_GAME "sandbox" CACHE STRING "Juego que ejecuta el target 'run'")
+# Additionally: links mge_main (the engine's main()), applies project warnings, places the
+# executable in the build dir root, and creates the run-<name> target (and `run` for MGE_MAIN_GAME).
+set(MGE_MAIN_GAME "sandbox" CACHE STRING "Game executed by the 'run' target")
 
 enable_testing()
 
@@ -26,10 +26,10 @@ endif()
 function(mge_add_game name)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "HEADLESS" "SMOKE_FRAMES" "SOURCES;LIBRARIES;MODULES")
     if(NOT ARG_SOURCES)
-        message(FATAL_ERROR "mge_add_game(${name}): falta SOURCES")
+        message(FATAL_ERROR "mge_add_game(${name}): missing SOURCES")
     endif()
     if(ARG_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "mge_add_game(${name}): argumentos desconocidos: ${ARG_UNPARSED_ARGUMENTS}")
+        message(FATAL_ERROR "mge_add_game(${name}): unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
@@ -37,7 +37,7 @@ function(mge_add_game name)
 
     if(ARG_HEADLESS)
         if(ARG_MODULES)
-            message(FATAL_ERROR "mge_add_game(${name}): HEADLESS no admite MODULES")
+            message(FATAL_ERROR "mge_add_game(${name}): HEADLESS does not allow MODULES")
         endif()
     else()
         if(NOT ARG_MODULES)
@@ -45,7 +45,7 @@ function(mge_add_game name)
         endif()
         foreach(module IN LISTS ARG_MODULES)
             if(NOT module MATCHES "^(platform|gpu|graphics|audio|physics|procgen|gltf|voxel|synth|core)$")
-                message(FATAL_ERROR "mge_add_game(${name}): módulo desconocido '${module}' (platform, gpu, graphics, audio, physics, procgen, gltf, voxel, synth, core)")
+                message(FATAL_ERROR "mge_add_game(${name}): unknown module '${module}' (platform, gpu, graphics, audio, physics, procgen, gltf, voxel, synth, core)")
             endif()
             target_link_libraries(${name} PRIVATE mge::${module})
         endforeach()
@@ -54,13 +54,13 @@ function(mge_add_game name)
     set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     mge_set_warnings(${name})
 
-    # Compilar y ejecutar en un paso
-    add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
+    # Build and run in one step
+    add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Running ${name}")
     if(DEFINED MGE_MAIN_GAME AND name STREQUAL MGE_MAIN_GAME AND NOT TARGET run)
-        add_custom_target(run COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
+        add_custom_target(run COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Running ${name}")
     endif()
 
-    # Smoke test: corre n frames desde otro directorio (prueba que no depende del cwd)
+    # Smoke test: runs n frames from another directory (proves it does not depend on cwd)
     if(ARG_SMOKE_FRAMES)
         set(environment "MGE_MAX_FRAMES=${ARG_SMOKE_FRAMES}")
         if(ARG_HEADLESS)
@@ -68,8 +68,8 @@ function(mge_add_game name)
             set(labels "")
         else()
             set(test_name "smoke: ${name} offscreen ${ARG_SMOKE_FRAMES} frames")
-            # Ventana sin pantalla (SDL offscreen + EGL). Con sanitizers se apaga solo LeakSanitizer:
-            # el driver EGL de Mesa en Ubuntu pierde memoria que LSan no puede atribuir (ver #18).
+            # Offscreen window (SDL offscreen + EGL). With sanitizers, disable LeakSanitizer only:
+            # Mesa's EGL driver on Ubuntu leaks memory that LSan cannot attribute (see #18).
             list(APPEND environment "SDL_VIDEODRIVER=offscreen" "SDL_AUDIODRIVER=dummy"
                  "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
             set(labels gpu)
@@ -79,21 +79,21 @@ function(mge_add_game name)
         add_test(NAME "${test_name}" COMMAND ${name} WORKING_DIRECTORY "${smoke_cwd}")
         set_tests_properties("${test_name}" PROPERTIES TIMEOUT 120 ENVIRONMENT "${environment}")
         if(labels)
-            # Con las capas de validación de Vulkan instaladas, un error de uso de la GPU hace fallar el test
+            # With Vulkan validation layers installed, a GPU API misuse fails the test
             set_tests_properties("${test_name}" PROPERTIES LABELS "${labels}" FAIL_REGULAR_EXPRESSION "Validation Error")
         endif()
     endif()
 endfunction()
 
-# mge_add_c_game(): crea el ejecutable de un juego en C puro (C99) enlazado a mge::c (#161).
+# mge_add_c_game(): creates a pure C (C99) game executable linked to mge::c (#161).
 function(mge_add_c_game name)
     enable_language(C)
     cmake_parse_arguments(PARSE_ARGV 1 ARG "HEADLESS" "SMOKE_FRAMES" "SOURCES;LIBRARIES;MODULES")
     if(NOT ARG_SOURCES)
-        message(FATAL_ERROR "mge_add_c_game(${name}): falta SOURCES")
+        message(FATAL_ERROR "mge_add_c_game(${name}): missing SOURCES")
     endif()
     if(ARG_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "mge_add_c_game(${name}): argumentos desconocidos: ${ARG_UNPARSED_ARGUMENTS}")
+        message(FATAL_ERROR "mge_add_c_game(${name}): unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
     endif()
 
     add_executable(${name} ${ARG_SOURCES})
@@ -110,7 +110,7 @@ function(mge_add_c_game name)
     set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     mge_set_warnings(${name})
 
-    add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Ejecutando ${name}")
+    add_custom_target(run-${name} COMMAND ${name} DEPENDS ${name} USES_TERMINAL COMMENT "Running ${name}")
 
     if(ARG_SMOKE_FRAMES)
         set(environment "MGE_MAX_FRAMES=${ARG_SMOKE_FRAMES}")

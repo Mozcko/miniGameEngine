@@ -1,4 +1,4 @@
-// Síntesis (#47): osciladores, envolventes, filtros, eco y notas del mezclador
+// Synthesis (#47): oscillators, envelopes, filters, delay, and mixer notes
 #include "SynthChecks.h"
 
 #include <doctest/doctest.h>
@@ -35,7 +35,7 @@ namespace {
     }
 }
 
-TEST_CASE("Oscilador: cada forma de onda tiene la frecuencia pedida y queda en [-1, 1]") {
+TEST_CASE("Oscillator: each waveform has the requested frequency and stays in [-1, 1]") {
     for (Waveform wave : {Waveform::Sine, Waveform::Square, Waveform::Saw, Waveform::Triangle}) {
         CAPTURE(int(wave));
         Oscillator osc;
@@ -43,10 +43,10 @@ TEST_CASE("Oscilador: cada forma de onda tiene la frecuencia pedida y queda en [
         osc.setFrequency(220.0f, kRate);
         const std::vector<float> out = run(osc, kRate);
         CHECK(frequency(out, kRate) == doctest::Approx(220.0f).epsilon(0.01));
-        CHECK(peak(out) <= 1.1f); // PolyBLEP puede pasarse un poco en los saltos
+        CHECK(peak(out) <= 1.1f); // PolyBLEP can overshoot slightly at discontinuities
         CHECK(peak(out) >= 0.95f);
     }
-    // Valores RMS conocidos: seno 1/√2, cuadrada 1, triangular 1/√3, sierra 1/√3
+    // Known RMS values: sine 1/√2, square 1, triangle 1/√3, saw 1/√3
     Oscillator osc;
     osc.setFrequency(100.0f, kRate);
     CHECK(rms(run(osc, kRate)) == doctest::Approx(0.7071f).epsilon(0.01));
@@ -58,7 +58,7 @@ TEST_CASE("Oscilador: cada forma de onda tiene la frecuencia pedida y queda en [
     CHECK(rms(run(osc, kRate)) == doctest::Approx(1.0f).epsilon(0.02));
 }
 
-TEST_CASE("Oscilador: el ancho de pulso cambia cuánto tiempo la cuadrada está arriba") {
+TEST_CASE("Oscillator: pulse width changes how long the square wave stays high") {
     Oscillator osc;
     osc.setWaveform(Waveform::Square);
     osc.setPulseWidth(0.25f);
@@ -69,7 +69,7 @@ TEST_CASE("Oscilador: el ancho de pulso cambia cuánto tiempo la cuadrada está 
     CHECK(float(high) / float(out.size()) == doctest::Approx(0.25f).epsilon(0.02));
 }
 
-TEST_CASE("Oscilador: ruido determinista por semilla, centrado; el de 8 bits se repite") {
+TEST_CASE("Oscillator: deterministic seeded noise, zero-centered; 8-bit noise loops") {
     Oscillator a, b, c;
     for (Oscillator* osc : {&a, &b, &c}) {
         osc->setWaveform(Waveform::Noise);
@@ -88,28 +88,28 @@ TEST_CASE("Oscilador: ruido determinista por semilla, centrado; el de 8 bits se 
 
     Oscillator loop;
     loop.setWaveform(Waveform::NoiseLoop);
-    loop.setFrequency(float(kRate), kRate); // Un valor nuevo por muestra
+    loop.setFrequency(float(kRate), kRate); // One new value per sample
     const std::vector<float> bits = run(loop, 2000);
-    // LFSR corto de la NES: período 93 (o 31) → la secuencia se repite
+    // Short NES LFSR: period 93 (or 31) → sequence repeats
     bool periodic = true;
     for (std::size_t i = 0; i + 93 < bits.size(); i++) periodic = periodic && bits[i] == bits[i + 93];
     CHECK(periodic);
 }
 
-TEST_CASE("midiToHz: La 440 y octavas") {
+TEST_CASE("midiToHz: A440 and octaves") {
     CHECK(midiToHz(69.0f) == doctest::Approx(440.0f));
     CHECK(midiToHz(81.0f) == doctest::Approx(880.0f));
     CHECK(midiToHz(60.0f) == doctest::Approx(261.63f).epsilon(0.001));
 }
 
-TEST_CASE("Envolvente ADSR: tiempos de ataque, caída a sustain, release a cero") {
+TEST_CASE("ADSR envelope: attack times, decay to sustain, release to zero") {
     Envelope env;
     env.start({0.01f, 0.02f, 0.5f, 0.05f}, kRate);
     std::vector<float> levels;
     for (int i = 0; i < 4800; i++) levels.push_back(env.next()); // 0.1 s
-    CHECK(levels[240] == doctest::Approx(0.5f).epsilon(0.02));   // Mitad del ataque
+    CHECK(levels[240] == doctest::Approx(0.5f).epsilon(0.02));   // Halfway through attack
     CHECK(*std::max_element(levels.begin(), levels.end()) == doctest::Approx(1.0f));
-    CHECK(levels[480 + 480] == doctest::Approx(0.75f).epsilon(0.02)); // Mitad del decay
+    CHECK(levels[480 + 480] == doctest::Approx(0.75f).epsilon(0.02)); // Halfway through decay
     CHECK(levels.back() == doctest::Approx(0.5f));                    // Sustain
     CHECK(env.stage() == Envelope::Stage::Sustain);
     env.noteOff();
@@ -121,7 +121,7 @@ TEST_CASE("Envolvente ADSR: tiempos de ataque, caída a sustain, release a cero"
     CHECK(samples == doctest::Approx(2400).epsilon(0.02)); // 0.05 s
     CHECK(env.next() == 0.0f);
 
-    // Percusiva (sustain 0): termina sola
+    // Percussive (sustain 0): finishes on its own
     env.start({0.0f, 0.05f, 0.0f, 0.1f}, kRate);
     samples = 0;
     while (!env.finished() && samples < 10000) {
@@ -131,7 +131,8 @@ TEST_CASE("Envolvente ADSR: tiempos de ataque, caída a sustain, release a cero"
     CHECK(samples < 2500);
 }
 
-TEST_CASE("Filtro: pasa bajos atenúa agudos, pasa altos atenúa graves, y es estable con resonancia alta") {
+TEST_CASE(
+    "Filter: low-pass attenuates highs, high-pass attenuates lows, and stays stable at high resonance") {
     const auto filtered = [](FilterMode mode, float cutoff, float resonance, float hz) {
         Filter f;
         f.set(mode, cutoff, resonance, kRate);
@@ -145,11 +146,11 @@ TEST_CASE("Filtro: pasa bajos atenúa agudos, pasa altos atenúa graves, y es es
     CHECK(filtered(FilterMode::HighPass, 2000.0f, 0.0f, 10000.0f) > 0.9f);
     CHECK(filtered(FilterMode::BandPass, 1000.0f, 0.5f, 1000.0f) > 0.9f);
     CHECK(filtered(FilterMode::None, 100.0f, 0.0f, 5000.0f) == doctest::Approx(1.0f));
-    // Resonancia máxima en el corte: hay pico pero no explota
+    // Maximum resonance at cutoff: peaks without blowing up
     const float resonant = filtered(FilterMode::LowPass, 1000.0f, 1.0f, 1000.0f);
     CHECK(resonant > 2.0f);
     CHECK(resonant < 30.0f);
-    // Corte fuera de rango: se limita, sigue estable
+    // Out-of-range cutoff: clamped and stays stable
     Filter f;
     f.set(FilterMode::LowPass, 1e9f, 1.0f, kRate);
     float worst = 0.0f;
@@ -157,7 +158,7 @@ TEST_CASE("Filtro: pasa bajos atenúa agudos, pasa altos atenúa graves, y es es
     CHECK(std::isfinite(worst));
 }
 
-TEST_CASE("Eco: un impulso vuelve a los delay segundos, cada vez más bajo") {
+TEST_CASE("Delay: an impulse returns every delay seconds, getting quieter each time") {
     Delay delay(1.0f, kRate);
     delay.setSettings({0.1f, 0.5f, 1.0f});
     std::vector<float> out;
@@ -172,7 +173,8 @@ TEST_CASE("Eco: un impulso vuelve a los delay segundos, cada vez más bajo") {
     CHECK(out[4799] == doctest::Approx(0.0f));
 }
 
-TEST_CASE("Mixer: una nota suena con su envolvente, se suelta sola tras duration y libera la voz") {
+TEST_CASE(
+    "Mixer: a note plays with its envelope, releases automatically after duration, and frees the voice") {
     Mixer mixer(kRate);
     Instrument lead;
     lead.wave = Waveform::Triangle;
@@ -183,13 +185,13 @@ TEST_CASE("Mixer: una nota suena con su envolvente, se suelta sola tras duration
     const std::vector<float> out = left(renderMixer(mixer, kRate / 2 + 4800)); // 0.6 s
     CHECK(frequency(std::vector<float>(out.begin() + 1000, out.begin() + 14000), kRate) ==
           doctest::Approx(330.0f).epsilon(0.02));
-    // Sustain 0.6 × ganancia 0.5 × cos 45°... centro normalizado a la ganancia: pico ≈ 0.3
+    // Sustain 0.6 × gain 0.5 × cos 45°... center normalized to gain: peak ≈ 0.3
     CHECK(peak(out, 6000, 14000) == doctest::Approx(0.3f).epsilon(0.05));
-    CHECK(peak(out, 0.45 * kRate) < 1e-4f); // 0.3 s + 0.1 s de release: ya terminó
+    CHECK(peak(out, 0.45 * kRate) < 1e-4f); // 0.3 s + 0.1 s release: already finished
     CHECK(mixer.stats().activeVoices == 0);
 }
 
-TEST_CASE("Mixer: notas sostenidas, releaseNote, stopNote y volumen por grupo") {
+TEST_CASE("Mixer: sustained notes, releaseNote, stopNote, and bus volume") {
     Mixer mixer(kRate);
     Instrument pad;
     pad.wave = Waveform::Sine;
@@ -197,13 +199,13 @@ TEST_CASE("Mixer: notas sostenidas, releaseNote, stopNote y volumen por grupo") 
     pad.gain = 0.4f;
     const VoiceHandle a = mixer.playNote(pad, 200.0f, 1.0f, 0.0f, AudioBus::Music);
     const VoiceHandle b = mixer.playNote(pad, 300.0f, 1.0f, 0.0f);
-    renderMixer(mixer, kRate); // Un segundo: siguen sonando
+    renderMixer(mixer, kRate); // One second: still playing
     CHECK(mixer.stats().activeVoices == 2);
 
     mixer.setBusVolume(AudioBus::Music, 0.0f);
     mixer.stopNote(b);
     std::vector<float> out = left(renderMixer(mixer, 4800));
-    CHECK(peak(out, 100) < 1e-4f); // b cortada, a muda por su grupo
+    CHECK(peak(out, 100) < 1e-4f); // b stopped, a muted by its bus
     CHECK(mixer.stats().activeVoices == 1);
 
     mixer.setBusVolume(AudioBus::Music, 1.0f);
@@ -213,10 +215,10 @@ TEST_CASE("Mixer: notas sostenidas, releaseNote, stopNote y volumen por grupo") 
     CHECK_FALSE(mixer.releaseNote(VoiceHandle{}));
 }
 
-TEST_CASE("Mixer: sin voces libres roba primero una que se está apagando") {
+TEST_CASE("Mixer: with no free voices, steals a releasing voice first") {
     Mixer mixer(kRate);
     Instrument held;
-    held.envelope = {0.001f, 0.001f, 1.0f, 1.0f}; // Release largo
+    held.envelope = {0.001f, 0.001f, 1.0f, 1.0f}; // Long release
     VoiceHandle first;
     for (std::size_t i = 0; i < Mixer::kMaxVoices; i++) {
         const VoiceHandle h = mixer.playNote(held, 100.0f + float(i), 1.0f, 0.0f);
@@ -229,13 +231,13 @@ TEST_CASE("Mixer: sin voces libres roba primero una que se está apagando") {
     renderMixer(mixer, 480);
     CHECK(mixer.stats().stolenVoices == 1);
     CHECK(mixer.stats().activeVoices == Mixer::kMaxVoices);
-    // La robada fue la que estaba en release: soltarla ya no encuentra nada, la nueva sigue
+    // The stolen voice was the releasing one: releasing it finds nothing, the new one keeps playing
     mixer.stopNote(extra);
     renderMixer(mixer, 480);
     CHECK(mixer.stats().activeVoices == Mixer::kMaxVoices - 1);
 }
 
-TEST_CASE("Mixer: envío al eco, vibrato y deslizamiento de tono") {
+TEST_CASE("Mixer: delay send, vibrato, and pitch slide") {
     Mixer mixer(kRate);
     mixer.setDelay({0.2f, 0.0f, 1.0f});
     Instrument blip;
@@ -245,13 +247,13 @@ TEST_CASE("Mixer: envío al eco, vibrato y deslizamiento de tono") {
     mixer.playNote(blip, 1000.0f, 1.0f, 0.05f);
     const std::vector<float> out = left(renderMixer(mixer, kRate / 2));
     CHECK(peak(out, 0, 2400) > 0.3f);
-    CHECK(peak(out, 4000, 9000) < 1e-3f); // Silencio entre la nota y el eco
-    CHECK(peak(out, 9700, 11800) > 0.3f); // El eco a los 0.2 s
+    CHECK(peak(out, 4000, 9000) < 1e-3f); // Silence between the note and the echo
+    CHECK(peak(out, 9700, 11800) > 0.3f); // Echo at 0.2 s
 
     Mixer slide(kRate);
     Instrument up = blip;
     up.delaySend = 0.0f;
-    up.pitchSlide = 12.0f; // Una octava por segundo
+    up.pitchSlide = 12.0f; // One octave per second
     slide.playNote(up, 200.0f, 1.0f, 1.0f);
     const std::vector<float> rising = left(renderMixer(slide, kRate));
     const float start = frequency(std::vector<float>(rising.begin(), rising.begin() + 4800), kRate);
@@ -260,7 +262,7 @@ TEST_CASE("Mixer: envío al eco, vibrato y deslizamiento de tono") {
     CHECK(end == doctest::Approx(390.0f).epsilon(0.05));
 }
 
-TEST_CASE("softClip: lineal en el medio, nunca pasa de 1") {
+TEST_CASE("softClip: linear in the middle, never exceeds 1") {
     CHECK(softClip(0.5f) == 0.5f);
     CHECK(softClip(-0.8f) == -0.8f);
     CHECK(softClip(1.0f) < 1.0f);

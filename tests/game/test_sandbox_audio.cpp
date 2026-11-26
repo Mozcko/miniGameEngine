@@ -13,7 +13,7 @@ using namespace mge;
 using namespace sandbox;
 namespace an = mge::analysis;
 
-TEST_CASE("SandboxSounds: clasificacion de materiales por nombre y bloque") {
+TEST_CASE("SandboxSounds: material classification by name and block") {
     BlockRegistry reg;
     const SandboxBlocks b = registerSandboxBlocks(reg);
 
@@ -37,7 +37,7 @@ TEST_CASE("SandboxSounds: clasificacion de materiales por nombre y bloque") {
     CHECK(soundMaterialForBlock(kAir, reg) == SoundMaterial::Grass);
 }
 
-TEST_CASE("SandboxSounds: cada muestra se sintetiza sin NaN y con rms > 0") {
+TEST_CASE("SandboxSounds: every sample synthesizes without NaN and with rms > 0") {
     const SandboxSounds sounds;
     const std::vector<SfxParams> all = sounds.allParams();
     REQUIRE_FALSE(all.empty());
@@ -54,7 +54,7 @@ TEST_CASE("SandboxSounds: cada muestra se sintetiza sin NaN y con rms > 0") {
     }
 }
 
-TEST_CASE("SandboxSounds: las 4 variantes de pisada difieren entre si") {
+TEST_CASE("SandboxSounds: all 4 footstep variants differ from each other") {
     const SandboxSounds sounds;
     constexpr int kSampleRate = 48000;
 
@@ -66,7 +66,7 @@ TEST_CASE("SandboxSounds: las 4 variantes de pisada difieren entre si") {
             CHECK(an::rms(variants[v].data) > 0.0f);
         }
 
-        // Cada par de variantes debe tener muestras diferentes
+        // Every pair of variants must have different samples
         for (std::size_t i = 0; i < SandboxSounds::kFootstepVariants; ++i) {
             for (std::size_t j = i + 1; j < SandboxSounds::kFootstepVariants; ++j) {
                 CHECK(variants[i].data != variants[j].data);
@@ -75,7 +75,7 @@ TEST_CASE("SandboxSounds: las 4 variantes de pisada difieren entre si") {
     }
 }
 
-TEST_CASE("sandboxNight: se sintetiza en offline y detecta notas (onsets > 0)") {
+TEST_CASE("sandboxNight: synthesizes offline and detects notes (onsets > 0)") {
     const Song night = songs::sandboxNight();
     REQUIRE(night.valid());
 
@@ -86,7 +86,7 @@ TEST_CASE("sandboxNight: se sintetiza en offline y detecta notas (onsets > 0)") 
     REQUIRE(id != kInvalidSong);
     CHECK(mixer.playSong(id));
 
-    // Renderizar los primeros 8 segundos (incluye notas de campanilla)
+    // Render the first 8 seconds (includes chime notes)
     const std::vector<float> rendered = renderOffline(mixer, 8.0f);
     const std::vector<float> left = an::channel(rendered, 2, 0);
 
@@ -97,7 +97,7 @@ TEST_CASE("sandboxNight: se sintetiza en offline y detecta notas (onsets > 0)") 
     CHECK(noteStarts.size() > 0);
 }
 
-TEST_CASE("SandboxSounds: registro de samples en Mixer asigna ids validos") {
+TEST_CASE("SandboxSounds: registering samples in Mixer assigns valid IDs") {
     const SandboxSounds sounds;
     Mixer mixer(48000);
     const RegisteredSounds reg = registerSandboxSounds(mixer, sounds);

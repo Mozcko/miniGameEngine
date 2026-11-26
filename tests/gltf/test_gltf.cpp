@@ -1,6 +1,5 @@
 #include <doctest/doctest.h>
 #include <mge/gltf/GltfLoader.h>
-#include <mge/gltf/detail/GltfJson.h>
 
 #include <cstdint>
 #include <cstring>
@@ -57,8 +56,7 @@ namespace {
     }
 
     std::string encodeBase64(const std::vector<std::uint8_t>& data) {
-        static constexpr char kTable[] =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        static constexpr char kTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         std::string out;
         out.reserve(((data.size() + 2) / 3) * 4);
         for (std::size_t i = 0; i < data.size(); i += 3) {
@@ -75,25 +73,44 @@ namespace {
     }
 }
 
-TEST_CASE("GltfJson parses primitives, arrays, objects, escapes, and rejects malformed JSON") {
-    std::string err;
-    const auto parsed = detail::parseGltfJson(
-        R"({"num": -42.5e1, "flag": true, "nil": null, "str": "hi\n\"\\\/", "arr": [1, 2, 3]})", &err);
-    REQUIRE(parsed.has_value());
-    CHECK(err.empty());
-    REQUIRE(parsed->isObject());
-    CHECK(parsed->find("num")->asNumber() == doctest::Approx(-425.0));
-    CHECK(parsed->find("flag")->asBool() == true);
-    CHECK(parsed->find("nil")->isNull());
-    CHECK(parsed->find("str")->asString() == "hi\n\"\\/");
-    REQUIRE(parsed->find("arr")->isArray());
-    CHECK(parsed->find("arr")->asArray().size() == 3);
-    CHECK(parsed->find("missing") == nullptr);
+TEST_CASE("loadGltfFromMemory rejects malformed JSON, truncated GLB prefixes, and adversarial buffers") {
+    const std::string badJson1 = "{unquoted: 1}";
+    CHECK_FALSE(loadGltfFromMemory(reinterpret_cast<const std::uint8_t*>(badJson1.data()), badJson1.size())
+                    .has_value());
+    const std::string badJson2 = "[1, 2,]";
+    CHECK_FALSE(loadGltfFromMemory(reinterpret_cast<const std::uint8_t*>(badJson2.data()), badJson2.size())
+                    .has_value());
+    const std::string garbage = "\xFF\xFE\x00\x01garbage_bytes_not_gltf";
+    CHECK_FALSE(loadGltfFromMemory(reinterpret_cast<const std::uint8_t*>(garbage.data()), garbage.size())
+                    .has_value());
 
-    CHECK_FALSE(detail::parseGltfJson("{unquoted: 1}", &err).has_value());
-    CHECK_FALSE(err.empty());
-    CHECK_FALSE(detail::parseGltfJson("[1, 2,]", &err).has_value());
-    CHECK_FALSE(detail::parseGltfJson("{\"a\": 1} trailing", &err).has_value());
+    // Valid GLB truncated at every possible prefix length must fail cleanly without UB/ASan errors
+    std::vector<std::uint8_t> bin;
+    const float verts[9] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    for (float v : verts) appendBytes(bin, v);
+    const std::string validJson = R"({
+        "asset": {"version": "2.0"},
+        "buffers": [{"byteLength": 36}],
+        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}],
+        "accessors": [{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"}],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}}]}]
+    })";
+    const std::vector<std::uint8_t> validGlb = buildGlb(validJson, bin);
+    REQUIRE(loadGltfFromMemory(validGlb.data(), validGlb.size()).has_value());
+
+    for (std::size_t cut = 0; cut < validGlb.size(); ++cut) {
+        CHECK_FALSE(loadGltfFromMemory(validGlb.data(), cut).has_value());
+    }
+
+    // Adversarial chunk length claiming 4 GiB inside a 24-byte buffer
+    std::vector<std::uint8_t> hugeChunk;
+    appendU32Le(hugeChunk, 0x46546C67u);
+    appendU32Le(hugeChunk, 2u);
+    appendU32Le(hugeChunk, 24u);
+    appendU32Le(hugeChunk, 0xFFFFFFF0u);
+    appendU32Le(hugeChunk, 0x4E4F534Au);
+    appendU32Le(hugeChunk, 0x20202020u);
+    CHECK_FALSE(loadGltfFromMemory(hugeChunk.data(), hugeChunk.size()).has_value());
 }
 
 TEST_CASE("loadGltfFromMemory loads a JSON glTF triangle with base64 buffer and UV V-flip") {

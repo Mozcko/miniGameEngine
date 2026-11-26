@@ -6,11 +6,11 @@ static mge_texture* s_leakedTexture = NULL;
 static bool on_init_safety(mge_app* app, void* user_data) {
     int* result = (int*)user_data;
 
-    // Crear mesh procedural (se registra con el tracker)
+    // Create procedural mesh (registered with the tracker)
     s_leakedMesh = mge_mesh_create_cube(app, 1.0f);
     TEST_ASSERT(s_leakedMesh != NULL);
 
-    // Crear textura 2x2 RGBA
+    // Create 2x2 RGBA texture
     uint8_t pixels[16] = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255};
     s_leakedTexture = mge_texture_create_rgba(app, 2, 2, pixels);
 
@@ -33,16 +33,16 @@ int test_c_safety(void) {
     callbacks.on_init = on_init_safety;
     callbacks.user_data = &testResult;
 
-    // Ejecutar y cerrar la app
+    // Run and close the app
     mge_app_run(&config, &callbacks);
     TEST_ASSERT_EQ(testResult, 0);
 
-    // PASO 0: Liberar recursos de GPU DESPUÉS de que la aplicación ya cerró
-    // Debe ser seguro, sin cuelgues ni accesos a memoria inválida
+    // STEP 0: Release GPU resources AFTER the application has already closed
+    // Must be safe, with no crashes or invalid memory accesses
     mge_mesh_destroy(s_leakedMesh);
     mge_texture_destroy(s_leakedTexture);
 
-    // Destruir NULL de forma segura
+    // Destroy NULL safely
     mge_mesh_destroy(NULL);
     mge_texture_destroy(NULL);
 

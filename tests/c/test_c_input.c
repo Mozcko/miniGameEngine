@@ -3,7 +3,7 @@
 static bool on_init_input(mge_app* app, void* user_data) {
     int* result = (int*)user_data;
 
-    // 1. Vincular acciones y ejes mediante nombres de teclas
+    // 1. Bind actions and axes by key names
     if (mge_input_bind_action(app, "Jump", "Space") != MGE_OK) {
         *result = 1;
         return false;
@@ -13,7 +13,7 @@ static bool on_init_input(mge_app* app, void* user_data) {
         return false;
     }
 
-    // Inicialmente no presionadas
+    // Initially not pressed
     if (mge_input_is_action_down(app, "Jump")) {
         *result = 3;
         return false;
@@ -23,7 +23,7 @@ static bool on_init_input(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 2. Inyección de teclas mediante mge_test_inject_key
+    // 2. Key injection via mge_test_inject_key
     mge_test_inject_key(app, "Space", true);
     if (!mge_input_is_action_down(app, "Jump")) {
         *result = 5;
@@ -34,14 +34,14 @@ static bool on_init_input(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 3. Eje horizontal con tecla D inyectada
+    // 3. Horizontal axis with injected D key
     mge_test_inject_key(app, "D", true);
     if (mge_input_get_axis(app, "Horizontal") != 1.0f) {
         *result = 7;
         return false;
     }
 
-    // 4. Liberar teclas inyectadas
+    // 4. Release injected keys
     mge_test_inject_key(app, "Space", false);
     mge_test_inject_key(app, "D", false);
     if (mge_input_is_action_down(app, "Jump")) {
@@ -53,7 +53,7 @@ static bool on_init_input(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 5. Inyectar A (negativo)
+    // 5. Inject A (negative)
     mge_test_inject_key(app, "A", true);
     if (mge_input_get_axis(app, "Horizontal") != -1.0f) {
         *result = 10;

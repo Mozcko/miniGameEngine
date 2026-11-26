@@ -41,7 +41,7 @@ static void each_add_during_callback(mge_entity entity, void** components, void*
     *sum += orig;
     s_eachSpawnCount++;
 
-    // Crear 200 entidades y adjuntar el mismo componente para cruzar páginas del pool
+    // Create 200 entities and attach the same component to cross pool pages
     for (int i = 0; i < 200; ++i) {
         mge_entity ne = mge_entity_create(s_spawnApp);
         int* nv = (int*)mge_component_add(s_spawnApp, ne, s_spawnCompId);
@@ -50,7 +50,7 @@ static void each_add_during_callback(mge_entity entity, void** components, void*
         }
     }
 
-    // Escribir a través del puntero viejo después de las altas (patrón spawner)
+    // Write through the old pointer after additions (spawner pattern)
     *val = orig * 100;
 }
 
@@ -72,7 +72,7 @@ static void each_destroy_callback(mge_entity entity, void** components, void* us
 static bool on_init_ecs(mge_app* app, void* user_data) {
     int* result = (int*)user_data;
 
-    // 1. Creación y validación de entidades
+    // 1. Entity creation and validation
     mge_entity e1 = mge_entity_create(app);
     mge_entity e2 = mge_entity_create(app);
     if (!mge_entity_is_valid(app, e1) || !mge_entity_is_valid(app, e2)) {
@@ -80,7 +80,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 2. Registro dinámico de componentes
+    // 2. Dynamic component registration
     mge_component_id posId = mge_component_register(app, "Position", sizeof(Position), sizeof(float));
     mge_component_id velId = mge_component_register(app, "Velocity", sizeof(Velocity), sizeof(float));
     if (posId == MGE_INVALID_COMPONENT_ID || velId == MGE_INVALID_COMPONENT_ID) {
@@ -88,7 +88,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 3. Agregar componentes
+    // 3. Add components
     Position* p1 = (Position*)mge_component_add(app, e1, posId);
     if (!p1) { *result = 3; return false; }
     p1->x = 10.0f; p1->y = 20.0f; p1->z = 30.0f;
@@ -101,7 +101,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
     if (!p2) { *result = 5; return false; }
     p2->x = 100.0f; p2->y = 200.0f; p2->z = 300.0f;
 
-    // 4. Consultas has y get
+    // 4. has and get queries
     if (!mge_component_has(app, e1, posId) || !mge_component_has(app, e1, velId)) {
         *result = 6;
         return false;
@@ -117,11 +117,11 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 5. Iteración multi-componente con each
+    // 5. Multi-component iteration with each
     s_eachCount = 0;
     mge_component_id bothTypes[2] = {posId, velId};
     mge_component_each(app, bothTypes, 2, each_pos_vel_callback, NULL);
-    if (s_eachCount != 1) { // Solo e1 tiene ambos
+    if (s_eachCount != 1) { // Only e1 has both
         *result = 9;
         return false;
     }
@@ -130,21 +130,21 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 6. Eliminación de componentes
+    // 6. Component removal
     mge_component_remove(app, e1, velId);
     if (mge_component_has(app, e1, velId)) {
         *result = 11;
         return false;
     }
 
-    // 7. Destrucción de entidad e invalidación
+    // 7. Entity destruction and invalidation
     mge_entity_destroy(app, e2);
     if (mge_entity_is_valid(app, e2)) {
         *result = 12;
         return false;
     }
 
-    // 8. Manejo de entidad inválida (retorna MGE_ERROR_INVALID_HANDLE)
+    // 8. Invalid entity handling (returns MGE_ERROR_INVALID_HANDLE)
     mge_transform invalidTrans = {{0, 0, 0}, {0, 0, 0, 1}, {1, 1, 1}};
     if (mge_transform_set(app, e2, &invalidTrans) != MGE_ERROR_INVALID_HANDLE) {
         *result = 13;
@@ -186,13 +186,13 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 11. Registrar un sistema de simulación
+    // 11. Register a simulation system
     if (mge_system_add(app, MGE_PHASE_UPDATE, "MovementSystem", movement_system, NULL) != MGE_OK) {
         *result = 20;
         return false;
     }
 
-    // 12. Validación de registro de componentes (Item 1)
+    // 12. Component registration validation (Item 1)
     if (mge_component_register(app, "Velocity", sizeof(Velocity), sizeof(float)) != velId) {
         *result = 21;
         return false;
@@ -220,7 +220,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 13. comp_id fuera de rango (Item 2)
+    // 13. Out-of-range comp_id (Item 2)
     if (mge_component_add(app, e1, 999) != NULL || strlen(mge_last_error()) == 0) {
         *result = 27;
         return false;
@@ -234,7 +234,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         return false;
     }
 
-    // 14. add-during-each y destroy-during-each en mge_component_each (Item 3, validado con ASan)
+    // 14. add-during-each and destroy-during-each in mge_component_each (Item 3, validated with ASan)
     s_spawnCompId = mge_component_register(app, "Counter", sizeof(int), sizeof(int));
     if (s_spawnCompId == MGE_INVALID_COMPONENT_ID) {
         *result = 30;
@@ -266,7 +266,7 @@ static bool on_init_ecs(mge_app* app, void* user_data) {
         }
     }
 
-    // Puntero de mge_component_add sigue válido tras agregar 1000 componentes iguales
+    // Pointer from mge_component_add remains valid after adding 1000 identical components
     mge_component_id stableId = mge_component_register(app, "StableC", sizeof(int), sizeof(int));
     mge_entity anchor = mge_entity_create(app);
     int* anchorPtr = (int*)mge_component_add(app, anchor, stableId);

@@ -45,7 +45,7 @@ namespace {
         auto profiler = std::make_shared<Profiler>();
         profiler->beginFrame();
 
-        // Registrar nombres típicos para poblar m_entries con un frame realista
+        // Register typical names to populate m_entries with a realistic frame
         const char* const kWarmupScopes[] = {"frame",     "modules.begin", "fixed",      "update",
                                              "streaming", "render",        "modules.end"};
         for (const char* name : kWarmupScopes) {
@@ -68,7 +68,7 @@ namespace {
         const Noise noise(1337);
         FractalSettings fractal;
 
-        runner.add("noise: perlin 2D", "ns/muestra", count, [=] {
+        runner.add("noise: perlin 2D", "ns/sample", count, [=] {
             float sum = 0.0f;
             for (int i = 0; i < count; ++i) {
                 const float x = static_cast<float>(i) * 0.0137f;
@@ -77,7 +77,7 @@ namespace {
             doNotOptimize(sum);
         });
 
-        runner.add("noise: simplex 2D", "ns/muestra", count, [=] {
+        runner.add("noise: simplex 2D", "ns/sample", count, [=] {
             float sum = 0.0f;
             for (int i = 0; i < count; ++i) {
                 const float x = static_cast<float>(i) * 0.0137f;
@@ -86,7 +86,7 @@ namespace {
             doNotOptimize(sum);
         });
 
-        runner.add("noise: perlin 3D", "ns/muestra", count, [=] {
+        runner.add("noise: perlin 3D", "ns/sample", count, [=] {
             float sum = 0.0f;
             for (int i = 0; i < count; ++i) {
                 const float x = static_cast<float>(i) * 0.0137f;
@@ -95,7 +95,7 @@ namespace {
             doNotOptimize(sum);
         });
 
-        runner.add("noise: simplex 3D", "ns/muestra", count, [=] {
+        runner.add("noise: simplex 3D", "ns/sample", count, [=] {
             float sum = 0.0f;
             for (int i = 0; i < count; ++i) {
                 const float x = static_cast<float>(i) * 0.0137f;
@@ -104,7 +104,7 @@ namespace {
             doNotOptimize(sum);
         });
 
-        runner.add("noise: fbm simplex 2D", "ns/muestra", count, [=] {
+        runner.add("noise: fbm simplex 2D", "ns/sample", count, [=] {
             float sum = 0.0f;
             for (int i = 0; i < count; ++i) {
                 const float x = static_cast<float>(i) * 0.0137f;
@@ -119,7 +119,7 @@ namespace {
         const glm::vec3 origin(0.0f);
         const glm::vec3 scale(0.05f);
 
-        runner.add("noise: CPU fbm 64^3", "ns/campo", 1, [=] {
+        runner.add("noise: CPU fbm 64^3", "ns/field", 1, [=] {
             std::vector<float> data(static_cast<std::size_t>(kTotalSamples));
             for (int z = 0; z < kDim; ++z) {
                 for (int y = 0; y < kDim; ++y) {
@@ -150,7 +150,7 @@ namespace {
                 desc.scale = scale;
                 desc.fractal = fractal;
 
-                runner.add("noise: GPU fbm 64^3 incl. download", "ns/campo", 1, [device, field, desc] {
+                runner.add("noise: GPU fbm 64^3 incl. download", "ns/field", 1, [device, field, desc] {
                     field->generate(desc);
                     const std::vector<float> data = field->download();
                     doNotOptimize(data.data());
@@ -179,7 +179,7 @@ namespace {
 
         const std::string ecsBenchName =
             "ecs: iterate " + std::to_string(count) + " entities with 2 components";
-        runner.add(ecsBenchName, "ns/entidad", count, [registry] {
+        runner.add(ecsBenchName, "ns/entity", count, [registry] {
             registry->each<Position, Velocity>([](Entity, Position& p, Velocity& v) {
                 p.x += v.x * 0.016f;
                 p.y += v.y * 0.016f;
@@ -188,7 +188,7 @@ namespace {
             doNotOptimize(*registry);
         });
 
-        runner.add("ecs: runtime component add", "ns/entidad", count, [count] {
+        runner.add("ecs: runtime component add", "ns/entity", count, [count] {
             Registry rawReg;
             const ComponentTypeId posId =
                 rawReg.registerRuntimeComponent("RawPos", sizeof(Position), alignof(Position));
@@ -215,7 +215,7 @@ namespace {
             v->z = 0.25f;
         }
 
-        runner.add("ecs: runtime eachRaw", "ns/entidad", count, [rawRegistry, rawPosId, rawVelId] {
+        runner.add("ecs: runtime eachRaw", "ns/entity", count, [rawRegistry, rawPosId, rawVelId] {
             const ComponentTypeId types[2] = {rawPosId, rawVelId};
             rawRegistry->eachRaw(types, 2, [](Entity, void** ptrs) {
                 auto* p = static_cast<Position*>(ptrs[0]);
@@ -477,7 +477,7 @@ namespace {
         constexpr int kSteps = 60;
         const std::uint64_t pwItemsPerRun = static_cast<std::uint64_t>(bodyCount) * kSteps;
 
-        runner.add(pwBenchName, "ns/cuerpo", pwItemsPerRun, [world, reg] {
+        runner.add(pwBenchName, "ns/body", pwItemsPerRun, [world, reg] {
             for (int s = 0; s < kSteps; ++s) {
                 world->step(*reg, 1.0f / 60.0f);
             }
@@ -499,7 +499,7 @@ namespace {
         const std::string shBenchName =
             "physics: SpatialHash computePairs " + std::to_string(boxCount) + " boxes";
 
-        runner.add(shBenchName, "ns/caja", boxCount, [hash, boxes, boxCount] {
+        runner.add(shBenchName, "ns/box", boxCount, [hash, boxes, boxCount] {
             hash->clear();
             for (int i = 0; i < boxCount; ++i) {
                 hash->insert(static_cast<std::uint32_t>(i), (*boxes)[static_cast<std::size_t>(i)]);

@@ -1,4 +1,4 @@
-// Generar y mallar en un JobSystem da exactamente lo mismo que hacerlo en el hilo principal (#56)
+// Generating and meshing on a JobSystem yields the exact same result as on the main thread (#56)
 #include "VoxelTestWorld.h"
 
 #include <doctest/doctest.h>
@@ -14,7 +14,7 @@ using namespace mge;
 using mge_test::TestBlocks;
 
 namespace {
-    // Bloques al azar (reproducibles): ejercita bordes, agua y vidrio
+    // Reproducible random blocks: exercises borders, water, and glass
     class NoiseGenerator : public TerrainGenerator {
     public:
         explicit NoiseGenerator(const TestBlocks& b) : m_b(b) {}
@@ -38,7 +38,7 @@ namespace {
     }
 }
 
-TEST_CASE("Paralelo: generar en un JobSystem e insertar = loadChunk en el hilo principal") {
+TEST_CASE("Parallel: generate on a JobSystem and insert == loadChunk on the main thread") {
     TestBlocks b;
     VoxelWorld sequential(b.registry, std::make_unique<NoiseGenerator>(b));
     VoxelWorld parallel(b.registry, std::make_unique<NoiseGenerator>(b));
@@ -64,7 +64,7 @@ TEST_CASE("Paralelo: generar en un JobSystem e insertar = loadChunk en el hilo p
     CHECK(parallel.dirtyChunks().size() == coords.size());
 }
 
-TEST_CASE("Paralelo: mallar snapshots en un JobSystem = buildChunkMesh(world) (con AO y greedy)") {
+TEST_CASE("Parallel: meshing snapshots on a JobSystem == buildChunkMesh(world) (with AO and greedy)") {
     TestBlocks b;
     VoxelWorld world(b.registry, std::make_unique<NoiseGenerator>(b));
     for (int x = -1; x <= 1; x++)
@@ -78,7 +78,7 @@ TEST_CASE("Paralelo: mallar snapshots en un JobSystem = buildChunkMesh(world) (c
     std::vector<std::future<ChunkMesh>> meshes;
     for (const ChunkCoord& c : coords) {
         auto snapshot =
-            std::make_shared<ChunkSnapshot>(ChunkSnapshot::capture(world, c)); // En el hilo principal
+            std::make_shared<ChunkSnapshot>(ChunkSnapshot::capture(world, c)); // On the main thread
         meshes.push_back(
             jobs.submit([snapshot, &b, options] { return buildChunkMesh(*snapshot, b.registry, options); }));
     }
@@ -94,18 +94,18 @@ TEST_CASE("Paralelo: mallar snapshots en un JobSystem = buildChunkMesh(world) (c
     }
 }
 
-TEST_CASE("ChunkSnapshot: copia el chunk y el borde de los vecinos; sin cargar = aire") {
+TEST_CASE("ChunkSnapshot: copies the chunk and neighbor borders; unloaded = air") {
     TestBlocks b;
     VoxelWorld world(b.registry);
     world.loadChunk({0, 0, 0});
     world.loadChunk({1, 0, 0});
     world.setBlock({3, 4, 5}, b.stone);
-    world.setBlock({16, 7, 8}, b.glass); // Chunk de la derecha, primera columna
-    world.setBlock({17, 7, 8}, b.water); // Fuera del borde de 1 bloque
+    world.setBlock({16, 7, 8}, b.glass); // Chunk to the right, first column
+    world.setBlock({17, 7, 8}, b.water); // Outside the 1-block border
     const ChunkSnapshot snapshot = ChunkSnapshot::capture(world, {0, 0, 0});
     REQUIRE(snapshot.valid());
     CHECK(snapshot.get(3, 4, 5) == b.stone);
     CHECK(snapshot.get(16, 7, 8) == b.glass);
-    CHECK(snapshot.get(-1, 0, 0) == kAir); // Chunk de la izquierda sin cargar
+    CHECK(snapshot.get(-1, 0, 0) == kAir); // Unloaded chunk to the left
     CHECK_FALSE(ChunkSnapshot::capture(world, {9, 9, 9}).valid());
 }

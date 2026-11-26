@@ -11,10 +11,10 @@
 
 using namespace mge::cli;
 
-TEST_CASE("cli: validación de nombres de proyectos") {
+TEST_CASE("cli: project name validation") {
     std::string error;
 
-    // Nombres válidos
+    // Valid names
     CHECK(validateProjectName("space_shooter", error));
     CHECK(error.empty());
     CHECK(validateProjectName("pong", error));
@@ -22,7 +22,7 @@ TEST_CASE("cli: validación de nombres de proyectos") {
     CHECK(validateProjectName("game123", error));
     CHECK(validateProjectName("x", error));
 
-    // Nombres inválidos
+    // Invalid names
     CHECK_FALSE(validateProjectName("", error));
     CHECK_FALSE(error.empty());
 
@@ -33,7 +33,7 @@ TEST_CASE("cli: validación de nombres de proyectos") {
     CHECK_FALSE(validateProjectName("game with space", error));
     CHECK_FALSE(validateProjectName("game$special", error));
 
-    // Nombres reservados
+    // Reserved names
     CHECK_FALSE(validateProjectName("sandbox", error));
     CHECK_FALSE(validateProjectName("run", error));
     CHECK_FALSE(validateProjectName("mge_core", error));
@@ -41,7 +41,7 @@ TEST_CASE("cli: validación de nombres de proyectos") {
     CHECK_FALSE(validateProjectName("cmake", error));
 }
 
-TEST_CASE("cli: conversión de nombres a PascalCase y Title Case") {
+TEST_CASE("cli: converting names to PascalCase and Title Case") {
     CHECK(toPascalCase("space_shooter") == "SpaceShooter");
     CHECK(toTitleCase("space_shooter") == "Space Shooter");
 
@@ -55,7 +55,7 @@ TEST_CASE("cli: conversión de nombres a PascalCase y Title Case") {
     CHECK(toTitleCase("a_b_c") == "A B C");
 }
 
-TEST_CASE("cli: renderizado de plantillas de texto") {
+TEST_CASE("cli: text template rendering") {
     std::string templateStr =
         "class @GAME_CLASS@ : public App {}; // @GAME_NAME@ - @GAME_TITLE@ (v@MGE_VERSION@)";
     std::string rendered = renderTemplateString(templateStr, "demo_game", "DemoGame", "Demo Game", "0.9.0");
@@ -63,7 +63,7 @@ TEST_CASE("cli: renderizado de plantillas de texto") {
     CHECK(rendered == "class DemoGame : public App {}; // demo_game - Demo Game (v0.9.0)");
 }
 
-TEST_CASE("cli: parseLanguage y languageToString") {
+TEST_CASE("cli: parseLanguage and languageToString") {
     ProjectLanguage lang = ProjectLanguage::Cpp;
     CHECK(parseLanguage("cpp", lang));
     CHECK(lang == ProjectLanguage::Cpp);
@@ -90,7 +90,7 @@ TEST_CASE("cli: parseLanguage y languageToString") {
     CHECK_FALSE(parseLanguage("java", lang));
 }
 
-TEST_CASE("cli: validación de plantillas según el lenguaje") {
+TEST_CASE("cli: template validation by language") {
     std::string err;
     // Cpp: 3d, 2d, headless, window
     CHECK(validateLanguageTemplate(ProjectLanguage::Cpp, "3d", err));
@@ -112,16 +112,16 @@ TEST_CASE("cli: validación de plantillas según el lenguaje") {
     CHECK(err.find("not valid for Python") != std::string::npos);
 }
 
-TEST_CASE("cli: detección de proyectos") {
+TEST_CASE("cli: project detection") {
     std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "mge_test_proj_detect";
     std::filesystem::remove_all(tempDir);
     std::filesystem::create_directories(tempDir);
 
-    // Sin archivo de proyecto
+    // Without a project file
     auto infoEmpty = detectProject(tempDir);
     CHECK(infoEmpty.type == ProjectType::None);
 
-    // Con archivo mge.project
+    // With an mge.project file
     {
         std::ofstream proj(tempDir / "mge.project");
         proj << "name=test_game\n";
@@ -135,7 +135,7 @@ TEST_CASE("cli: detección de proyectos") {
     CHECK(infoProj.rootDir == tempDir);
     CHECK(infoProj.language == ProjectLanguage::Cpp);
 
-    // Búsqueda desde un subdirectorio anidado
+    // Search from a nested subdirectory
     std::filesystem::path subDir = tempDir / "src" / "deep";
     std::filesystem::create_directories(subDir);
 
@@ -145,7 +145,7 @@ TEST_CASE("cli: detección de proyectos") {
     CHECK(infoSub.templateType == "2d");
     CHECK(infoSub.rootDir == tempDir);
 
-    // Con archivo mge.project indicando language=python
+    // With mge.project specifying language=python
     {
         std::ofstream proj(tempDir / "mge.project");
         proj << "name=py_game\n";
@@ -156,7 +156,7 @@ TEST_CASE("cli: detección de proyectos") {
     CHECK(infoPy.type == ProjectType::GameProject);
     CHECK(infoPy.language == ProjectLanguage::Python);
 
-    // Con archivo mge.project indicando language=c
+    // With mge.project specifying language=c
     {
         std::ofstream proj(tempDir / "mge.project");
         proj << "name=c_game\n";
@@ -170,7 +170,7 @@ TEST_CASE("cli: detección de proyectos") {
     std::filesystem::remove_all(tempDir);
 }
 
-TEST_CASE("cli: diagnósticos doctor") {
+TEST_CASE("cli: doctor diagnostics") {
     auto items = runDoctorChecks();
     CHECK(items.size() == 7);
 
@@ -191,7 +191,7 @@ TEST_CASE("cli: diagnósticos doctor") {
             CHECK(item.required);
         } else if (item.name == "Ninja") {
             foundNinja = true;
-            CHECK_FALSE(item.required); // Ninja es opcional
+            CHECK_FALSE(item.required); // Ninja is optional
         } else if (item.name == "SDL3") {
             foundSdl3 = true;
             CHECK(item.required);
@@ -216,7 +216,7 @@ TEST_CASE("cli: diagnósticos doctor") {
     CHECK(foundGlm);
 }
 
-TEST_CASE("cli: ejecución y captura de procesos") {
+TEST_CASE("cli: process execution and output capture") {
     CHECK(commandExists("cmake"));
     CHECK_FALSE(commandExists("comando_que_definitivamente_no_existe_12345"));
 
@@ -226,7 +226,7 @@ TEST_CASE("cli: ejecución y captura de procesos") {
     CHECK(out.find("mge_cli_test_output") != std::string::npos);
 }
 
-TEST_CASE("cli: diagnósticos doctor para Python") {
+TEST_CASE("cli: Python doctor diagnostics") {
     auto items = runPythonDoctorChecks();
     CHECK(items.size() == 4);
     CHECK(items[0].name.find("Python") != std::string::npos);
@@ -235,7 +235,7 @@ TEST_CASE("cli: diagnósticos doctor para Python") {
     CHECK(items[3].name.find("mge") != std::string::npos);
 }
 
-TEST_CASE("cli: validación de versión mínima por lenguaje") {
+TEST_CASE("cli: minimum version validation by language") {
     std::string err;
     CHECK_FALSE(validateLanguageVersion(ProjectLanguage::C, "0.9.0", err));
     CHECK(err.find("1.0.0") != std::string::npos);

@@ -1,5 +1,5 @@
-// Benchmark de ruido (no es un test): ns por muestra de cada función. Compilar en Release.
-// Uso: ./bench/noise_bench [muestras]   (por defecto 1000000)
+// Noise benchmark (not a test): ns per sample for each function. Build in Release.
+// Usage: ./bench/noise_bench [samples]   (default 1000000)
 #include <mge/procgen/Noise.h>
 
 #include <chrono>
@@ -9,7 +9,7 @@
 
 namespace {
     template <typename Fn> void measure(const char* name, int count, Fn&& fn) {
-        volatile float sink = 0.0f; // Evita que el compilador elimine el trabajo
+        volatile float sink = 0.0f; // Prevents the compiler from optimizing out the work
         auto start = std::chrono::steady_clock::now();
         float sum = 0.0f;
         for (int i = 0; i < count; i++) {
@@ -19,7 +19,7 @@ namespace {
         sink = sum;
         const double ns =
             std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - start).count();
-        std::printf("  %-28s %7.2f ns/muestra\n", name, ns / count);
+        std::printf("  %-28s %7.2f ns/sample\n", name, ns / count);
         (void)sink;
     }
 }
@@ -27,8 +27,8 @@ namespace {
 int main(int argc, char** argv) {
     const int count = argc > 1 ? std::atoi(argv[1]) : 1000000;
     const mge::Noise noise(1337);
-    mge::FractalSettings fractal; // 5 octavas
-    std::printf("Noise benchmark (%d muestras)\n", count);
+    mge::FractalSettings fractal; // 5 octaves
+    std::printf("Noise benchmark (%d samples)\n", count);
     measure("value 2D", count, [&](float x, float y, float) { return noise.value(x, y); });
     measure("perlin 2D", count, [&](float x, float y, float) { return noise.perlin(x, y); });
     measure("simplex 2D", count, [&](float x, float y, float) { return noise.simplex(x, y); });

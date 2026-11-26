@@ -1,4 +1,4 @@
-// Audio sin dispositivo (#50): render offline, WAV y valores de referencia del sintetizador
+// Headless audio (#50): offline rendering, WAV output, and synth reference values
 #include <doctest/doctest.h>
 #include <mge/synth/Offline.h>
 
@@ -28,7 +28,7 @@ namespace {
     }
 }
 
-TEST_CASE("Offline: renderOffline da frames × 2 y es determinista") {
+TEST_CASE("Offline: renderOffline returns frames × 2 and is deterministic") {
     const auto once = [] {
         Mixer mixer(kRate);
         Instrument noisy = plain(Waveform::Noise);
@@ -41,10 +41,10 @@ TEST_CASE("Offline: renderOffline da frames × 2 y es determinista") {
     };
     const std::vector<float> a = once();
     CHECK(a.size() == std::size_t(kRate / 2) * 2);
-    CHECK(a == once()); // Mismo resultado byte a byte
+    CHECK(a == once()); // Same result byte for byte
 }
 
-TEST_CASE("Offline: writeWav escribe un PCM de 16 bits que se puede leer") {
+TEST_CASE("Offline: writeWav writes a readable 16-bit PCM file") {
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "mge_test_offline.wav";
     std::vector<float> stereo = {0.0f, 0.0f, 0.5f, -0.5f, 1.0f, -1.0f, 2.0f, -2.0f};
     REQUIRE(writeWav(path, stereo, 2, kRate));
@@ -58,20 +58,20 @@ TEST_CASE("Offline: writeWav escribe un PCM de 16 bits que se puede leer") {
     const auto u32 = [&](std::size_t at) {
         return std::uint32_t(u16(at) | (std::uint32_t(u16(at + 2)) << 16));
     };
-    CHECK(u16(22) == 2);                    // Canales
-    CHECK(u32(24) == 48000u);               // Frecuencia
+    CHECK(u16(22) == 2);                    // Channels
+    CHECK(u32(24) == 48000u);               // Sample rate
     CHECK(u16(34) == 16);                   // Bits
-    CHECK(u32(40) == 16u);                  // Bytes de datos
+    CHECK(u32(40) == 16u);                  // Data bytes
     CHECK(std::int16_t(u16(48)) == 16384);  // 0.5
     CHECK(std::int16_t(u16(50)) == -16384); // -0.5
-    CHECK(std::int16_t(u16(56)) == 32767);  // 2.0 se recorta
+    CHECK(std::int16_t(u16(56)) == 32767);  // 2.0 is clamped
     CHECK(std::int16_t(u16(58)) == -32767);
     std::filesystem::remove(path);
     CHECK_FALSE(writeWav("/no/existe/x.wav", stereo, 2, kRate));
 }
 
-TEST_CASE("Valores de referencia: cada forma de onda (frecuencia, nivel y brillo)") {
-    // Centroide espectral: seno < triangular < cuadrada < sierra < ruido
+TEST_CASE("Reference values: each waveform (frequency, level, and brightness)") {
+    // Spectral centroid: sine < triangle < square < saw < noise
     float previous = 0.0f;
     for (Waveform wave :
          {Waveform::Sine, Waveform::Triangle, Waveform::Square, Waveform::Saw, Waveform::Noise}) {
@@ -86,11 +86,11 @@ TEST_CASE("Valores de referencia: cada forma de onda (frecuencia, nivel y brillo
         previous = centroid;
         CHECK(an::peak(note) <= 1.0f);
     }
-    // Seno: amplitud exacta en 440 Hz y nada en 880
+    // Sine: exact amplitude at 440 Hz and none at 880 Hz
     const std::vector<float> sine = renderNote(plain(Waveform::Sine), 440.0f, 0.3f, 0.25f);
     CHECK(an::toneAmplitude(sine, 440.0f, kRate, 2000, 10000) == doctest::Approx(0.5f).epsilon(0.03));
     CHECK(an::toneAmplitude(sine, 880.0f, kRate, 2000, 10000) < 0.01f);
-    // Cuadrada: armónicos impares (3º = 1/3 del fundamental), sin pares
+    // Square: odd harmonics (3rd = 1/3 of fundamental), no even harmonics
     const std::vector<float> square = renderNote(plain(Waveform::Square), 440.0f, 0.3f, 0.25f);
     const float fundamental = an::toneAmplitude(square, 440.0f, kRate, 2000, 10000);
     CHECK(an::toneAmplitude(square, 1320.0f, kRate, 2000, 10000) / fundamental ==
@@ -98,18 +98,18 @@ TEST_CASE("Valores de referencia: cada forma de onda (frecuencia, nivel y brillo
     CHECK(an::toneAmplitude(square, 880.0f, kRate, 2000, 10000) / fundamental < 0.05f);
 }
 
-TEST_CASE("Valores de referencia: envolvente y filtro en el tiempo") {
+TEST_CASE("Reference values: envelope and filter over time") {
     Instrument pluck = plain(Waveform::Saw);
     pluck.envelope = {0.01f, 0.1f, 0.3f, 0.2f};
     const std::vector<float> note = renderNote(pluck, 220.0f, 1.0f, 0.4f);
     const std::size_t ms = kRate / 1000;
-    CHECK(an::rms(note, 0, 5 * ms) < an::rms(note, 10 * ms, 30 * ms)); // Ataque
+    CHECK(an::rms(note, 0, 5 * ms) < an::rms(note, 10 * ms, 30 * ms)); // Attack
     CHECK(an::rms(note, 200 * ms, 380 * ms) ==
           doctest::Approx(0.3f * an::rms(note, 10 * ms, 15 * ms)).epsilon(0.15));
-    // Termina cerca de duration + release
+    // Ends near duration + release
     CHECK(double(an::lastAbove(note, 1e-3f)) / kRate == doctest::Approx(0.6).epsilon(0.05));
 
-    // Pasa bajos: más oscuro cuanto más bajo el corte
+    // Low-pass: darker the lower the cutoff
     float previous = 1e9f;
     for (float cutoff : {6000.0f, 2000.0f, 600.0f}) {
         Instrument dark = plain(Waveform::Saw);
@@ -121,7 +121,7 @@ TEST_CASE("Valores de referencia: envolvente y filtro en el tiempo") {
     }
 }
 
-TEST_CASE("onsets encuentra el comienzo de cada nota") {
+TEST_CASE("onsets finds the start of each note") {
     Mixer mixer(kRate);
     const Instrument blip = [] {
         Instrument in = plain(Waveform::Square);

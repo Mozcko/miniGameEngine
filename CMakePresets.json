@@ -53,7 +53,7 @@
     },
     {
       "name": "tsan",
-      "displayName": "ThreadSanitizer (Debug, headless: solo core/procgen/voxel)",
+      "displayName": "ThreadSanitizer (Debug, headless: core/procgen/voxel only)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build-tsan",
       "cacheVariables": {
@@ -65,7 +65,7 @@
     },
     {
       "name": "minsize",
-      "displayName": "MinSize (optimizado para tamaño)",
+      "displayName": "MinSize (optimized for size)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build-minsize",
       "cacheVariables": {

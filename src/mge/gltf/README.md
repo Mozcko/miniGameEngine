@@ -1,7 +1,8 @@
 # src/mge/gltf/  →  target `mge_gltf`
 
-**Optional headless glTF 2.0 / GLB model loader** (Part 1 of #200). Depends only on `mge_core` and
-`mge_procgen` (no SDL, no GPU, no third-party dependencies), so it builds in every configuration,
+**Optional headless glTF 2.0 / GLB model loader** (Part 1 of #200). Depends only on `mge_core`,
+`mge_procgen`, and `cgltf` (MIT single-header parser, private implementation detail fetched via
+`FetchContent` with pinned `URL_HASH`, no SDL/GPU), so it builds in every configuration,
 including `-DMGE_BUILD_MODULES=OFF`, and is tested headless. Games that do not link `mge::gltf`
 pay zero binary-size cost (ADR 0004).
 
@@ -11,8 +12,7 @@ and `GltfLoader.h`.
 | File | Contents |
 |------|----------|
 | `GltfModel.h/.cpp` | CPU model representation (`GltfModel`, `GltfScene`, `GltfNode`, `GltfMesh`, `GltfPrimitive`, `GltfMaterial`, `GltfTexture`, `GltfSampler`, `GltfImage`), `computeWorldTransforms()`, `bounds()` |
-| `GltfLoader.h/.cpp` | `loadGltfFromMemory()`, `loadGltfFile()` for JSON `.gltf` and binary `.glb` 2.0 |
-| `detail/GltfJson.h/.cpp` | Internal dependency-free RFC 8259 JSON parser (not public API) |
+| `GltfLoader.h/.cpp` | `loadGltfFromMemory()`, `loadGltfFile()` for JSON `.gltf` and binary `.glb` 2.0 via `cgltf` |
 
 ## Usage
 

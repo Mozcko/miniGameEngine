@@ -1,5 +1,5 @@
 # cmake -DINPUT=<x.spv> -DOUTPUT=<x.h> -DSOURCE_NAME=<x.vert> -P MgeEmbedSpirv.cmake
-# Convierte un binario SPIR-V en un header con un mge::ShaderCode (lo usa mge_add_shaders).
+# Converts a SPIR-V binary into a header with an mge::ShaderCode (used by mge_add_shaders).
 if(NOT DEFINED INPUT OR NOT DEFINED OUTPUT)
     return()
 endif()
@@ -8,12 +8,12 @@ file(READ "${INPUT}" hex HEX)
 string(LENGTH "${hex}" hex_length)
 math(EXPR byte_count "${hex_length} / 2")
 
-# Bytes como "0x03, 0x02, ..." con un salto de línea cada 16
+# Bytes as "0x03, 0x02, ..." with a line break every 16
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " bytes "${hex}")
-string(REPEAT "0x[0-9a-f][0-9a-f], " 16 sixteen) # El regex de CMake no tiene {n}
+string(REPEAT "0x[0-9a-f][0-9a-f], " 16 sixteen) # CMake regex does not support {n}
 string(REGEX REPLACE "(${sixteen})" "\\1\n        " bytes "${bytes}")
 
-# Nombre: "test_triangle.vert" → kTestTriangleVert
+# Name: "test_triangle.vert" → kTestTriangleVert
 string(REGEX REPLACE "[^A-Za-z0-9]+" ";" parts "${SOURCE_NAME}")
 set(name "")
 foreach(part IN LISTS parts)
@@ -31,7 +31,7 @@ else()
     set(stage "Compute")
 endif()
 
-file(WRITE "${OUTPUT}" "// Generado desde ${SOURCE_NAME} por cmake/MgeEmbedSpirv.cmake: no editar.
+file(WRITE "${OUTPUT}" "// Generated from ${SOURCE_NAME} by cmake/MgeEmbedSpirv.cmake: do not edit.
 #pragma once
 
 #include <mge/gpu/Shader.h>

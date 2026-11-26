@@ -10,14 +10,14 @@ using namespace mge;
 namespace fs = std::filesystem;
 
 namespace {
-    // Variable de entorno + reinicio de la resolución durante un test
+    // Environment variable + resolution reset during a test
     struct AssetEnv {
         explicit AssetEnv(const char* value) {
             if (value)
                 setenv("MGE_ASSET_DIR", value, 1);
             else
                 unsetenv("MGE_ASSET_DIR");
-            setAssetRoot({}); // Forzar una nueva búsqueda
+            setAssetRoot({}); // Force a fresh search
             Log::setSink([](const LogRecord&) {});
         }
         ~AssetEnv() {
@@ -34,13 +34,13 @@ namespace {
     }
 }
 
-TEST_CASE("executableDir es absoluta y existe") {
+TEST_CASE("executableDir is absolute and exists") {
     fs::path dir = executableDir();
     CHECK(dir.is_absolute());
     CHECK(fs::is_directory(dir));
 }
 
-TEST_CASE("Sin MGE_ASSET_DIR se encuentra assets/ del proyecto (desde cualquier cwd)") {
+TEST_CASE("Without MGE_ASSET_DIR, project assets/ is found (from any cwd)") {
     AssetEnv env(nullptr);
     fs::path root = assetRoot();
     CHECK(fs::is_directory(root));
@@ -48,7 +48,7 @@ TEST_CASE("Sin MGE_ASSET_DIR se encuentra assets/ del proyecto (desde cualquier 
     CHECK(fs::exists(assetPath("textures/Minecraft-like_3d_tileset.png")));
 }
 
-TEST_CASE("MGE_ASSET_DIR tiene prioridad") {
+TEST_CASE("MGE_ASSET_DIR takes priority") {
     fs::path dir = makeTempDir("assets_env");
     AssetEnv env(dir.string().c_str());
     CHECK(fs::equivalent(assetRoot(), dir));
@@ -56,22 +56,22 @@ TEST_CASE("MGE_ASSET_DIR tiene prioridad") {
     fs::remove_all(dir);
 }
 
-TEST_CASE("Un MGE_ASSET_DIR que no existe se ignora") {
-    AssetEnv env("/no/existe/mge_assets");
+TEST_CASE("A nonexistent MGE_ASSET_DIR is ignored") {
+    AssetEnv env("/does/not/exist/mge_assets");
     CHECK(fs::is_directory(assetRoot()));
     CHECK(assetRoot().filename() == "assets");
 }
 
-TEST_CASE("setAssetRoot fija la raíz a mano y vacío vuelve a buscar") {
+TEST_CASE("setAssetRoot sets the root manually and empty triggers search again") {
     AssetEnv env(nullptr);
-    setAssetRoot("/opt/mi_juego/data");
-    CHECK(assetRoot() == fs::path("/opt/mi_juego/data"));
-    CHECK(assetPath("x.png") == fs::path("/opt/mi_juego/data/x.png"));
+    setAssetRoot("/opt/my_game/data");
+    CHECK(assetRoot() == fs::path("/opt/my_game/data"));
+    CHECK(assetPath("x.png") == fs::path("/opt/my_game/data/x.png"));
     setAssetRoot({});
     CHECK(assetRoot().filename() == "assets");
 }
 
-TEST_CASE("setAssetRoot con ruta relativa prefija exactamente una vez") {
+TEST_CASE("setAssetRoot with relative path prefixes exactly once") {
     AssetEnv env(nullptr);
     setAssetRoot("relative_root");
     CHECK(assetRoot() == fs::path("relative_root"));
@@ -80,7 +80,7 @@ TEST_CASE("setAssetRoot con ruta relativa prefija exactamente una vez") {
     setAssetRoot({});
 }
 
-TEST_CASE("Sin carpeta assets ni MGE_ASSET_DIR no se emiten avisos WARN ni ERROR") {
+TEST_CASE("Without assets folder or MGE_ASSET_DIR, no WARN or ERROR logs are emitted") {
     bool hasWarnOrError = false;
     Log::setSink([&](const LogRecord& record) {
         if (record.category == "Assets" &&
@@ -88,9 +88,9 @@ TEST_CASE("Sin carpeta assets ni MGE_ASSET_DIR no se emiten avisos WARN ni ERROR
             hasWarnOrError = true;
         }
     });
-    setAssetRoot(fs::path("/directorio/inexistente/assets"));
-    const fs::path p = assetPath("archivo.png");
-    CHECK(p == fs::path("/directorio/inexistente/assets/archivo.png"));
+    setAssetRoot(fs::path("/nonexistent/directory/assets"));
+    const fs::path p = assetPath("file.png");
+    CHECK(p == fs::path("/nonexistent/directory/assets/file.png"));
     CHECK_FALSE(hasWarnOrError);
     setAssetRoot({});
     Log::setSink(nullptr);

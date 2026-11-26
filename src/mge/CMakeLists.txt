@@ -1,16 +1,16 @@
-# Módulos del motor. Ver docs/adr/0003-headless-core.md
-#   mge_core      -> sin SDL ni GPU (siempre se compila): Application (runner + módulos), Log, Time
-#   mge_procgen   -> generación procedural en CPU (headless): MeshData, primitivas, ruido, SDF
-#   mge_voxel     -> mundos voxel (headless): bloques, chunks, VoxelWorld, mallado
-#   mge_synth     -> audio procedural (headless): mezclador, síntesis, efectos, música
-#   mge_physics   -> física (headless): colisiones barridas, consultas espaciales
-#   mge_main      -> el main() del motor (llama a createApplication del juego); solo core
-#   mge_platform  -> PlatformModule: ventana e input (SDL3)
-#   mge_gpu       -> GpuModule + wrappers RAII sobre SDL3 GPU (Vulkan/Metal/D3D12), ADR 0001
-#   mge_graphics  -> renderer sobre mge_gpu: Texture2D, MeshRenderer (shaders embebidos)
-#   mge_audio     -> AudioModule: el mezclador de mge_synth en el dispositivo de audio (SDL3)
+# Engine modules. See docs/adr/0003-headless-core.md
+#   mge_core      -> no SDL or GPU (always built): Application (runner + modules), Log, Time
+#   mge_procgen   -> CPU procedural generation (headless): MeshData, primitives, noise, SDF
+#   mge_voxel     -> voxel worlds (headless): blocks, chunks, VoxelWorld, meshing
+#   mge_synth     -> procedural audio (headless): mixer, synthesis, effects, music
+#   mge_physics   -> physics (headless): swept collisions, spatial queries
+#   mge_main      -> the engine's main() (calls the game's createApplication); core only
+#   mge_platform  -> PlatformModule: window and input (SDL3)
+#   mge_gpu       -> GpuModule + RAII wrappers over SDL3 GPU (Vulkan/Metal/D3D12), ADR 0001
+#   mge_graphics  -> renderer over mge_gpu: Texture2D, MeshRenderer (embedded shaders)
+#   mge_audio     -> AudioModule: the mge_synth mixer on the audio device (SDL3)
 
-# Helper para instalar headers públicos preservando la estructura relativa
+# Helper to install public headers preserving relative directory structure
 function(mge_install_headers dest_subdir)
     if(NOT MGE_INSTALL)
         return()
@@ -29,7 +29,7 @@ endfunction()
 
 add_subdirectory(core)
 add_subdirectory(app)
-# Módulos headless (sin SDL ni GPU): se compilan siempre
+# Headless modules (no SDL or GPU): always built
 add_subdirectory(procgen)
 add_subdirectory(gltf)
 add_subdirectory(voxel)
@@ -44,7 +44,7 @@ if(MGE_BUILD_MODULES)
     add_subdirectory(c)
 endif()
 
-# Instalación y exportación del paquete mge
+# Installation and export of the mge package
 if(MGE_INSTALL)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/mge.h" DESTINATION include/mge)
     install(FILES "${miniGameEngine_BINARY_DIR}/generated/include/mge/Version.h" DESTINATION include/mge)

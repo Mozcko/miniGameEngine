@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Instala SDL3 en el sistema en CI (ubuntu-24.04).
-# Intenta primero vía gestor de paquetes (por si libsdl3-dev ya está disponible);
-# si no, compila release-3.4.18 desde el código fuente y lo instala en /usr/local.
+# Installs SDL3 system-wide in CI (ubuntu-24.04).
+# Tries the package manager first (in case libsdl3-dev is already available);
+# otherwise builds release-3.4.18 from source and installs it into /usr/local.
 set -euo pipefail
 
 if sudo apt-get install -y --no-install-recommends libsdl3-dev 2>/dev/null; then

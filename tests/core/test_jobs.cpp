@@ -12,7 +12,7 @@
 
 using namespace mge;
 
-TEST_CASE("JobSystem: cada trabajo corre una sola vez y los futures traen el resultado") {
+TEST_CASE("JobSystem: each job runs once and futures return the result") {
     JobSystem jobs(4);
     CHECK(jobs.threadCount() == 4);
     std::vector<std::atomic<int>> runs(1000);
@@ -28,7 +28,7 @@ TEST_CASE("JobSystem: cada trabajo corre una sola vez y los futures traen el res
     for (const auto& count : runs) CHECK(count.load() == 1);
 }
 
-TEST_CASE("JobSystem: waitIdle espera a que terminen todos") {
+TEST_CASE("JobSystem: waitIdle waits for all jobs to finish") {
     JobSystem jobs(3);
     std::atomic<int> done{0};
     for (int i = 0; i < 50; i++)
@@ -41,14 +41,14 @@ TEST_CASE("JobSystem: waitIdle espera a que terminen todos") {
     CHECK(jobs.pendingCount() == 0);
 }
 
-TEST_CASE("JobSystem: las excepciones viajan en el future") {
+TEST_CASE("JobSystem: exceptions propagate through the future") {
     JobSystem jobs(1);
-    auto failing = jobs.submit([]() -> int { throw std::runtime_error("falla"); });
+    auto failing = jobs.submit([]() -> int { throw std::runtime_error("failure"); });
     CHECK_THROWS_AS(failing.get(), std::runtime_error);
-    CHECK(jobs.submit([] { return 7; }).get() == 7); // El hilo sigue vivo
+    CHECK(jobs.submit([] { return 7; }).get() == 7); // Thread stays alive
 }
 
-TEST_CASE("JobSystem: destruir con trabajos pendientes es limpio (los no empezados se descartan)") {
+TEST_CASE("JobSystem: destroying with pending jobs is clean (unstarted jobs are dropped)") {
     std::future<int> notStarted;
     std::atomic<bool> release{false};
     {
@@ -56,11 +56,11 @@ TEST_CASE("JobSystem: destruir con trabajos pendientes es limpio (los no empezad
         jobs.submit([&release] {
             while (!release) std::this_thread::yield();
         });
-        notStarted = jobs.submit([] { return 1; }); // Detrás del que bloquea el único hilo
+        notStarted = jobs.submit([] { return 1; }); // Behind the job blocking the single thread
         release = true;
-    } // ~JobSystem: termina el primero, descarta o termina el segundo
-    // Si se descartó: broken_promise; si alcanzó a correr: 1. Nunca cuelga ni pierde memoria
-    // (get() fuera del CHECK: doctest atraparía la excepción por su cuenta)
+    } // ~JobSystem: finishes the first, drops or finishes the second
+    // If dropped: broken_promise; if it managed to run: 1. Never hangs or leaks memory
+    // (get() outside CHECK: doctest would catch the exception itself)
     bool ranOrDropped = false;
     try {
         ranOrDropped = notStarted.get() == 1;
@@ -70,7 +70,7 @@ TEST_CASE("JobSystem: destruir con trabajos pendientes es limpio (los no empezad
     CHECK(ranOrDropped);
 }
 
-TEST_CASE("Application: jobs() se crea al pedirlo y espera los trabajos antes de onShutdown") {
+TEST_CASE("Application: jobs() is created lazily and waits for jobs before onShutdown") {
     struct App : Application {
         explicit App(ApplicationConfig config) : Application(std::move(config)) {}
         std::atomic<bool> finished{false};

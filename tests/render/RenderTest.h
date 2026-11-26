@@ -8,32 +8,32 @@
 #include <string>
 #include <vector>
 
-// Tests de render: se dibuja una escena en una textura (sin ventana), se lee a la CPU y se compara con una
-// imagen de referencia ("golden") en tests/render/golden/<nombre>.png.
-//   - MGE_UPDATE_GOLDEN=1 reescribe las referencias con lo que se dibujó (revisarlas antes de commitear).
-//   - Si no coincide, la imagen obtenida y la diferencia quedan en <build>/tests/render_output/.
-// Las GPUs no rasterizan igual al píxel (bordes de triángulos): por eso hay tolerancia por canal y un
-// máximo de píxeles distintos.
+// Render tests: renders a scene into an offscreen texture (no window), reads it back to the CPU, and compares
+// it against a reference ("golden") image at tests/render/golden/<name>.png.
+//   - MGE_UPDATE_GOLDEN=1 overwrites the reference images with what was rendered (review before committing).
+//   - On mismatch, the rendered image and diff image are saved to <build>/tests/render_output/.
+// GPUs do not rasterize identically to the pixel (triangle edges): hence a per-channel tolerance and a
+// maximum fraction of differing pixels.
 namespace mge_test {
 
     struct Image {
         std::uint32_t width = 0;
         std::uint32_t height = 0;
-        std::vector<std::uint8_t> rgba; // Fila 0 arriba
+        std::vector<std::uint8_t> rgba; // Row 0 at top
 
         const std::uint8_t* pixel(std::uint32_t x, std::uint32_t y) const {
             return &rgba[(y * width + x) * 4];
         }
     };
 
-    // Dibuja en un color target RGBA8 (+ depth si withDepth) y devuelve los píxeles
+    // Renders into an RGBA8 color target (+ depth if withDepth) and returns the pixels
     using DrawFunction = std::function<void(mge::CommandBuffer& cmd, mge::RenderPass& pass)>;
     Image renderOffscreen(mge::GpuDevice& device, std::uint32_t width, std::uint32_t height,
                           const glm::vec4& clearColor, bool withDepth, const DrawFunction& draw);
 
     struct GoldenOptions {
-        int channelTolerance = 8;         // Diferencia máxima por canal (0-255) para que un píxel "coincida"
-        double maxDifferentPixels = 0.01; // Fracción de píxeles distintos permitida (1 %)
+        int channelTolerance = 8;         // Max difference per channel (0-255) for a pixel to "match"
+        double maxDifferentPixels = 0.01; // Allowed fraction of differing pixels (1%)
     };
 
     struct GoldenResult {

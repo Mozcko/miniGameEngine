@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Compara el tamaño de los ejecutables contra el presupuesto fijado en cmake/size-budget.txt
-# Uso: scripts/check-size.sh <build-dir>
+# Compares executable sizes against the budgets defined in cmake/size-budget.txt
+# Usage: scripts/check-size.sh <build-dir>
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-    echo "Uso: $0 <build-dir>" >&2
+    echo "Usage: $0 <build-dir>" >&2
     exit 1
 fi
 
 build_dir="$1"
 
 if [[ ! -d "$build_dir" ]]; then
-    echo "Error: el directorio '$build_dir' no existe" >&2
+    echo "Error: directory '$build_dir' does not exist" >&2
     exit 1
 fi
 
@@ -19,16 +19,16 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 budget_file="$repo_root/cmake/size-budget.txt"
 
 if [[ ! -f "$budget_file" ]]; then
-    echo "Error: el archivo de presupuestos '$budget_file' no existe" >&2
+    echo "Error: budget file '$budget_file' does not exist" >&2
     exit 1
 fi
 
-# Leer presupuestos: <target> <max-bytes>
+# Read budgets: <target> <max-bytes>
 declare -A budgets
 while IFS= read -r line || [[ -n "$line" ]]; do
-    # Quitar espacios al inicio y final
+    # Trim leading and trailing whitespace
     line="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-    # Ignorar líneas vacías y comentarios
+    # Ignore empty lines and comments
     if [[ -z "$line" || "$line" =~ ^# ]]; then
         continue
     fi
@@ -69,7 +69,7 @@ for target in "${targets[@]}"; do
 done
 
 if (( found_count == 0 )); then
-    echo "Error: no se encontraron binarios en '$build_dir'" >&2
+    echo "Error: no binaries found in '$build_dir'" >&2
     exit 1
 fi
 
@@ -80,7 +80,7 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
 fi
 
 if (( over_budget )); then
-    echo -e "\nError: uno o más binarios superan el presupuesto establecido en cmake/size-budget.txt" >&2
+    echo -e "\nError: one or more binaries exceed the budget defined in cmake/size-budget.txt" >&2
     exit 1
 fi
 

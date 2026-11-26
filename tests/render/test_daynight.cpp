@@ -25,12 +25,12 @@ namespace {
     }
 }
 
-// --- Tests headless de DayNight (pura matemática, sin GPU) ---
+// --- Headless DayNight tests (pure math, no GPU) ---
 
 TEST_CASE("DayNight: hour wraps") {
     DayNight dn;
     dn.hour = 10.0f;
-    dn.dayLengthSeconds = 24.0f; // 1 segundo = 1 hora
+    dn.dayLengthSeconds = 24.0f; // 1 second = 1 hour
 
     dn.advance(0.0f);
     CHECK(dn.hour == doctest::Approx(10.0f));
@@ -61,9 +61,9 @@ TEST_CASE("DayNight: midnight sun below the horizon and starsIntensity > 0") {
     dn.hour = 0.0f;
     const SkySettings sky = dn.sky();
 
-    // El sol viaja hacia sunDirection, por lo que su posición en el cielo es -sunDirection.
-    // Si está bajo el horizonte, la componente Y de su posición es negativa (< 0),
-    // lo que equivale a sunDirection.y > 0.
+    // Sunlight travels along sunDirection, so the sun's position in the sky is -sunDirection.
+    // When below the horizon, the Y component of its position is negative (< 0),
+    // which corresponds to sunDirection.y > 0.
     CHECK(sky.sunDirection.y > 0.0f);
     CHECK(sky.starsIntensity > 0.0f);
 }
@@ -114,9 +114,9 @@ TEST_CASE("DayNight: colours continuous (no jump > 0.1 between hour h and h+0.01
     }
 }
 
-// --- Render Golden Tests (requieren GPU offscreen) ---
+// --- Render Golden Tests (require offscreen GPU) ---
 
-TEST_CASE("Render: cielo al mediodía mirando al horizonte") {
+TEST_CASE("Render: sky at noon looking toward the horizon") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -127,7 +127,7 @@ TEST_CASE("Render: cielo al mediodía mirando al horizonte") {
     REQUIRE(skyRenderer.valid());
 
     DayNight dn;
-    dn.hour = 12.0f; // Mediodía
+    dn.hour = 12.0f; // Noon
     const SkySettings sky = dn.sky();
 
     const glm::vec3 cameraPos(0.0f);
@@ -149,7 +149,7 @@ TEST_CASE("Render: cielo al mediodía mirando al horizonte") {
     checkGolden("sky_noon_horizon", image);
 }
 
-TEST_CASE("Render: cielo al atardecer mirando al sol") {
+TEST_CASE("Render: sky at sunset looking toward the sun") {
     GpuTestContext gpu;
     if (!gpu.available()) return;
     GpuDevice& device = gpu.device();
@@ -160,7 +160,7 @@ TEST_CASE("Render: cielo al atardecer mirando al sol") {
     REQUIRE(skyRenderer.valid());
 
     DayNight dn;
-    dn.hour = 18.0f; // Puesta de sol
+    dn.hour = 18.0f; // Sunset
     const SkySettings sky = dn.sky();
 
     const glm::vec3 sunDirInSky = -glm::normalize(sky.sunDirection);

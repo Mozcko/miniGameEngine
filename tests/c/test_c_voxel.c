@@ -4,13 +4,13 @@ static mge_block_id c_terrain_generator(int32_t x, int32_t y, int32_t z, void* u
     (void)x;
     (void)z;
     (void)user_data;
-    // Capa de piedra en y <= 3, aire en y > 3
+    // Stone layer at y <= 3, air at y > 3
     if (y <= 3) return 1;
     return MGE_BLOCK_AIR;
 }
 
 int test_c_voxel(void) {
-    // 1. Registro de bloques
+    // 1. Block registration
     mge_block_registry* reg = mge_block_registry_create(NULL);
     TEST_ASSERT(reg != NULL);
 
@@ -22,35 +22,35 @@ int test_c_voxel(void) {
     mge_block_id dirtId = mge_block_register(reg, &dirtDesc);
     TEST_ASSERT_EQ(dirtId, 2);
 
-    // 2. Mundo voxel con callback en C
+    // 2. Voxel world with C callback
     mge_voxel_world* world = mge_voxel_world_create(NULL, reg, c_terrain_generator, NULL);
     TEST_ASSERT(world != NULL);
 
-    // Bloque en (0, 2, 0) debe ser Stone
+    // Block at (0, 2, 0) should be Stone
     TEST_ASSERT_EQ(mge_voxel_world_get_block(world, 0, 2, 0), stoneId);
 
-    // Bloque en (0, 8, 0) debe ser Aire
+    // Block at (0, 8, 0) should be Air
     TEST_ASSERT_EQ(mge_voxel_world_get_block(world, 0, 8, 0), MGE_BLOCK_AIR);
 
-    // Modificar bloque
+    // Modify block
     TEST_ASSERT(mge_voxel_world_set_block(world, 0, 8, 0, dirtId));
     TEST_ASSERT_EQ(mge_voxel_world_get_block(world, 0, 8, 0), dirtId);
 
-    // 3. Raycast: hacia abajo desde (0.5, 15.0, 0.5) hacia -Y
+    // 3. Raycast: downward from (0.5, 15.0, 0.5) toward -Y
     float origin[3] = {0.5f, 15.0f, 0.5f};
     float dirDown[3] = {0.0f, -1.0f, 0.0f};
     mge_voxel_raycast_hit hit;
 
     bool didHit = mge_voxel_world_raycast(world, origin, dirDown, 20.0f, &hit);
     TEST_ASSERT(didHit);
-    // Debe impactar el bloque Dirt en y = 8
+    // Should hit the Dirt block at y = 8
     TEST_ASSERT_EQ(hit.block[0], 0);
     TEST_ASSERT_EQ(hit.block[1], 8);
     TEST_ASSERT_EQ(hit.block[2], 0);
     TEST_ASSERT_EQ(hit.block_id, dirtId);
-    TEST_ASSERT_EQ(hit.normal[1], 1); // Cara superior (+Y)
+    TEST_ASSERT_EQ(hit.normal[1], 1); // Top face (+Y)
 
-    // Raycast hacia arriba (sin impacto)
+    // Raycast upward (no hit)
     float dirUp[3] = {0.0f, 1.0f, 0.0f};
     bool hitAir = mge_voxel_world_raycast(world, origin, dirUp, 20.0f, &hit);
     TEST_ASSERT(!hitAir);

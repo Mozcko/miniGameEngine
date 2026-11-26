@@ -1,12 +1,12 @@
-# --- doctest (solo para desarrollo, nunca se enlaza al juego) ---
+# --- doctest (development only, never linked into the game) ---
 include(FetchContent)
 FetchContent_Declare(doctest
     URL https://github.com/doctest/doctest/archive/refs/tags/v2.4.11.tar.gz
     URL_HASH SHA256=632ed2c05a7f53fa961381497bf8069093f0d6628c5f26286161fbd32a560186
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    # Solo necesitamos el header y scripts/cmake/doctest.cmake: SOURCE_SUBDIR apunta a una
-    # carpeta sin CMakeLists para que no se ejecute el CMakeLists de doctest (pide CMake 3.0,
-    # que CMake 4 ya no acepta).
+    # We only need the header and scripts/cmake/doctest.cmake: SOURCE_SUBDIR points to a
+    # folder without CMakeLists so doctest's CMakeLists is not executed (it requests CMake 3.0,
+    # which CMake 4 no longer accepts).
     SOURCE_SUBDIR do-not-configure
 )
 FetchContent_MakeAvailable(doctest)
@@ -16,7 +16,7 @@ target_include_directories(doctest_header SYSTEM INTERFACE ${doctest_SOURCE_DIR}
 
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 
-# --- Tests del core: solo enlazan mge_core (sin SDL ni GPU) ---
+# --- Core tests: link only mge_core (no SDL or GPU) ---
 add_executable(mge_core_tests
     test_main.cpp
     core/test_application.cpp
@@ -39,7 +39,7 @@ target_link_libraries(mge_core_tests PRIVATE mge_core doctest_header)
 mge_set_warnings(mge_core_tests)
 doctest_discover_tests(mge_core_tests TEST_PREFIX "core: ")
 
-# --- Tests de los módulos headless (sin SDL ni GPU): siempre ---
+# --- Headless module tests (no SDL or GPU): always built ---
 add_executable(mge_procgen_tests
     test_main.cpp
     procgen/test_font.cpp
@@ -74,8 +74,8 @@ target_link_libraries(mge_synth_tests PRIVATE mge_synth doctest_header)
 mge_set_warnings(mge_synth_tests)
 doctest_discover_tests(mge_synth_tests TEST_PREFIX "synth: ")
 
-# "El hilo de audio no reserva memoria": reemplaza operator new, así que va en su propio programa y no se
-# compila con sanitizers (ASan y TSan ya reemplazan new/delete)
+# "The audio thread does not allocate memory": overrides operator new, so it runs in its own
+# executable and is not built with sanitizers (ASan and TSan already override new/delete)
 if(NOT MGE_SANITIZERS AND NOT MGE_TSAN)
     add_executable(mge_synth_alloc_tests test_main.cpp synth/test_no_alloc.cpp)
     target_link_libraries(mge_synth_alloc_tests PRIVATE mge_synth doctest_header)
@@ -109,7 +109,7 @@ target_link_libraries(mge_physics_tests PRIVATE mge_physics doctest_header)
 mge_set_warnings(mge_physics_tests)
 doctest_discover_tests(mge_physics_tests TEST_PREFIX "physics: ")
 
-# --- Tests de los módulos (necesitan SDL; no abren ventana) ---
+# --- Module tests (require SDL; do not open a window) ---
 if(MGE_BUILD_MODULES)
     add_executable(mge_platform_tests
         test_main.cpp
@@ -120,15 +120,15 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(mge_platform_tests)
     doctest_discover_tests(mge_platform_tests TEST_PREFIX "platform: ")
 
-    # Audio con el driver dummy de SDL (sin placa de sonido)
+    # Audio with SDL's dummy driver (no sound card)
     add_executable(mge_audio_tests test_main.cpp audio/test_audio_module.cpp)
     target_link_libraries(mge_audio_tests PRIVATE mge_audio doctest_header)
     mge_set_warnings(mge_audio_tests)
     doctest_discover_tests(mge_audio_tests TEST_PREFIX "audio: "
         PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy;ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
 
-    # GPU (SDL3 GPU, Vulkan). Sin ventana: dibujan en texturas. Sin GPU se saltean (MGE_REQUIRE_GPU=1 → fallan).
-    # Con sanitizers se apaga LeakSanitizer: los drivers de Mesa pierden memoria que LSan no puede atribuir.
+    # GPU (SDL3 GPU, Vulkan). Headless: renders to textures. Skipped without a GPU (MGE_REQUIRE_GPU=1 → fails).
+    # With sanitizers, LeakSanitizer is disabled: Mesa drivers leak memory that LSan cannot attribute.
     add_executable(mge_gpu_tests
         test_main.cpp
         gpu/test_gpu_compute.cpp
@@ -145,18 +145,18 @@ if(MGE_BUILD_MODULES)
         gpu/shaders/test_multiply.comp
         gpu/shaders/test_sdf_raymarch.comp)
 
-    # Los errores de validación de Vulkan aparecen en la salida del test: CTest falla cualquier test de GPU que
-    # los imprima (FAIL_REGULAR_EXPRESSION). El probe provoca uno a propósito y pasa solo si se ve.
+    # Vulkan validation errors appear in test output: CTest fails any GPU test that prints them
+    # (FAIL_REGULAR_EXPRESSION). The probe triggers one intentionally and passes only if it is seen.
     add_executable(gpu_validation_probe gpu/ValidationProbe.cpp)
     target_link_libraries(gpu_validation_probe PRIVATE mge_gpu)
     mge_set_warnings(gpu_validation_probe)
     mge_add_shaders(gpu_validation_probe SHADERS gpu/shaders/test_triangle.vert gpu/shaders/test_triangle.frag)
-    add_test(NAME "gpu: la validación corta ante un uso incorrecto de la API" COMMAND gpu_validation_probe)
-    set_tests_properties("gpu: la validación corta ante un uso incorrecto de la API" PROPERTIES
+    add_test(NAME "gpu: validation fails on incorrect API usage" COMMAND gpu_validation_probe)
+    set_tests_properties("gpu: validation fails on incorrect API usage" PROPERTIES
         LABELS gpu SKIP_RETURN_CODE 77 ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1"
         PASS_REGULAR_EXPRESSION "VUID-VkGraphicsPipelineCreateInfo-layout-07988")
 
-    # Render: escenas comparadas con imágenes de referencia (tests/render/golden). MGE_UPDATE_GOLDEN=1 las reescribe
+    # Render: scenes compared against reference images (tests/render/golden). MGE_UPDATE_GOLDEN=1 rewrites them
     add_executable(render_tests
         test_main.cpp
         render/RenderTest.h render/RenderTest.cpp
@@ -184,7 +184,7 @@ if(MGE_BUILD_MODULES)
                    FAIL_REGULAR_EXPRESSION "Validation Error")
 endif()
 
-# --- Tests del sandbox (necesitan los módulos del motor) ---
+# --- Sandbox tests (require engine modules) ---
 if(MGE_BUILD_MODULES)
     add_executable(game_tests
         test_main.cpp
@@ -196,20 +196,20 @@ if(MGE_BUILD_MODULES)
     mge_set_warnings(game_tests)
     doctest_discover_tests(game_tests TEST_PREFIX "game: ")
 
-    # Plataformero 2D (#45): niveles ASCII y física, sin ventana
+    # 2D Platformer (#45): ASCII levels and physics, headless
     add_executable(platformer_tests test_main.cpp examples/test_platformer.cpp)
     target_link_libraries(platformer_tests PRIVATE platformer2d_logic doctest_header)
     mge_set_warnings(platformer_tests)
     doctest_discover_tests(platformer_tests TEST_PREFIX "platformer: ")
 
-    # Demo SDF Glide (#66): cañón SDF, colisiones, motas, lógica y audio synth, sin ventana
+    # SDF Glide demo (#66): SDF canyon, collisions, motes, logic and synth audio, headless
     add_executable(sdf_glide_tests test_main.cpp examples/test_sdf_glide.cpp)
     target_link_libraries(sdf_glide_tests PRIVATE sdf_glide_logic mge_procgen doctest_header)
     mge_set_warnings(sdf_glide_tests)
     doctest_discover_tests(sdf_glide_tests TEST_PREFIX "sdf_glide: ")
 endif()
 
-# --- Tests del CLI mge ---
+# --- mge CLI tests ---
 if(MGE_BUILD_CLI)
     add_executable(mge_cli_tests
         test_main.cpp
@@ -224,7 +224,7 @@ if(MGE_BUILD_CLI)
     doctest_discover_tests(mge_cli_tests TEST_PREFIX "cli: ")
 endif()
 
-# --- Tests de la API de C (mge_c) en C99 puro (sin doctest) ---
+# --- C API (mge_c) tests in pure C99 (no doctest) ---
 if(MGE_BUILD_MODULES)
     add_executable(mge_c_tests
         c/test_c_main.c
@@ -240,10 +240,10 @@ if(MGE_BUILD_MODULES)
     target_link_libraries(mge_c_tests PRIVATE mge::c)
     mge_set_warnings(mge_c_tests)
 
-    add_test(NAME "c:lifecycle: ciclo de vida headless y timers" COMMAND mge_c_tests lifecycle)
-    add_test(NAME "c:ecs: registro dinamico de componentes y sistemas" COMMAND mge_c_tests ecs)
-    add_test(NAME "c:input: mapeo de acciones y consultas" COMMAND mge_c_tests input)
-    add_test(NAME "c:audio: render offline y generacion de sfx" COMMAND mge_c_tests audio)
-    add_test(NAME "c:voxel: mundo, generador c y raycast" COMMAND mge_c_tests voxel)
-    add_test(NAME "c:safety: liberacion segura de recursos gpu en shutdown" COMMAND mge_c_tests safety)
+    add_test(NAME "c:lifecycle: headless lifecycle and timers" COMMAND mge_c_tests lifecycle)
+    add_test(NAME "c:ecs: dynamic component registration and systems" COMMAND mge_c_tests ecs)
+    add_test(NAME "c:input: action mapping and queries" COMMAND mge_c_tests input)
+    add_test(NAME "c:audio: offline render and sfx generation" COMMAND mge_c_tests audio)
+    add_test(NAME "c:voxel: world, c generator and raycast" COMMAND mge_c_tests voxel)
+    add_test(NAME "c:safety: safe gpu resource release on shutdown" COMMAND mge_c_tests safety)
 endif()
